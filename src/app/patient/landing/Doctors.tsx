@@ -1,0 +1,41 @@
+import { useState, useEffect } from "react";
+import { Award } from "lucide-react";
+import { getLandingDoctors } from "../../shared/supabaseApi";
+
+export default function Doctors({ onCTA }: { onCTA: () => void }) {
+  const [doctors, setDoctors] = useState<any[]>([]);
+  
+  useEffect(() => {
+    getLandingDoctors().then(setDoctors);
+  }, []);
+  return (
+    <section id="doctors" style={{ backgroundColor: "#F8F9FA" }}>
+      <div className="max-w-7xl mx-auto px-6 py-20">
+        <div className="text-center mb-14">
+          <div className="inline-block text-sm font-medium px-4 py-1.5 rounded-full mb-4" style={{ backgroundColor: "#FFE8EC", color: "#FF6B7E" }}>ทีมแพทย์</div>
+          <h2 className="text-4xl font-bold mb-4" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ทีมทันตแพทย์ผู้เชี่ยวชาญ</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {doctors.map((d, i) => (
+            <div key={i} className="rounded-3xl overflow-hidden group" style={{ backgroundColor: "white", boxShadow: "0 4px 24px rgba(26,54,93,0.08)" }}>
+              <div className="relative overflow-hidden" style={{ aspectRatio: "1/1" }}>
+                <img src={d.img} alt={d.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,transparent 50%,rgba(26,54,93,0.6))" }} />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <p className="font-semibold text-white text-sm">{d.name}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#FFD6DC" }}>{d.specialty}</p>
+                </div>
+              </div>
+              <div className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-2"><Award size={14} style={{ color: "#FF8C9A" }} /><span className="text-sm" style={{ color: "#4A6080" }}>{d.years}</span></div>
+                <button onClick={onCTA} className="text-sm font-medium px-4 py-1.5 rounded-full hover:opacity-80" style={{ backgroundColor: "#FFE8EC", color: "#FF6B7E" }}>
+                  จองกับแพทย์ท่านนี้
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
