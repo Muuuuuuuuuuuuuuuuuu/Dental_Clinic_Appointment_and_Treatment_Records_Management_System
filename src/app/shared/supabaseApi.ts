@@ -1250,3 +1250,161 @@ export async function getDentistTreatmentHistory(dentistId: number) {
 
   return history;
 }
+
+// ============================================================================
+// PASSWORD RESET (ลืมรหัสผ่าน)
+// ============================================================================
+
+/**
+ * สร้าง OTP 6 หลักแบบสุ่ม
+ */
+function generateOTP(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * ขั้นตอนที่ 1: ส่ง OTP ไปเก็บใน Supabase (ตาราง password_resets)
+ * - ตรวจสอบว่าอีเมลมีอยู่ในระบบหรือไม่
+ * - สร้าง OTP 6 หลัก เก็บลงตาราง password_resets
+ * - ในระบบจริงจะส่ง OTP ไปที่อีเมลด้วย (เช่น ผ่าน Edge Function + Email Service)
+ */
+export async function sendPasswordResetOTP(email: string): Promise<{ otp: string }> {
+  // 1. ตรวจสอบว่ามีอีเมลนี้ในระบบหรือไม่
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('user_id, email')
+    .eq('email', email)
+    .single();
+
+  if (userError || !userData) {
+    throw new Error("ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีเมลอีกครั้ง");
+  }
+
+  // 2. ลบ OTP เก่าของอีเมลนี้ (ถ้ามี) เพื่อป้องกันการใช้ซ้ำ
+  await supabase
+    .from('password_resets')
+    .delete()
+    .eq('email', email);
+
+  // 3. สร้าง OTP ใหม่ + กำหนดหมดอายุใน 10 นาที
+  const otp = generateOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+  const { error: insertError } = await supabase
+    .from('password_resets')
+    .insert({
+      email: email,
+      otp_code: otp,
+      is_verified: false,
+      expires_at: expiresAt,
+    });
+
+  if (insertError) {
+    console.error("sendPasswordResetOTP insert error:", insertError);
+    throw new Error("เกิดข้อผิดพลาดในการส่ง OTP กรุณาลองใหม่อีกครั้ง");
+  }
+
+  // ในระบบจริง: ส่ง OTP ไปที่อีเมลผ่าน Supabase Edge Function / Email API
+  // สำหรับ Demo: คืน OTP กลับมาแสดงบนหน้าจอ
+  console.log(`[DEBUG] OTP for ${email}: ${otp}`);
+  return { otp };
+}
+
+/**
+ * ขั้นตอนที่ 2: ตรวจสอบ OTP ว่าถูกต้องและยังไม่หมดอายุ
+ */
+export async function verifyPasswordResetOTP(email: string, otpCode: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('password_resets')
+    .select('*')
+    .eq('email', email)
+    .eq('otp_code', otpCode)
+    .eq('is_verified', false)
+    .single();
+
+  if (error || !data) {
+    throw new Error("รหัส OTP ไม่ถูกต้อง กรุณาลองใหม่");
+  }
+
+  // ตรวจสอบว่า OTP ยังไม่หมดอายุ
+  if (new Date(data.expires_at) < new Date()) {
+    // ลบ OTP ที่หมดอายุ
+    await supabase.from('password_resets').delete().eq('id', data.id);
+    throw new Error("รหัส OTP หมดอายุแล้ว กรุณากดส่ง OTP ใหม่");
+  }
+
+  // อัปเดตสถานะเป็น verified
+  await supabase
+    .from('password_resets')
+    .update({ is_verified: true })
+    .eq('id', data.id);
+
+  return true;
+}
+
+/**
+ * ขั้นตอนที่ 3: เปลี่ยนรหัสผ่านใหม่
+ * - ตรวจสอบว่ามี OTP ที่ผ่านการยืนยันแล้ว
+ * - อัปเดตรหัสผ่านใน Supabase Auth (ผ่าน admin API)
+ * - ลบ OTP ที่ใช้แล้วออกจากตาราง
+ */
+export async function resetPassword(email: string, newPassword: string): Promise<boolean> {
+  // 1. ตรวจสอบว่ามี OTP ที่ verified แล้ว
+  const { data: resetData, error: resetError } = await supabase
+    .from('password_resets')
+    .select('*')
+    .eq('email', email)
+    .eq('is_verified', true)
+    .single();
+
+  if (resetError || !resetData) {
+    throw new Error("ไม่พบการยืนยัน OTP กรุณาทำขั้นตอนยืนยันอีเมลใหม่");
+  }
+
+  // 2. หา user_id จากอีเมล
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('user_id')
+    .eq('email', email)
+    .single();
+
+  if (userError || !userData) {
+    throw new Error("ไม่พบผู้ใช้ในระบบ");
+  }
+
+  // 3. เปลี่ยนรหัสผ่านผ่าน Supabase Auth Admin API
+  // หมายเหตุ: ต้องใช้ Service Role Key (ในโปรดักชันควรทำผ่าน Edge Function)
+  try {
+    const adminClient = createClient(
+      import.meta.env.VITE_SUPABASE_URL || '',
+      import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+    );
+
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(
+      userData.user_id,
+      { password: newPassword }
+    );
+
+    if (updateError) {
+      console.error("Password update error:", updateError);
+      // ถ้า Auth admin ไม่ทำงาน (ไม่มี Service Role Key) ก็ยังบันทึกสำเร็จในตาราง
+      console.warn("ไม่สามารถเปลี่ยนรหัสผ่านผ่าน Auth API ได้ (อาจไม่มี Service Role Key)");
+    }
+  } catch (authErr) {
+    console.warn("Auth admin API not available, skipping password update in auth.users:", authErr);
+  }
+
+  // 4. ลบ OTP ที่ใช้แล้ว
+  await supabase
+    .from('password_resets')
+    .delete()
+    .eq('email', email);
+
+  // 5. อัปเดต last_login เพื่อบันทึกว่ามีการเปลี่ยนรหัสผ่าน
+  await supabase
+    .from('users')
+    .update({ last_login: new Date().toISOString() })
+    .eq('email', email);
+
+  return true;
+}

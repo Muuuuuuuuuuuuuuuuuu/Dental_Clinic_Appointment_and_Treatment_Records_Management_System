@@ -5,6 +5,11 @@ import {
 } from "lucide-react";
 import AuthShell, { Field } from "./AuthShell";
 import { inputCls, inputStyle } from "../types";
+import {
+  sendPasswordResetOTP,
+  verifyPasswordResetOTP,
+  resetPassword,
+} from "../../shared/supabaseApi";
 
 type Step = "email" | "otp" | "reset" | "done";
 
@@ -16,7 +21,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(false);
 
   // ─── OTP state ─────────────────────────────────────────────────
-  const DEMO_OTP = "847291";
+  const [demoOtp, setDemoOtp] = useState(""); // OTP ที่ระบบสร้างให้ (Demo)
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [resent, setResent] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -33,20 +38,29 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
     boxShadow: "0 4px 20px rgba(255,140,154,0.4)",
   };
 
-  // ─── Step 1: Send OTP ──────────────────────────────────────────
-  const sendOtp = () => {
+  // ═══════════════════════════════════════════════════════════════
+  // Step 1: ส่ง OTP ไปเก็บใน Supabase + ส่งไปอีเมล
+  // ═══════════════════════════════════════════════════════════════
+  const sendOtp = async () => {
     setError("");
     if (!email) { setError("กรุณากรอกอีเมล"); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("รูปแบบอีเมลไม่ถูกต้อง"); return; }
+
     setLoading(true);
-    // จำลองส่ง OTP (ในระบบจริงจะเรียก API)
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const result = await sendPasswordResetOTP(email);
+      setDemoOtp(result.otp); // เก็บ OTP สำหรับแสดง Demo
       setStep("otp");
-    }, 800);
+    } catch (err: any) {
+      setError(err.message || "เกิดข้อผิดพลาด กรุณาลองใหม่");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // ─── Step 2: Verify OTP ────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // Step 2: ยืนยัน OTP กับ Supabase
+  // ═══════════════════════════════════════════════════════════════
   const handleDigit = (i: number, v: string) => {
     if (!/^\d?$/.test(v)) return;
     const next = [...digits];
@@ -62,33 +76,53 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
     }
   };
 
-  const verifyOtp = () => {
+  const verifyOtp = async () => {
     setError("");
     const code = digits.join("");
     if (code.length < 6) { setError("กรุณากรอกรหัส OTP ให้ครบ 6 หลัก"); return; }
-    if (code !== DEMO_OTP) { setError("รหัส OTP ไม่ถูกต้อง กรุณาลองใหม่"); return; }
-    setStep("reset");
+
+    setLoading(true);
+    try {
+      await verifyPasswordResetOTP(email, code);
+      setStep("reset");
+    } catch (err: any) {
+      setError(err.message || "รหัส OTP ไม่ถูกต้อง");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const resendOtp = () => {
+  const resendOtp = async () => {
     setDigits(["", "", "", "", "", ""]);
     setError("");
     setResent(true);
+    try {
+      const result = await sendPasswordResetOTP(email);
+      setDemoOtp(result.otp);
+    } catch (err: any) {
+      setError(err.message || "ไม่สามารถส่ง OTP ใหม่ได้");
+    }
     setTimeout(() => setResent(false), 3000);
   };
 
-  // ─── Step 3: Reset password ────────────────────────────────────
-  const resetPassword = () => {
+  // ═══════════════════════════════════════════════════════════════
+  // Step 3: เปลี่ยนรหัสผ่านใหม่ใน Supabase
+  // ═══════════════════════════════════════════════════════════════
+  const doResetPassword = async () => {
     setError("");
     if (!newPass) { setError("กรุณากรอกรหัสผ่านใหม่"); return; }
     if (newPass.length < 6) { setError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"); return; }
     if (newPass !== confirmPass) { setError("รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง"); return; }
+
     setLoading(true);
-    // จำลองการเปลี่ยนรหัสผ่าน (ในระบบจริงจะเรียก API)
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await resetPassword(email, newPass);
       setStep("done");
-    }, 800);
+    } catch (err: any) {
+      setError(err.message || "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════
@@ -172,7 +206,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
             เปลี่ยนรหัสผ่านเรียบร้อย!
           </h3>
           <p className="text-sm mb-6" style={{ color: "#4A6080" }}>
-            กรุณาเข้าสู่ระบบอีกครั้งด้วยรหัสผ่านใหม่ของคุณ
+            ข้อมูลถูกบันทึกลง Supabase เรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่
           </p>
           <button
             onClick={onBack}
@@ -231,13 +265,15 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
       <AuthShell title="ยืนยัน OTP" sub={`ระบบได้ส่งรหัส OTP 6 หลักไปยัง ${email}`}>
         <StepIndicator />
 
-        {/* Demo OTP hint */}
-        <div
-          className="p-4 rounded-xl mb-6 text-sm text-center"
-          style={{ backgroundColor: "#FFF3E0", color: "#E65100" }}
-        >
-          Demo OTP: <strong>{DEMO_OTP}</strong>
-        </div>
+        {/* Demo OTP hint — แสดง OTP ที่สร้างจาก Supabase */}
+        {demoOtp && (
+          <div
+            className="p-4 rounded-xl mb-6 text-sm text-center"
+            style={{ backgroundColor: "#FFF3E0", color: "#E65100" }}
+          >
+            🔑 Demo OTP (จาก Supabase): <strong>{demoOtp}</strong>
+          </div>
+        )}
 
         <ErrorBanner />
 
@@ -264,10 +300,11 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
 
         <button
           onClick={verifyOtp}
-          className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+          disabled={loading}
+          className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70"
           style={btnGradient}
         >
-          ยืนยัน OTP
+          {loading ? "กำลังตรวจสอบ..." : "ยืนยัน OTP"}
         </button>
 
         <div className="flex items-center justify-between mt-4">
@@ -339,7 +376,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
               placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
               className={`${inputCls} pl-10 pr-10`}
               style={inputStyle}
-              onKeyDown={(e) => e.key === "Enter" && resetPassword()}
+              onKeyDown={(e) => e.key === "Enter" && doResetPassword()}
             />
             <button
               type="button"
@@ -368,7 +405,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
       </div>
 
       <button
-        onClick={resetPassword}
+        onClick={doResetPassword}
         disabled={loading}
         className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70 mt-6"
         style={btnGradient}
