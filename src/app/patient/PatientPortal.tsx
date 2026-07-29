@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Info } from "lucide-react";
 import { View, UserRole, PatientUser } from "./types";
 import { Appointment, getClinicStatus } from "../shared/data";
+
 import { getAppointments } from "../shared/supabaseApi";
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
@@ -65,6 +66,8 @@ export default function PatientPortal() {
   useEffect(() => {
     getAppointments().then(setSharedAppointments).catch(console.error);
   }, []);
+
+
 
   const updateAppt = (id: number, updates: Partial<Appointment>) =>
     setSharedAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
@@ -186,7 +189,7 @@ export default function PatientPortal() {
   if (view === "login")           return <LoginPage onLogin={handleLogin} onLoginRole={handleLoginRole} onRegister={() => { setPrevView("login"); setView("consent"); }} onForgotPassword={() => { setPrevView("login"); setView("forgot-password"); }} onBack={() => setView(prevView)} />;
   if (view === "consent")         return <ConsentPage onAccept={handleConsent} onBack={() => setView(prevView)} />;
   if (view === "register")        return <RegisterPage onSuccess={handleRegisterSuccess} onLogin={goLogin} onBack={() => setView(prevView)} />;
-  if (view === "forgot-password") return <ForgotPasswordPage onBack={() => setView(prevView)} />;
+  if (view === "forgot-password") return <ForgotPasswordPage onBack={() => setView(prevView)} onSuccess={() => setView('login')} />;
 
   // ─── Landing page ─────────────────────────────────────────────────────────
   const clinicStatus = getClinicStatus();

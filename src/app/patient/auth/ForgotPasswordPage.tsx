@@ -13,7 +13,7 @@ import {
 
 type Step = "email" | "otp" | "reset" | "done";
 
-export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
+export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () => void; onSuccess?: () => void }) {
   // ─── shared state ──────────────────────────────────────────────
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -21,7 +21,6 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(false);
 
   // ─── OTP state ─────────────────────────────────────────────────
-  const [demoOtp, setDemoOtp] = useState(""); // OTP ที่ระบบสร้างให้ (Demo)
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [resent, setResent] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -32,6 +31,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
+
   // ─── helpers ───────────────────────────────────────────────────
   const btnGradient = {
     background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)",
@@ -39,7 +39,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
   };
 
   // ═══════════════════════════════════════════════════════════════
-  // Step 1: ส่ง OTP ไปเก็บใน Supabase + ส่งไปอีเมล
+  // Step 1: ส่ง OTP ไปอีเมลจริงผ่าน EmailJS + เก็บใน Supabase
   // ═══════════════════════════════════════════════════════════════
   const sendOtp = async () => {
     setError("");
@@ -48,8 +48,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
 
     setLoading(true);
     try {
-      const result = await sendPasswordResetOTP(email);
-      setDemoOtp(result.otp); // เก็บ OTP สำหรับแสดง Demo
+      await sendPasswordResetOTP(email);
       setStep("otp");
     } catch (err: any) {
       setError(err.message || "เกิดข้อผิดพลาด กรุณาลองใหม่");
@@ -97,8 +96,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
     setError("");
     setResent(true);
     try {
-      const result = await sendPasswordResetOTP(email);
-      setDemoOtp(result.otp);
+      await sendPasswordResetOTP(email);
     } catch (err: any) {
       setError(err.message || "ไม่สามารถส่ง OTP ใหม่ได้");
     }
@@ -124,6 +122,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
       setLoading(false);
     }
   };
+
 
   // ═══════════════════════════════════════════════════════════════
   // Step indicator (3 ขั้นตอน)
@@ -206,10 +205,10 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
             เปลี่ยนรหัสผ่านเรียบร้อย!
           </h3>
           <p className="text-sm mb-6" style={{ color: "#4A6080" }}>
-            ข้อมูลถูกบันทึกลง Supabase เรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่
+            กรุณาเข้าสู่ระบบอีกครั้งด้วยรหัสผ่านใหม่ของคุณ
           </p>
           <button
-            onClick={onBack}
+            onClick={() => { onSuccess?.(); }}
             className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
             style={btnGradient}
           >
@@ -223,7 +222,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
   /* ── STEP 1 — Email ──────────────────────────────────────────── */
   if (step === "email") {
     return (
-      <AuthShell title="ลืมรหัสผ่าน" sub="กรอกอีเมลที่ลงทะเบียนไว้ เราจะส่งรหัส OTP ไปยังอีเมลของคุณ">
+      <AuthShell title="ลืมรหัสผ่าน" sub="กรอกอีเมลที่ลงทะเบียนไว้ ระบบจะส่งรหัส OTP ไปยังอีเมลของคุณ">
         <StepIndicator />
         <ErrorBanner />
         <Field label="อีเมล">
@@ -246,7 +245,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
           className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70 mt-4"
           style={btnGradient}
         >
-          {loading ? "กำลังส่ง OTP..." : "ส่งรหัส OTP"}
+          {loading ? "กำลังส่ง OTP ไปยังอีเมล..." : "ส่งรหัส OTP ไปยังอีเมล"}
         </button>
         <button
           onClick={onBack}
@@ -262,18 +261,16 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
   /* ── STEP 2 — OTP ────────────────────────────────────────────── */
   if (step === "otp") {
     return (
-      <AuthShell title="ยืนยัน OTP" sub={`ระบบได้ส่งรหัส OTP 6 หลักไปยัง ${email}`}>
+      <AuthShell title="ยืนยัน OTP" sub={`ระบบได้ส่งรหัส OTP 6 หลักไปยัง ${email} แล้ว`}>
         <StepIndicator />
 
-        {/* Demo OTP hint — แสดง OTP ที่สร้างจาก Supabase */}
-        {demoOtp && (
-          <div
-            className="p-4 rounded-xl mb-6 text-sm text-center"
-            style={{ backgroundColor: "#FFF3E0", color: "#E65100" }}
-          >
-            🔑 Demo OTP (จาก Supabase): <strong>{demoOtp}</strong>
-          </div>
-        )}
+        {/* แจ้งเตือนให้ตรวจสอบอีเมล */}
+        <div
+          className="p-4 rounded-xl mb-6 text-sm text-center"
+          style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}
+        >
+          📩 กรุณาตรวจสอบกล่องจดหมายอีเมลของคุณ (รวมถึงโฟลเดอร์ Spam/Junk)
+        </div>
 
         <ErrorBanner />
 
@@ -320,7 +317,7 @@ export default function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
             className="flex items-center gap-1.5 text-sm hover:opacity-70"
             style={{ color: resent ? "#22C55E" : "#FF8C9A" }}
           >
-            <RefreshCw size={13} /> {resent ? "ส่งแล้ว!" : "ส่ง OTP ใหม่"}
+            <RefreshCw size={13} /> {resent ? "ส่ง OTP ใหม่แล้ว!" : "ส่ง OTP ใหม่"}
           </button>
         </div>
       </AuthShell>
