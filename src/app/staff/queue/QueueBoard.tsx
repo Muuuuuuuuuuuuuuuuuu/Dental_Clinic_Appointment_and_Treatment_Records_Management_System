@@ -108,7 +108,7 @@ function AppointmentList({ appts }: { appts: Appointment[] }) {
 }
 
 // ─── Today's Kanban Board ─────────────────────────────────────────────────────
-function TodayKanbanBoard({ appts, onUpdate }: { appts: Appointment[], onUpdate: (id: number, s: Partial<Appointment>) => void }) {
+function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], onUpdate: (id: number, s: Partial<Appointment>) => void, setView?: (v: StaffView) => void }) {
   const toCheckIn = appts.filter(a => a.status === "ยืนยันการจอง");
   const inQueue = appts.filter(a => a.status === "รอรักษา" || a.status === "กำลังรักษา");
   const toPay = appts.filter(a => a.status === "รอชำระเงิน");
@@ -213,7 +213,11 @@ function TodayKanbanBoard({ appts, onUpdate }: { appts: Appointment[], onUpdate:
           </div>
         ) : (
           toPay.map(a => (
-            <div key={a.id} className="rounded-2xl bg-white p-4 shadow-sm border border-green-50 relative overflow-hidden">
+            <div 
+              key={a.id} 
+              onClick={() => setView && setView("payment")}
+              className="rounded-2xl bg-white p-4 shadow-sm border border-green-50 relative overflow-hidden cursor-pointer hover:shadow-md hover:border-green-200 transition-all active:scale-[0.98]"
+            >
               <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500"></div>
               <div className="flex justify-between items-start mb-2">
                 <span className="text-sm font-bold" style={{ color: "#1A365D" }}>{a.time} น.</span>
@@ -370,7 +374,7 @@ function DailyView({
 
       {/* Content based on isToday */}
       {isToday && !closure ? (
-        <TodayKanbanBoard appts={dayAppts} onUpdate={onUpdateAppt} />
+        <TodayKanbanBoard appts={dayAppts} onUpdate={onUpdateAppt} setView={setView} />
       ) : (
         <>
           {/* Stat Cards */}

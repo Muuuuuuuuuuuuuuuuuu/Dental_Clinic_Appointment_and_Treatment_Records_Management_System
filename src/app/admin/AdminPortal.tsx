@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import LeaveApprovals from "./leave/LeaveApprovals";
 import ScheduleManagement from "./schedule/ScheduleManagement";
 import ServiceManagement from "./settings/ServiceManagement";
@@ -21,11 +21,17 @@ import {
 } from "recharts";
 import {
   Appointment, AppointmentStatus, DentistInfo, StaffInfo, ServiceInfo,
-  LeaveRequest, STATUS_COLORS, getClinicStatus,
+  LeaveRequest, STATUS_COLORS, getClinicStatus, ClinicStatus,
 } from "../shared/data";
+import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
 
 function AdminStatusBanner() {
-  const s = getClinicStatus();
+  const [s, setS] = useState<ClinicStatus>(getClinicStatus());
+  useEffect(() => {
+    Promise.all([getWeeklyOffDays(), getClinicClosures(), getClinicSettings(), getDailyHours()]).then(([offDays, closures, settings, dh]) => {
+      setS(getClinicStatus(new Date(), closures, offDays, settings, dh));
+    }).catch(console.error);
+  }, []);
   if (s.type === "open") return null;
   return (
     <div className="px-5 lg:px-8 pt-4">

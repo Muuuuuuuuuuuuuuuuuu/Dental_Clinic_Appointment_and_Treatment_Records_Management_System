@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt } from "lucide-react";
 
 import { Appointment, STATUS_COLORS } from "../../shared/data";
-import { getAppointments, processPaymentApi } from "../../shared/supabaseApi";
+import { getAppointments, processPaymentApi, addAppointment } from "../../shared/supabaseApi";
 
 export default function PaymentView() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -22,6 +22,10 @@ export default function PaymentView() {
   const [isOpenTicket, setIsOpenTicket] = useState(false);
   const [showLink, setShowLink] = useState(false);
   const [isBound, setIsBound] = useState(false);
+  
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpTime, setFollowUpTime] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchAppointments();
@@ -367,7 +371,15 @@ export default function PaymentView() {
               </div>
 
               <div className="flex gap-2">
-                <button onClick={() => { setFollowUp(receiptData); setReceiptData(null); setIsOpenTicket(false); setShowLink(false); setIsBound(false); }}
+                <button onClick={() => { 
+                    setFollowUp(receiptData); 
+                    setReceiptData(null); 
+                    setIsOpenTicket(false); 
+                    setShowLink(false); 
+                    setIsBound(false); 
+                    setFollowUpDate("");
+                    setFollowUpTime("");
+                  }}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all hover:opacity-90"
                   style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}>
                   <CalendarPlus size={14} /> นัดครั้งถัดไป
@@ -430,8 +442,12 @@ export default function PaymentView() {
                     </label>
 
                     <div>
-                      <label className="text-xs font-bold block mb-1" style={{ color: "#4A6080" }}>บริการ (ต่อเนื่อง)</label>
-                      <input value={followUp.service} readOnly className="w-full px-4 py-3 rounded-xl text-sm font-medium outline-none border border-gray-200 bg-gray-50 text-gray-500" />
+                      <label className="text-xs font-bold block mb-1" style={{ color: "#4A6080" }}>บริการที่ต้องการนัด</label>
+                      <input 
+                        value={followUp.service} 
+                        onChange={e => setFollowUp({...followUp, service: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl text-sm font-medium outline-none border border-gray-200 bg-white text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" 
+                      />
                     </div>
 
                     <div className="pt-2">
@@ -444,22 +460,64 @@ export default function PaymentView() {
                         <div className="grid grid-cols-2 gap-3 p-4 rounded-xl border border-gray-200 bg-white">
                           <div>
                             <label className="text-xs font-bold block mb-1" style={{ color: "#4A6080" }}>วันที่นัด</label>
-                            <input type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none border border-gray-200" style={{ color: "#1A365D" }} />
+                            <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none border border-gray-200" style={{ color: "#1A365D" }} />
                           </div>
                           <div>
                             <label className="text-xs font-bold block mb-1" style={{ color: "#4A6080" }}>เวลา</label>
-                            <input type="time" className="w-full px-3 py-2 rounded-lg text-sm outline-none border border-gray-200" style={{ color: "#1A365D" }} />
+                            <input type="time" value={followUpTime} onChange={e => setFollowUpTime(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none border border-gray-200" style={{ color: "#1A365D" }} />
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <button onClick={() => isOpenTicket ? setShowLink(true) : setFollowUp(null)}
-                    className="w-full py-4 rounded-xl font-bold text-white text-base transition-all hover:opacity-90 shadow-lg flex justify-center items-center gap-2"
-                    style={{ background: "linear-gradient(135deg,#1D6FA4,#1A365D)" }}>
-                    {isOpenTicket ? "สร้างใบนัดแบบเปิด & รับลิงก์" : "ยืนยันการนัดหมาย"}
-                  </button>
+                  <div className="flex gap-3">
+                    <button onClick={() => setFollowUp(null)}
+                      disabled={isSubmitting}
+                      className="w-1/3 py-4 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all text-sm disabled:opacity-50">
+                      ยกเลิก
+                    </button>
+                    <button onClick={async () => {
+                        if (!isOpenTicket && (!followUpDate || !followUpTime)) {
+                          alert('กรุณาระบุวันและเวลา หรือเลือกใบนัดแบบเปิด');
+                          return;
+                        }
+                        setIsSubmitting(true);
+                        try {
+                          await addAppointment({
+                            patientId: followUp.patientId,
+                            hn: '',
+                            patientName: followUp.patientName,
+                            patientPhone: '',
+                            service: followUp.service,
+                            serviceId: followUp.serviceId || 1, // Fallback if edited
+                            doctorName: isBound ? followUp.doctorName : '',
+                            doctorId: isBound ? followUp.doctorId : undefined,
+                            date: isOpenTicket ? '' : followUpDate,
+                            time: isOpenTicket ? '' : followUpTime,
+                            status: isOpenTicket ? 'รอระบุวัน-เวลา' : 'รอการยืนยัน',
+                            source: 'doctor',
+                            note: isBound ? `แพทย์ประจำเคส: ${followUp.doctorName}` : ''
+                          } as any);
+                          
+                          if (isOpenTicket) {
+                            setShowLink(true);
+                          } else {
+                            setFollowUp(null);
+                            alert('สร้างนัดหมายครั้งถัดไปสำเร็จ');
+                          }
+                        } catch (err: any) {
+                          alert(err.message || 'เกิดข้อผิดพลาดในการสร้างนัดหมาย');
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      }}
+                      disabled={isSubmitting}
+                      className="w-2/3 py-4 rounded-xl font-bold text-white text-base transition-all hover:opacity-90 shadow-lg flex justify-center items-center gap-2 disabled:opacity-50"
+                      style={{ background: "linear-gradient(135deg,#1D6FA4,#1A365D)" }}>
+                      {isSubmitting ? "กำลังดำเนินการ..." : (isOpenTicket ? "สร้างใบนัดแบบเปิด & รับลิงก์" : "ยืนยันการนัดหมาย")}
+                    </button>
+                  </div>
                 </>
               )}
             </div>

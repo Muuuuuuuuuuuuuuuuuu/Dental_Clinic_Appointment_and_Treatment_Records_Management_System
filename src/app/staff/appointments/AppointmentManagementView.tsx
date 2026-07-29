@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { CheckCircle, Clock, AlertTriangle, PhoneCall, XCircle, Search, Filter, Calendar as CalendarIcon, ArrowRightLeft, User, CalendarDays, X } from "lucide-react";
+import { CheckCircle, Clock, AlertTriangle, PhoneCall, XCircle, Search, Filter, Calendar as CalendarIcon, ArrowRightLeft, User, CalendarDays, X, UserX } from "lucide-react";
 import { Appointment, DentistInfo, STATUS_COLORS } from "../../shared/data";
 import { getAppointments, getDentists, updateAppointmentStatus } from "../../shared/supabaseApi";
+import { supabase } from "../../shared/utils/supabaseClient";
 
 type TabView = "confirm" | "reschedule" | "transfer" | "all";
 
@@ -23,6 +24,16 @@ export default function AppointmentManagementView() {
 
   useEffect(() => {
     fetchData();
+    
+    const channel = supabase.channel('staff_mgmt_appointments')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchData = () => {
@@ -70,8 +81,15 @@ export default function AppointmentManagementView() {
   };
 
   const handleCancelAppt = (appt: Appointment) => {
-    if (confirm(`ยืนยันการยกเลิกนัดหมายของคุณ ${appt.patientName} ใช่หรือไม่?`)) {
+    if (confirm(`ยืนยันยกเลิกนัดหมายของคุณ ${appt.patientName} ใช่ไหม?`)) {
       onUpdateAppt(appt.id, { status: "ยกเลิก" });
+      setRescheduleAppt(null);
+    }
+  };
+
+  const handleNoShowAppt = (appt: Appointment) => {
+    if (confirm(`ยืนยันว่าคุณ ${appt.patientName} ไม่มาตามนัดใช่ไหม?`)) {
+      onUpdateAppt(appt.id, { status: "ไม่มาตามนัด" });
       setRescheduleAppt(null);
     }
   };
@@ -331,16 +349,23 @@ export default function AppointmentManagementView() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => handleCancelAppt(rescheduleAppt)}
-                  className="flex-[1] py-3.5 rounded-xl font-bold text-red-600 bg-red-50 border border-red-200 transition-all hover:bg-red-100 flex items-center justify-center gap-2">
-                  <XCircle size={18} /> ยกเลิกนัด
-                </button>
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => handleCancelAppt(rescheduleAppt)}
+                    className="flex-[1] py-3.5 rounded-xl font-bold text-red-600 bg-red-50 border border-red-200 transition-all hover:bg-red-100 flex items-center justify-center gap-2">
+                    <XCircle size={18} /> ยกเลิกนัด
+                  </button>
+                  <button 
+                    onClick={() => handleNoShowAppt(rescheduleAppt)}
+                    className="flex-[1] py-3.5 rounded-xl font-bold text-gray-700 bg-gray-100 border border-gray-300 transition-all hover:bg-gray-200 flex items-center justify-center gap-2">
+                    <UserX size={18} /> ไม่มาตามนัด
+                  </button>
+                </div>
                 <button 
                   onClick={handleRescheduleSubmit}
                   disabled={!newDate || !newTime || (newDate === rescheduleAppt.date && newTime === rescheduleAppt.time)}
-                  className="flex-[2] py-3.5 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ backgroundColor: "#F57F17", boxShadow: "0 4px 12px rgba(245, 127, 23, 0.2)" }}>
                   <Clock size={18} /> ยืนยันเลื่อนนัด
                 </button>

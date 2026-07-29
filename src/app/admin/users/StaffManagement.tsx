@@ -43,6 +43,7 @@ export default function StaffManagement() {
       } else {
         const added = await addStaff({ ...form, active: true });
         setStaff(ss => [...ss, added]);
+        alert("เพิ่มพนักงานสำเร็จ!\nรหัสผ่านเริ่มต้นสำหรับเข้าสู่ระบบคือ: password123");
       }
       setShowModal(false);
     } catch (err) {

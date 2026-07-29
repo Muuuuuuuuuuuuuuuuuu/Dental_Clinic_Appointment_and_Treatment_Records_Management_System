@@ -17,11 +17,17 @@ import {
 } from "lucide-react";
 import {
   Appointment, LeaveRequest, STATUS_COLORS,
-  getClinicStatus, StaffView
+  getClinicStatus, StaffView, ClinicStatus
 } from "../shared/data";
+import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
 
 function StaffStatusBanner() {
-  const s = getClinicStatus();
+  const [s, setS] = useState<ClinicStatus>(getClinicStatus());
+  useEffect(() => {
+    Promise.all([getWeeklyOffDays(), getClinicClosures(), getClinicSettings(), getDailyHours()]).then(([offDays, closures, settings, dh]) => {
+      setS(getClinicStatus(new Date(), closures, offDays, settings, dh));
+    }).catch(console.error);
+  }, []);
   if (s.type === "open") return null;
   return (
     <div className="px-5 lg:px-8 pt-4">
@@ -257,6 +263,7 @@ export default function StaffPortal({
   
   // Password Change
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChanging, setIsChanging] = useState(false);
@@ -287,8 +294,12 @@ export default function StaffPortal({
   const showLockScreen = isOperationalView && !isClockedIn;
 
   const handleChangePassword = async () => {
+    if (!oldPassword) {
+      setChangeError("กรุณากรอกรหัสผ่านเดิม");
+      return;
+    }
     if (newPassword.length < 6) {
-      setChangeError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
+      setChangeError("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -299,9 +310,10 @@ export default function StaffPortal({
     setChangeError("");
     try {
       const { changePassword } = await import("../shared/supabaseApi");
-      await changePassword(newPassword);
+      await changePassword(oldPassword, newPassword);
       alert("เปลี่ยนรหัสผ่านสำเร็จ!");
       setShowPasswordModal(false);
+      setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {

@@ -6,7 +6,7 @@ import { getDentists, getServices, addAppointment } from "../../shared/supabaseA
 
 export default function WalkInBooking() {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ name: "", phone: "", service: "", doctorId: 0, day: 0, time: "" });
+  const [form, setForm] = useState({ name: "", phone: "", service: "", doctorId: 0, day: 0, time: "", note: "", openAppt: false });
   const [done, setDone] = useState(false);
 
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
@@ -55,14 +55,18 @@ export default function WalkInBooking() {
 
   const confirm = async () => {
     const doctorName = dentists.find(d => d.id === form.doctorId)?.name ?? "";
+    const yearStr = year.toString();
+    const monthStr = String(month + 1).padStart(2, "0");
     const newAppt: Omit<Appointment, "id"> = {
       hn: `HN${Date.now().toString().slice(-3)}`,
       patientName: form.name, patientPhone: form.phone,
       service: form.service, doctorName,
       doctorId: form.doctorId,
-      date: `2025-07-${String(form.day).padStart(2, "0")}`,
-      time: form.time, status: "รอรักษา",
+      date: form.openAppt ? "" : `${yearStr}-${monthStr}-${String(form.day).padStart(2, "0")}`,
+      time: form.openAppt ? "" : form.time, 
+      status: form.openAppt ? "รอระบุวัน-เวลา" : "รอรักษา",
       conditions: "ไม่ทราบ (Walk-in)", allergies: "ไม่ทราบ (Walk-in)",
+      note: form.note
     };
     try {
       await addAppointment(newAppt);
@@ -81,8 +85,8 @@ export default function WalkInBooking() {
         </div>
         <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จอง Walk-in สำเร็จ!</h2>
         <p className="text-sm mb-1" style={{ color: "#4A6080" }}>{form.name}</p>
-        <p className="text-sm mb-6" style={{ color: "#4A6080" }}>{form.service} • เวลา {form.time} น.</p>
-        <button onClick={() => { setStep(0); setForm({ name: "", phone: "", service: "", doctorId: 0, day: 0, time: "" }); setDone(false); }}
+        <p className="text-sm mb-6" style={{ color: "#4A6080" }}>{form.service} • {form.openAppt ? "รอคนไข้ระบุวัน-เวลา" : `เวลา ${form.time} น.`}</p>
+        <button onClick={() => { setStep(0); setForm({ name: "", phone: "", service: "", doctorId: 0, day: 0, time: "", note: "", openAppt: false }); setDone(false); }}
           className="px-6 py-2.5 rounded-xl text-sm font-medium text-white"
           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
           จองรายต่อไป
@@ -129,6 +133,12 @@ export default function WalkInBooking() {
                 <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์ *</label>
                 <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                   placeholder="0XX-XXX-XXXX" className="w-full px-3 py-3 rounded-xl text-sm outline-none"
+                  style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>หมายเหตุ / รายละเอียดนัดหมาย (ตัวเลือก)</label>
+                <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                  placeholder="เช่น อุดฟันซี่ 13, 14 ต่อ" className="w-full px-3 py-3 rounded-xl text-sm outline-none resize-none h-20"
                   style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
               </div>
             </div>
@@ -199,7 +209,11 @@ export default function WalkInBooking() {
                   })}
                 </div>
               </div>
-              {form.day > 0 && (
+              <div className="flex items-center gap-2 mt-4 p-3 rounded-xl" style={{ backgroundColor: "#F8F9FA", border: "1px solid rgba(26,54,93,0.06)" }}>
+                <input type="checkbox" id="openAppt" checked={form.openAppt} onChange={e => setForm(f => ({ ...f, openAppt: e.target.checked, day: 0, time: "" }))} className="w-4 h-4 rounded text-pink-500" />
+                <label htmlFor="openAppt" className="text-sm font-medium" style={{ color: "#1A365D" }}>นัดแบบเปิด (ให้คนไข้ไปเลือกวัน-เวลาทีหลัง)</label>
+              </div>
+              {!form.openAppt && form.day > 0 && (
                 <div>
                   <p className="text-xs font-medium mb-2" style={{ color: "#4A6080" }}>เลือกเวลา</p>
                   <div className="grid grid-cols-3 gap-2">
@@ -234,7 +248,8 @@ export default function WalkInBooking() {
                 ["เบอร์โทร", form.phone],
                 ["บริการ", form.service],
                 ["ทันตแพทย์", dentists.find(d => d.id === form.doctorId)?.name ?? "-"],
-                ["วัน-เวลา", `10 กรกฎาคม 2568 เวลา ${form.time} น.`],
+                ["วัน-เวลา", form.openAppt ? "รอระบุวัน-เวลา" : `วันที่ ${form.day} เวลา ${form.time} น.`],
+                ["หมายเหตุ", form.note || "-"],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between py-2.5 text-sm" style={{ borderBottom: "1px solid rgba(26,54,93,0.06)" }}>
                   <span style={{ color: "#4A6080" }}>{k}</span>
@@ -256,7 +271,7 @@ export default function WalkInBooking() {
               disabled={
                 (step === 0 && (!form.name || !form.phone)) ||
                 (step === 1 && (!form.service || !form.doctorId)) ||
-                (step === 2 && (!form.day || !form.time))
+                (step === 2 && (!form.openAppt && (!form.day || !form.time)))
               }
               className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40"
               style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>

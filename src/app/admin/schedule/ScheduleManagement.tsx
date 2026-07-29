@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, AlertCircle, Plus, Trash2, Clock, MapPin } from "lucide-react";
 import { DentistInfo, StaffInfo, Shift, SpecialClosure } from "../../shared/data";
-import { getDentists, getStaff, getShifts, updateShift, getClinicClosures, addClinicClosure, deleteClinicClosure } from "../../shared/supabaseApi";
+import { getDentists, getStaff, getShifts, updateShift, getClinicClosures, addClinicClosure, deleteClinicClosure, getClinicRooms, updateClinicRooms, updateDentistRoom } from "../../shared/supabaseApi";
 
 const DAY_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const DAY_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
@@ -16,12 +16,8 @@ const DAY_COLORS: Record<number, { bg: string; text: string; border: string }> =
   6: { bg: "#FFE4E6", text: "#9F1239", border: "#FB7185" },   // SAT - rose
 };
 
-// Fake room assignment based on person for demo
-function getRoom(personId: number, personType: string): string {
-  if (personType === 'dentist') {
-    const rooms = ['ห้อง A-101', 'ห้อง B-202', 'ห้อง C-303'];
-    return rooms[(personId - 1) % rooms.length];
-  }
+// Fallback for staff
+function getStaffRoom(): string {
   return 'เคาน์เตอร์ต้อนรับ';
 }
 
@@ -30,10 +26,15 @@ export default function ScheduleManagement() {
   const [staffList, setStaffList] = useState<StaffInfo[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
+  const [clinicRooms, setClinicRooms] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPerson, setSelectedPerson] = useState<string>("all");
 
   const [newClosure, setNewClosure] = useState({ date: "", reason: "" });
+  
+  // Room Management State
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [newRoomName, setNewRoomName] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -41,16 +42,18 @@ export default function ScheduleManagement() {
 
   const fetchData = async () => {
     try {
-      const [dData, sData, shData, cData] = await Promise.all([
+      const [dData, sData, shData, cData, rData] = await Promise.all([
         getDentists(),
         getStaff(),
         getShifts(),
-        getClinicClosures()
+        getClinicClosures(),
+        getClinicRooms()
       ]);
       setDentists(dData);
       setStaffList(sData);
       setShifts(shData);
       setClosures(cData);
+      setClinicRooms(rData);
     } catch (err) {
       console.error("Error fetching schedule data", err);
     } finally {
@@ -60,8 +63,12 @@ export default function ScheduleManagement() {
 
   const handleShiftChange = async (shift: Shift, field: 'start_time' | 'end_time' | 'is_off', value: any) => {
     if (!shift.id) return;
+    
+    // แปลงค่าว่างเป็น null เพื่อไม่ให้ Database Error (invalid input syntax for type time)
+    const dbValue = (value === "") ? null : value;
+
     try {
-      const updated = await updateShift(shift.id, { [field]: value });
+      const updated = await updateShift(shift.id, { [field]: dbValue });
       setShifts(shifts.map(s => s.id === updated.id ? updated : s));
     } catch (err) {
       console.error("Error updating shift", err);
@@ -89,6 +96,40 @@ export default function ScheduleManagement() {
       setClosures(closures.filter(c => c.id !== id));
     } catch (err) {
       console.error("Error deleting closure", err);
+    }
+  };
+
+  const handleAddRoom = async () => {
+    if (!newRoomName.trim()) return;
+    try {
+      const updatedRooms = [...clinicRooms, newRoomName.trim()];
+      await updateClinicRooms(updatedRooms);
+      setClinicRooms(updatedRooms);
+      setNewRoomName("");
+    } catch (err) {
+      console.error("Error adding room", err);
+      alert("ไม่สามารถเพิ่มห้องตรวจได้");
+    }
+  };
+
+  const handleDeleteRoom = async (roomToDelete: string) => {
+    if (!confirm(`คุณต้องการลบ ${roomToDelete} ออกจากระบบ?`)) return;
+    try {
+      const updatedRooms = clinicRooms.filter(r => r !== roomToDelete);
+      await updateClinicRooms(updatedRooms);
+      setClinicRooms(updatedRooms);
+    } catch (err) {
+      console.error("Error deleting room", err);
+    }
+  };
+
+  const handleDentistRoomChange = async (dentistId: number, roomName: string) => {
+    try {
+      await updateDentistRoom(dentistId, roomName);
+      setDentists(dentists.map(d => d.id === dentistId ? { ...d, defaultRoom: roomName } : d));
+    } catch (err) {
+      console.error("Error updating dentist room", err);
+      alert("ไม่สามารถเปลี่ยนห้องประจำได้");
     }
   };
 
@@ -131,8 +172,17 @@ export default function ScheduleManagement() {
     <div style={{ fontFamily: "Prompt, sans-serif" }}>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการตารางเวร</h1>
-          <p className="text-sm" style={{ color: "#4A6080" }}>รูปแบบเวรปกติรายสัปดาห์ (มีผลตลอดปี)</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการตารางเวร</h1>
+            <button
+              onClick={() => setShowRoomModal(true)}
+              className="text-xs px-3 py-1.5 rounded-lg border flex items-center gap-1 hover:bg-gray-50 transition-colors"
+              style={{ color: "#4A6080", borderColor: "#E2E8F0" }}
+            >
+              <MapPin size={12} /> จัดการห้องตรวจ
+            </button>
+          </div>
+          <p className="text-sm mt-1" style={{ color: "#4A6080" }}>รูปแบบเวรปกติรายสัปดาห์ (มีผลตลอดปี)</p>
         </div>
         <select 
           value={selectedPerson} 
@@ -154,10 +204,10 @@ export default function ScheduleManagement() {
         {Object.entries(shiftsByPerson).map(([key, person]) => {
           const sortedShifts = [...person.shifts].sort((a, b) => a.day_of_week - b.day_of_week);
           const workingShifts = sortedShifts.filter(s => !s.is_off);
-          const room = getRoom(
-            parseInt(key.split('-')[1]), 
-            key.split('-')[0]
-          );
+          const dentist = dentists.find(d => d.id === parseInt(key.split('-')[1]));
+          const room = person.type === 'dentist' 
+            ? (dentist?.defaultRoom || 'ยังไม่กำหนดห้อง') 
+            : getStaffRoom();
 
           return (
             <div key={key} className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: "0 2px 16px rgba(26,54,93,0.07)" }}>
@@ -175,10 +225,27 @@ export default function ScheduleManagement() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}>
-                  <MapPin size={12} />
-                  {room}
-                </div>
+                {person.type === 'dentist' ? (
+                  <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full relative group" style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}>
+                    <MapPin size={12} />
+                    <select
+                      value={room}
+                      onChange={(e) => handleDentistRoomChange(dentist!.id, e.target.value)}
+                      className="bg-transparent border-none text-xs focus:ring-0 cursor-pointer p-0 pr-4 appearance-none font-medium"
+                      style={{ color: "#1D6FA4" }}
+                    >
+                      <option value="ยังไม่กำหนดห้อง">ยังไม่กำหนดห้อง</option>
+                      {clinicRooms.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}>
+                    <MapPin size={12} />
+                    {room}
+                  </div>
+                )}
               </div>
 
               {/* Day Cards */}
@@ -186,8 +253,8 @@ export default function ScheduleManagement() {
                 {sortedShifts.map(shift => {
                   const dayNum = shift.day_of_week;
                   const color = DAY_COLORS[dayNum];
-                  const startTime = shift.start_time?.substring(0, 5) || "09:00";
-                  const endTime = shift.end_time?.substring(0, 5) || "17:00";
+                  const startTime = shift.start_time ? shift.start_time.substring(0, 5) : "";
+                  const endTime = shift.end_time ? shift.end_time.substring(0, 5) : "";
 
                   return (
                     <div
@@ -219,10 +286,10 @@ export default function ScheduleManagement() {
                         {shift.is_off ? (
                           <span className="text-xs font-medium mt-1" style={{ color: "#9CA3AF" }}>หยุด</span>
                         ) : (
-                          <span className="text-lg font-bold mt-1" style={{ color: color.text }}>
-                            {startTime}
+                          <span className="text-lg font-bold mt-1 flex items-center justify-center" style={{ color: color.text }}>
+                            {startTime || "--:--"}
                             <span className="text-xs font-normal mx-1">-</span>
-                            {endTime}
+                            {endTime || "--:--"}
                           </span>
                         )}
                       </div>
@@ -238,7 +305,7 @@ export default function ScheduleManagement() {
                               <div className="flex items-center gap-3 mt-1">
                                 <span className="flex items-center gap-1 text-xs" style={{ color: "#4A6080" }}>
                                   <Clock size={11} />
-                                  {startTime} - {endTime} น.
+                                  {startTime || "--:--"} - {endTime || "--:--"} น.
                                 </span>
                                 <span className="flex items-center gap-1 text-xs" style={{ color: "#4A6080" }}>
                                   <MapPin size={11} />
@@ -350,6 +417,47 @@ export default function ScheduleManagement() {
           ))}
         </div>
       </div>
+      {/* Room Management Modal */}
+      {showRoomModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold" style={{ color: "#1A365D" }}>จัดการห้องตรวจ</h3>
+              <button onClick={() => setShowRoomModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              {clinicRooms.map(r => (
+                <div key={r} className="flex justify-between items-center p-3 rounded-lg border bg-gray-50">
+                  <span className="font-medium text-sm" style={{ color: "#1A365D" }}>{r}</span>
+                  <button 
+                    onClick={() => handleDeleteRoom(r)}
+                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-md"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 pt-6 border-t flex gap-2">
+              <input
+                type="text"
+                placeholder="ชื่อห้องใหม่ (เช่น ห้อง A-101)"
+                value={newRoomName}
+                onChange={e => setNewRoomName(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg border text-sm"
+              />
+              <button 
+                onClick={handleAddRoom}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+              >
+                เพิ่ม
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
