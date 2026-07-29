@@ -1,7 +1,36 @@
-﻿import React from "react";
+import React, { useState, useEffect } from "react";
 import { Smile, Clock } from "lucide-react";
+import { getWeeklyOffDays, getDailyHours } from "../../shared/supabaseApi";
 
 export default function AuthShell({ children, title, sub }: { children: React.ReactNode; title: string; sub: string }) {
+  const DAY_SHORT = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+  const [hoursText, setHoursText] = useState("เปิดให้บริการ จ-ส เวลา 09:00-20:00 น.");
+
+  useEffect(() => {
+    Promise.all([getWeeklyOffDays(), getDailyHours()]).then(([offDays, dh]) => {
+      const workDays = [0,1,2,3,4,5,6].filter(i => !offDays.includes(i));
+      if (workDays.length === 0) {
+        setHoursText("ปิดให้บริการ");
+        return;
+      }
+      
+      // Group days by identical hours
+      const groups: { days: number[], open: string, close: string }[] = [];
+      workDays.forEach(d => {
+        const h = dh[String(d)] || { open: "09:00", close: "20:00" };
+        const match = groups.find(g => g.open === h.open && g.close === h.close);
+        if (match) match.days.push(d);
+        else groups.push({ days: [d], open: h.open, close: h.close });
+      });
+
+      const parts = groups.map(g => {
+        const daysStr = g.days.map(d => DAY_SHORT[d]).join("-");
+        return `${daysStr} ${g.open}-${g.close} น.`;
+      });
+      setHoursText(`เปิดให้บริการ: ${parts.join(', ')}`);
+    }).catch(console.error);
+  }, []);
+
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "Prompt, sans-serif" }}>
       {/* Left panel - branding */}
@@ -33,7 +62,7 @@ export default function AuthShell({ children, title, sub }: { children: React.Re
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-          <Clock size={12} /> เปิดให้บริการ จ-ส เวลา 09:00-20:00 น.
+          <Clock size={12} /> {hoursText}
         </div>
       </div>
 

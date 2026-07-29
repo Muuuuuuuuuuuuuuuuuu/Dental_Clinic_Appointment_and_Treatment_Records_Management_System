@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ChevronLeft, RefreshCw, UserPlus } from "lucide-react";
 import AuthShell, { Field } from "./AuthShell";
 import { UserRole, PatientUser, ROLE_TABS, inputCls, inputStyle } from "../types";
-import { loginPatient } from "../../shared/supabaseApi";
+import { loginPatient, supabase } from "../../shared/supabaseApi";
 
 export default function LoginPage({
   onLogin, onLoginRole, onRegister, onForgotPassword, onBack,
@@ -44,10 +44,20 @@ export default function LoginPage({
 
     // 1. ลอง Login กับ Database
     try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass
+      });
+      
+      if (authError || !authData.user) {
+        throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      }
+
       if (activeRole === "patient") {
-        const profile = await loginPatient(email, pass);
+        const profile = await loginPatient(email, pass) as any;
         // แปลงกลับเป็น PatientUser format (สำหรับ UI เก่า)
         onLogin({
+          patientId: profile.patientId,
           idCard: profile.idCard,
           firstName: profile.firstName,
           lastName: profile.lastName,
@@ -61,7 +71,7 @@ export default function LoginPage({
           allergies: profile.allergies
         });
       } else {
-        // สำหรับ Role อื่นๆ ในเวอร์ชันนี้ ส่ง Role กลับไปให้ Provider เพื่อเปลี่ยนหน้า (ในอนาคตควรใช้ auth แบบเดียวกับ patient)
+        // สำหรับ Role อื่นๆ ผ่าน auth แล้ว ก็เปลี่ยนหน้าได้เลย
         onLoginRole(activeRole, email);
       }
     } catch (err: any) {
