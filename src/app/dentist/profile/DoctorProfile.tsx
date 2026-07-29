@@ -1,26 +1,32 @@
 import React, { useState, useEffect } from "react";
 import { User, Settings, Edit3 } from "lucide-react";
 
-import { DentistInfo } from "../../shared/data";
-import { getDentists, changePassword } from "../../shared/supabaseApi";
+import { DentistInfo, ServiceInfo } from "../../shared/data";
+import { getDentists, changePassword, getServices } from "../../shared/supabaseApi";
+import { supabase } from "../../shared/utils/supabaseClient";
 
-export default function DoctorProfile() {
-  const [doctor, setDoctor] = useState<DentistInfo | null>(null);
+export default function DoctorProfile({ doctor }: { doctor: DentistInfo | null }) {
+  const [allServices, setAllServices] = useState<ServiceInfo[]>([]);
   
   // Change Password States
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChanging, setIsChanging] = useState(false);
   const [changeError, setChangeError] = useState("");
 
   useEffect(() => {
-    getDentists().then(d => setDoctor(d[0])).catch(console.error);
+    getServices().then(setAllServices).catch(console.error);
   }, []);
 
   const handleChangePassword = async () => {
+    if (!oldPassword) {
+      setChangeError("กรุณากรอกรหัสผ่านเดิม");
+      return;
+    }
     if (newPassword.length < 6) {
-      setChangeError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
+      setChangeError("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -30,9 +36,10 @@ export default function DoctorProfile() {
     setIsChanging(true);
     setChangeError("");
     try {
-      await changePassword(newPassword);
+      await changePassword(oldPassword, newPassword);
       alert("เปลี่ยนรหัสผ่านสำเร็จ!");
       setShowPasswordModal(false);
+      setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
@@ -73,6 +80,27 @@ export default function DoctorProfile() {
               </div>
             ))}
           </div>
+          
+          <div className="rounded-2xl bg-white p-6 mt-4" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
+            <h3 className="font-semibold mb-4 text-sm" style={{ color: "#1A365D" }}>บริการที่รับรักษา</h3>
+            {(!doctor.serviceIds || doctor.serviceIds.length === 0) ? (
+              <p className="text-sm text-gray-500">ยังไม่มีข้อมูลบริการที่รับรักษา</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {doctor.serviceIds.map(sid => {
+                  const srv = allServices.find(s => s.id === sid);
+                  if (!srv) return null;
+                  return (
+                    <div key={sid} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                      {srv.name}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          
           <div className="rounded-2xl bg-white p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <h3 className="font-semibold mb-4 text-sm" style={{ color: "#1A365D" }}>ข้อมูลติดต่อ</h3>
             {[["อีเมล", doctor.email], ["เบอร์โทร", doctor.phone]].map(([k, v]) => (
@@ -105,23 +133,33 @@ export default function DoctorProfile() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">รหัสผ่านใหม่</label>
+                <label className="text-xs font-medium block mb-1 text-gray-500">รหัสผ่านเดิม</label>
+                <input 
+                  type="password" 
+                  value={oldPassword}
+                  onChange={e => setOldPassword(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-2"
+                  style={{ borderColor: "rgba(26,54,93,0.1)", backgroundColor: "#F0F4F8", color: "#1A365D" }}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1 text-gray-500">รหัสผ่านใหม่</label>
                 <input 
                   type="password" 
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="อย่างน้อย 6 ตัวอักษร"
+                  className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-2"
+                  style={{ borderColor: "rgba(26,54,93,0.1)", backgroundColor: "#F0F4F8", color: "#1A365D" }}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">ยืนยันรหัสผ่านใหม่</label>
+                <label className="text-xs font-medium block mb-1 text-gray-500">ยืนยันรหัสผ่านใหม่</label>
                 <input 
                   type="password" 
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="พิมพ์ให้ตรงกันอีกครั้ง"
+                  className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-2"
+                  style={{ borderColor: "rgba(26,54,93,0.1)", backgroundColor: "#F0F4F8", color: "#1A365D" }}
                 />
               </div>
             </div>

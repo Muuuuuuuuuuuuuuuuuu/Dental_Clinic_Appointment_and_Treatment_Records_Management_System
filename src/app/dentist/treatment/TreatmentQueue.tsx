@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTriangle, ChevronRight, Check, Send, ClipboardList } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo } from "../../shared/data";
-import { getAppointments, getServices, updateAppointmentStatus, saveTreatment } from "../../shared/supabaseApi";
+import { getAppointments, getServices, updateAppointmentStatus, saveTreatment, getPatientLatestOdontogram } from "../../shared/supabaseApi";
 import Odontogram, { ToothStatus } from "./Odontogram";
 
 export default function TreatmentQueue({ doctor }: { doctor: DentistInfo | null }) {
@@ -86,7 +86,7 @@ export default function TreatmentQueue({ doctor }: { doctor: DentistInfo | null 
       if (updates.status) {
         let updatedStatus = updates.status;
         if (updates.status === "รอชำระเงิน" && updates.treatmentNotes !== undefined) {
-          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0);
+          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData);
         } else {
           const res = await updateAppointmentStatus(id, updates.status);
           updatedStatus = res.status;
@@ -107,6 +107,16 @@ export default function TreatmentQueue({ doctor }: { doctor: DentistInfo | null 
     }
   };
 
+  const handleStartRecording = async (a: Appointment) => {
+    setRecording(a.id);
+    if (a.patientId) {
+      const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
+      setToothData(historyOdontogram);
+    } else {
+      setToothData({});
+    }
+  };
+
   const submitTreatment = (appt: Appointment) => {
     onUpdateAppt(appt.id, {
       status: "รอชำระเงิน",
@@ -114,6 +124,7 @@ export default function TreatmentQueue({ doctor }: { doctor: DentistInfo | null 
       treatmentServices: form.services,
       recommendations: form.recommendations,
       cost: Number(form.actualCost) || 0,
+      odontogramData: toothData
     });
     setRecording(null);
     setForm({ notes: "", recommendations: "", services: [], actualCost: "" });
@@ -231,7 +242,7 @@ export default function TreatmentQueue({ doctor }: { doctor: DentistInfo | null 
                       <button
                         onClick={() => act.next === "กำลังรักษา"
                           ? onUpdateAppt(a.id, { status: "กำลังรักษา" })
-                          : setRecording(a.id)}
+                          : handleStartRecording(a)}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
                         style={{ backgroundColor: act.color }}>
                         {act.next === "กำลังรักษา" ? <><Clock size={14} /> {act.label}</> : <><ClipboardList size={14} /> {act.label}</>}

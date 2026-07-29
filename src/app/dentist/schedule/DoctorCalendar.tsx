@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, AlertCircle, Plus, Clock, Info, Check, CalendarX } from "lucide-react";
 import { Shift, SpecialClosure, LeaveRequest, DentistInfo, Appointment } from "../../shared/data";
-import { getShifts, getClinicClosures, getLeaveRequests, addLeaveRequest, getAppointments } from "../../shared/supabaseApi";
+import { getShifts, getClinicClosures, getLeaveRequests, addLeaveRequest, getAppointments, getWeeklyOffDays } from "../../shared/supabaseApi";
 
 interface DoctorCalendarProps {
   doctor: DentistInfo | null;
@@ -14,6 +14,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([0]);
   const [loading, setLoading] = useState(true);
   
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -30,17 +31,19 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
   const fetchData = async () => {
     if (!doctorId) return;
     try {
-      const [sData, cData, lData, aData] = await Promise.all([
+      const [sData, cData, lData, aData, offDays] = await Promise.all([
         getShifts(),
         getClinicClosures(),
         getLeaveRequests(),
-        getAppointments()
+        getAppointments(),
+        getWeeklyOffDays()
       ]);
       setShifts(sData.filter(s => s.person_id === doctor?.id && s.person_type === 'dentist')); // Shift uses dentist_id
       setClosures(cData);
       // We want to see all leaves for this doctor, even pending ones, to display in calendar
       setLeaves(lData.filter(l => l.doctorId === doctorId)); // Leave uses UUID
       setAppointments(aData.filter(a => a.doctorId === doctor?.id));
+      setWeeklyOffDays(offDays);
     } catch (err) {
       console.error(err);
     } finally {
@@ -157,6 +160,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     const closure = closures.find(c => c.date === dateStr);
     const leave = leaves.find(l => l.startDate === dateStr);
     const baseShift = shifts.find(s => s.day_of_week === dayOfWeek);
+    const isClinicOff = weeklyOffDays.includes(dayOfWeek);
 
     let cellBg = "bg-white";
     let textColor = "text-gray-700";
@@ -169,6 +173,12 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
       textColor = "text-orange-700";
       indicators.push(<div key="closure" className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>);
       tooltip = `ปิดคลินิก: ${closure.reason}`;
+    } else if (isClinicOff) {
+      // Clinic-level weekly off day — takes priority over personal schedule
+      cellBg = "bg-red-50/60";
+      textColor = "text-red-400";
+      indicators.push(<div key="clinic-off" className="w-1.5 h-1.5 rounded-full bg-red-400"></div>);
+      tooltip = "คลินิกปิดทำการ (วันหยุดประจำสัปดาห์)";
     } else if (leave) {
       if (leave.status === "รอการอนุมัติ") {
         cellBg = "bg-yellow-50";
@@ -227,7 +237,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     const isToday = dateStr === todayStr;
 
     // Is it clickable? (Not past, not closed, no leave, and not a regular off day)
-    const isClickable = !isPast && !closure && !leave && baseShift && !baseShift.is_off;
+    const isClickable = !isPast && !closure && !isClinicOff && !leave && baseShift && !baseShift.is_off;
 
     return (
       <div 
