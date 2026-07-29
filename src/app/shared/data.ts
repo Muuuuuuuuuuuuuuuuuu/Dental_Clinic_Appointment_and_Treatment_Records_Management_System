@@ -3,13 +3,15 @@
 export type AppointmentStatus =
   | "รอการยืนยัน"
   | "ยืนยันการจอง"
+  | "รอระบุวัน-เวลา"
   | "รอรักษา"
   | "กำลังรักษา"
   | "เสร็จสิ้น"
   | "รอชำระเงิน"
   | "ชำระเงินแล้ว"
   | "ยกเลิก"
-  | "เลื่อนนัด";
+  | "เลื่อนนัด"
+  | "ไม่มาตามนัด";
 
 export interface Appointment {
   id: number;
@@ -19,6 +21,7 @@ export interface Appointment {
   patientPhone: string;
   service: string;
   serviceId?: number;
+  paymentPlanId?: number;
   doctorName: string;
   doctorId?: number;
   date: string;
@@ -34,6 +37,8 @@ export interface Appointment {
   cost?: number;
   paid?: boolean;
   source?: "patient" | "doctor";
+  note?: string;
+  odontogramData?: Record<number, string>;
 }
 
 export interface DentistInfo {
@@ -46,6 +51,8 @@ export interface DentistInfo {
   phone: string;
   active: boolean;
   userId?: string;
+  serviceIds?: number[];
+  defaultRoom?: string;
 }
 
 export interface PatientInfo {
@@ -76,6 +83,7 @@ export interface ServiceInfo {
   category: string;
   estimatedTime?: number; // Duration in minutes
   active: boolean;
+  isFixedPrice?: boolean;
 }
 
 export interface LeaveRequest {
@@ -151,7 +159,13 @@ export interface ClinicStatus {
   specialReason?: string;
 }
 
-export function getClinicStatus(now: Date = new Date(), specialClosures: SpecialClosure[] = []): ClinicStatus {
+export function getClinicStatus(
+  now: Date = new Date(),
+  specialClosures: SpecialClosure[] = [],
+  weeklyOffDays: number[] = [0],
+  clinicHours?: Record<string, any> | { open_time?: string; close_time?: string; saturday_close_time?: string },
+  dailyHours?: Record<string, { open: string; close: string }>
+): ClinicStatus {
   const dateStr = now.toISOString().split("T")[0];
   const special = specialClosures.find(c => c.date === dateStr);
   if (special) {
@@ -166,17 +180,55 @@ export function getClinicStatus(now: Date = new Date(), specialClosures: Special
   }
   const day = now.getDay();
   const mins = now.getHours() * 60 + now.getMinutes();
-  if (day === 0) {
-    return { type: "closed", label: "หยุดทำการ", sublabel: "วันอาทิตย์ — ไม่มีบริการ", color: "#FEF2F2", dotColor: "#EF4444" };
+
+  // Day names for display
+  const dayNames = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+  // Check weekly off days (dynamic — no longer hardcoded to Sunday)
+  if (weeklyOffDays.includes(day)) {
+    return { type: "closed", label: "หยุดทำการ", sublabel: `วัน${dayNames[day]} — ไม่มีบริการ`, color: "#FEF2F2", dotColor: "#EF4444" };
   }
-  const open = 9 * 60;
-  const close = day === 6 ? 17 * 60 : 20 * 60;
-  const hoursStr = day === 6 ? "09:00–17:00 น." : "09:00–20:00 น.";
-  if (mins >= open && mins < close) {
-    return { type: "open", label: "เปิดให้บริการ", sublabel: `วันนี้ถึง ${day === 6 ? "17:00" : "20:00"} น.`, color: "#E8FFF0", dotColor: "#22C55E" };
+
+  // Parse configurable open/close times — per-day or fallback to legacy
+  const parseTime = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
+  
+  let openTime: number;
+  let closeTime: number;
+  
+  if (dailyHours && dailyHours[String(day)]) {
+    openTime = parseTime(dailyHours[String(day)].open);
+    closeTime = parseTime(dailyHours[String(day)].close);
+  } else {
+    // Legacy fallback
+    const legacy = clinicHours as { open_time?: string; close_time?: string; saturday_close_time?: string } | undefined;
+    openTime = parseTime(legacy?.open_time || "09:00");
+    closeTime = day === 6
+      ? parseTime(legacy?.saturday_close_time || legacy?.close_time || "18:00")
+      : parseTime(legacy?.close_time || "20:00");
   }
-  const nextOpen = mins < open ? `วันนี้ ${hoursStr}` : day === 6 ? "จันทร์ 09:00 น." : `พรุ่งนี้ 09:00 น.`;
-  return { type: "closed", label: "ปิดให้บริการ", sublabel: `เปิดอีกครั้ง ${nextOpen}`, color: "#F0F4F8", dotColor: "#94A3B8" };
+
+  const closeStr = `${Math.floor(closeTime / 60).toString().padStart(2, '0')}:${(closeTime % 60).toString().padStart(2, '0')}`;
+  const openStr = `${Math.floor(openTime / 60).toString().padStart(2, '0')}:${(openTime % 60).toString().padStart(2, '0')}`;
+  const hoursStr = `${openStr}–${closeStr} น.`;
+
+  if (mins >= openTime && mins < closeTime) {
+    return { type: "open", label: "เปิดให้บริการ", sublabel: `วันนี้ถึง ${closeStr} น.`, color: "#E8FFF0", dotColor: "#22C55E" };
+  }
+
+  // Find next working day for "opens again" message
+  const findNextOpenDay = (): string => {
+    if (mins < openTime) return `วันนี้ ${hoursStr}`;
+    for (let i = 1; i <= 7; i++) {
+      const nextDay = (day + i) % 7;
+      if (!weeklyOffDays.includes(nextDay)) {
+        const nextOpen = dailyHours?.[String(nextDay)]?.open || openStr;
+        return `${dayNames[nextDay]} ${nextOpen} น.`;
+      }
+    }
+    return `${openStr} น.`;
+  };
+
+  return { type: "closed", label: "ปิดให้บริการ", sublabel: `เปิดอีกครั้ง ${findNextOpenDay()}`, color: "#F0F4F8", dotColor: "#94A3B8" };
 }
 
 // ─── Status colors ────────────────────────────────────────────────────────────

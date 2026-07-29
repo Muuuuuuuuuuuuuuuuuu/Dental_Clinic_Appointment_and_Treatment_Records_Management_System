@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './utils/supabaseClient';
 import { sendOTPEmail } from './utils/emailService';
+export { supabase };
 import { RegForm } from '../patient/types';
 import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan } from './data';
 
@@ -18,6 +19,9 @@ export async function getDentists() {
       email,
       account_status,
       profile (first_name, last_name, phone_number)
+    ),
+    dentist_service (
+      service_id
     )
   `);
   if (error) {
@@ -36,9 +40,34 @@ export async function getDentists() {
       email: d.users?.email || '',
       phone: p?.phone_number || '',
       active: d.users?.account_status === 'active',
-      userId: d.user_id
+      userId: d.user_id,
+      serviceIds: d.dentist_service?.map((ds: any) => ds.service_id) || [],
+      defaultRoom: d.default_room
     };
   }) as DentistInfo[];
+}
+
+export async function updateDentistRoom(id: number, roomName: string): Promise<void> {
+  const { error } = await supabase.from('dentist').update({ default_room: roomName }).eq('dentist_id', id);
+  if (error) throw error;
+}
+
+export async function getClinicRooms(): Promise<string[]> {
+  const { data, error } = await supabase.from('clinic_settings').select('*').eq('setting_key', 'clinic_rooms').single();
+  if (error || !data) return ['ห้อง A-101', 'ห้อง B-202', 'ห้อง C-303'];
+  try {
+    return typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;
+  } catch (e) {
+    return ['ห้อง A-101', 'ห้อง B-202', 'ห้อง C-303'];
+  }
+}
+
+export async function updateClinicRooms(rooms: string[]): Promise<void> {
+  const { error } = await supabase.from('clinic_settings').upsert({
+    setting_key: 'clinic_rooms',
+    setting_value: JSON.stringify(rooms)
+  }, { onConflict: 'setting_key' });
+  if (error) throw error;
 }
 
 export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<DentistInfo> {
@@ -76,6 +105,7 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
     citizen_id: mockCitizenId,
     email: dentist.email,
     role: 'ทันตแพทย์',
+    mock_password: 'password123',
     account_status: dentist.active ? 'active' : 'inactive'
   });
 
@@ -87,6 +117,12 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
   }).select().single();
   
   if (error) throw error;
+  
+  if (dentist.serviceIds && dentist.serviceIds.length > 0) {
+    const dsInserts = dentist.serviceIds.map(sid => ({ dentist_id: data.dentist_id, service_id: sid }));
+    await supabase.from('dentist_service').insert(dsInserts);
+  }
+  
   return { ...dentist, id: data.dentist_id, userId: realUserId };
 }
 export async function updateDentist(id: number, updates: Partial<DentistInfo>): Promise<DentistInfo> {
@@ -103,6 +139,15 @@ export async function updateDentist(id: number, updates: Partial<DentistInfo>): 
       await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', data.user_id);
     }
   }
+  
+  if (updates.serviceIds !== undefined) {
+    await supabase.from('dentist_service').delete().eq('dentist_id', id);
+    if (updates.serviceIds.length > 0) {
+      const dsInserts = updates.serviceIds.map(sid => ({ dentist_id: id, service_id: sid }));
+      await supabase.from('dentist_service').insert(dsInserts);
+    }
+  }
+  
   return { id, ...updates } as DentistInfo;
 }
 export async function deleteDentist(id: number): Promise<void> {
@@ -170,6 +215,7 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
     citizen_id: mockCitizenId,
     email: staff.email,
     role: 'พนักงาน',
+    mock_password: 'password123',
     account_status: staff.active ? 'active' : 'inactive'
   });
   const { data, error } = await supabase.from('staff').insert({
@@ -245,6 +291,7 @@ export async function getLandingServices() {
   if (error) return [];
   
   return data.map((d: any) => ({
+    serviceId: d.service_id,
     iconName: d.icon_name || 'Smile',
     title: d.service_name,
     desc: d.description || `บริการระดับมืออาชีพ ใช้เวลาประมาณ ${d.estimated_time} นาที`,
@@ -253,6 +300,20 @@ export async function getLandingServices() {
     type: d.service_type || 'general',
     baseTimeMins: d.estimated_time || 30
   }));
+}
+
+export async function getPaymentPlans(serviceId: number) {
+  const { data, error } = await supabase
+    .from('payment_plan')
+    .select('*')
+    .eq('service_id', serviceId)
+    .order('plan_id', { ascending: true });
+    
+  if (error) {
+    console.error("getPaymentPlans error:", error);
+    return [];
+  }
+  return data;
 }
 
 export async function getLandingDoctors() {
@@ -268,16 +329,46 @@ export async function getLandingDoctors() {
   }));
 }
 
+// ดึงหมอที่ทำบริการ (service_id) นั้นได้ ผ่านตาราง dentist_service
+export async function getDentistsByService(serviceId: number) {
+  const { data, error } = await supabase
+    .from('dentist_service')
+    .select('dentist_id, dentist(dentist_id, title_name, specialization, image_url, years_of_experience, users(profile(first_name, last_name)))')
+    .eq('service_id', serviceId);
+  if (error || !data) return [];
+
+  return data.map((row: any) => {
+    const d = row.dentist;
+    if (!d) return null;
+    return {
+      id: d.dentist_id,
+      name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
+      specialty: d.specialization || 'ทันตแพทย์',
+      img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format',
+      years: d.years_of_experience || 'ประสบการณ์ 5 ปี+'
+    };
+  }).filter(Boolean);
+}
+
 export async function getReviews() {
-  const { data, error } = await supabase.from('review').select('*');
+  const { data, error } = await supabase.from('review').select(`
+    *,
+    patient ( users ( profile (first_name, last_name) ) ),
+    appointment ( appointment_detail ( service (service_name) ) )
+  `);
   if (error) return [];
   
-  return data.map((d: any) => ({
-    name: d.patient_name,
-    text: d.comment,
-    stars: d.rating,
-    service: d.service_name
-  }));
+  return data.map((d: any) => {
+    const prof = d.patient?.users?.profile;
+    const name = prof ? `${prof.first_name} ${prof.last_name}` : 'ไม่ระบุชื่อ';
+    const srv = d.appointment?.appointment_detail?.[0]?.service?.service_name || 'ไม่ระบุบริการ';
+    return {
+      name: name,
+      text: d.comment,
+      stars: d.rating,
+      service: srv
+    };
+  });
 }
 
 // --- Clinic Settings ---
@@ -297,6 +388,60 @@ export async function updateClinicSetting(key: string, value: string) {
     .from('clinic_settings')
     .upsert({ setting_key: key, setting_value: value }, { onConflict: 'setting_key' });
   if (error) throw error;
+}
+
+// --- Weekly Off Days (clinic-level policy) ---
+export async function getWeeklyOffDays(): Promise<number[]> {
+  const settings = await getClinicSettings();
+  try {
+    return JSON.parse(settings.weekly_off_days || '[0]');
+  } catch {
+    return [0]; // default: Sunday
+  }
+}
+
+export async function updateWeeklyOffDays(days: number[]): Promise<void> {
+  await updateClinicSetting('weekly_off_days', JSON.stringify(days));
+}
+
+// --- Per-Day Operating Hours ---
+export interface DayHours {
+  open: string;
+  close: string;
+}
+
+const DEFAULT_DAILY_HOURS: Record<string, DayHours> = {
+  "0": { open: "09:00", close: "20:00" },
+  "1": { open: "09:00", close: "20:00" },
+  "2": { open: "09:00", close: "20:00" },
+  "3": { open: "09:00", close: "20:00" },
+  "4": { open: "09:00", close: "20:00" },
+  "5": { open: "09:00", close: "20:00" },
+  "6": { open: "09:00", close: "18:00" },
+};
+
+export async function getDailyHours(): Promise<Record<string, DayHours>> {
+  const settings = await getClinicSettings();
+  try {
+    if (settings.daily_hours) {
+      return { ...DEFAULT_DAILY_HOURS, ...JSON.parse(settings.daily_hours) };
+    }
+    // Fallback: build from legacy keys
+    const fallback = { ...DEFAULT_DAILY_HOURS };
+    const openTime = settings.open_time || "09:00";
+    const closeTime = settings.close_time || "20:00";
+    const satClose = settings.saturday_close_time || "18:00";
+    for (let i = 0; i <= 6; i++) {
+      fallback[String(i)] = { open: openTime, close: i === 6 ? satClose : closeTime };
+    }
+    return fallback;
+  } catch {
+    return DEFAULT_DAILY_HOURS;
+  }
+}
+
+export async function updateDailyHours(hours: Record<string, DayHours>): Promise<void> {
+  await updateClinicSetting('daily_hours', JSON.stringify(hours));
 }
 
 // --- Patients ---
@@ -327,16 +472,123 @@ export async function getPatients() {
   }) as PatientInfo[];
 }
 
+export async function addPatient(patient: {
+  email: string;
+  password?: string;
+  firstName: string;
+  lastName: string;
+  citizenId: string;
+  phone: string;
+  gender?: string;
+  dob?: string;
+  address?: string;
+  allergyHistory?: string;
+  underlyingDisease?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}): Promise<any> {
+  // สร้าง Admin Client สำหรับจัดการ Auth โดยเฉพาะ
+  const adminAuthClient = createClient(
+    import.meta.env.VITE_SUPABASE_URL || '',
+    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  );
+
+  const defaultPassword = patient.password || 'demo1234';
+
+  // 1. สร้างบัญชีผู้ใช้ใน Supabase Auth จริงๆ
+  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+    email: patient.email,
+    password: defaultPassword,
+    email_confirm: true
+  });
+
+  if (authErr) {
+    console.error("Auth creation failed:", authErr);
+    throw new Error("ไม่สามารถสร้างบัญชีคนไข้ได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+  }
+
+  const realUserId = authData.user.id;
+
+  // 2. สร้าง Profile
+  const { error: pErr } = await supabase.from('profile').insert({
+    citizen_id: patient.citizenId,
+    first_name: patient.firstName,
+    last_name: patient.lastName,
+    phone_number: patient.phone,
+    gender: patient.gender || '',
+    birth_date: patient.dob || null,
+    address: patient.address || ''
+  });
+  if (pErr) { console.error("Profile insert error:", pErr); throw pErr; }
+
+  // 3. สร้าง Users
+  const { error: uErr } = await supabase.from('users').insert({
+    user_id: realUserId,
+    citizen_id: patient.citizenId,
+    email: patient.email,
+    role: 'คนไข้',
+    mock_password: defaultPassword,
+    account_status: 'active'
+  });
+  if (uErr) { console.error("Users insert error:", uErr); throw uErr; }
+
+  // 4. สร้าง Patient
+  const { data: patData, error: patErr } = await supabase.from('patient').insert({
+    user_id: realUserId,
+    allergy_history: patient.allergyHistory || 'ไม่มี',
+    underlying_disease: patient.underlyingDisease || 'ไม่มี',
+    emergency_contact_name: patient.emergencyContactName || '-',
+    emergency_contact_phone: patient.emergencyContactPhone || '-'
+  }).select().single();
+  if (patErr) { console.error("Patient insert error:", patErr); throw patErr; }
+
+  return { id: patData.patient_id, userId: realUserId };
+}
+
+// --- เปลี่ยนรหัสผ่าน (จากภายในระบบ ต้องกรอกรหัสเดิมก่อน) ---
+export async function changePassword(currentPassword: string, newPassword: string) {
+  // 1. ดึง email ของผู้ใช้ที่ล็อกอินอยู่
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !user.email) throw new Error("ไม่พบข้อมูลผู้ใช้ที่ล็อกอินอยู่");
+
+  // 2. ทดสอบล็อกอินด้วยรหัสผ่านเดิมเพื่อยืนยันตัวตน
+  const { error: verifyErr } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword
+  });
+  if (verifyErr) throw new Error("รหัสผ่านเดิมไม่ถูกต้อง");
+
+  // 3. เปลี่ยนรหัสผ่านเป็นรหัสใหม่
+  const { error: updateErr } = await supabase.auth.updateUser({
+    password: newPassword
+  });
+  if (updateErr) throw new Error("ไม่สามารถเปลี่ยนรหัสผ่านได้: " + updateErr.message);
+
+  return true;
+}
+
 export async function loginPatient(email: string, pass: string) {
-  // In a real app, this would be supabase.auth.signInWithPassword({ email, password: pass })
-  // For now, mock checking email against users table
-  const { data, error } = await supabase.from('users').select('user_id').eq('email', email).single();
-  if (error || !data) throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+  // Use real Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email,
+    password: pass
+  });
   
-  const profile = await getPatientProfileByUserId(data.user_id);
-  if (!profile) throw new Error("ไม่พบข้อมูลคนไข้");
+  if (authError || !authData.user) {
+    throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+  }
+
+  // Get user profile using the authenticated user id
+  const profile = await getPatientProfileByUserId(authData.user.id);
+  if (!profile) {
+    // If not a patient, they might be a staff/admin. We still return something so AuthShell knows login succeeded.
+    // In a full implementation, we'd fetch staff profile here.
+    return { email: authData.user.email };
+  }
   return profile;
 }
+
+
 
 export async function getPatientProfileByUserId(userId: string) {
   const { data, error } = await supabase.from('users').select(`
@@ -374,7 +626,7 @@ export async function getAppointments(date?: string) {
       users ( profile (first_name, last_name, phone_number) )
     ),
     appointment_detail ( service (service_name) ),
-    treatment_record ( dentist_id, payment (total_amount, payment_status), dentist ( users ( profile (first_name, last_name) ) ) )
+    treatment_record ( dentist_id, doctor_note, odontogram_data, payment (total_amount, payment_status), dentist ( users ( profile (first_name, last_name) ) ) )
   `);
   
   if (date) query = query.eq('appointment_date', date);
@@ -416,6 +668,7 @@ export async function getAppointments(date?: string) {
 
     return {
       id: d.appointment_id,
+      patientId: d.patient_id,
       hn: `HN${String(d.patient_id).padStart(3, '0')}`,
       patientName: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       patientPhone: p?.phone_number || '',
@@ -433,24 +686,31 @@ export async function getAppointments(date?: string) {
       recommendations,
       cost,
       paid,
+      note: d.note,
+      odontogramData: d.treatment_record?.[0]?.odontogram_data
     };
   }) as Appointment[];
 }
 
 // --- Patient-specific: ดึงเฉพาะนัดหมายของคนไข้ที่ล็อกอินอยู่ ---
-export async function getPatientAppointments() {
-  // ดึง user ที่ล็อกอินอยู่
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) return [];
+export async function getPatientAppointments(patientId?: number) {
+  let targetPatientId = patientId;
 
-  // หา patient_id จาก user_id
-  const { data: patientData } = await supabase
-    .from('patient')
-    .select('patient_id')
-    .eq('user_id', authUser.id)
-    .single();
+  if (!targetPatientId) {
+    // ดึง user ที่ล็อกอินอยู่
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return [];
 
-  if (!patientData) return [];
+    // หา patient_id จาก user_id
+    const { data: patientData } = await supabase
+      .from('patient')
+      .select('patient_id')
+      .eq('user_id', authUser.id)
+      .single();
+
+    if (!patientData) return [];
+    targetPatientId = patientData.patient_id;
+  }
 
   const { data, error } = await supabase.from('appointment').select(`
     *,
@@ -459,8 +719,8 @@ export async function getPatientAppointments() {
       users ( profile (first_name, last_name, phone_number) )
     ),
     appointment_detail ( service (service_name) ),
-    treatment_record ( dentist_id, payment (total_amount, payment_status), dentist ( users ( profile (first_name, last_name) ) ) )
-  `).eq('patient_id', patientData.patient_id);
+    treatment_record ( dentist_id, doctor_note, payment (total_amount, payment_status), dentist ( users ( profile (first_name, last_name) ) ) )
+  `).eq('patient_id', targetPatientId);
 
   if (error) {
     console.error("getPatientAppointments error:", error);
@@ -498,6 +758,7 @@ export async function getPatientAppointments() {
 
     return {
       id: d.appointment_id,
+      patientId: d.patient_id,
       hn: `HN${String(d.patient_id).padStart(3, '0')}`,
       patientName: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       patientPhone: p?.phone_number || '',
@@ -515,39 +776,56 @@ export async function getPatientAppointments() {
       recommendations,
       cost,
       paid,
+      note: d.note,
+      odontogramData: d.treatment_record?.[0]?.odontogram_data
     };
   }) as Appointment[];
 }
 
 // --- Patient-specific: ดึงเฉพาะประวัติการรักษาของคนไข้ที่ล็อกอินอยู่ ---
-export async function getPatientTreatmentRecords() {
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) return [];
+export async function getPatientTreatmentRecords(patientId?: number) {
+  let targetPatientId = patientId;
 
-  const { data: patientData } = await supabase
-    .from('patient')
-    .select('patient_id')
-    .eq('user_id', authUser.id)
-    .single();
+  if (!targetPatientId) {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return [];
 
-  if (!patientData) return [];
+    const { data: patientData } = await supabase
+      .from('patient')
+      .select('patient_id')
+      .eq('user_id', authUser.id)
+      .single();
+
+    if (!patientData) return [];
+    targetPatientId = patientData.patient_id;
+  }
 
   const { data, error } = await supabase.from('treatment_record').select(`
     *,
-    appointment!inner(start_time, appointment_status),
+    odontogram_data,
+    appointment!inner(start_time, appointment_status, appointment_detail ( service (service_name) )),
     dentist ( users ( profile (first_name, last_name) ) ),
     treatment_detail ( actual_price, diagnosis, tooth_number, service (service_name) ),
     payment (total_amount)
-  `).eq('patient_id', patientData.patient_id);
+  `).eq('patient_id', targetPatientId);
 
   if (error) return [];
 
   return data.map((d: any) => {
     const dr = d.dentist?.users?.profile;
     const detail = d.treatment_detail?.[0];
-    const srvName = detail?.service?.service_name || 'ไม่ระบุบริการ';
+    const apptDetail = d.appointment?.appointment_detail?.[0];
+    const srvName = detail?.service?.service_name || apptDetail?.service?.service_name || 'ไม่ระบุบริการ';
     const costAmt = d.payment?.[0]?.total_amount || detail?.actual_price || 0;
     
+    let treatmentNotes = d.doctor_note || '';
+    let recommendations = detail?.diagnosis || '';
+    if (d.doctor_note) {
+      const parts = d.doctor_note.split('\\nคำแนะนำ: ');
+      treatmentNotes = parts[0];
+      if (parts.length > 1) recommendations = parts[1];
+    }
+
     return {
       id: d.treatment_id,
       service: srvName,
@@ -555,11 +833,23 @@ export async function getPatientTreatmentRecords() {
       date: d.treatment_date,
       time: d.appointment?.start_time?.slice(0,5) || '00:00',
       cost: costAmt.toLocaleString(),
-      notes: d.doctor_note || '',
+      notes: treatmentNotes,
       teeth: detail?.tooth_number || '',
-      recommendations: detail?.diagnosis || ''
+      recommendations: recommendations,
+      odontogramData: d.odontogram_data
     };
   });
+}
+
+export async function getPatientLatestOdontogram(patientId: number) {
+  const { data } = await supabase.from('treatment_record')
+    .select('odontogram_data')
+    .eq('patient_id', patientId)
+    .not('odontogram_data', 'is', null)
+    .order('treatment_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.odontogram_data || {};
 }
 
 export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
@@ -579,7 +869,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
       for (const rec of overlapping) {
         if (!rec.appointment) continue;
         const apptData = Array.isArray(rec.appointment) ? rec.appointment[0] : rec.appointment;
-        if (apptData.appointment_status === 'ยกเลิกแล้ว') continue;
+        if (apptData.appointment_status === 'ยกเลิก' || apptData.appointment_status === 'ไม่มาตามนัด') continue;
         
         const [existH, existM] = (apptData.start_time || "00:00").split(':').map(Number);
         const existStartMins = (existH * 60) + existM;
@@ -660,11 +950,13 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
     .from('appointment')
     .insert({
       patient_id: finalPatientId,
-      appointment_date: appointment.date,
-      start_time: appointment.time + ':00',
-      end_time_est: endTimeStr,
+      appointment_date: appointment.date || null,
+      start_time: appointment.time ? appointment.time + ':00' : null,
+      end_time_est: appointment.time ? endTimeStr : null,
       appointment_status: appointment.status,
-      channel: appointment.source === 'doctor' ? 'Walk-in' : 'ออนไลน์'
+      channel: appointment.source === 'doctor' ? 'Walk-in' : 'ออนไลน์',
+      plan_id: appointment.paymentPlanId || null,
+      note: appointment.note || null
     })
     .select()
     .single();
@@ -703,7 +995,7 @@ export async function updateAppointmentStatus(id: number, status: string) {
   return { id: data.appointment_id, status: data.appointment_status } as any;
 }
 
-export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number) {
+export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>) {
   // 1. Update appointment status
   await supabase.from('appointment').update({ appointment_status: 'รอชำระเงิน' }).eq('appointment_id', apptId);
   
@@ -714,7 +1006,10 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
   // Update or insert treatment record
   const fullNote = notes + (recommendations ? "\\nคำแนะนำ: " + recommendations : "");
   if (treatmentId) {
-    await supabase.from('treatment_record').update({ doctor_note: fullNote }).eq('treatment_id', treatmentId);
+    await supabase.from('treatment_record').update({ 
+      doctor_note: fullNote,
+      odontogram_data: toothData || null
+    }).eq('treatment_id', treatmentId);
   } else {
     const { data: apptData } = await supabase.from('appointment').select('patient_id, treatment_record(dentist_id)').eq('appointment_id', apptId).single();
     if (apptData) {
@@ -723,7 +1018,8 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
          patient_id: apptData.patient_id,
          dentist_id: apptData.treatment_record?.[0]?.dentist_id || null,
          treatment_date: new Date().toISOString().split('T')[0],
-         doctor_note: fullNote
+         doctor_note: fullNote,
+         odontogram_data: toothData || null
        }).select().single();
        if (newTr) treatmentId = newTr.treatment_id;
     }
@@ -774,13 +1070,6 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
   }
   
   return { status: 'เสร็จสิ้น' };
-}
-
-
-
-export async function changePassword(newPassword: string) {
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) throw error;
 }
 
 
@@ -967,52 +1256,55 @@ export async function updateShift(id: number, updates: Partial<Shift>) {
 }
 
 export async function getPromotions() {
-  const { data, error } = await supabase.from('promotions').select('*').order('id', { ascending: true });
-  if (error) return [];
-  return data.map((d: any) => ({
-    id: d.id, tag: d.tag, tagColor: d.tag_color, title: d.title, desc: d.description, originalPrice: d.original_price, salePrice: d.sale_price, validUntil: d.valid_until, icon: d.icon, highlight: d.highlight_color,
-  })) as Promotion[];
+  const { data, error } = await supabase.from('clinic_settings').select('*').eq('setting_key', 'promotions').single();
+  if (error || !data) return [];
+  try {
+    const promos = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;
+    return promos.map((d: any, i: number) => ({
+      id: d.id || i + 1, tag: d.tag, tagColor: d.tagColor, title: d.title, desc: d.desc, originalPrice: d.originalPrice, salePrice: d.salePrice, validUntil: d.validUntil, icon: d.icon, highlight: d.highlight,
+    })) as Promotion[];
+  } catch (e) {
+    return [];
+  }
 }
 
 export async function addPromotion(promo: Omit<Promotion, 'id'>) {
-  const { data, error } = await supabase.from('promotions').insert({
-    tag: promo.tag,
-    tag_color: promo.tagColor,
-    title: promo.title,
-    description: promo.desc,
-    original_price: promo.originalPrice,
-    sale_price: promo.salePrice,
-    valid_until: promo.validUntil,
-    icon: promo.icon,
-    highlight_color: promo.highlight
-  }).select().single();
+  const promos = await getPromotions();
+  const newId = promos.length > 0 ? Math.max(...promos.map(p => p.id)) + 1 : 1;
+  const newPromo = { ...promo, id: newId };
+  promos.push(newPromo);
+  
+  const { error } = await supabase.from('clinic_settings').upsert({
+    setting_key: 'promotions',
+    setting_value: JSON.stringify(promos)
+  }, { onConflict: 'setting_key' });
   if (error) throw error;
-  return {
-    id: data.id, tag: data.tag, tagColor: data.tag_color, title: data.title, desc: data.description, originalPrice: data.original_price, salePrice: data.sale_price, validUntil: data.valid_until, icon: data.icon, highlight: data.highlight_color,
-  } as Promotion;
+  return newPromo as Promotion;
 }
 
 export async function updatePromotion(id: number, promo: Partial<Promotion>) {
-  const payload: any = {};
-  if (promo.tag !== undefined) payload.tag = promo.tag;
-  if (promo.tagColor !== undefined) payload.tag_color = promo.tagColor;
-  if (promo.title !== undefined) payload.title = promo.title;
-  if (promo.desc !== undefined) payload.description = promo.desc;
-  if (promo.originalPrice !== undefined) payload.original_price = promo.originalPrice;
-  if (promo.salePrice !== undefined) payload.sale_price = promo.salePrice;
-  if (promo.validUntil !== undefined) payload.valid_until = promo.validUntil;
-  if (promo.icon !== undefined) payload.icon = promo.icon;
-  if (promo.highlight !== undefined) payload.highlight_color = promo.highlight;
-
-  const { data, error } = await supabase.from('promotions').update(payload).eq('id', id).select().single();
+  const promos = await getPromotions();
+  const index = promos.findIndex(p => p.id === id);
+  if (index === -1) throw new Error("Promotion not found");
+  
+  promos[index] = { ...promos[index], ...promo };
+  
+  const { error } = await supabase.from('clinic_settings').upsert({
+    setting_key: 'promotions',
+    setting_value: JSON.stringify(promos)
+  }, { onConflict: 'setting_key' });
   if (error) throw error;
-  return {
-    id: data.id, tag: data.tag, tagColor: data.tag_color, title: data.title, desc: data.description, originalPrice: data.original_price, salePrice: data.sale_price, validUntil: data.valid_until, icon: data.icon, highlight: data.highlight_color,
-  } as Promotion;
+  return promos[index] as Promotion;
 }
 
 export async function deletePromotion(id: number) {
-  const { error } = await supabase.from('promotions').delete().eq('id', id);
+  const promos = await getPromotions();
+  const newPromos = promos.filter(p => p.id !== id);
+  
+  const { error } = await supabase.from('clinic_settings').upsert({
+    setting_key: 'promotions',
+    setting_value: JSON.stringify(newPromos)
+  }, { onConflict: 'setting_key' });
   if (error) throw error;
 }
 
@@ -1179,16 +1471,20 @@ export async function savePatientData(form: RegForm) {
     .eq('user_id', userId)
     .maybeSingle();
 
+  let returnedPatientId: number;
+
   if (!existingPatient) {
     // Insert into Patient only if it doesn't exist yet
-    const { error: patErr } = await supabase.from('patient').insert({
+    const { data: patData, error: patErr } = await supabase.from('patient').insert({
       user_id: userId,
       allergy_history: form.allergies || 'ไม่มี',
       underlying_disease: form.conditions || 'ไม่มี',
       emergency_contact_name: form.emergencyName || '-',
       emergency_contact_phone: form.emergencyPhone || '-'
-    });
+    }).select('patient_id').single();
+    
     if (patErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลคนไข้: ${patErr.message}`);
+    returnedPatientId = patData.patient_id;
   } else {
     // Update existing patient record with the new health info
     const { error: patUpdErr } = await supabase.from('patient').update({
@@ -1197,10 +1493,12 @@ export async function savePatientData(form: RegForm) {
       emergency_contact_name: form.emergencyName || '-',
       emergency_contact_phone: form.emergencyPhone || '-'
     }).eq('user_id', userId);
+    
     if (patUpdErr) throw new Error(`ข้อผิดพลาดอัปเดตข้อมูลคนไข้: ${patUpdErr.message}`);
+    returnedPatientId = existingPatient.patient_id;
   }
 
-  return true;
+  return returnedPatientId;
 }
 
 // --- Dentist History ---
