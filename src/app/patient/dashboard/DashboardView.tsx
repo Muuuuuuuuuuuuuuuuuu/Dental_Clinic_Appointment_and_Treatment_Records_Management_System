@@ -13,9 +13,10 @@ export default function DashboardView({ user, setView }: { user: PatientUser; se
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user.patientId) return;
     Promise.all([
-      getPatientAppointments().then(data => setAppointments(data)),
-      getPatientTreatmentRecords().then(data => setHistory(data))
+      getPatientAppointments(user.patientId).then(data => setAppointments(data)),
+      getPatientTreatmentRecords(user.patientId).then(data => setHistory(data))
     ]).catch(console.error).finally(() => setLoading(false));
   }, [user]);
 

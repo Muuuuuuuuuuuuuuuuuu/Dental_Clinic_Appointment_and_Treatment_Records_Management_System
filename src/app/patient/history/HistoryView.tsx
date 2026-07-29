@@ -3,6 +3,7 @@ import { Calendar, FileText, CheckCircle, ChevronRight, X, Smile, Shield, Bell, 
 
 import { TreatmentRecord, PatientUser } from "../types";
 import { getPatientTreatmentRecords } from "../../shared/supabaseApi";
+import Odontogram from "../../dentist/treatment/Odontogram";
 
 const thDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
@@ -26,7 +27,8 @@ export default function HistoryView({ user }: { user: PatientUser }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getPatientTreatmentRecords()
+    if (!user.patientId) return;
+    getPatientTreatmentRecords(user.patientId)
       .then(data => setHistory(data))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -120,6 +122,17 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                 <Section icon={<Bell size={16} style={{ color: "#FF8C9A" }} />} title="คำแนะนำหลังการรักษา">
                   <p className="text-sm leading-relaxed" style={{ color: "#1A365D" }}>{selected.recommendations}</p>
                 </Section>
+              )}
+
+              {/* Odontogram */}
+              {selected.odontogramData && Object.keys(selected.odontogramData).length > 0 && (
+                <div className="mt-4">
+                  <Odontogram 
+                    toothData={selected.odontogramData} 
+                    isChild={false} 
+                    readonly={true} 
+                  />
+                </div>
               )}
             </div>
           </div>

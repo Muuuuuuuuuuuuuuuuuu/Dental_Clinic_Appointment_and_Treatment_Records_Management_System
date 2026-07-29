@@ -4,7 +4,7 @@ import { Smile, Sparkles, Shield, Award, Heart, Calendar } from "lucide-react";
 
 export type View =
   | "landing" | "login" | "register" | "otp" | "consent" | "forgot-password"
-  | "dashboard" | "profile" | "booking" | "appointments" | "history";
+  | "dashboard" | "profile" | "booking" | "appointments" | "history" | "record";
 
 export type UserRole = "patient" | "doctor" | "staff" | "admin" | null;
 
@@ -39,6 +39,7 @@ export interface TreatmentRecord {
   recommendations?: string;
   nextApptId?: number;
   treatmentPlanId?: number;
+  odontogramData?: Record<number, string>;
 }
 
 // ─── Service type for landing page ────────────────────────────────────────────
@@ -126,13 +127,14 @@ export interface RegForm {
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
-import { Home, Bell, FileText } from "lucide-react";
+import { Home, Bell, FileText, Activity } from "lucide-react";
 
 export const NAV_ITEMS = [
   { key: "dashboard",    label: "แดชบอร์ด",         icon: Home },
   { key: "booking",      label: "จองนัดหมาย",        icon: Calendar },
   { key: "appointments", label: "รายการนัดหมาย",     icon: Bell },
   { key: "history",      label: "ประวัติการรักษา",   icon: FileText },
+  { key: "record",       label: "สุขภาพฟันของคุณ",   icon: Activity },
   { key: "profile",      label: "ข้อมูลส่วนตัว",     icon: User },
 ];
 

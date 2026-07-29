@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { ChevronLeft, Check, ChevronRight, CheckCircle, ArrowRight, UserPlus, FileText, Clock } from "lucide-react";
 
 import { View, PatientUser } from "../types";
-import { addAppointment, getClinicClosures, getLeaveRequests, getDentists, getLandingServices, getLandingDoctors, getAppointments } from "../../shared/supabaseApi";
+import { addAppointment, getClinicClosures, getLeaveRequests, getDentists, getLandingServices, getLandingDoctors, getDentistsByService, getAppointments, getPaymentPlans } from "../../shared/supabaseApi";
 import { SpecialClosure, LeaveRequest, DentistInfo, Appointment } from "../../shared/data";
-import { Smile, Sparkles, Shield, Award, Heart, Calendar } from "lucide-react";
+import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star } from "lucide-react";
 
-const iconMap: Record<string, any> = { Smile, Sparkles, Shield, Award, Heart, Calendar };
+const iconMap: Record<string, any> = { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star };
 
 export default function BookingView({
   setView,
@@ -25,19 +25,25 @@ export default function BookingView({
   const [selService, setSelService] = useState<number | null>(initialService);
   const [selDoctor, setSelDoctor] = useState<number | "any" | null>(initialDoctor);
   const [matchedDoctor, setMatchedDoctor] = useState<number | null>(null);
-  const [preScreen, setPreScreen] = useState({ toothCount: 1, firstTime: true, notes: "" });
+  const [preScreen, setPreScreen] = useState({ firstTime: true, notes: "" });
   const [selDay, setSelDay] = useState<number | null>(null);
   const [selTime, setSelTime] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [dentistsData, setDentistsData] = useState<DentistInfo[]>([]);
   const [servicesData, setServicesData] = useState<any[]>([]);
   const [landingDoctors, setLandingDoctors] = useState<any[]>([]);
+  const [filteredDoctors, setFilteredDoctors] = useState<any[]>([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
+  const [selPaymentPlan, setSelPaymentPlan] = useState<number | null>(null);
+  const [loadingPlans, setLoadingPlans] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -56,6 +62,47 @@ export default function BookingView({
       setAppointments(apptData.filter(a => a.status !== 'ยกเลิก'));
     }).catch(console.error);
   }, []);
+
+  // Fetch doctors filtered by selected service when entering Step 1
+  useEffect(() => {
+    if (step === 1 && selService !== null && servicesData[selService]) {
+      const serviceId = servicesData[selService].serviceId;
+      if (serviceId) {
+        setLoadingDoctors(true);
+        getDentistsByService(serviceId).then(docs => {
+          setFilteredDoctors(docs);
+          setLoadingDoctors(false);
+        }).catch(err => {
+          console.error('Error fetching doctors by service:', err);
+          // fallback to all doctors
+          setFilteredDoctors(landingDoctors);
+          setLoadingDoctors(false);
+        });
+      } else {
+        setFilteredDoctors(landingDoctors);
+      }
+    }
+  }, [step, selService]);
+
+  useEffect(() => {
+    if (selService === null || !servicesData[selService]) {
+      setPaymentPlans([]);
+      setSelPaymentPlan(null);
+      return;
+    }
+    const fetchPlans = async () => {
+      setLoadingPlans(true);
+      try {
+        const plans = await getPaymentPlans(servicesData[selService].serviceId);
+        setPaymentPlans(plans);
+      } catch (err) {
+        console.error("Failed to fetch payment plans", err);
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
+    fetchPlans();
+  }, [selService, servicesData]);
 
   // Re-fetch appointments when entering date/time step to ensure we have the latest booked slots
   useEffect(() => {
@@ -116,7 +163,7 @@ export default function BookingView({
     "18:00", "18:30", "19:00", "19:30"
   ];
 
-  const estTime = selService !== null && servicesData[selService] ? servicesData[selService].baseTimeMins + preScreen.toothCount * 15 + (preScreen.firstTime ? 15 : 0) : 30;
+  const estTime = selService !== null && servicesData[selService] ? servicesData[selService].baseTimeMins : 30;
   const reqSlots = Math.ceil((estTime + 15) / 30); // Including 15 min buffer
   
   const endTimeStr = selTime ? (() => {
@@ -134,7 +181,7 @@ export default function BookingView({
       const dayAppts = appointments.filter(a => a.date === dateStr);
 
       if (selDoctor !== null && selDoctor !== "any") {
-        const selectedDocId = landingDoctors[selDoctor as number]?.id || 1;
+        const selectedDocId = selDoctor as number;
         const docDbInfo = dentistsData.find(db => db.id === selectedDocId);
         
         // 1. Check leave
@@ -160,7 +207,7 @@ export default function BookingView({
         // If any doctor is selected, assume there are 3 doctors total.
         // It's booked only if there are 3 appointments overlapping at that time.
         const apptsAtTime = dayAppts.filter(a => t >= a.time && (a.endTime ? t < a.endTime : a.time.startsWith(t))).length;
-        if (apptsAtTime >= 3) {
+        if (apptsAtTime >= filteredDoctors.length || apptsAtTime >= 3) {
           isBooked = true;
         }
       }
@@ -183,12 +230,37 @@ export default function BookingView({
   const canNext = () => {
     if (step === 0) return selService !== null;
     if (step === 1) return selDoctor !== null;
+    if (step === 1.5) return selPaymentPlan !== null;
     if (step === 2) return true; // pre-screen is optional/has defaults
     if (step === 3) return selDay !== null && selTime !== null;
     return false;
   };
 
+  const handleNext = () => {
+    if (!canNext()) return;
+    if (step === 1 && paymentPlans.length > 0) {
+      setStep(1.5);
+    } else if (step === 1.5) {
+      setStep(2);
+    } else {
+      setStep(s => s + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 2 && paymentPlans.length > 0) {
+      setStep(1.5);
+    } else if (step === 1.5) {
+      setStep(1);
+    } else {
+      setStep(s => s - 1);
+    }
+  };
+
   const handleConfirm = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
     // Complex services (like Orthodontics, Implant) require staff approval
     const serviceTitle = servicesData[selService!]?.title || "";
     const requiresApproval = serviceTitle.includes("จัดฟัน") || serviceTitle.includes("รากฟันเทียม") || serviceTitle.includes("ผ่าฟันคุด");
@@ -196,13 +268,13 @@ export default function BookingView({
     
     let finalDoctor = { name: "ไม่ระบุแพทย์", id: 1 };
     if (selDoctor === "any") {
-      const randomIdx = Math.floor(Math.random() * (landingDoctors.length || 1));
-      if (landingDoctors[randomIdx]) {
-        finalDoctor = { name: landingDoctors[randomIdx].name, id: landingDoctors[randomIdx].id };
+      const randomIdx = Math.floor(Math.random() * (filteredDoctors.length || 1));
+      if (filteredDoctors[randomIdx]) {
+        finalDoctor = { name: filteredDoctors[randomIdx].name, id: filteredDoctors[randomIdx].id };
       }
-      setMatchedDoctor(randomIdx); // keeping index for state if needed
+      setMatchedDoctor(finalDoctor.id); // set ID
     } else {
-      const doc = landingDoctors[selDoctor as number];
+      const doc = landingDoctors.find(d => d.id === selDoctor);
       if (doc) {
         finalDoctor = { name: doc.name, id: doc.id };
       }
@@ -229,12 +301,15 @@ export default function BookingView({
         treatmentServices: [],
         recommendations: "",
         allergies: "ไม่มี",
-        conditions: preScreen.notes || "ไม่มี"
+        conditions: preScreen.notes || "ไม่มี",
+        paymentPlanId: selPaymentPlan || undefined
       });
       setDone(true);
     } catch (err: any) {
       console.error("Booking error:", err);
       alert("Failed to book appointment: " + (err.message || JSON.stringify(err)));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -249,10 +324,10 @@ export default function BookingView({
         </h2>
         <p className="text-sm mb-2" style={{ color: "#4A6080" }}>
           {servicesData[selService!]?.title || ""} กับ {
-            selDoctor === "any" && landingDoctors[matchedDoctor as number] 
-              ? `ทพ. ${landingDoctors[matchedDoctor as number].name}`
-              : selDoctor !== "any" && landingDoctors[selDoctor as number]
-                ? `ทพ. ${landingDoctors[selDoctor as number]?.name}`
+            selDoctor === "any" && landingDoctors.find(d => d.id === matchedDoctor) 
+              ? `ทพ. ${landingDoctors.find(d => d.id === matchedDoctor)?.name}`
+              : selDoctor !== "any" && landingDoctors.find(d => d.id === selDoctor)
+                ? `ทพ. ${landingDoctors.find(d => d.id === selDoctor)?.name}`
                 : "ไม่ระบุแพทย์"
           }
         </p>
@@ -284,37 +359,50 @@ export default function BookingView({
     );
   }
 
-  const stepsLabels = ["บริการ", "แพทย์", "คัดกรอง", "วัน-เวลา", "ยืนยัน"];
+  const steps = [
+    { id: 0, label: "บริการ" },
+    { id: 1, label: "แพทย์" }
+  ];
+  if (paymentPlans.length > 0) {
+    steps.push({ id: 1.5, label: "แผนชำระเงิน" });
+  }
+  steps.push(
+    { id: 2, label: "คัดกรอง" },
+    { id: 3, label: "วัน-เวลา" },
+    { id: 4, label: "ยืนยัน" }
+  );
+
+  const currentStepIndex = steps.findIndex(s => s.id === step);
 
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
         {step > (isFollowUp ? 3 : 0) && (
-          <button onClick={() => setStep(s => s - 1)} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white transition-all" style={{ color: "#1A365D" }}>
+          <button onClick={handleBack} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white transition-all" style={{ color: "#1A365D" }}>
             <ChevronLeft size={18} />
           </button>
         )}
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จองนัดหมาย</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>
-            {isFollowUp ? "เลือกวัน-เวลาสำหรับการนัดหมายต่อเนื่อง" : ["เลือกบริการ", "เลือกทันตแพทย์", "คัดกรองเบื้องต้น", "เลือกวัน-เวลา", "ยืนยันการจอง"][step]}
+            {isFollowUp ? "เลือกวัน-เวลาสำหรับการนัดหมายต่อเนื่อง" : steps.find(s => s.id === step)?.label ? `เลือก${steps.find(s => s.id === step)?.label}` : "ดำเนินการจอง"}
           </p>
         </div>
       </div>
 
       {/* Step pills */}
       <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
-        {stepsLabels.map((l, i) => (
-          <div key={i} className="flex items-center gap-2 flex-shrink-0">
+        {steps.map((s, i) => (
+          <div key={s.id} className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
               style={{
-                backgroundColor: i < step ? "#E8FFF0" : i === step ? "#FF8C9A" : "rgba(26,54,93,0.06)",
-                color: i < step ? "#1B7A3E" : i === step ? "white" : "#4A6080",
+                backgroundColor: i < currentStepIndex ? "#E8FFF0" : i === currentStepIndex ? "#FF8C9A" : "rgba(26,54,93,0.06)",
+                color: i < currentStepIndex ? "#1B7A3E" : i === currentStepIndex ? "white" : "#4A6080",
               }}>
-              {i < step ? <Check size={11} /> : <span>{i + 1}</span>}
-              <span className="inline">{l}</span>
+              {i < currentStepIndex ? <Check size={11} /> : <span>{i + 1}</span>}
+              <span className="inline">{s.label}</span>
             </div>
-            {i < 4 && <ChevronRight size={12} style={{ color: "#ccc" }} />}
+            {i < steps.length - 1 && <ChevronRight size={12} style={{ color: "#ccc" }} />}
           </div>
         ))}
       </div>
@@ -346,6 +434,17 @@ export default function BookingView({
       {/* Step 1: Select doctor */}
       {step === 1 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {loadingDoctors ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-sm" style={{ color: "#4A6080" }}>กำลังโหลดข้อมูลทันตแพทย์...</p>
+            </div>
+          ) : filteredDoctors.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-sm font-medium" style={{ color: "#E0314C" }}>ไม่มีทันตแพทย์ที่รองรับบริการนี้</p>
+              <p className="text-xs mt-2" style={{ color: "#4A6080" }}>กรุณาเลือกบริการอื่น หรือติดต่อคลินิก</p>
+            </div>
+          ) : (
+            <>
           {/* Any Doctor option */}
           <button onClick={() => setSelDoctor("any")}
             className="rounded-2xl overflow-hidden text-left transition-all md:col-span-1"
@@ -364,22 +463,67 @@ export default function BookingView({
             </div>
           </button>
           
-          {landingDoctors.map((d, i) => (
-            <button key={i} onClick={() => setSelDoctor(i)}
-              className="rounded-2xl overflow-hidden text-left transition-all"
+          {landingDoctors.map((d) => {
+            const isAvailable = filteredDoctors.some(fd => fd.id === d.id);
+            return (
+            <button key={d.id} onClick={() => isAvailable && setSelDoctor(d.id)}
+              disabled={!isAvailable}
+              className={`rounded-2xl overflow-hidden text-left transition-all ${!isAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{
                 backgroundColor: "white",
-                border: selDoctor === i ? "2px solid #FF8C9A" : "2px solid transparent",
-                boxShadow: selDoctor === i ? "0 8px 24px rgba(255,140,154,0.2)" : "0 2px 12px rgba(26,54,93,0.06)",
+                border: selDoctor === d.id ? "2px solid #FF8C9A" : "2px solid transparent",
+                boxShadow: selDoctor === d.id ? "0 8px 24px rgba(255,140,154,0.2)" : "0 2px 12px rgba(26,54,93,0.06)",
               }}>
               <img src={d.img} alt={d.name} className="w-full object-cover" style={{ height: 160 }} />
               <div className="p-4">
                 <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>{d.name}</p>
                 <p className="text-xs mt-0.5" style={{ color: "#FF8C9A" }}>{d.specialty}</p>
                 <p className="text-xs mt-1" style={{ color: "#4A6080" }}>{d.years}</p>
+                {!isAvailable && <p className="text-[11px] mt-2 font-medium" style={{ color: "#E0314C" }}>ไม่รองรับบริการนี้</p>}
               </div>
             </button>
-          ))}
+            );
+          })}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Step 1.5: Payment Plan */}
+      {step === 1.5 && (
+        <div className="max-w-xl">
+          <div className="rounded-2xl bg-white p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
+            <h3 className="font-semibold text-base mb-2" style={{ color: "#1A365D" }}>เลือกรูปแบบการชำระเงิน</h3>
+            <p className="text-sm mb-5" style={{ color: "#4A6080" }}>บริการที่คุณเลือกมีแผนการชำระเงินที่สามารถแบ่งจ่ายได้ กรุณาเลือกรูปแบบที่คุณต้องการ</p>
+            
+            {loadingPlans ? (
+              <div className="text-center py-12">
+                <p className="text-sm" style={{ color: "#4A6080" }}>กำลังโหลดข้อมูล...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {paymentPlans.map((plan) => (
+                  <button key={plan.plan_id} onClick={() => setSelPaymentPlan(plan.plan_id)}
+                    className="w-full text-left p-4 rounded-xl transition-all"
+                    style={{
+                      border: selPaymentPlan === plan.plan_id ? "2px solid #FF8C9A" : "2px solid rgba(26,54,93,0.06)",
+                      backgroundColor: selPaymentPlan === plan.plan_id ? "#FFF0F2" : "white"
+                    }}>
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>{plan.plan_name}</p>
+                      <p className="font-semibold text-sm" style={{ color: "#FF8C9A" }}>{plan.total_amount?.toLocaleString() || "-"} บาท</p>
+                    </div>
+                    {plan.installments > 1 && (
+                      <div className="text-xs space-y-1" style={{ color: "#4A6080" }}>
+                        {plan.down_payment > 0 && <p>ชำระครั้งแรก: {plan.down_payment.toLocaleString()} บาท</p>}
+                        <p>แบ่งชำระ: {plan.installments} งวด งวดละ {plan.per_month?.toLocaleString() || "-"} บาท</p>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -390,39 +534,8 @@ export default function BookingView({
             <h3 className="font-semibold text-sm mb-5" style={{ color: "#1A365D" }}>คำถามคัดกรองเบื้องต้นเพื่อประเมินเวลา</h3>
             
             <div className="space-y-6">
-              <div>
-                <label className="text-xs font-medium block mb-3" style={{ color: "#4A6080" }}>คุณเคยทำบริการนี้มาก่อนหรือไม่?</label>
-                <div className="flex gap-3">
-                  <button onClick={() => setPreScreen(p => ({ ...p, firstTime: true }))}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
-                    style={{
-                      backgroundColor: preScreen.firstTime ? "#FF8C9A" : "#F0F4F8",
-                      color: preScreen.firstTime ? "white" : "#4A6080",
-                    }}>
-                    ทำครั้งแรก
-                  </button>
-                  <button onClick={() => setPreScreen(p => ({ ...p, firstTime: false }))}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
-                    style={{
-                      backgroundColor: !preScreen.firstTime ? "#FF8C9A" : "#F0F4F8",
-                      color: !preScreen.firstTime ? "white" : "#4A6080",
-                    }}>
-                    เคยทำแล้ว (มาทำต่อ)
-                  </button>
-                </div>
-              </div>
 
-              <div>
-                <label className="text-xs font-medium block mb-2" style={{ color: "#4A6080" }}>จำนวนซี่ที่คาดว่าจะทำ (โดยประมาณ)</label>
-                <input type="number" min="1" max="32" value={preScreen.toothCount || ""} 
-                  onChange={e => setPreScreen(p => ({ ...p, toothCount: e.target.value ? parseInt(e.target.value) : 0 }))}
-                  className="w-full px-4 py-3 rounded-xl outline-none"
-                  style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}
-                />
-                <p className="text-xs mt-2" style={{ color: "#FF8C9A" }}>
-                  *ระบบจะนำข้อมูลนี้ไปประเมินและจัดสรรเวลาการรักษาและเวลาเผื่อ (Buffer time) ให้เหมาะสมที่สุด
-                </p>
-              </div>
+
 
               <div>
                 <label className="text-xs font-medium block mb-2" style={{ color: "#4A6080" }}>อาการผิดปกติ หรือ ข้อสังเกตเพิ่มเติม (ถ้ามี)</label>
@@ -432,6 +545,12 @@ export default function BookingView({
                   className="w-full px-4 py-3 rounded-xl outline-none resize-none"
                   style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}
                 />
+                <div className="mt-4 p-3 rounded-xl flex gap-3 items-start" style={{ backgroundColor: "#FFFBEB" }}>
+                  <Smile size={16} style={{ color: "#D97706", flexShrink: 0, marginTop: 2 }} />
+                  <p className="text-xs leading-relaxed" style={{ color: "#92400E" }}>
+                    <strong>ไม่ต้องกังวลเรื่องเวลา!</strong> ทันตแพทย์จะทำการตรวจประเมินหน้างานอีกครั้ง หากมีจุดที่ต้องรักษาหลายซี่ คุณหมอจะทำการรักษาเท่าที่เวลาเอื้ออำนวย และนัดหมายทำต่อในครั้งถัดไปครับ
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -548,9 +667,8 @@ export default function BookingView({
             <h3 className="font-semibold text-base mb-5" style={{ color: "#1A365D" }}>สรุปการจองนัดหมาย</h3>
             {[
               { label: "บริการ",     val: servicesData[selService!]?.title || "ไม่ระบุ" },
-              { label: "ทันตแพทย์", val: selDoctor === "any" ? "แพทย์ท่านใดก็ได้ (คิวเร็วสุด)" : landingDoctors[selDoctor as number]?.name || "ไม่ระบุ" },
-              { label: "ทำครั้งแรก?", val: preScreen.firstTime ? "ใช่" : "ไม่ใช่" },
-              { label: "จำนวน",      val: `${preScreen.toothCount} ซี่` },
+              { label: "ทันตแพทย์", val: selDoctor === "any" ? "แพทย์ท่านใดก็ได้ (คิวเร็วสุด)" : landingDoctors.find(d => d.id === selDoctor)?.name || "ไม่ระบุ" },
+              { label: "แผนชำระเงิน", val: paymentPlans.length > 0 && selPaymentPlan ? paymentPlans.find(p => p.plan_id === selPaymentPlan)?.plan_name : "ชำระปกติ" },
               { label: "วันที่",     val: `${selDay} ${today.toLocaleDateString("th-TH", { month: "long", year: "numeric" })}` },
               { label: "เวลา",       val: `${selTime} - ${endTimeStr} น.` },
               { label: "ราคาเริ่มต้น", val: servicesData[selService!]?.price || "-" },
@@ -560,10 +678,14 @@ export default function BookingView({
                 <span className="font-medium" style={{ color: "#1A365D" }}>{r.val}</span>
               </div>
             ))}
-            <button onClick={handleConfirm}
+            <button onClick={handleConfirm} disabled={isSubmitting}
               className="w-full py-3.5 rounded-xl font-semibold text-white mt-5 transition-all hover:opacity-90"
-              style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)", boxShadow: "0 4px 20px rgba(255,140,154,0.4)" }}>
-              ยืนยันการจองนัดหมาย
+              style={{ 
+                background: isSubmitting ? "#ccc" : "linear-gradient(135deg,#FF8C9A,#FF6B7E)", 
+                boxShadow: isSubmitting ? "none" : "0 4px 20px rgba(255,140,154,0.4)",
+                cursor: isSubmitting ? "not-allowed" : "pointer"
+              }}>
+              {isSubmitting ? "กำลังดำเนินการ..." : "ยืนยันการจองนัดหมาย"}
             </button>
           </div>
         </div>
@@ -572,7 +694,7 @@ export default function BookingView({
       {/* Next button */}
       {step < 4 && (
         <div className="mt-6">
-          <button onClick={() => canNext() && setStep(s => s + 1)}
+          <button onClick={handleNext}
             className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all"
             style={{
               background: canNext() ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)" : "rgba(26,54,93,0.12)",

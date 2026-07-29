@@ -23,7 +23,8 @@ export default function AppointmentsView({
   const [cancelId, setCancelId] = useState<number | null>(null);
 
   useEffect(() => {
-    getPatientAppointments()
+    if (!user.patientId) return; // Wait until we have the ID
+    getPatientAppointments(user.patientId)
       .then(data => setAppts(data))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -93,21 +94,30 @@ export default function AppointmentsView({
                         <p className="font-medium mb-0.5" style={{ color: "#1A365D" }}>รายละเอียดนัดหมาย</p>
                         <p style={{ color: "#4A6080" }}>บริการ: {a.service}</p>
                         {a.date && <p style={{ color: "#4A6080" }}>วันที่: {thDate(a.date)} เวลา {a.time} น.</p>}
+                        {a.note && <p style={{ color: "#DB2777" }}>หมายเหตุ: {a.note}</p>}
                         {(a as any).source === "doctor" && <p style={{ color: "#7C3AED" }}>นัดนี้ถูกสร้างโดยทันตแพทย์หลังการรักษา</p>}
                       </div>
                     )}
-                    {(a.status as any) === "รอระบุวัน-เวลา" && onBookFollowUp && (
+                    {(a.status as any) === "รอระบุวัน-เวลา" && (
                       <div className="mt-3">
-                        <button onClick={() => {
-                          // Mocking matching ID from name for demo
-                          const serviceId = (a as any).serviceId || 1; 
-                          const doctorId = (a as any).doctorId || 0;
-                          onBookFollowUp(serviceId, doctorId);
-                        }}
-                          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90"
-                          style={{ background: "linear-gradient(135deg,#DB2777,#BE185D)" }}>
-                          <Calendar size={12} /> คลิกเพื่อเลือกวัน-เวลา (สำหรับนัดต่อเนื่อง)
-                        </button>
+                        {a.note && (
+                          <div className="mb-2 p-2.5 rounded-lg text-xs" style={{ backgroundColor: "#FFF1F2" }}>
+                            <p className="font-medium text-pink-700">หมายเหตุถึงคนไข้:</p>
+                            <p className="text-pink-600">{a.note}</p>
+                          </div>
+                        )}
+                        {onBookFollowUp && (
+                          <button onClick={() => {
+                            // Mocking matching ID from name for demo
+                            const serviceId = (a as any).serviceId || 1; 
+                            const doctorId = (a as any).doctorId || 0;
+                            onBookFollowUp(serviceId, doctorId);
+                          }}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90"
+                            style={{ background: "linear-gradient(135deg,#DB2777,#BE185D)" }}>
+                            <Calendar size={12} /> คลิกเพื่อเลือกวัน-เวลา (สำหรับนัดต่อเนื่อง)
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

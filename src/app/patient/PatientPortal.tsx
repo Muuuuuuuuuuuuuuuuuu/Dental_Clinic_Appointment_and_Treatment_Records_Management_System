@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Info } from "lucide-react";
 import { View, UserRole, PatientUser } from "./types";
-import { Appointment, getClinicStatus } from "../shared/data";
-
-import { getAppointments } from "../shared/supabaseApi";
+import { Appointment, getClinicStatus, ClinicStatus } from "../shared/data";
+import { getAppointments, getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
+import { supabase } from "../shared/utils/supabaseClient";
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 import LoginPage from "./auth/LoginPage";
@@ -21,6 +21,7 @@ import DashboardView from "./dashboard/DashboardView";
 import BookingView from "./booking/BookingView";
 import AppointmentsView from "./appointments/AppointmentsView";
 import HistoryView from "./history/HistoryView";
+import DentalRecordView from "./record/DentalRecordView";
 import ProfileView from "./profile/ProfileView";
 
 // ─── Landing page sections ────────────────────────────────────────────────────
@@ -62,9 +63,25 @@ export default function PatientPortal() {
   const [sharedAppointments, setSharedAppointments] = useState<Appointment[]>([]);
   const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number} | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
+  const [clinicStatus, setClinicStatus] = useState<ClinicStatus>(getClinicStatus());
 
   useEffect(() => {
     getAppointments().then(setSharedAppointments).catch(console.error);
+    
+    // Fetch clinic status data
+    Promise.all([getWeeklyOffDays(), getClinicClosures(), getClinicSettings(), getDailyHours()]).then(([offDays, closures, settings, dh]) => {
+      setClinicStatus(getClinicStatus(new Date(), closures, offDays, settings, dh));
+    }).catch(console.error);
+
+    const channel = supabase.channel('public:appointment')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment' }, () => {
+        getAppointments().then(setSharedAppointments).catch(console.error);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
 
@@ -74,6 +91,22 @@ export default function PatientPortal() {
 
   const addAppt = (a: Appointment) =>
     setSharedAppointments(prev => [...prev, a]);
+
+  const handleConsentAccept = async () => {
+    if (!regFormData) return;
+    setConsentLoading(true);
+    setConsentError("");
+    try {
+      // Create auth user (in real app, this creates Supabase auth user)
+      const mockPassword = "password123"; 
+      const patientId = await savePatientData(regFormData);
+      handleRegisterSuccess(regFormData.email, regFormData, patientId);
+    } catch (err: any) {
+      setConsentError(err.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    } finally {
+      setConsentLoading(false);
+    }
+  };
 
   const handleLogin = (u: PatientUser) => {
     setUser(u);
@@ -96,9 +129,10 @@ export default function PatientPortal() {
     setView("landing");
   };
 
-  const handleRegisterSuccess = (email: string, formData?: RegForm) => {
+  const handleRegisterSuccess = (email: string, formData?: RegForm, patientId?: number) => {
     if (formData) {
       setUser({
+        patientId,
         firstName: formData.firstName,
         lastName: formData.lastName,
         idCard: formData.idCard,
@@ -145,7 +179,7 @@ export default function PatientPortal() {
   }
 
   // ─── Patient portal views ─────────────────────────────────────────────────
-  const PORTAL_VIEWS: View[] = ["dashboard", "profile", "booking", "appointments", "history"];
+  const PORTAL_VIEWS: View[] = ["dashboard", "profile", "booking", "appointments", "history", "record"];
   const isPortalView = PORTAL_VIEWS.includes(view);
 
   if (isPortalView && isLoggedIn && role === "patient" && user) {
@@ -179,7 +213,14 @@ export default function PatientPortal() {
             }}
           />
         )}
-        {view === "history"      && <HistoryView user={user} />}
+        {view === "history" && <HistoryView user={user} />}
+        {view === "record" && (
+          <DentalRecordView 
+            user={user}
+            onBack={() => { setPortalView("dashboard"); setView("dashboard"); }} 
+            onBookAppointment={() => { setPortalView("booking"); setView("booking"); }} 
+          />
+        )}
         <FloatingLine />
       </PortalLayout>
     );
@@ -192,7 +233,6 @@ export default function PatientPortal() {
   if (view === "forgot-password") return <ForgotPasswordPage onBack={() => setView(prevView)} onSuccess={() => setView('login')} />;
 
   // ─── Landing page ─────────────────────────────────────────────────────────
-  const clinicStatus = getClinicStatus();
 
   return (
     <div className="min-h-screen" style={{ fontFamily: "Prompt, sans-serif", scrollBehavior: "smooth" }}>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User, Lock, Edit3 , CheckCircle } from "lucide-react";
+import { User, Lock, Edit3, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 import { PatientUser, inputStyle, inputCls } from "../types";
 
@@ -19,6 +19,10 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
   const [pwMode, setPwMode] = useState(false);
   const [pw, setPw] = useState({ old: "", newPw: "", confirm: "" });
   const [pwErr, setPwErr] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
+  const [showOldPw, setShowOldPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfPw, setShowConfPw] = useState(false);
 
   const saveProfile = () => {
     setUser({ ...user, ...form });
@@ -27,15 +31,25 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
     setTimeout(() => setSaved(false), 2500);
   };
 
-  const savePw = () => {
+  const savePw = async () => {
     setPwErr("");
     if (!pw.old) { setPwErr("กรุณากรอกรหัสผ่านเดิม"); return; }
     if (pw.newPw.length < 8) { setPwErr("รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร"); return; }
     if (pw.newPw !== pw.confirm) { setPwErr("รหัสผ่านใหม่ไม่ตรงกัน"); return; }
-    setPwMode(false);
-    setPw({ old: "", newPw: "", confirm: "" });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+
+    setPwLoading(true);
+    try {
+      const { changePassword } = await import("../../shared/supabaseApi");
+      await changePassword(pw.old, pw.newPw);
+      setPwMode(false);
+      setPw({ old: "", newPw: "", confirm: "" });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: any) {
+      setPwErr(err.message || "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน");
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   const InfoRow = ({ label, val }: { label: string; val: string }) => (
@@ -142,10 +156,10 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
               <p className="text-sm" style={{ color: "#4A6080" }}>●●●●●●●●</p>
             ) : (
               <div className="space-y-3">
-                {pwErr && <div className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}>{pwErr}</div>}
+                {pwErr && <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}><AlertCircle size={13} /> {pwErr}</div>}
                 {[
                   { k: "old",    label: "รหัสผ่านเดิม" },
-                  { k: "newPw",  label: "รหัสผ่านใหม่" },
+                  { k: "newPw",  label: "รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)" },
                   { k: "confirm",label: "ยืนยันรหัสผ่านใหม่" },
                 ].map(f => (
                   <div key={f.k}>
@@ -154,12 +168,20 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
                       className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                   </div>
                 ))}
-                <button onClick={savePw} className="text-sm px-5 py-2 rounded-xl text-white font-medium"
-                  style={{ backgroundColor: "#FF8C9A" }}>
-                  บันทึกรหัสผ่านใหม่
-                </button>
+                <div className="flex gap-2 pt-1">
+                  <button onClick={savePw} disabled={pwLoading}
+                    className="text-sm px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50 transition-all"
+                    style={{ backgroundColor: "#FF8C9A" }}>
+                    {pwLoading ? "กำลังบันทึก..." : "บันทึกรหัสผ่านใหม่"}
+                  </button>
+                  <button onClick={() => { setPwMode(false); setPwErr(""); setPw({ old: "", newPw: "", confirm: "" }); }}
+                    className="text-sm px-4 py-2 rounded-xl font-medium" style={{ border: "1px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
+                    ยกเลิก
+                  </button>
+                </div>
               </div>
             )}
+
           </div>
         </div>
       </div>
