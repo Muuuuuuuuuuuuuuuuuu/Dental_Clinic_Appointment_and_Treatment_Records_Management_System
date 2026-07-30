@@ -4,12 +4,30 @@ import { Users, FileText, Calendar, Clock, CheckCircle, AlertTriangle, Clipboard
 import { Appointment, STATUS_COLORS, DocView, DentistInfo } from "../../shared/data";
 import { getAppointments } from "../../shared/supabaseApi";
 
-export default function DoctorDashboard({ setView, doctor }: { setView: (v: DocView) => void; doctor: DentistInfo | null }) {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function DoctorDashboard({ 
+  setView, 
+  doctor,
+  appointments: initialAppointments
+}: { 
+  setView: (v: DocView) => void; 
+  doctor: DentistInfo | null;
+  appointments?: Appointment[];
+}) {
+  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAppointments().then(setAppointments).catch(console.error).finally(() => setLoading(false));
+    if (initialAppointments) {
+      setAppointments(initialAppointments);
+    }
+  }, [initialAppointments]);
+
+  useEffect(() => {
+    if (!initialAppointments) {
+      getAppointments().then(setAppointments).catch(console.error).finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const today = new Date();

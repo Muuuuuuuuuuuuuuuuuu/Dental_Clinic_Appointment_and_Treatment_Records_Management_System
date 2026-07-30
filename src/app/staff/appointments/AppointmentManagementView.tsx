@@ -6,8 +6,12 @@ import { supabase } from "../../shared/utils/supabaseClient";
 
 type TabView = "confirm" | "reschedule" | "transfer" | "all";
 
-export default function AppointmentManagementView() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function AppointmentManagementView({
+  appointments: initialAppointments
+}: {
+  appointments?: Appointment[];
+}) {
+  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabView>("confirm");
@@ -36,16 +40,29 @@ export default function AppointmentManagementView() {
     };
   }, []);
 
+  // Update state if props change (Realtime from PatientPortal)
+  useEffect(() => {
+    if (initialAppointments) {
+      setAppointments(initialAppointments);
+    }
+  }, [initialAppointments]);
+
   const fetchData = () => {
     setLoading(true);
-    Promise.all([getAppointments(), getDentists()])
-      .then(([apps, docs]) => {
-        setAppointments(apps);
+    getDentists()
+      .then(docs => {
         setDentists(docs);
+        if (!initialAppointments) {
+          getAppointments().then(setAppointments).catch(console.error);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const onUpdateAppt = async (id: number, updates: Partial<Appointment>) => {
     try {

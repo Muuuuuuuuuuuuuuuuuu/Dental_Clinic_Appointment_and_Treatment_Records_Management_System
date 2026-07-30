@@ -638,17 +638,29 @@ function MonthlyView({
 }
 
 // ─── Main QueueBoard ──────────────────────────────────────────────────────────
-export default function QueueBoard({ setView }: { setView: (v: StaffView) => void }) {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function QueueBoard({ 
+  setView,
+  appointments: initialAppointments
+}: { 
+  setView: (v: StaffView) => void;
+  appointments?: Appointment[];
+}) {
+  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("daily");
   const [selectedDate, setSelectedDate] = useState(new Date());
 
+  // Update state if props change (Realtime from PatientPortal)
   useEffect(() => {
-    Promise.all([getAppointments(), getClinicClosures()])
-      .then(([appts, cls]) => {
-        setAppointments(appts);
+    if (initialAppointments) {
+      setAppointments(initialAppointments);
+    }
+  }, [initialAppointments]);
+
+  useEffect(() => {
+    getClinicClosures()
+      .then(cls => {
         setClosures(cls);
       })
       .catch(console.error)
