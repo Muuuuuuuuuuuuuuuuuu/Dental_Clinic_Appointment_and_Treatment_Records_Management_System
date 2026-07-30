@@ -75,6 +75,14 @@ export interface StaffInfo {
   active: boolean;
 }
 
+export interface AdminInfo {
+  id: string; // auth user id
+  name: string;
+  email: string;
+  phone: string;
+  active: boolean;
+}
+
 export interface ServiceInfo {
   id: number;
   name: string;
