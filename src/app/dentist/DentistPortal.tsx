@@ -118,10 +118,12 @@ function DoctorSidebar({ view, setView, onLogout, doctor }: { view: DocView; set
 
 export default function DoctorPortal({
   onLogout,
-  loginEmail
+  loginEmail,
+  appointments
 }: {
   onLogout: () => void;
   loginEmail?: string;
+  appointments?: Appointment[];
 }) {
   const [view, setView] = useState<DocView>("dashboard");
   const [sideOpen, setSideOpen] = useState(false);
@@ -163,8 +165,8 @@ export default function DoctorPortal({
         </div>
         <PortalStatusBanner />
         <main className="flex-1 p-5 lg:p-8">
-          {view === "dashboard" && <DoctorDashboard setView={setView} doctor={doctor} />}
-          {view === "queue"     && <TreatmentQueue doctor={doctor} />}
+          {view === "dashboard" && <DoctorDashboard setView={setView} doctor={doctor} appointments={appointments} />}
+          {view === "queue"     && <TreatmentQueue doctor={doctor} appointments={appointments} />}
           {view === "records"   && <PatientRecords />}
           {view === "history"   && <TreatmentHistory doctor={doctor} />}
           {view === "calendar"  && <DoctorCalendar doctor={doctor} />}

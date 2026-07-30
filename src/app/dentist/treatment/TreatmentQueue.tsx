@@ -2,19 +2,35 @@ import React, { useState, useEffect } from "react";
 import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTriangle, ChevronRight, Check, Send, ClipboardList } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo } from "../../shared/data";
-import { getAppointments, getServices, updateAppointmentStatus, saveTreatment, getPatientLatestOdontogram } from "../../shared/supabaseApi";
+import { getAppointments, getServices, updateAppointmentStatus, saveTreatment, getPatientLatestOdontogram, supabase } from "../../shared/supabaseApi";
 import Odontogram, { ToothStatus } from "./Odontogram";
 
-export default function TreatmentQueue({ doctor }: { doctor: DentistInfo | null }) {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function TreatmentQueue({ 
+  doctor,
+  appointments: initialAppointments
+}: { 
+  doctor: DentistInfo | null;
+  appointments?: Appointment[];
+}) {
+  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getAppointments(), getServices()]).then(([apps, svcs]) => {
-      setAppointments(apps);
-      setServices(svcs.filter(s => s.active));
-    }).catch(console.error).finally(() => setLoading(false));
+    if (initialAppointments) {
+      setAppointments(initialAppointments);
+    }
+  }, [initialAppointments]);
+
+  useEffect(() => {
+    const fetchData = () => {
+      if (!initialAppointments) {
+        getAppointments().then(apps => setAppointments(apps)).catch(console.error);
+      }
+      getServices().then(svcs => setServices(svcs.filter(s => s.active))).catch(console.error).finally(() => setLoading(false));
+    };
+    
+    fetchData();
   }, []);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [recording, setRecording] = useState<number | null>(null);

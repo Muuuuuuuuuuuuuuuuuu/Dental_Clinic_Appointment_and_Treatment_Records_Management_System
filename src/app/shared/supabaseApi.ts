@@ -154,6 +154,86 @@ export async function deleteDentist(id: number): Promise<void> {
   await supabase.from('dentist').delete().eq('dentist_id', id);
 }
 
+// --- Admins ---
+export async function getAdmins() {
+  const { data, error } = await supabase.from('users').select(`
+    user_id,
+    email,
+    account_status,
+    profile (first_name, last_name, phone_number)
+  `).eq('role', 'admin');
+  
+  if (error) {
+    console.error("getAdmins error:", error);
+    return [];
+  }
+  
+  return data.map((d: any) => {
+    const p = d.profile;
+    return {
+      id: d.user_id,
+      name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
+      email: d.email || '',
+      phone: p?.phone_number || '',
+      active: d.account_status === 'active'
+    };
+  });
+}
+
+export async function addAdmin(admin: any) {
+  const adminAuthClient = createClient(
+    import.meta.env.VITE_SUPABASE_URL || '',
+    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  );
+
+  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+    email: admin.email,
+    password: admin.password || 'admin123',
+    email_confirm: true
+  });
+
+  if (authErr) {
+    console.error("Auth creation failed:", authErr);
+    throw new Error("ไม่สามารถสร้างบัญชีผู้ใช้ได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+  }
+
+  const realUserId = authData.user.id;
+  const citizenIdToUse = admin.citizenId && admin.citizenId.trim() !== '' 
+    ? admin.citizenId 
+    : '9' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+    
+  const names = admin.name.split(' ');
+  await supabase.from('profile').insert({
+    citizen_id: citizenIdToUse,
+    first_name: names[0] || '',
+    last_name: names.slice(1).join(' ') || '',
+    phone_number: admin.phone
+  });
+  await supabase.from('users').insert({
+    user_id: realUserId,
+    citizen_id: citizenIdToUse,
+    email: admin.email,
+    role: 'admin',
+    account_status: admin.active ? 'active' : 'inactive'
+  });
+
+  return {
+    id: realUserId,
+    name: admin.name,
+    email: admin.email,
+    phone: admin.phone,
+    active: admin.active
+  };
+}
+
+export async function updateAdmin(id: string, updates: any) {
+  if (updates.active !== undefined) {
+    await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', id);
+  }
+  // Other updates if necessary
+  return { id, ...updates };
+}
+
 // --- Staff ---
 export async function getStaff() {
   const { data, error } = await supabase.from('staff').select(`

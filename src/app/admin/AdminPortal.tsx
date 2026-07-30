@@ -9,11 +9,13 @@ import PatientManagement from "./users/PatientManagement";
 import AdminDashboard from "./dashboard/AdminDashboard";
 import AnnouncementManagement from "./announcements/AnnouncementManagement";
 import PromotionManagement from "./announcements/PromotionManagement";
+import AdminManagement from "./users/AdminManagement";
+import AccountSettings from "./profile/AccountSettings";
 
 import {
   Home, Calendar, Users, FileText, LogOut, Smile, Settings,
   Plus, Edit3, Trash2, CheckCircle, X, Menu, BarChart3,
-  TrendingUp, UserCheck, Clock, AlertCircle, Check, Megaphone, Percent
+  TrendingUp, UserCheck, Clock, AlertCircle, Check, Megaphone, Percent, Shield, Lock, ChevronDown, ChevronRight
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -45,19 +47,27 @@ function AdminStatusBanner() {
   );
 }
 
-type AdminView = "dashboard" | "dentists" | "staff" | "patients" | "services" | "schedule" | "leaves" | "announcements" | "promotions" | "settings";
+type AdminView = "dashboard" | "admins" | "dentists" | "staff" | "patients" | "services" | "schedule" | "leaves" | "announcements" | "promotions" | "settings" | "account";
 
-const ADMIN_NAV = [
+const ADMIN_NAV_MAIN = [
   { key: "dashboard" as AdminView, label: "แดชบอร์ด",         icon: Home },
-  { key: "dentists"  as AdminView, label: "จัดการทันตแพทย์",  icon: UserCheck },
-  { key: "staff"     as AdminView, label: "จัดการพนักงาน",    icon: Users },
-  { key: "patients"  as AdminView, label: "จัดการคนไข้",      icon: Smile },
-  { key: "services"  as AdminView, label: "จัดการบริการ",     icon: Settings },
   { key: "schedule"  as AdminView, label: "จัดการตารางเวร",  icon: Calendar },
   { key: "leaves"    as AdminView, label: "อนุมัติการลา",     icon: FileText },
+  { key: "services"  as AdminView, label: "จัดการบริการ",     icon: Settings },
   { key: "announcements" as AdminView, label: "จัดการประกาศ", icon: Megaphone },
   { key: "promotions" as AdminView, label: "จัดการโปรโมชั่น", icon: Percent },
-  { key: "settings"  as AdminView, label: "ตั้งค่าระบบ",     icon: Clock },
+];
+
+const ADMIN_NAV_USERS = [
+  { key: "admins"    as AdminView, label: "ผู้ดูแลระบบ", icon: Shield },
+  { key: "dentists"  as AdminView, label: "ทันตแพทย์",  icon: UserCheck },
+  { key: "staff"     as AdminView, label: "พนักงาน",    icon: Users },
+  { key: "patients"  as AdminView, label: "คนไข้",      icon: Smile },
+];
+
+const ADMIN_NAV_SETTINGS = [
+  { key: "settings"  as AdminView, label: "ตั้งค่าคลินิก",     icon: Clock },
+  { key: "account"   as AdminView, label: "ตั้งค่าบัญชี", icon: Lock },
 ];
 
 const CHART_DATA = [
@@ -72,6 +82,16 @@ const CHART_DATA = [
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 function AdminSidebar({ view, setView, onLogout }: { view: AdminView; setView: (v: AdminView) => void; onLogout: () => void }) {
+  const [isUsersOpen, setIsUsersOpen] = useState(true);
+
+  const renderNav = (items: any[]) => items.map(({ key, label, icon: Icon }) => (
+    <button key={key} onClick={() => setView(key)}
+      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left"
+      style={{ backgroundColor: view === key ? "#FF8C9A" : "transparent", color: view === key ? "white" : "rgba(255,255,255,0.65)" }}>
+      <Icon size={17} /> {label}
+    </button>
+  ));
+
   return (
     <div className="flex flex-col h-full py-6 px-4" style={{ backgroundColor: "#1A365D" }}>
       <div className="flex items-center gap-3 px-2 mb-8">
@@ -90,17 +110,36 @@ function AdminSidebar({ view, setView, onLogout }: { view: AdminView; setView: (
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>admin@clinic.com</p>
         </div>
       </div>
-      <nav className="flex-1 space-y-1">
-        {ADMIN_NAV.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setView(key)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left"
-            style={{ backgroundColor: view === key ? "#FF8C9A" : "transparent", color: view === key ? "white" : "rgba(255,255,255,0.65)" }}>
-            <Icon size={17} /> {label}
-          </button>
-        ))}
+      <nav className="flex-1 space-y-1 overflow-y-auto pr-1 pb-4" style={{ scrollbarWidth: "none" }}>
+        {renderNav(ADMIN_NAV_MAIN)}
+
+        {/* Dropdown: จัดการผู้ใช้งาน */}
+        <div className="pt-2">
+           <button onClick={() => setIsUsersOpen(!isUsersOpen)} 
+             className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left hover:bg-white/5" 
+             style={{ color: isUsersOpen ? "white" : "rgba(255,255,255,0.8)" }}>
+             <div className="flex items-center gap-3">
+               <Users size={17} style={{ color: isUsersOpen ? "#FF8C9A" : "inherit" }} /> 
+               <span>จัดการผู้ใช้งาน</span>
+             </div>
+             {isUsersOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+           </button>
+           
+           <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isUsersOpen ? 'max-h-64 opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+             <div className="space-y-1 ml-4 pl-3 border-l border-white/10">
+               {renderNav(ADMIN_NAV_USERS)}
+             </div>
+           </div>
+        </div>
+
+        {/* Header: ระบบและตั้งค่า */}
+        <div className="pt-4 pb-1">
+           <span className="px-3 text-xs font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>ระบบและตั้งค่า</span>
+        </div>
+        {renderNav(ADMIN_NAV_SETTINGS)}
       </nav>
-      <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-red-500/10" style={{ color: "rgba(255,140,154,0.8)" }}>
+      <div className="mt-4 pt-4 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-red-500/10 transition-colors" style={{ color: "rgba(255,140,154,0.8)" }}>
           <LogOut size={16} /> ออกจากระบบ
         </button>
       </div>
@@ -176,6 +215,7 @@ export default function AdminPortal({
         <AdminStatusBanner />
         <main className="flex-1 p-5 lg:p-8">
           {view === "dashboard" && <AdminDashboard setView={setView} />}
+          {view === "admins"    && <AdminManagement />}
           {view === "dentists"  && <DentistManagement />}
           {view === "staff"     && <StaffManagement />}
           {view === "patients"  && <PatientManagement />}
@@ -185,6 +225,7 @@ export default function AdminPortal({
           {view === "announcements" && <AnnouncementManagement />}
           {view === "promotions" && <PromotionManagement />}
           {view === "settings"  && <ClinicSettingsManagement />}
+          {view === "account"   && <AccountSettings />}
         </main>
       </div>
     </div>

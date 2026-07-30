@@ -7,18 +7,32 @@ import { ClinicStatusCard } from "../landing/ClinicStatus";
 import { Appointment } from "../../shared/data";
 import { getPatientAppointments, getPatientTreatmentRecords } from "../../shared/supabaseApi";
 
-export default function DashboardView({ user, setView }: { user: PatientUser; setView: (v: View) => void }) {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function DashboardView({ 
+  user, 
+  setView,
+  appointments: globalAppointments
+}: { 
+  user: PatientUser; 
+  setView: (v: View) => void;
+  appointments?: Appointment[];
+}) {
+  const [appointments, setAppointments] = useState<Appointment[]>(globalAppointments?.filter(a => a.patientId === user.patientId) || []);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (globalAppointments) {
+      setAppointments(globalAppointments.filter(a => a.patientId === user.patientId));
+    }
+  }, [globalAppointments, user.patientId]);
+
+  useEffect(() => {
     if (!user.patientId) return;
     Promise.all([
-      getPatientAppointments(user.patientId).then(data => setAppointments(data)),
+      !globalAppointments ? getPatientAppointments(user.patientId).then(data => setAppointments(data)) : Promise.resolve(),
       getPatientTreatmentRecords(user.patientId).then(data => setHistory(data))
     ]).catch(console.error).finally(() => setLoading(false));
-  }, [user]);
+  }, [user, globalAppointments]);
 
   const upcoming = appointments.find(a => a.status !== "เสร็จสิ้น" && (a.status as any) !== "เสร็จเรียบร้อย");
   return (

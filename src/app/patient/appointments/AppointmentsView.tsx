@@ -9,26 +9,37 @@ const thDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
 };
 
-export default function AppointmentsView({
-  user,
+export default function AppointmentsView({ 
+  user, 
   setView,
+  appointments: globalAppointments,
   onBookFollowUp
-}: {
-  user: PatientUser;
+}: { 
+  user: PatientUser; 
   setView: (v: View) => void;
+  appointments?: Appointment[];
   onBookFollowUp?: (serviceId: number, doctorId: number) => void;
 }) {
-  const [appts, setAppts] = useState<Appointment[]>([]);
+  const [appts, setAppts] = useState<Appointment[]>(globalAppointments?.filter(a => a.patientId === user.patientId) || []);
   const [loading, setLoading] = useState(true);
   const [cancelId, setCancelId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!user.patientId) return; // Wait until we have the ID
-    getPatientAppointments(user.patientId)
-      .then(data => setAppts(data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [user]);
+    if (globalAppointments) {
+      setAppts(globalAppointments.filter(a => a.patientId === user.patientId));
+      setLoading(false);
+    }
+  }, [globalAppointments, user.patientId]);
+
+  useEffect(() => {
+    if (!globalAppointments) {
+      if (!user.patientId) return; // Wait until we have the ID
+      getPatientAppointments(user.patientId)
+        .then(data => setAppts(data))
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [user, globalAppointments]);
 
   const doCancel = async (id: number) => {
     try {

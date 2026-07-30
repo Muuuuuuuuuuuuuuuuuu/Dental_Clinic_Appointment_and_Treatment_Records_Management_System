@@ -73,7 +73,7 @@ export default function PatientPortal() {
       setClinicStatus(getClinicStatus(new Date(), closures, offDays, settings, dh));
     }).catch(console.error);
 
-    const channel = supabase.channel('public:appointment')
+    const channel = supabase.channel('public:appointments')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment' }, () => {
         getAppointments().then(setSharedAppointments).catch(console.error);
       })
@@ -169,7 +169,7 @@ export default function PatientPortal() {
 
   // ─── Route to staff/doctor/admin portals ──────────────────────────────────
   if (role === "doctor") {
-    return <DoctorPortal onLogout={handleLogout} loginEmail={loginEmail} />;
+    return <DoctorPortal appointments={sharedAppointments} onLogout={handleLogout} loginEmail={loginEmail} />;
   }
   if (role === "admin") {
     return <AdminPortal appointments={sharedAppointments} onLogout={handleLogout} loginEmail={loginEmail} />;
@@ -191,7 +191,7 @@ export default function PatientPortal() {
         onLogout={handleLogout}
         onMainSite={() => setView("landing")}
       >
-        {view === "dashboard"    && <DashboardView user={user} setView={v => { setPortalView(v); setView(v); }} />}
+        {view === "dashboard"    && <DashboardView user={user} setView={v => { setPortalView(v); setView(v); }} appointments={sharedAppointments} />}
         {view === "profile"      && <ProfileView user={user} setUser={setUser} />}
         {view === "booking"      && (
           <BookingView 
@@ -206,6 +206,7 @@ export default function PatientPortal() {
           <AppointmentsView 
             user={user}
             setView={v => { setPortalView(v); setView(v); }}
+            appointments={sharedAppointments}
             onBookFollowUp={(serviceId, doctorId) => {
               setFollowUpProps({ service: serviceId, doctor: doctorId });
               setPortalView("booking");
