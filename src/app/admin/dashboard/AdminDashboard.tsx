@@ -147,7 +147,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         ].map(s => (
           <div key={s.label} className="rounded-2xl bg-white p-4 cursor-pointer hover:shadow-md transition-shadow"
             style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
-            onClick={() => s.label.includes("การลา") ? setView("leaves") : undefined}>
+            onClick={() => s.label.includes("การลา") ? setView("schedule-hub") : undefined}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: s.bg }}>
               <s.icon size={18} style={{ color: s.ic }} />
             </div>

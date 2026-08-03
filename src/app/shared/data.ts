@@ -253,7 +253,7 @@ export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: stri
   "เลื่อนนัด": { bg: "#F3F4F6", text: "#4B5563", dot: "#6B7280" },
 };
 
-export type AdminView = "dashboard" | "dentists" | "staff" | "services" | "schedule" | "leaves" | "announcements";
+export type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub";
 export type DoctorView = "dashboard" | "queue" | "patients" | "schedule" | "leaves" | "announcements";
 export type DocView = "dashboard" | "queue" | "records" | "history" | "calendar" | "profile" | "announcements";
 export type StaffView = "queue" | "appointments" | "patients" | "walkin" | "payment" | "leave" | "announcements";

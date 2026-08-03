@@ -1,21 +1,12 @@
 import { useState, useEffect } from "react";
-import LeaveApprovals from "./leave/LeaveApprovals";
-import ScheduleManagement from "./schedule/ScheduleManagement";
-import ServiceManagement from "./settings/ServiceManagement";
-import ClinicSettingsManagement from "./settings/ClinicSettingsManagement";
-import StaffManagement from "./users/StaffManagement";
-import DentistManagement from "./users/DentistManagement";
-import PatientManagement from "./users/PatientManagement";
 import AdminDashboard from "./dashboard/AdminDashboard";
-import AnnouncementManagement from "./announcements/AnnouncementManagement";
-import PromotionManagement from "./announcements/PromotionManagement";
-import AdminManagement from "./users/AdminManagement";
-import AccountSettings from "./profile/AccountSettings";
+import ScheduleHub from "./hubs/ScheduleHub";
+import ClinicHub from "./hubs/ClinicHub";
+import UsersHub from "./hubs/UsersHub";
+import SettingsHub from "./hubs/SettingsHub";
 
 import {
-  Home, Calendar, Users, FileText, LogOut, Smile, Settings,
-  Plus, Edit3, Trash2, CheckCircle, X, Menu, BarChart3,
-  TrendingUp, UserCheck, Clock, AlertCircle, Check, Megaphone, Percent, Shield, Lock, ChevronDown, ChevronRight
+  Home, LogOut, Smile, Menu, Calendar, Clipboard, Users, Settings, Bell
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -25,7 +16,7 @@ import {
   Appointment, AppointmentStatus, DentistInfo, StaffInfo, ServiceInfo,
   LeaveRequest, STATUS_COLORS, getClinicStatus, ClinicStatus,
 } from "../shared/data";
-import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
+import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours, getLeaveRequests } from "../shared/supabaseApi";
 
 function AdminStatusBanner() {
   const [s, setS] = useState<ClinicStatus>(getClinicStatus());
@@ -47,51 +38,21 @@ function AdminStatusBanner() {
   );
 }
 
-type AdminView = "dashboard" | "admins" | "dentists" | "staff" | "patients" | "services" | "schedule" | "leaves" | "announcements" | "promotions" | "settings" | "account";
+type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub";
 
-const ADMIN_NAV_MAIN = [
-  { key: "dashboard" as AdminView, label: "แดชบอร์ด",         icon: Home },
-  { key: "schedule"  as AdminView, label: "จัดการตารางเวร",  icon: Calendar },
-  { key: "leaves"    as AdminView, label: "อนุมัติการลา",     icon: FileText },
-  { key: "services"  as AdminView, label: "จัดการบริการ",     icon: Settings },
-  { key: "announcements" as AdminView, label: "จัดการประกาศ", icon: Megaphone },
-  { key: "promotions" as AdminView, label: "จัดการโปรโมชั่น", icon: Percent },
-];
-
-const ADMIN_NAV_USERS = [
-  { key: "admins"    as AdminView, label: "ผู้ดูแลระบบ", icon: Shield },
-  { key: "dentists"  as AdminView, label: "ทันตแพทย์",  icon: UserCheck },
-  { key: "staff"     as AdminView, label: "พนักงาน",    icon: Users },
-  { key: "patients"  as AdminView, label: "คนไข้",      icon: Smile },
-];
-
-const ADMIN_NAV_SETTINGS = [
-  { key: "settings"  as AdminView, label: "ตั้งค่าคลินิก",     icon: Clock },
-  { key: "account"   as AdminView, label: "ตั้งค่าบัญชี", icon: Lock },
-];
-
-const CHART_DATA = [
-  { day: "จ", appts: 12, revenue: 18500 },
-  { day: "อ", appts: 8,  revenue: 12000 },
-  { day: "พ", appts: 15, revenue: 24000 },
-  { day: "พฤ", appts: 10, revenue: 15500 },
-  { day: "ศ", appts: 14, revenue: 22000 },
-  { day: "ส", appts: 6,  revenue: 9000 },
+const ADMIN_NAV: { key: AdminView; label: string; icon: any }[] = [
+  { key: "dashboard",    label: "แดชบอร์ด",           icon: Home },
+  { key: "schedule-hub", label: "ตารางเวรและการลา",    icon: Calendar },
+  { key: "clinic-hub",   label: "จัดการคลินิก",        icon: Clipboard },
+  { key: "users-hub",    label: "จัดการผู้ใช้งาน",      icon: Users },
+  { key: "settings-hub", label: "ตั้งค่า",             icon: Settings },
 ];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-function AdminSidebar({ view, setView, onLogout }: { view: AdminView; setView: (v: AdminView) => void; onLogout: () => void }) {
-  const [isUsersOpen, setIsUsersOpen] = useState(true);
-
-  const renderNav = (items: any[]) => items.map(({ key, label, icon: Icon }) => (
-    <button key={key} onClick={() => setView(key)}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left"
-      style={{ backgroundColor: view === key ? "#FF8C9A" : "transparent", color: view === key ? "white" : "rgba(255,255,255,0.65)" }}>
-      <Icon size={17} /> {label}
-    </button>
-  ));
-
+function AdminSidebar({ view, setView, onLogout, pendingLeaves }: {
+  view: AdminView; setView: (v: AdminView) => void; onLogout: () => void; pendingLeaves: number;
+}) {
   return (
     <div className="flex flex-col h-full py-6 px-4" style={{ backgroundColor: "#1A365D" }}>
       <div className="flex items-center gap-3 px-2 mb-8">
@@ -110,33 +71,26 @@ function AdminSidebar({ view, setView, onLogout }: { view: AdminView; setView: (
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>admin@clinic.com</p>
         </div>
       </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto pr-1 pb-4" style={{ scrollbarWidth: "none" }}>
-        {renderNav(ADMIN_NAV_MAIN)}
-
-        {/* Dropdown: จัดการผู้ใช้งาน */}
-        <div className="pt-2">
-           <button onClick={() => setIsUsersOpen(!isUsersOpen)} 
-             className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left hover:bg-white/5" 
-             style={{ color: isUsersOpen ? "white" : "rgba(255,255,255,0.8)" }}>
-             <div className="flex items-center gap-3">
-               <Users size={17} style={{ color: isUsersOpen ? "#FF8C9A" : "inherit" }} /> 
-               <span>จัดการผู้ใช้งาน</span>
-             </div>
-             {isUsersOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-           </button>
-           
-           <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isUsersOpen ? 'max-h-64 opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-             <div className="space-y-1 ml-4 pl-3 border-l border-white/10">
-               {renderNav(ADMIN_NAV_USERS)}
-             </div>
-           </div>
-        </div>
-
-        {/* Header: ระบบและตั้งค่า */}
-        <div className="pt-4 pb-1">
-           <span className="px-3 text-xs font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>ระบบและตั้งค่า</span>
-        </div>
-        {renderNav(ADMIN_NAV_SETTINGS)}
+      <nav className="flex-1 space-y-1.5 overflow-y-auto pr-1 pb-4" style={{ scrollbarWidth: "none" }}>
+        {ADMIN_NAV.map(({ key, label, icon: Icon }) => (
+          <button key={key} onClick={() => setView(key)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left relative"
+            style={{ backgroundColor: view === key ? "#FF8C9A" : "transparent", color: view === key ? "white" : "rgba(255,255,255,0.65)" }}>
+            <Icon size={17} />
+            <span className="flex-1">{label}</span>
+            {/* Notification badge for pending leaves */}
+            {key === "schedule-hub" && pendingLeaves > 0 && (
+              <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: view === key ? "rgba(255,255,255,0.25)" : "#EF4444",
+                  color: "white",
+                }}>
+                <Bell size={9} />
+                {pendingLeaves}
+              </span>
+            )}
+          </button>
+        ))}
       </nav>
       <div className="mt-4 pt-4 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-red-500/10 transition-colors" style={{ color: "rgba(255,140,154,0.8)" }}>
@@ -147,10 +101,6 @@ function AdminSidebar({ view, setView, onLogout }: { view: AdminView; setView: (
   );
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
-
-
-
 // ─── Generic CRUD Table helper ────────────────────────────────────────────────
 
 function Badge({ label, active }: { label: string; active: boolean }) {
@@ -160,26 +110,6 @@ function Badge({ label, active }: { label: string; active: boolean }) {
     </span>
   );
 }
-
-// ─── Dentist Management ───────────────────────────────────────────────────────
-
-
-
-// ─── Staff Management ─────────────────────────────────────────────────────────
-
-
-
-// ─── Service Management ───────────────────────────────────────────────────────
-
-
-
-// ─── Schedule Management ──────────────────────────────────────────────────────
-
-
-
-// ─── Leave Approvals ──────────────────────────────────────────────────────────
-
-
 
 // ─── Admin Portal Root ────────────────────────────────────────────────────────
 
@@ -192,17 +122,25 @@ export default function AdminPortal({
 }) {
   const [view, setView] = useState<AdminView>("dashboard");
   const [sideOpen, setSideOpen] = useState(false);
+  const [pendingLeaves, setPendingLeaves] = useState(0);
+
+  // Fetch pending leave count for badge
+  useEffect(() => {
+    getLeaveRequests()
+      .then(leaves => setPendingLeaves(leaves.filter(l => l.status === "รอการอนุมัติ").length))
+      .catch(console.error);
+  }, []);
 
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "Prompt, sans-serif", backgroundColor: "#F0F4F8" }}>
       {sideOpen && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setSideOpen(false)} />}
 
       <aside className="fixed top-0 left-0 h-full z-40 hidden lg:block" style={{ width: 250 }}>
-        <AdminSidebar view={view} setView={setView} onLogout={onLogout} />
+        <AdminSidebar view={view} setView={setView} onLogout={onLogout} pendingLeaves={pendingLeaves} />
       </aside>
       {sideOpen && (
         <aside className="fixed top-0 left-0 h-full z-40" style={{ width: 250 }}>
-          <AdminSidebar view={view} setView={v => { setView(v); setSideOpen(false); }} onLogout={onLogout} />
+          <AdminSidebar view={view} setView={v => { setView(v); setSideOpen(false); }} onLogout={onLogout} pendingLeaves={pendingLeaves} />
         </aside>
       )}
 
@@ -214,18 +152,11 @@ export default function AdminPortal({
         </div>
         <AdminStatusBanner />
         <main className="flex-1 p-5 lg:p-8">
-          {view === "dashboard" && <AdminDashboard setView={setView} />}
-          {view === "admins"    && <AdminManagement />}
-          {view === "dentists"  && <DentistManagement />}
-          {view === "staff"     && <StaffManagement />}
-          {view === "patients"  && <PatientManagement />}
-          {view === "services"  && <ServiceManagement />}
-          {view === "schedule"  && <ScheduleManagement />}
-          {view === "leaves"    && <LeaveApprovals />}
-          {view === "announcements" && <AnnouncementManagement />}
-          {view === "promotions" && <PromotionManagement />}
-          {view === "settings"  && <ClinicSettingsManagement />}
-          {view === "account"   && <AccountSettings />}
+          {view === "dashboard"    && <AdminDashboard setView={setView} />}
+          {view === "schedule-hub" && <ScheduleHub />}
+          {view === "clinic-hub"   && <ClinicHub />}
+          {view === "users-hub"    && <UsersHub />}
+          {view === "settings-hub" && <SettingsHub />}
         </main>
       </div>
     </div>
