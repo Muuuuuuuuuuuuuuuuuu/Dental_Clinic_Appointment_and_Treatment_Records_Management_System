@@ -4,8 +4,8 @@ import {
   Clock, ChevronLeft, ChevronRight, CalendarDays, CalendarRange, Calendar as CalendarIcon, UserCheck
 } from "lucide-react";
 
-import { Appointment, SpecialClosure, STATUS_COLORS, StaffView } from "../../shared/data";
-import { getAppointments, getClinicClosures, updateAppointmentStatus } from "../../shared/supabaseApi";
+import { Appointment, SpecialClosure, STATUS_COLORS, StaffView, LeaveRequest, Shift } from "../../shared/data";
+import { getAppointments, getClinicClosures, updateAppointmentStatus, getDentists, getLeaveRequests, getShifts } from "../../shared/supabaseApi";
 
 type ViewMode = "daily" | "weekly" | "monthly";
 
@@ -263,12 +263,15 @@ function ViewToggle({ mode, setMode }: { mode: ViewMode; setMode: (m: ViewMode) 
 
 // ─── Daily View ───────────────────────────────────────────────────────────────
 function DailyView({
-  selectedDate, setSelectedDate, appointments, closures, setView, onUpdateAppt
+  selectedDate, setSelectedDate, appointments, closures, dentists, leaves, shifts, setView, onUpdateAppt
 }: {
   selectedDate: Date;
   setSelectedDate: (d: Date) => void;
   appointments: Appointment[];
   closures: SpecialClosure[];
+  dentists: any[];
+  leaves: LeaveRequest[];
+  shifts: Shift[];
   setView: (v: StaffView) => void;
   onUpdateAppt: (id: number, s: Partial<Appointment>) => void;
 }) {
@@ -351,30 +354,59 @@ function DailyView({
 
       {/* Doctors on Duty */}
       {!closure && (
-        <div className="mb-5 flex items-center gap-3 bg-white p-3 rounded-2xl border border-gray-100" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.04)" }}>
-          <div className="text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0" style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}>
-            ทันตแพทย์ที่เข้าเวร:
+        <div className="mb-5 flex flex-col gap-3 bg-white p-4 rounded-2xl border border-gray-100" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.04)" }}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm" style={{ color: "#1A365D" }}>แพทย์ออกตรวจวันนี้</h3>
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar flex-1 pb-1">
-            {Array.from(new Set(dayAppts.map(a => a.doctorName).filter(Boolean))).length > 0 ? (
-              Array.from(new Set(dayAppts.map(a => a.doctorName).filter(Boolean))).map((doc, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full border border-gray-100 whitespace-nowrap">
-                  <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                    {doc.charAt(0)}
+          
+          <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-2">
+            {dentists.map((doc, idx) => {
+              // Extract just the first name if formatted with title
+              const docNameStr = doc.name.split(" ")[1] || doc.name;
+              const isOnLeave = leaves.some(l => l.doctorId === doc.userId && l.startDate === dateStr && l.status === "อนุมัติแล้ว");
+              const docAppts = dayAppts.filter(a => (a.doctorName || "").includes(docNameStr));
+              
+              // Check shift schedule
+              const shift = shifts.find(s => s.person_type === 'dentist' && s.person_id === doc.id && s.day_of_week === selectedDate.getDay());
+              
+              const isWorking = (shift && !shift.is_off && !isOnLeave) || docAppts.length > 0;
+              const isOff = !isWorking && !isOnLeave;
+              
+              let bg = "#F8F9FA", text = "#94A3B8", border = "#E2E8F0";
+              if (isWorking) { bg = "#E8F4FF"; text = "#1D6FA4"; border = "#BAE6FD"; }
+              else if (isOnLeave) { bg = "#FFF1F2"; text = "#E11D48"; border = "#FECDD3"; }
+              
+              return (
+                <div key={idx} className="flex flex-col items-center min-w-[100px] p-2 rounded-xl border flex-shrink-0" style={{ backgroundColor: bg, borderColor: border }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold mb-2 shadow-sm bg-white" style={{ color: text }}>
+                    {docNameStr.charAt(0)}
                   </div>
-                  <span className="text-xs font-medium" style={{ color: "#1A365D" }}>ทพ. {doc}</span>
+                  <span className="text-xs font-bold whitespace-nowrap mb-0.5" style={{ color: text }}>{docNameStr}</span>
+                  <span className="text-[10px] font-medium" style={{ color: text, opacity: 0.8 }}>
+                    {isWorking ? `มี ${docAppts.length} คิว` : isOnLeave ? "ลาพัก" : "ไม่มีเวร"}
+                  </span>
                 </div>
-              ))
-            ) : (
-              <span className="text-xs" style={{ color: "#94A3B8" }}>ยังไม่มีข้อมูลทันตแพทย์</span>
-            )}
+              );
+            })}
           </div>
         </div>
       )}
 
       {/* Content based on isToday */}
       {isToday && !closure ? (
-        <TodayKanbanBoard appts={dayAppts} onUpdate={onUpdateAppt} setView={setView} />
+        <>
+          <TodayKanbanBoard appts={dayAppts} onUpdate={onUpdateAppt} setView={setView} />
+          
+          <div className="mt-8 mb-3">
+            <h3 className="font-bold text-sm" style={{ color: "#1A365D" }}>
+              รายการนัดหมายทั้งหมดของวันนี้ • {dayAppts.length} ราย
+            </h3>
+            <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>
+              (รวมคิวที่เสร็จสิ้นและชำระเงินแล้ว)
+            </p>
+          </div>
+          <AppointmentList appts={dayAppts} />
+        </>
       ) : (
         <>
           {/* Stat Cards */}
@@ -647,6 +679,9 @@ export default function QueueBoard({
 }) {
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
+  const [dentists, setDentists] = useState<any[]>([]);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("daily");
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -659,9 +694,17 @@ export default function QueueBoard({
   }, [initialAppointments]);
 
   useEffect(() => {
-    getClinicClosures()
-      .then(cls => {
+    Promise.all([
+      getClinicClosures(),
+      getDentists(),
+      getLeaveRequests(),
+      getShifts()
+    ])
+      .then(([cls, dents, lvs, shfts]) => {
         setClosures(cls);
+        setDentists(dents);
+        setLeaves(lvs);
+        setShifts(shfts);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -709,6 +752,9 @@ export default function QueueBoard({
           setSelectedDate={setSelectedDate}
           appointments={appointments}
           closures={closures}
+          dentists={dentists}
+          leaves={leaves}
+          shifts={shifts}
           setView={setView}
           onUpdateAppt={handleUpdateAppt}
         />
