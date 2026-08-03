@@ -59,7 +59,7 @@ export default function LoginPage({
 
       const role = userData.role;
 
-      if (role === "patient") {
+      if (role === "patient" || role === "คนไข้") {
         const profile = await loginPatient(email, pass) as any;
         onLogin({
           patientId: profile.patientId,
@@ -77,9 +77,9 @@ export default function LoginPage({
         });
       } else {
         let mappedRole: UserRole = "patient";
-        if (role === "admin") mappedRole = "admin";
-        else if (role === "dentist" || role === "doctor") mappedRole = "doctor";
-        else if (role === "staff") mappedRole = "staff";
+        if (role === "admin" || role === "ผู้ดูแลระบบ") mappedRole = "admin";
+        else if (role === "dentist" || role === "doctor" || role === "ทันตแพทย์") mappedRole = "doctor";
+        else if (role === "staff" || role === "พนักงาน") mappedRole = "staff";
         
         onLoginRole(mappedRole, email);
       }
