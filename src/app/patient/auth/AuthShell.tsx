@@ -68,7 +68,7 @@ export default function AuthShell({ children, title, sub }: { children: React.Re
 
       {/* Right panel - form */}
       <div className="flex-1 flex items-center justify-center bg-white px-6 py-12 overflow-y-auto">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-xl">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
@@ -77,8 +77,8 @@ export default function AuthShell({ children, title, sub }: { children: React.Re
             <span className="font-bold text-base" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>คลินิกสุภัทร</span>
           </div>
 
-          <h1 className="text-3xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>{title}</h1>
-          <p className="text-sm mb-8" style={{ color: "#4A6080" }}>{sub}</p>
+          <h1 className="text-4xl font-bold mb-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>{title}</h1>
+          <p className="text-base mb-10" style={{ color: "#4A6080" }}>{sub}</p>
           {children}
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Lock, Eye, EyeOff, AlertCircle, ChevronLeft, RefreshCw, UserPlus } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ChevronLeft, RefreshCw, UserPlus, ChevronDown, ChevronUp } from "lucide-react";
 import AuthShell, { Field } from "./AuthShell";
 import { UserRole, PatientUser, ROLE_TABS, inputCls, inputStyle } from "../types";
 import { loginPatient, supabase } from "../../shared/supabaseApi";
@@ -13,26 +13,20 @@ export default function LoginPage({
   onForgotPassword: () => void;
   onBack: () => void;
 }) {
-  const [activeRole, setActiveRole] = useState<UserRole>("patient");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showDemos, setShowDemos] = useState(false);
 
-  const currentTab = ROLE_TABS.find(t => t.key === activeRole)!;
+  // Combine all demos from all roles
+  const allDemos = ROLE_TABS.flatMap(tab => tab.demos.map(demo => ({ ...demo, roleLabel: tab.label })));
 
   const fillDemo = (demo: {label: string, email: string, pass: string}) => {
     setEmail(demo.email);
     setPass(demo.pass);
-    setError("");
-  };
-
-  const switchRole = (role: UserRole) => {
-    setActiveRole(role);
-    setEmail("");
-    setPass("");
     setError("");
   };
 
@@ -42,7 +36,6 @@ export default function LoginPage({
     if (!email || !pass) { setError("กรุณากรอกอีเมลและรหัสผ่าน"); return; }
     setLoading(true);
 
-    // 1. ลอง Login กับ Database
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
@@ -53,9 +46,21 @@ export default function LoginPage({
         throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       }
 
-      if (activeRole === "patient") {
+      // Check role from public.users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (userError || !userData) {
+        throw new Error("ไม่พบข้อมูลสิทธิ์ผู้ใช้งาน โปรดติดต่อผู้ดูแลระบบ");
+      }
+
+      const role = userData.role;
+
+      if (role === "patient") {
         const profile = await loginPatient(email, pass) as any;
-        // แปลงกลับเป็น PatientUser format (สำหรับ UI เก่า)
         onLogin({
           patientId: profile.patientId,
           idCard: profile.idCard,
@@ -71,8 +76,12 @@ export default function LoginPage({
           allergies: profile.allergies
         });
       } else {
-        // สำหรับ Role อื่นๆ ผ่าน auth แล้ว ก็เปลี่ยนหน้าได้เลย
-        onLoginRole(activeRole, email);
+        let mappedRole: UserRole = "patient";
+        if (role === "admin") mappedRole = "admin";
+        else if (role === "dentist" || role === "doctor") mappedRole = "doctor";
+        else if (role === "staff") mappedRole = "staff";
+        
+        onLoginRole(mappedRole, email);
       }
     } catch (err: any) {
       setError(err.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
@@ -82,26 +91,7 @@ export default function LoginPage({
   };
 
   return (
-    <AuthShell title="เข้าสู่ระบบ" sub="เลือกประเภทผู้ใช้งานและกรอกข้อมูลเพื่อเข้าสู่ระบบ">
-      {/* Role tabs */}
-      <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl mb-6" style={{ backgroundColor: "#F0F4F8" }}>
-        {ROLE_TABS.map(tab => {
-          const active = tab.key === activeRole;
-          return (
-            <button key={tab.key} type="button" onClick={() => switchRole(tab.key)}
-              className="flex flex-col items-center gap-1 py-2.5 rounded-lg text-xs font-medium transition-all"
-              style={{
-                backgroundColor: active ? "white" : "transparent",
-                color: active ? "#1A365D" : "#4A6080",
-                boxShadow: active ? "0 1px 6px rgba(26,54,93,0.1)" : "none",
-              }}>
-              <tab.icon size={16} style={{ color: active ? "#FF8C9A" : "#4A6080" }} />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
+    <AuthShell title="เข้าสู่ระบบ" sub="เข้าสู่ระบบคลินิกทันตกรรมสุภัทร">
       <form onSubmit={submit} className="space-y-4">
         {error && (
           <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}>
@@ -132,11 +122,9 @@ export default function LoginPage({
               className="w-4 h-4 rounded" style={{ accentColor: "#FF8C9A" }} />
             จดจำการเข้าสู่ระบบ
           </label>
-          {activeRole === "patient" && (
-            <button type="button" onClick={onForgotPassword} className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: "#FF8C9A" }}>
-              ลืมรหัสผ่าน?
-            </button>
-          )}
+          <button type="button" onClick={onForgotPassword} className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: "#FF8C9A" }}>
+            ลืมรหัสผ่าน?
+          </button>
         </div>
 
         <button type="submit" disabled={loading}
@@ -145,35 +133,42 @@ export default function LoginPage({
           {loading ? "กำลังตรวจสอบ..." : "เข้าสู่ระบบ"}
         </button>
 
-        {/* Demo credentials hint */}
-        <div className="flex flex-col gap-2 mt-4">
-          <p className="text-xs text-center text-gray-500 mb-1">ลองใช้งานด้วยบัญชีตัวอย่าง (คลิกเพื่อกรอกอัตโนมัติ)</p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {currentTab.demos.map((demo, idx) => (
-              <button key={idx} type="button" onClick={() => fillDemo(demo)}
-                className="py-1.5 px-3 rounded-full text-xs transition-all hover:opacity-80 flex items-center gap-1.5"
-                style={{ backgroundColor: "#F0F4F8", color: "#4A6080", border: "1px solid #E2E8F0" }}>
-                <RefreshCw size={11} />
-                {demo.label}
-              </button>
-            ))}
-          </div>
+        {/* Demo credentials hint (Hidden by default for clean screenshots) */}
+        <div className="mt-6 flex flex-col items-center">
+          <button type="button" onClick={() => setShowDemos(!showDemos)}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors">
+            {showDemos ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {showDemos ? "ซ่อนบัญชีตัวอย่าง" : "แสดงบัญชีตัวอย่างสำหรับการทดสอบ"}
+          </button>
+          
+          {showDemos && (
+            <div className="w-full flex flex-col gap-2 mt-3 p-4 rounded-xl" style={{ backgroundColor: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+              <p className="text-xs text-center font-medium mb-1" style={{ color: "#1A365D" }}>คลิกเพื่อกรอกข้อมูลอัตโนมัติ</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {allDemos.map((demo, idx) => (
+                  <button key={idx} type="button" onClick={() => fillDemo(demo)}
+                    className="py-1.5 px-3 rounded-full text-[11px] font-medium transition-all hover:opacity-80 flex items-center gap-1.5 shadow-sm hover:shadow"
+                    style={{ backgroundColor: "white", color: "#4A6080", border: "1px solid #E2E8F0" }}
+                    title={`${demo.roleLabel}`}>
+                    <RefreshCw size={10} style={{ color: "#FF8C9A" }} />
+                    {demo.roleLabel}: {demo.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </form>
 
-      {activeRole === "patient" && (
-        <>
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t" style={{ borderColor: "rgba(26,54,93,0.1)" }} /></div>
-            <div className="relative flex justify-center"><span className="text-xs px-3 bg-white" style={{ color: "#4A6080" }}>ยังไม่มีบัญชี?</span></div>
-          </div>
-          <button onClick={onRegister}
-            className="w-full py-3.5 rounded-xl font-semibold transition-all hover:opacity-80"
-            style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#1A365D" }}>
-            <span className="flex items-center justify-center gap-2"><UserPlus size={16} /> สมัครสมาชิกใหม่</span>
-          </button>
-        </>
-      )}
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center"><div className="w-full border-t" style={{ borderColor: "rgba(26,54,93,0.1)" }} /></div>
+        <div className="relative flex justify-center"><span className="text-xs px-3 bg-white" style={{ color: "#4A6080" }}>ยังไม่มีบัญชี?</span></div>
+      </div>
+      <button onClick={onRegister}
+        className="w-full py-3.5 rounded-xl font-semibold transition-all hover:opacity-80"
+        style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#1A365D" }}>
+        <span className="flex items-center justify-center gap-2"><UserPlus size={16} /> สมัครสมาชิกใหม่ (สำหรับคนไข้)</span>
+      </button>
 
       <button onClick={onBack} className="flex items-center gap-1.5 text-sm mt-6 hover:opacity-70 transition-opacity mx-auto" style={{ color: "#4A6080" }}>
         <ChevronLeft size={14} /> กลับหน้าหลัก
