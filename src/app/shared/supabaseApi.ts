@@ -887,7 +887,7 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     dentist ( users ( profile (first_name, last_name) ) ),
     treatment_detail ( actual_price, diagnosis, tooth_number, service (service_name) ),
     payment (total_amount)
-  `).eq('patient_id', targetPatientId);
+  `).eq('patient_id', targetPatientId).eq('appointment.appointment_status', 'เสร็จสิ้น');
 
   if (error) return [];
 

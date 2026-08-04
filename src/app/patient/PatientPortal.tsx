@@ -32,10 +32,8 @@ import WhyUs from "./landing/WhyUs";
 import Doctors from "./landing/Doctors";
 import Promotions from "./landing/Promotions";
 import PublicAnnouncements from "./landing/PublicAnnouncements";
-import Reviews from "./landing/Reviews";
 import Contact from "./landing/Contact";
 import Footer from "./landing/Footer";
-import FloatingLine from "./landing/FloatingLine";
 
 // ─── Other portals ────────────────────────────────────────────────────────────
 import DoctorPortal from "../dentist/DentistPortal";
@@ -222,7 +220,6 @@ export default function PatientPortal() {
             onBookAppointment={() => { setPortalView("booking"); setView("booking"); }} 
           />
         )}
-        <FloatingLine />
       </PortalLayout>
     );
   }
@@ -270,11 +267,9 @@ export default function PatientPortal() {
         <Promotions onCTA={goCTA} />
         <WhyUs />
         <Doctors onCTA={goCTA} />
-        <Reviews />
         <Contact onCTA={goCTA} />
       </main>
       <Footer />
-      <FloatingLine />
     </div>
   );
 }

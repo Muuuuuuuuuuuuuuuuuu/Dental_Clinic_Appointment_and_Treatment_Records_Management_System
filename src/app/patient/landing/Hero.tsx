@@ -30,26 +30,13 @@ export default function Hero({ onCTA }: { onCTA: () => void }) {
                 ดูบริการทั้งหมด <ChevronRight size={16} />
               </a>
             </div>
-            <div className="flex flex-wrap gap-6 mt-10">
-              {[{ n: "15+", l: "ปีประสบการณ์" }, { n: "8,500+", l: "คนไข้ที่ไว้วางใจ" }, { n: "98%", l: "ความพึงพอใจ" }].map((b, i) => (
-                <div key={b.l} className="animate-fade-in-up" style={{ animationDelay: `${0.3 + i * 0.15}s` }}>
-                  <div className="text-2xl font-bold shimmer-text" style={{ fontFamily: "Playfair Display, serif", color: "#FF8C9A" }}>{b.n}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{b.l}</div>
-                </div>
-              ))}
-            </div>
+
           </div>
           <div className="relative hidden lg:block animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
             <div className="relative z-10 rounded-3xl overflow-hidden hero-img-float" style={{ aspectRatio: "4/5", boxShadow: "0 24px 80px rgba(26,54,93,0.18)" }}>
               <img src="https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=800&h=1000&fit=crop&auto=format" alt="ทันตแพทย์" className="w-full h-full object-cover" />
             </div>
-            <div className="absolute -right-4 top-12 z-20 p-4 rounded-2xl bg-white card-float" style={{ boxShadow: "0 12px 40px rgba(26,54,93,0.14)", animationDelay: "1s" }}>
-              <div className="flex items-center gap-1 mb-1">
-                {[...Array(5)].map((_, i) => <Star key={i} size={12} fill="#FBBF24" color="#FBBF24" />)}
-              </div>
-              <p className="text-lg font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>4.9 / 5.0</p>
-              <p className="text-xs" style={{ color: "#4A6080" }}>จาก 1,200+ รีวิว</p>
-            </div>
+
           </div>
         </div>
       </div>
