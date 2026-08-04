@@ -47,7 +47,7 @@ const STAFF_NAV = [
   { key: "patients" as StaffView, label: "จัดการคนไข้", icon: Users, isOperational: true },
   { key: "walkin" as StaffView, label: "จองคิว Walk-in", icon: Plus, isOperational: true },
   { key: "payment" as StaffView, label: "รับชำระเงิน", icon: CreditCard, isOperational: true },
-  { key: "leave" as StaffView, label: "ขอลางาน", icon: CalendarX, isOperational: false },
+  { key: "leave" as StaffView, label: "ปฏิทินและขอลางาน", icon: CalendarX, isOperational: false },
   { key: "announcements" as StaffView, label: "ประกาศจากคลินิก", icon: Megaphone, isOperational: false },
 ];
 
@@ -270,7 +270,7 @@ export default function StaffPortal({
   const [changeError, setChangeError] = useState("");
   
   // Staff Data
-  const [staffInfo, setStaffInfo] = useState<{name: string, role: string, initial: string} | null>(null);
+  const [staffInfo, setStaffInfo] = useState<any | null>(null);
 
   useEffect(() => {
     if (loginEmail) {
@@ -278,11 +278,7 @@ export default function StaffPortal({
         getStaff().then(staffList => {
           const matched = staffList.find(s => s.email === loginEmail);
           if (matched) {
-            setStaffInfo({
-              name: matched.name,
-              role: matched.role,
-              initial: matched.name.charAt(0)
-            });
+            setStaffInfo(matched);
           }
         }).catch(console.error);
       });
@@ -328,11 +324,11 @@ export default function StaffPortal({
       {sideOpen && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setSideOpen(false)} />}
 
       <aside className="fixed top-0 left-0 h-full z-40 hidden lg:block" style={{ width: 250 }}>
-        <StaffSidebar view={view} setView={setView} onLogout={onLogout} isClockedIn={isClockedIn} staffName={staffInfo?.name} staffRole={staffInfo?.role} staffInitial={staffInfo?.initial} onChangePassword={() => setShowPasswordModal(true)} />
+        <StaffSidebar view={view} setView={setView} onLogout={onLogout} isClockedIn={isClockedIn} staffName={staffInfo?.name} staffRole={staffInfo?.role} staffInitial={staffInfo?.name?.charAt(0)} onChangePassword={() => setShowPasswordModal(true)} />
       </aside>
       {sideOpen && (
         <aside className="fixed top-0 left-0 h-full z-40" style={{ width: 250 }}>
-          <StaffSidebar view={view} setView={v => { setView(v); setSideOpen(false); }} onLogout={onLogout} isClockedIn={isClockedIn} staffName={staffInfo?.name} staffRole={staffInfo?.role} staffInitial={staffInfo?.initial} onChangePassword={() => setShowPasswordModal(true)} />
+          <StaffSidebar view={view} setView={v => { setView(v); setSideOpen(false); }} onLogout={onLogout} isClockedIn={isClockedIn} staffName={staffInfo?.name} staffRole={staffInfo?.role} staffInitial={staffInfo?.name?.charAt(0)} onChangePassword={() => setShowPasswordModal(true)} />
         </aside>
       )}
 
@@ -364,7 +360,7 @@ export default function StaffPortal({
               {view === "patients" && <PatientManagementView />}
               {view === "walkin" && <WalkInBooking onAddAppt={onAddAppt} />}
               {view === "payment" && <PaymentView appointments={appointments} onUpdateAppt={onUpdateAppt} />}
-              {view === "leave" && <StaffLeaveView />}
+              {view === "leave" && <StaffLeaveView staff={staffInfo} />}
               {view === "announcements" && <AnnouncementView role="staff" />}
             </>
           )}
