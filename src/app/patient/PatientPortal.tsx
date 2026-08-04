@@ -61,7 +61,7 @@ export default function PatientPortal() {
   const [sharedAppointments, setSharedAppointments] = useState<Appointment[]>([]);
   const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number} | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
-  const [clinicStatus, setClinicStatus] = useState<ClinicStatus>(getClinicStatus());
+  const [clinicStatus, setClinicStatus] = useState<ClinicStatus | null>(null);
 
   useEffect(() => {
     getAppointments().then(setSharedAppointments).catch(console.error);
@@ -235,7 +235,7 @@ export default function PatientPortal() {
   return (
     <div className="min-h-screen" style={{ fontFamily: "Prompt, sans-serif", scrollBehavior: "smooth" }}>
       {/* Special closure / status announcement bar */}
-      {clinicStatus.type !== "open" && (
+      {clinicStatus && clinicStatus.type !== "open" && (
         <div className="w-full text-center py-2.5 px-4 text-sm font-medium flex items-center justify-center gap-2 z-50 relative"
           style={{
             backgroundColor: clinicStatus.type === "special" ? "#FFF3E0" : "#F1F5F9",

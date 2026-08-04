@@ -3,13 +3,15 @@ import { ClinicStatus, getClinicStatus } from "../../shared/data";
 import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../../shared/supabaseApi";
 
 export default function ClinicStatusBadge({ compact = false }: { compact?: boolean }) {
-  const [s, setS] = useState<ClinicStatus>(getClinicStatus());
+  const [s, setS] = useState<ClinicStatus | null>(null);
 
   useEffect(() => {
     Promise.all([getWeeklyOffDays(), getClinicClosures(), getClinicSettings(), getDailyHours()]).then(([offDays, closures, settings, dh]) => {
       setS(getClinicStatus(new Date(), closures, offDays, settings, dh));
     }).catch(console.error);
   }, []);
+
+  if (!s) return null;
 
   const isOpen = s.type === "open";
   const isSpecial = s.type === "special";
@@ -33,7 +35,7 @@ export default function ClinicStatusBadge({ compact = false }: { compact?: boole
 }
 
 export function ClinicStatusCard() {
-  const [s, setS] = useState<ClinicStatus>(getClinicStatus());
+  const [s, setS] = useState<ClinicStatus | null>(null);
 
   useEffect(() => {
     Promise.all([getWeeklyOffDays(), getClinicClosures(), getClinicSettings(), getDailyHours()]).then(([offDays, closures, settings, dh]) => {
@@ -41,7 +43,7 @@ export function ClinicStatusCard() {
     }).catch(console.error);
   }, []);
 
-  if (s.type === "open") return null;
+  if (!s || s.type === "open") return null;
   return (
     <div className="rounded-2xl p-4 flex items-start gap-3 mb-6"
       style={{ backgroundColor: s.type === "special" ? "#FFF3E0" : "#F1F5F9", border: `1px solid ${s.type === "special" ? "#FED7AA" : "#E2E8F0"}` }}>

@@ -22,13 +22,13 @@ import {
 import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
 
 function StaffStatusBanner() {
-  const [s, setS] = useState<ClinicStatus>(getClinicStatus());
+  const [s, setS] = useState<ClinicStatus | null>(null);
   useEffect(() => {
     Promise.all([getWeeklyOffDays(), getClinicClosures(), getClinicSettings(), getDailyHours()]).then(([offDays, closures, settings, dh]) => {
       setS(getClinicStatus(new Date(), closures, offDays, settings, dh));
     }).catch(console.error);
   }, []);
-  if (s.type === "open") return null;
+  if (!s || s.type === "open") return null;
   return (
     <div className="px-5 lg:px-8 pt-4">
       <div className="rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-sm"

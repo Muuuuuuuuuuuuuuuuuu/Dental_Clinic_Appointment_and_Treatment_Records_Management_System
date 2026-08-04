@@ -192,29 +192,29 @@ export default function PaymentView() {
         ) : (
           <div className="flex flex-col h-full max-w-2xl mx-auto w-full">
             {/* Header */}
-            <div className="flex justify-between items-start mb-8 pb-6" style={{ borderBottom: "1px dashed rgba(26,54,93,0.1)" }}>
+            <div className="flex justify-between items-start mb-4 pb-3" style={{ borderBottom: "1px dashed rgba(26,54,93,0.1)" }}>
               <div>
-                <h2 className="text-2xl font-bold mb-1" style={{ color: "#1A365D" }}>{selectedAppt.patientName}</h2>
-                <p className="text-sm" style={{ color: "#4A6080" }}>HN: {selectedAppt.hn || "HN-XXXX"}</p>
+                <h2 className="text-xl font-bold mb-1" style={{ color: "#1A365D" }}>{selectedAppt.patientName}</h2>
+                <p className="text-xs" style={{ color: "#4A6080" }}>HN: {selectedAppt.hn || "HN-XXXX"}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs font-semibold px-3 py-1 rounded-full bg-orange-100 text-orange-700 inline-block mb-2">สถานะ: รอชำระเงิน</p>
-                <p className="text-sm font-medium" style={{ color: "#1A365D" }}>ทันตแพทย์: ทพ. {selectedAppt.doctorName}</p>
+                <p className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 inline-block mb-1">สถานะ: รอชำระเงิน</p>
+                <p className="text-xs font-medium" style={{ color: "#1A365D" }}>ทันตแพทย์: ทพ. {selectedAppt.doctorName}</p>
               </div>
             </div>
 
             {/* Treatment Summary */}
-            <div className="mb-8">
-              <h3 className="text-sm font-bold mb-3" style={{ color: "#4A6080" }}>รายการรักษา</h3>
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <p className="font-semibold text-base mb-1" style={{ color: "#1A365D" }}>{selectedAppt.service}</p>
+            <div className="mb-4">
+              <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>รายการรักษา</h3>
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                <p className="font-semibold text-sm mb-1" style={{ color: "#1A365D" }}>{selectedAppt.service}</p>
                 {selectedAppt.treatmentNotes && (
-                  <p className="text-sm mb-3" style={{ color: "#4A6080" }}>Note: {selectedAppt.treatmentNotes}</p>
+                  <p className="text-xs mb-2" style={{ color: "#4A6080" }}>Note: {selectedAppt.treatmentNotes}</p>
                 )}
                 {selectedAppt.treatmentServices && selectedAppt.treatmentServices.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="flex flex-wrap gap-1.5 mt-1">
                     {selectedAppt.treatmentServices.map(s => (
-                      <span key={s} className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: "white", color: "#1D6FA4", border: "1px solid #E8F4FF" }}>
+                      <span key={s} className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "white", color: "#1D6FA4", border: "1px solid #E8F4FF" }}>
                         {s}
                       </span>
                     ))}
@@ -224,47 +224,47 @@ export default function PaymentView() {
             </div>
 
             {/* Billing Calculator */}
-            <div className="mb-8 space-y-4">
-              <h3 className="text-sm font-bold mb-2" style={{ color: "#4A6080" }}>สรุปยอดค่าใช้จ่าย</h3>
+            <div className="mb-4 space-y-2">
+              <h3 className="text-xs font-bold mb-1" style={{ color: "#4A6080" }}>สรุปยอดค่าใช้จ่าย</h3>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium" style={{ color: "#1A365D" }}>ค่ารักษา (Base Cost)</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold" style={{ color: "#4A6080" }}>฿</span>
+                <span className="text-xs font-medium" style={{ color: "#1A365D" }}>ค่ารักษา (Base Cost)</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold" style={{ color: "#4A6080" }}>฿</span>
                   <input
                     type="number"
                     value={baseCost}
                     onChange={e => setBaseCost(e.target.value)}
                     placeholder="0"
-                    className="w-32 px-3 py-2 rounded-lg text-right font-bold outline-none border border-gray-200 focus:border-blue-500 transition-colors"
+                    className="w-28 px-2 py-1.5 rounded-lg text-right text-sm font-bold outline-none border border-gray-200 focus:border-blue-500 transition-colors"
                   />
                 </div>
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-red-500">ส่วนลด (Discount)</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-red-500">- ฿</span>
+                <span className="text-xs font-medium text-red-500">ส่วนลด (Discount)</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-red-500">- ฿</span>
                   <input
                     type="number"
                     value={discount}
                     onChange={e => setDiscount(e.target.value)}
                     placeholder="0"
-                    className="w-32 px-3 py-2 rounded-lg text-right font-bold text-red-500 outline-none border border-red-100 bg-red-50 focus:border-red-400 transition-colors"
+                    className="w-28 px-2 py-1.5 rounded-lg text-right text-sm font-bold text-red-500 outline-none border border-red-100 bg-red-50 focus:border-red-400 transition-colors"
                   />
                 </div>
               </div>
               
-              <div className="pt-4 flex items-center justify-between" style={{ borderTop: "2px dashed rgba(26,54,93,0.1)" }}>
-                <span className="text-lg font-bold" style={{ color: "#1A365D" }}>ยอดชำระสุทธิ (Net Total)</span>
-                <span className="text-3xl font-black" style={{ color: "#1B7A3E" }}>฿{netTotal.toLocaleString()}</span>
+              <div className="pt-2 flex items-center justify-between" style={{ borderTop: "1px dashed rgba(26,54,93,0.1)" }}>
+                <span className="text-sm font-bold" style={{ color: "#1A365D" }}>ยอดชำระสุทธิ (Net Total)</span>
+                <span className="text-2xl font-black" style={{ color: "#1B7A3E" }}>฿{netTotal.toLocaleString()}</span>
               </div>
             </div>
 
             {/* Payment Methods */}
             <div className="mb-auto">
-              <h3 className="text-sm font-bold mb-3" style={{ color: "#4A6080" }}>ช่องทางการชำระเงิน</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>ช่องทางการชำระเงิน</h3>
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: "เงินสด", icon: Banknote, label: "เงินสด", bg: "#F0Fdf4", border: "#bbf7d0", color: "#166534" },
                   { id: "โอนเงิน", icon: Smartphone, label: "โอนเงิน / PromptPay", bg: "#eff6ff", border: "#bfdbfe", color: "#1e3a8a" },
@@ -275,14 +275,14 @@ export default function PaymentView() {
                     <button
                       key={method.id}
                       onClick={() => setPaymentMethod(method.id)}
-                      className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${isSelected ? 'shadow-md scale-105' : 'hover:bg-gray-50'}`}
+                      className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all ${isSelected ? 'shadow-sm scale-105' : 'hover:bg-gray-50'}`}
                       style={{ 
                         borderColor: isSelected ? method.color : "transparent",
                         backgroundColor: isSelected ? method.bg : "#F8FAFC"
                       }}
                     >
-                      <method.icon size={24} className="mb-2" style={{ color: isSelected ? method.color : "#94A3B8" }} />
-                      <span className="text-sm font-semibold" style={{ color: isSelected ? method.color : "#64748B" }}>{method.label}</span>
+                      <method.icon size={20} className="mb-1" style={{ color: isSelected ? method.color : "#94A3B8" }} />
+                      <span className="text-xs font-semibold" style={{ color: isSelected ? method.color : "#64748B" }}>{method.label}</span>
                     </button>
                   );
                 })}
@@ -290,19 +290,19 @@ export default function PaymentView() {
             </div>
 
             {/* Action Buttons */}
-            <div className="mt-8 flex gap-4">
+            <div className="mt-4 flex gap-3">
               <button
                 onClick={() => setSelectedApptId(null)}
-                className="flex-1 py-4 rounded-2xl font-bold transition-all hover:bg-gray-100"
+                className="flex-1 py-3 rounded-xl text-sm font-bold transition-all hover:bg-gray-100"
                 style={{ color: "#4A6080" }}>
                 ยกเลิก
               </button>
               <button
                 onClick={processPayment}
                 disabled={netTotal < 0}
-                className="flex-[2] py-4 rounded-2xl font-bold text-white text-lg transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-[2] py-3 rounded-xl font-bold text-white text-base transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: "linear-gradient(135deg,#22C55E,#16A34A)" }}>
-                <CheckCircle size={20} /> รับชำระเงิน ฿{netTotal.toLocaleString()}
+                <CheckCircle size={18} /> รับชำระเงิน ฿{netTotal.toLocaleString()}
               </button>
             </div>
           </div>
