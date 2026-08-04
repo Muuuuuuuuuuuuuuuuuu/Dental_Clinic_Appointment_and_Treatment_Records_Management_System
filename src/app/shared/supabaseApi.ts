@@ -6,6 +6,23 @@ import { RegForm } from '../patient/types';
 import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan } from './data';
 
 // ============================================================================
+// REALTIME HELPERS
+// ============================================================================
+export function notifyAppointmentsUpdated() {
+  const channel = supabase.channel('icemu-updates');
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      channel.send({
+        type: 'broadcast',
+        event: 'appointments-updated',
+        payload: { timestamp: Date.now() },
+      });
+      setTimeout(() => supabase.removeChannel(channel), 1000);
+    }
+  });
+}
+
+// ============================================================================
 // ADAPTER: V4 Normalized Schema
 // This file has been updated to fetch data from the 15 normalized tables.
 // ============================================================================
@@ -1067,11 +1084,13 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
     }
   }
 
+  notifyAppointmentsUpdated();
   return newAppt;
 }
 export async function updateAppointmentStatus(id: number, status: string) {
   const { data, error } = await supabase.from('appointment').update({ appointment_status: status }).eq('appointment_id', id).select().single();
   if (error) throw error;
+  notifyAppointmentsUpdated();
   return { id: data.appointment_id, status: data.appointment_status } as any;
 }
 
@@ -1149,6 +1168,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
     }
   }
   
+  notifyAppointmentsUpdated();
   return { status: 'เสร็จสิ้น' };
 }
 

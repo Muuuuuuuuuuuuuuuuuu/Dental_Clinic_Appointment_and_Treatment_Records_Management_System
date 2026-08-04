@@ -362,8 +362,8 @@ export default function StaffPortal({
               {view === "queue" && <QueueBoard setView={setView} appointments={appointments} />}
               {view === "appointments" && <AppointmentManagementView appointments={appointments} />}
               {view === "patients" && <PatientManagementView />}
-              {view === "walkin" && <WalkInBooking />}
-              {view === "payment" && <PaymentView />}
+              {view === "walkin" && <WalkInBooking onAddAppt={onAddAppt} />}
+              {view === "payment" && <PaymentView appointments={appointments} onUpdateAppt={onUpdateAppt} />}
               {view === "leave" && <StaffLeaveView />}
               {view === "announcements" && <AnnouncementView role="staff" />}
             </>

@@ -71,8 +71,8 @@ export default function PatientPortal() {
       setClinicStatus(getClinicStatus(new Date(), closures, offDays, settings, dh));
     }).catch(console.error);
 
-    const channel = supabase.channel('public:appointments')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment' }, () => {
+    const channel = supabase.channel('icemu-updates')
+      .on('broadcast', { event: 'appointments-updated' }, () => {
         getAppointments().then(setSharedAppointments).catch(console.error);
       })
       .subscribe();

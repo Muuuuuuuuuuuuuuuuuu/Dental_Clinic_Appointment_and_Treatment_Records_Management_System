@@ -4,9 +4,15 @@ import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarP
 import { Appointment, STATUS_COLORS } from "../../shared/data";
 import { getAppointments, processPaymentApi, addAppointment } from "../../shared/supabaseApi";
 
-export default function PaymentView() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function PaymentView({ 
+  appointments: initialAppointments,
+  onUpdateAppt
+}: { 
+  appointments?: Appointment[];
+  onUpdateAppt?: (id: number, updates: Partial<Appointment>) => void;
+}) {
+  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
+  const [loading, setLoading] = useState(!initialAppointments);
 
   // Selected patient for payment
   const [selectedApptId, setSelectedApptId] = useState<number | null>(null);
@@ -28,8 +34,12 @@ export default function PaymentView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchAppointments();
-  }, []);
+    if (initialAppointments) {
+      setAppointments(initialAppointments);
+    } else {
+      fetchAppointments();
+    }
+  }, [initialAppointments]);
 
   const fetchAppointments = () => {
     setLoading(true);
@@ -71,9 +81,15 @@ export default function PaymentView() {
     if (!selectedAppt) return;
     
     try {
-      const updated = await processPaymentApi(selectedAppt.id, netTotal, paymentMethod);
+      await processPaymentApi(selectedAppt.id, netTotal, paymentMethod);
       
-      setAppointments(apps => apps.map(a => a.id === selectedAppt.id ? { ...a, ...updated, status: "เสร็จสิ้น", cost: netTotal, paid: true } : a));
+      const newApptData = { status: "เสร็จสิ้น" as AppointmentStatus, cost: netTotal, paid: true };
+      
+      setAppointments(apps => apps.map(a => a.id === selectedAppt.id ? { ...a, ...newApptData } : a));
+      
+      if (onUpdateAppt) {
+        onUpdateAppt(selectedAppt.id, newApptData);
+      }
       
       // Prepare receipt data
       setReceiptData({

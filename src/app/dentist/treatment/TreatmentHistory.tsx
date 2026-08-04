@@ -26,25 +26,12 @@ export default function TreatmentHistory({ doctor }: { doctor: DentistInfo | nul
     item.serviceName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalRevenue = filteredHistory.reduce((sum, item) => sum + (Number(item.actualPrice) || 0), 0);
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div>
           <h2 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Playfair Display, serif" }}>ประวัติการทำหัตถการ</h2>
           <p className="text-sm text-slate-500 mt-1">ประวัติเคสและการรักษาทั้งหมดที่คุณได้รับผิดชอบ</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="bg-green-50 px-4 py-2 rounded-xl border border-green-100 flex items-center gap-3">
-            <div className="bg-green-100 p-2 rounded-lg text-green-600">
-              <CheckCircle size={18} />
-            </div>
-            <div>
-              <p className="text-xs text-green-700 font-medium">รวมยอดรักษา (ตัวกรอง)</p>
-              <p className="text-lg font-bold text-green-800">฿{totalRevenue.toLocaleString()}</p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -74,13 +61,12 @@ export default function TreatmentHistory({ doctor }: { doctor: DentistInfo | nul
                 <th className="p-4 whitespace-nowrap">หัตถการ</th>
                 <th className="p-4 whitespace-nowrap">ซี่ฟัน</th>
                 <th className="p-4 whitespace-nowrap">การวินิจฉัย / โน้ต</th>
-                <th className="p-4 whitespace-nowrap text-right">ราคา (฿)</th>
               </tr>
             </thead>
             <tbody className="text-sm divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400">
+                  <td colSpan={5} className="p-8 text-center text-slate-400">
                     <div className="flex justify-center mb-2">
                       <div className="w-6 h-6 border-2 border-[#FF8C9A] border-t-transparent rounded-full animate-spin"></div>
                     </div>
@@ -89,7 +75,7 @@ export default function TreatmentHistory({ doctor }: { doctor: DentistInfo | nul
                 </tr>
               ) : filteredHistory.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center">
+                  <td colSpan={5} className="p-12 text-center">
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-300">
                       <FileText size={24} />
                     </div>
@@ -133,9 +119,6 @@ export default function TreatmentHistory({ doctor }: { doctor: DentistInfo | nul
                         ) : null}
                         {item.note || <span className="text-slate-300 italic">ไม่มีโน้ต</span>}
                       </div>
-                    </td>
-                    <td className="p-4 whitespace-nowrap text-right font-bold text-slate-700">
-                      {Number(item.actualPrice).toLocaleString()}
                     </td>
                   </tr>
                 ))

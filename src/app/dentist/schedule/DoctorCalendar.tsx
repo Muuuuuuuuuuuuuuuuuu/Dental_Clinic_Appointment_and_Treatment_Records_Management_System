@@ -90,7 +90,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     const dayMap = [1, 2, 3, 4, 5, 6, 0]; // Monday = 1, Sunday = 0
 
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden transition-all">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 h-full overflow-hidden transition-all flex flex-col">
         <div 
           className="px-5 py-4 border-b border-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-50"
           onClick={() => setShowSchedule(!showSchedule)}
@@ -248,7 +248,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
             setLeaveModalOpen(true);
           }
         }}
-        className={`relative min-h-[80px] p-2 border border-gray-100 ${cellBg} transition-all group ${
+        className={`relative min-h-[60px] p-2 border border-gray-100 ${cellBg} transition-all group ${
           isClickable ? 'hover:border-blue-300 hover:shadow-sm cursor-pointer' : 'cursor-default opacity-80'
         }`}
       >
@@ -261,9 +261,8 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
         </div>
 
         {isWorking && !leave && (
-          <div className="mt-4 flex flex-col items-center justify-center">
-            <span className="text-[10px] text-gray-400">{baseShift?.start_time?.substring(0,5)}</span>
-            <span className="text-[10px] text-gray-400">{baseShift?.end_time?.substring(0,5)}</span>
+          <div className="mt-1 flex flex-col items-center justify-center">
+            <span className="text-[10px] text-gray-400 leading-none">{baseShift?.start_time?.substring(0,5)} - {baseShift?.end_time?.substring(0,5)}</span>
             {dayAppts.length > 0 && (
               <div className="mt-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px] font-bold">
                 {dayAppts.length} คิว
@@ -282,6 +281,40 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     );
   };
 
+  const renderLeaveSummary = () => {
+    const pending = leaves.filter(l => l.status === "รอการอนุมัติ").length;
+    const approved = leaves.filter(l => l.status === "อนุมัติแล้ว").length;
+    const rejected = leaves.filter(l => l.status === "ไม่อนุมัติ").length;
+
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+            <CalendarIcon size={18} />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">สรุปการลางาน (ปีนี้)</h2>
+            <p className="text-xs text-gray-500">สถานะคำขอลางานของคุณ</p>
+          </div>
+        </div>
+        <div className="p-5 flex-1 flex flex-col justify-center space-y-4">
+          <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-xl border border-yellow-100">
+            <span className="text-sm font-medium text-yellow-800">รออนุมัติ</span>
+            <span className="text-lg font-bold text-yellow-700">{pending}</span>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl border border-green-100">
+            <span className="text-sm font-medium text-green-800">อนุมัติแล้ว</span>
+            <span className="text-lg font-bold text-green-700">{approved}</span>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
+            <span className="text-sm font-medium text-red-800">ไม่อนุมัติ</span>
+            <span className="text-lg font-bold text-red-700">{rejected}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-gray-400">กำลังโหลดข้อมูล...</div>;
   }
@@ -293,9 +326,16 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
         <p className="text-sm" style={{ color: "#4A6080" }}>ตรวจสอบตารางทำงานและส่งคำขอลางานได้ที่นี่</p>
       </div>
 
-      {renderRegularSchedule()}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2">
+          {renderRegularSchedule()}
+        </div>
+        <div className="lg:col-span-1">
+          {renderLeaveSummary()}
+        </div>
+      </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
         {/* Calendar Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <div className="flex items-center gap-2">
@@ -345,7 +385,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
           
           {/* Empty cells before start of month */}
           {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-            <div key={`empty-${i}`} className="bg-gray-50 min-h-[80px]" />
+            <div key={`empty-${i}`} className="bg-gray-50 min-h-[60px]" />
           ))}
           
           {/* Days */}
@@ -353,7 +393,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
           
           {/* Empty cells after end of month */}
           {Array.from({ length: (7 - ((firstDayOfMonth + daysInMonth) % 7)) % 7 }).map((_, i) => (
-            <div key={`empty-end-${i}`} className="bg-gray-50 min-h-[80px]" />
+            <div key={`empty-end-${i}`} className="bg-gray-50 min-h-[60px]" />
           ))}
         </div>
       </div>

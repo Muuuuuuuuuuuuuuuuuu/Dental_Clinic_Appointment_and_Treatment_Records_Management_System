@@ -28,10 +28,12 @@ export default function AppointmentManagementView({
 
   useEffect(() => {
     fetchData();
-    
-    const channel = supabase.channel('staff_mgmt_appointments')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment' }, () => {
-        fetchData();
+
+    const channel = supabase.channel('icemu-updates')
+      .on('broadcast', { event: 'appointments-updated' }, () => {
+        if (!initialAppointments) {
+          getAppointments().then(setAppointments).catch(console.error);
+        }
       })
       .subscribe();
 
