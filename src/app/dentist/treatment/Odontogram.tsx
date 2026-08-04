@@ -10,9 +10,10 @@ export interface OdontogramProps {
   isChild: boolean;
   setIsChild?: (val: boolean) => void;
   readonly?: boolean;
+  isWholeMouth?: boolean;
 }
 
-export default function Odontogram({ toothData, onToothClick, isChild, setIsChild, readonly }: OdontogramProps) {
+export default function Odontogram({ toothData, onToothClick, isChild, setIsChild, readonly, isWholeMouth }: OdontogramProps) {
   
   const cariesTeeth = Object.entries(toothData).filter(([_, s]) => s === 'red').map(([n]) => `teeth-${n}`);
   const filledTeeth = Object.entries(toothData).filter(([_, s]) => s === 'blue').map(([n]) => `teeth-${n}`);
@@ -67,7 +68,14 @@ export default function Odontogram({ toothData, onToothClick, isChild, setIsChil
       </div>
 
       <div className="pb-4 flex justify-center relative">
-        <div className="w-full max-w-lg origin-top pb-10 relative" style={{ transform: "scale(0.55)", marginBottom: "-25%" }}>
+        {isWholeMouth && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <span className="bg-white/80 px-4 py-2 rounded-xl text-lg font-bold text-blue-900 border border-blue-100 shadow-sm">
+              ทำหัตถการทั้งปาก
+            </span>
+          </div>
+        )}
+        <div className={`w-full max-w-lg origin-top pb-10 relative transition-opacity duration-300 ${isWholeMouth ? "opacity-30 pointer-events-none" : ""}`} style={{ transform: "scale(0.55)", marginBottom: "-25%" }}>
           
           {/* Separator Line & Labels */}
           <div className="absolute w-[140%] left-[-20%] top-[49%] border-t-2 border-dashed border-blue-200/70 z-0 pointer-events-none">

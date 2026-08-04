@@ -37,6 +37,7 @@ export default function TreatmentQueue({
   const [form, setForm] = useState<{ notes: string; recommendations: string; services: string[]; actualCost: number | "" }>({ notes: "", recommendations: "", services: [], actualCost: "" });
   const [toothData, setToothData] = useState<Record<number, ToothStatus>>({});
   const [isChild, setIsChild] = useState(false);
+  const [isWholeMouth, setIsWholeMouth] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
 
   const today = new Date();
@@ -128,8 +129,16 @@ export default function TreatmentQueue({
     if (a.patientId) {
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
       setToothData(historyOdontogram);
+      // Check if history was whole mouth
+      if (historyOdontogram.wholeMouth) {
+        setIsWholeMouth(true);
+        setToothData({});
+      } else {
+        setIsWholeMouth(false);
+      }
     } else {
       setToothData({});
+      setIsWholeMouth(false);
     }
   };
 
@@ -140,11 +149,12 @@ export default function TreatmentQueue({
       treatmentServices: form.services,
       recommendations: form.recommendations,
       cost: Number(form.actualCost) || 0,
-      odontogramData: toothData
+      odontogramData: isWholeMouth ? { wholeMouth: true } as any : toothData
     });
     setRecording(null);
     setForm({ notes: "", recommendations: "", services: [], actualCost: "" });
     setToothData({});
+    setIsWholeMouth(false);
   };
 
   const handleToothClick = (tooth: number) => {
@@ -271,18 +281,34 @@ export default function TreatmentQueue({
               {/* Treatment recording form */}
               {isRec && (
                 <div className="px-5 pb-5 border-t" style={{ borderColor: "rgba(26,54,93,0.06)" }}>
-                  <p className="text-sm font-semibold py-4" style={{ color: "#1A365D" }}>บันทึกการรักษา — {a.patientName}</p>
-                  
-                  <div className="mb-6">
-                    <Odontogram 
-                      toothData={toothData} 
-                      onToothClick={handleToothClick}
-                      isChild={isChild}
-                      setIsChild={setIsChild}
-                    />
+                  <div className="flex items-center justify-between py-4">
+                    <p className="text-sm font-semibold" style={{ color: "#1A365D" }}>บันทึกการรักษา — {a.patientName}</p>
+                    
+                    {/* Toggle whole mouth */}
+                    <div className="flex bg-gray-100 rounded-xl p-1">
+                      <button onClick={() => setIsWholeMouth(false)}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${!isWholeMouth ? 'bg-white shadow text-blue-900' : 'text-gray-500'}`}>
+                        ระบุซี่ฟัน
+                      </button>
+                      <button onClick={() => setIsWholeMouth(true)}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${isWholeMouth ? 'bg-white shadow text-blue-900' : 'text-gray-500'}`}>
+                        ทำทั้งปาก (Whole Mouth)
+                      </button>
+                    </div>
                   </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                      <Odontogram 
+                        toothData={toothData} 
+                        onToothClick={handleToothClick}
+                        isChild={isChild}
+                        setIsChild={setIsChild}
+                        isWholeMouth={isWholeMouth}
+                      />
+                    </div>
 
-                  <div className="space-y-4">
+                    <div className="space-y-4">
                     <div>
                       <p className="text-xs font-medium mb-2" style={{ color: "#4A6080" }}>บริการที่ทำ (เลือกได้หลายรายการ)</p>
                       <div className="grid grid-cols-2 gap-2">
@@ -336,6 +362,7 @@ export default function TreatmentQueue({
                         style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
                         ยกเลิก
                       </button>
+                    </div>
                     </div>
                   </div>
                 </div>
