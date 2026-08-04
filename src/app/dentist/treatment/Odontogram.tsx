@@ -48,8 +48,8 @@ export default function Odontogram({ toothData, onToothClick, isChild, setIsChil
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
-      <div className="flex justify-between items-center mb-6">
+    <div className="bg-white p-4 rounded-2xl" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
+      <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-lg" style={{ color: "#1A365D" }}>Odontogram (บันทึกสถานะฟัน)</h3>
         {!readonly && setIsChild && (
           <div className="flex items-center bg-gray-100 rounded-xl p-1">
@@ -75,7 +75,7 @@ export default function Odontogram({ toothData, onToothClick, isChild, setIsChil
             </span>
           </div>
         )}
-        <div className={`w-full max-w-lg origin-top pb-10 relative transition-opacity duration-300 ${isWholeMouth ? "opacity-30 pointer-events-none" : ""}`} style={{ transform: "scale(0.55)", marginBottom: "-25%" }}>
+        <div className={`w-full max-w-lg origin-top pb-10 relative transition-opacity duration-300 ${isWholeMouth ? "opacity-30 pointer-events-none" : ""}`} style={{ transform: "scale(0.45)", marginBottom: "-45%" }}>
           
           {/* Separator Line & Labels */}
           <div className="absolute w-[140%] left-[-20%] top-[49%] border-t-2 border-dashed border-blue-200/70 z-0 pointer-events-none">
