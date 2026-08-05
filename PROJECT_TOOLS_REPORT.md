@@ -185,7 +185,69 @@
 
 ---
 
-## 9. 📁 โครงสร้างโปรเจกต์โดยย่อ
+## 9. 🙏 เครดิตไลบรารีภายนอกจาก GitHub ของคนอื่น (Third-Party Credits)
+
+ไลบรารีเหล่านี้เป็นโค้ดที่พัฒนาโดยนักพัฒนาภายนอก และเผยแพร่ผ่าน GitHub / npm เพื่อให้คนอื่นนำไปใช้ได้ฟรีภายใต้เงื่อนไข License ที่กำหนด
+
+### 9.1 🦷 react-odontogram (แผนผังฟัน)
+
+| รายการ | รายละเอียด |
+|---|---|
+| **ชื่อ Package** | react-odontogram |
+| **เวอร์ชันที่ใช้** | 0.5.6 |
+| **ผู้พัฒนา** | Pratik Sharma (biomathcode) |
+| **GitHub** | https://github.com/biomathcode/react-odontogram |
+| **License** | MIT (ใช้ได้เสรี ทั้งส่วนตัวและเชิงพาณิชย์) |
+| **คำอธิบาย** | React component สำหรับแสดงแผนผังฟัน (Dental Chart / Odontogram) แบบ interactive โดยวาดด้วย SVG ไม่ต้องใช้รูปภาพจากภายนอก |
+| **ใช้ในไฟล์** | `src/app/dentist/treatment/Odontogram.tsx`, `src/app/patient/record/DentalRecordView.tsx` |
+
+### 9.2 🎨 shadcn/ui (ชุด UI Component)
+
+| รายการ | รายละเอียด |
+|---|---|
+| **ชื่อ** | shadcn/ui |
+| **ผู้พัฒนา** | shadcn (Shadid Haque) |
+| **GitHub** | https://github.com/shadcn-ui/ui |
+| **License** | MIT |
+| **คำอธิบาย** | ชุด UI Component ที่สร้างทับ Radix UI + Tailwind CSS โค้ดถูก copy มาไว้ในโปรเจกต์โดยตรง (ไม่ใช่ npm package) อยู่ในโฟลเดอร์ `src/app/shared/components/ui/` จำนวน 48 component |
+
+### 9.3 📦 Radix UI (Headless UI Primitives)
+
+| รายการ | รายละเอียด |
+|---|---|
+| **ผู้พัฒนา** | WorkOS (Radix team) |
+| **GitHub** | https://github.com/radix-ui/primitives |
+| **License** | MIT |
+| **คำอธิบาย** | ชุด Headless UI components ที่ shadcn/ui ใช้เป็นฐาน จำนวน 26 packages (accordion, dialog, dropdown-menu, tabs ฯลฯ) |
+
+### 9.4 ✏️ Lucide Icons (ชุดไอคอน)
+
+| รายการ | รายละเอียด |
+|---|---|
+| **ผู้พัฒนา** | Lucide Contributors |
+| **GitHub** | https://github.com/lucide-icons/lucide |
+| **License** | ISC |
+| **คำอธิบาย** | ชุดไอคอน SVG มากกว่า 1,000+ ตัว ใช้ผ่าน npm package `lucide-react` |
+
+### 📝 ตัวอย่างการอ้างอิงในรายงาน (สำหรับบรรณานุกรม)
+
+สามารถเขียนอ้างอิงในรายงานได้ดังนี้:
+
+> **react-odontogram**  
+> Sharma, P. (2024). react-odontogram: Dental chart for selecting teeth [Computer software]. GitHub. https://github.com/biomathcode/react-odontogram. License: MIT.
+>
+> **shadcn/ui**  
+> Haque, S. (2024). shadcn/ui: Beautifully designed components built with Radix UI and Tailwind CSS [Computer software]. GitHub. https://github.com/shadcn-ui/ui. License: MIT.
+>
+> **Radix UI**  
+> WorkOS. (2024). Radix Primitives: Unstyled, accessible UI components [Computer software]. GitHub. https://github.com/radix-ui/primitives. License: MIT.
+>
+> **Lucide Icons**  
+> Lucide Contributors. (2024). Lucide: Beautiful & consistent icon set [Computer software]. GitHub. https://github.com/lucide-icons/lucide. License: ISC.
+
+---
+
+## 10. 📁 โครงสร้างโปรเจกต์โดยย่อ
 
 ```
 icemu/
@@ -215,7 +277,7 @@ icemu/
 
 ---
 
-## 10. 📌 คำแนะนำสำหรับรายงาน
+## 11. 📌 คำแนะนำสำหรับรายงาน
 
 1. **License ที่ต้องระบุในรายงาน:** MIT (หลัก), ISC, Apache-2.0, BSD-3-Clause, OFL
 2. **ให้เครดิต:** shadcn/ui, Unsplash, Lucide Icons, Google Fonts (Playfair Display, Prompt, DM Sans)
@@ -224,7 +286,7 @@ icemu/
 
 ---
 
-## 11. 🗑️ Packages ที่ถูกลบออก (5 สิงหาคม 2026)
+## 12. 🗑️ Packages ที่ถูกลบออก (5 สิงหาคม 2026)
 
 Packages ต่อไปนี้ถูกลบออกจาก `package.json` แล้วเนื่องจากตรวจสอบทั้งโปรเจกต์แล้วไม่พบว่ามีการ import ใช้งานจริง:
 
