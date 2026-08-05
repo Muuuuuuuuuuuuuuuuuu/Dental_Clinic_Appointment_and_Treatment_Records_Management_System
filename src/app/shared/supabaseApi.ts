@@ -345,14 +345,20 @@ export async function getServices() {
   const { data, error } = await supabase.from('service').select('*');
   if (error) return [];
   
+  const { data: settingsData } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
+  let disabledIds: number[] = [];
+  if (settingsData && settingsData.setting_value) {
+    try { disabledIds = typeof settingsData.setting_value === 'string' ? JSON.parse(settingsData.setting_value) : settingsData.setting_value; } catch(e) {}
+  }
+
   return data.map((d: any) => ({
     id: d.service_id,
     name: d.service_name,
-    description: `ใช้เวลาประมาณ ${d.estimated_time} นาที`,
+    description: d.description || `ใช้เวลาประมาณ ${d.estimated_time} นาที`,
     basePrice: d.base_price,
     category: d.service_category,
     estimatedTime: d.estimated_time,
-    active: true
+    active: !disabledIds.includes(d.service_id)
   })) as ServiceInfo[];
 }
 
@@ -360,19 +366,23 @@ export async function addService(service: Omit<ServiceInfo, 'id'>) {
   const estimatedTime = service.estimatedTime || 30;
   const { data, error } = await supabase.from('service').insert({
     service_name: service.name,
+    description: service.description,
     base_price: service.basePrice,
     service_category: service.category,
     estimated_time: estimatedTime
   }).select().single();
   if (error) throw error;
-  return { ...service, id: data.service_id, estimatedTime, description: `ใช้เวลาประมาณ ${estimatedTime} นาที` } as ServiceInfo;
+  return { ...service, id: data.service_id, estimatedTime, description: data.description || `ใช้เวลาประมาณ ${estimatedTime} นาที` } as ServiceInfo;
 }
 export async function updateService(id: number, updates: Partial<ServiceInfo>): Promise<ServiceInfo> {
   const serviceUpdates: any = {};
   if (updates.name !== undefined) serviceUpdates.service_name = updates.name;
+  if (updates.description !== undefined) serviceUpdates.description = updates.description;
   if (updates.basePrice !== undefined) serviceUpdates.base_price = updates.basePrice;
   if (updates.category !== undefined) serviceUpdates.service_category = updates.category;
   if (updates.estimatedTime !== undefined) serviceUpdates.estimated_time = updates.estimatedTime;
+  
+  // NOTE: active status is handled by updateServiceActiveStatus
   
   const { error } = await supabase.from('service').update(serviceUpdates).eq('service_id', id);
   if (error) throw error;
@@ -382,12 +392,41 @@ export async function deleteService(id: number): Promise<void> {
   await supabase.from('service').delete().eq('service_id', id);
 }
 
+export async function updateServiceActiveStatus(id: number, active: boolean) {
+  const { data } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
+  let disabledIds: number[] = [];
+  if (data && data.setting_value) {
+    try { disabledIds = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value; } catch(e) {}
+  }
+  
+  if (active) {
+    disabledIds = disabledIds.filter(x => x !== id);
+  } else {
+    if (!disabledIds.includes(id)) disabledIds.push(id);
+  }
+  
+  const { error } = await supabase.from('clinic_settings').upsert({
+    setting_key: 'disabled_services',
+    setting_value: JSON.stringify(disabledIds)
+  }, { onConflict: 'setting_key' });
+  
+  if (error) throw error;
+}
+
 // --- Landing Page Data ---
 export async function getLandingServices() {
   const { data, error } = await supabase.from('service').select('*');
   if (error) return [];
   
-  return data.map((d: any) => ({
+  const { data: settingsData } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
+  let disabledIds: number[] = [];
+  if (settingsData && settingsData.setting_value) {
+    try { disabledIds = typeof settingsData.setting_value === 'string' ? JSON.parse(settingsData.setting_value) : settingsData.setting_value; } catch(e) {}
+  }
+  
+  return data
+    .filter((d: any) => !disabledIds.includes(d.service_id))
+    .map((d: any) => ({
     serviceId: d.service_id,
     iconName: d.icon_name || 'Smile',
     title: d.service_name,
@@ -1260,7 +1299,7 @@ export async function updateLeaveStatus(id: number, status: string) {
 // ============================================================================
 
 export async function getAnnouncements() {
-  const { data, error } = await supabase.from('clinic_settings').select('*').eq('setting_key', 'announcements').single();
+  const { data, error } = await supabase.from('clinic_settings').select('*').eq('setting_key', 'announcements').maybeSingle();
   if (error || !data) return [];
   try {
     const announcements = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;
@@ -1356,7 +1395,7 @@ export async function updateShift(id: number, updates: Partial<Shift>) {
 }
 
 export async function getPromotions() {
-  const { data, error } = await supabase.from('clinic_settings').select('*').eq('setting_key', 'promotions').single();
+  const { data, error } = await supabase.from('clinic_settings').select('*').eq('setting_key', 'promotions').maybeSingle();
   if (error || !data) return [];
   try {
     const promos = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;

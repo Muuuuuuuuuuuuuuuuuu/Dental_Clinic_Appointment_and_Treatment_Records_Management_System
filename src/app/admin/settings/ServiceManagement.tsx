@@ -4,7 +4,7 @@ import StatusBadge from "../../shared/components/StatusBadge";
 import { Plus, Edit3, Trash2 , Check, Clock } from "lucide-react";
 
 import { ServiceInfo } from "../../shared/data";
-import { getServices, updateService, addService, deleteService } from "../../shared/supabaseApi";
+import { getServices, updateService, addService, deleteService, updateServiceActiveStatus } from "../../shared/supabaseApi";
 
 export default function ServiceManagement() {
   const [services, setServices] = useState<ServiceInfo[]>([]);
@@ -12,6 +12,9 @@ export default function ServiceManagement() {
   const [editId, setEditId] = useState<number | null>(null);
   const [prices, setPrices] = useState<Record<number, string>>({});
   const [times, setTimes] = useState<Record<number, string>>({});
+  const [names, setNames] = useState<Record<number, string>>({});
+  const [descs, setDescs] = useState<Record<number, string>>({});
+  const [cats, setCats] = useState<Record<number, string>>({});
   const [isAdding, setIsAdding] = useState(false);
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [newService, setNewService] = useState({ name: "", desc: "", price: "", time: "30", category: "ทันตกรรมทั่วไป" });
@@ -34,9 +37,17 @@ export default function ServiceManagement() {
   const saveChanges = async (id: number) => {
     const p = parseInt(prices[id] ?? "0", 10);
     const t = parseInt(times[id] ?? "30", 10);
+    const n = names[id];
+    const d = descs[id];
+    const c = cats[id];
+    
     if (!isNaN(p) && !isNaN(t)) {
       try {
-        const updated = await updateService(id, { basePrice: p, estimatedTime: t });
+        const payload: any = { basePrice: p, estimatedTime: t };
+        if (n !== undefined) payload.name = n;
+        if (d !== undefined) payload.description = d;
+        if (c !== undefined) payload.category = c;
+        const updated = await updateService(id, payload);
         setServices(ss => ss.map(s => s.id === id ? updated : s));
       } catch (err) {
         console.error(err);
@@ -48,12 +59,16 @@ export default function ServiceManagement() {
 
   const toggleActive = async (s: ServiceInfo) => {
     if (!s.id) return;
+    const actionText = s.active ? "ปิด" : "เปิด";
+    const confirmMsg = `ต้องการ${actionText}ใช้งานบริการ "${s.name}" ใช่หรือไม่?`;
+    if (!window.confirm(confirmMsg)) return;
+
     try {
-      const updated = await updateService(s.id, { active: !s.active });
-      setServices(ss => ss.map(x => x.id === s.id ? updated : x));
+      await updateServiceActiveStatus(s.id, !s.active);
+      setServices(ss => ss.map(x => x.id === s.id ? { ...x, active: !s.active } : x));
     } catch (err) {
       console.error(err);
-      alert("Failed to update status");
+      alert("เกิดข้อผิดพลาดในการอัปเดตสถานะบริการ");
     }
   };
 
@@ -162,8 +177,36 @@ export default function ServiceManagement() {
               <div key={s.id} className="flex items-center gap-4 px-5 py-4"
                 style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(26,54,93,0.05)" : "none" }}>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm" style={{ color: "#1A365D" }}>{s.name}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{s.description}</p>
+                  {editId === s.id ? (
+                    <div className="flex flex-col gap-2 w-full max-w-sm">
+                      <input
+                        type="text"
+                        defaultValue={s.name}
+                        onChange={e => setNames(n => ({ ...n, [s.id]: e.target.value }))}
+                        className="w-full px-2 py-1 rounded-lg text-sm outline-none border border-slate-200"
+                        placeholder="ชื่อบริการ"
+                      />
+                      <input
+                        type="text"
+                        defaultValue={s.category}
+                        onChange={e => setCats(c => ({ ...c, [s.id]: e.target.value }))}
+                        className="w-full px-2 py-1 rounded-lg text-sm outline-none border border-slate-200"
+                        placeholder="หมวดหมู่"
+                      />
+                      <input
+                        type="text"
+                        defaultValue={s.description}
+                        onChange={e => setDescs(d => ({ ...d, [s.id]: e.target.value }))}
+                        className="w-full px-2 py-1 rounded-lg text-sm outline-none border border-slate-200"
+                        placeholder="คำอธิบาย"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <p className="font-medium text-sm" style={{ color: "#1A365D" }}>{s.name}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{s.description}</p>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-5 flex-shrink-0">
                   {editId === s.id ? (
@@ -187,8 +230,9 @@ export default function ServiceManagement() {
                         />
                         <span className="text-xs text-slate-500">นาที</span>
                       </div>
-                      <button onClick={() => saveChanges(s.id)} className="p-1.5 rounded-lg bg-[#E8FFF0] hover:bg-[#D1FADD] ml-1">
+                      <button onClick={() => saveChanges(s.id)} className="px-3 py-1.5 rounded-lg bg-[#E8FFF0] hover:bg-[#D1FADD] ml-1 flex items-center gap-1">
                         <Check size={14} style={{ color: "#1B7A3E" }} />
+                        <span className="text-sm font-medium" style={{ color: "#1B7A3E" }}>บันทึก</span>
                       </button>
                     </div>
                   ) : (
@@ -204,13 +248,19 @@ export default function ServiceManagement() {
                         setEditId(s.id); 
                         setPrices(p => ({ ...p, [s.id]: String(s.basePrice) })); 
                         setTimes(t => ({ ...t, [s.id]: String(s.estimatedTime || 30) }));
+                        setNames(n => ({ ...n, [s.id]: s.name }));
+                        setDescs(d => ({ ...d, [s.id]: s.description }));
+                        setCats(c => ({ ...c, [s.id]: s.category }));
                       }}
                         className="p-1.5 rounded-lg hover:bg-gray-100" style={{ color: "#4A6080" }}>
                         <Edit3 size={15} />
                       </button>
                     </div>
                   )}
-                  <button onClick={() => toggleActive(s)}>
+                  <button 
+                    onClick={() => toggleActive(s)}
+                    title={s.active ? "ปิดใช้งานบริการ" : "เปิดใช้งานบริการ"}
+                  >
                     <StatusBadge label="" active={s.active} />
                   </button>
                 </div>
