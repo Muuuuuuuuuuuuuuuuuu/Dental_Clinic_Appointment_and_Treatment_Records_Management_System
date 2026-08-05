@@ -284,7 +284,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
   const renderLeaveSummary = () => {
     const pending = leaves.filter(l => l.status === "รอการอนุมัติ").length;
     const approved = leaves.filter(l => l.status === "อนุมัติแล้ว").length;
-    const rejected = leaves.filter(l => l.status === "ไม่อนุมัติ").length;
+    const rejected = leaves.filter(l => l.status === "ปฏิเสธ").length;
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">

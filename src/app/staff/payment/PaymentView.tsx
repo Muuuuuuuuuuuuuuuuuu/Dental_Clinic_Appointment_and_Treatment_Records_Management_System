@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt } from "lucide-react";
 
-import { Appointment, STATUS_COLORS } from "../../shared/data";
+import { Appointment, STATUS_COLORS, AppointmentStatus } from "../../shared/data";
 import { getAppointments, processPaymentApi, addAppointment } from "../../shared/supabaseApi";
 
 export default function PaymentView({ 
