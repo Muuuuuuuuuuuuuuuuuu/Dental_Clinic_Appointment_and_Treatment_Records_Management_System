@@ -224,6 +224,22 @@ export default function BookingView({
         const fullLeave = leaves.find((l) => l.doctorId === docInfo.userId && l.startDate === dateStr && l.leavePeriod === "เต็มวัน");
         if (fullLeave) return { status: "past" as const };
       }
+    } else if (filteredDoctors.length > 0) {
+      let allOnLeave = true;
+      for (const doc of filteredDoctors) {
+        const docInfo = dentistsData.find((db) => db.id === doc.id);
+        if (docInfo?.userId) {
+          const fullLeave = leaves.find((l) => l.doctorId === docInfo.userId && l.startDate === dateStr && l.leavePeriod === "เต็มวัน");
+          if (!fullLeave) {
+            allOnLeave = false;
+            break;
+          }
+        } else {
+          allOnLeave = false;
+          break;
+        }
+      }
+      if (allOnLeave) return { status: "past" as const };
     }
     return { status: "available" as const };
   };
@@ -256,8 +272,29 @@ export default function BookingView({
         }
         if (dayAppts.some((a) => a.doctorId === (selDoctor as number) && t >= a.time && (a.endTime ? t < a.endTime : a.time.startsWith(t)))) booked = true;
       } else {
-        const cnt = dayAppts.filter((a) => t >= a.time && (a.endTime ? t < a.endTime : a.time.startsWith(t))).length;
-        if (cnt >= filteredDoctors.length || cnt >= 3) booked = true;
+        let anyDocAvailable = false;
+        if (filteredDoctors.length > 0) {
+          for (const doc of filteredDoctors) {
+            const docInfo = dentistsData.find((db) => db.id === doc.id);
+            if (!docInfo) continue;
+            
+            let docBlocked = false;
+            if (docInfo.userId) {
+              const lv = leaves.filter((l) => l.doctorId === docInfo.userId && l.startDate === dateStr);
+              if (lv.some((l) => l.leavePeriod === "ครึ่งวันเช้า") && t < "13:00") docBlocked = true;
+              if (lv.some((l) => l.leavePeriod === "ครึ่งวันบ่าย") && t >= "13:00") docBlocked = true;
+              if (lv.some((l) => l.leavePeriod === "เต็มวัน")) docBlocked = true;
+            }
+            if (docBlocked) continue;
+
+            const docBooked = dayAppts.some((a) => a.doctorId === doc.id && t >= a.time && (a.endTime ? t < a.endTime : a.time.startsWith(t)));
+            if (!docBooked) {
+              anyDocAvailable = true;
+              break;
+            }
+          }
+        }
+        booked = !anyDocAvailable;
       }
     }
     return { t, booked: booked || blocked };
