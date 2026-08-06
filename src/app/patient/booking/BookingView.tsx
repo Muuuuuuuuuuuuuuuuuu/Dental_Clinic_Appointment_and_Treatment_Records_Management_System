@@ -8,9 +8,9 @@ import { View, PatientUser } from "../types";
 import {
   addAppointment, getClinicClosures, getLeaveRequests, getDentists,
   getLandingServices, getLandingDoctors, getDentistsByService,
-  getAppointments, getPaymentPlans, getWeeklyOffDays,
+  getAppointments, getPaymentPlans, getWeeklyOffDays, getShifts,
 } from "../../shared/supabaseApi";
-import { SpecialClosure, LeaveRequest, DentistInfo, Appointment } from "../../shared/data";
+import { SpecialClosure, LeaveRequest, DentistInfo, Appointment, Shift } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star } from "lucide-react";
 
 const iconMap: Record<string, any> = { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star };
@@ -161,19 +161,21 @@ export default function BookingView({
   const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
   const [selPaymentPlan, setSelPaymentPlan] = useState<number | null>(null);
   const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([0]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
 
   useEffect(() => {
     Promise.all([
       getClinicClosures(), getLeaveRequests(), getDentists(),
-      getLandingServices(), getLandingDoctors(), getAppointments(), getWeeklyOffDays()
-    ]).then(([cData, lData, dData, sData, ldData, apptData, offData]) => {
+      getLandingServices(), getLandingDoctors(), getAppointments(), getWeeklyOffDays(), getShifts()
+    ]).then(([cData, lData, dData, sData, ldData, apptData, offData, shData]) => {
       setClosures(cData);
-      setLeaves(lData.filter((l) => l.status === "อนุมัติแล้ว" || l.status === "รอการอนุมัติ"));
+      setLeaves(lData.filter((l) => l.status === "อนุมัติแล้ว"));
       setDentistsData(dData);
       setServicesData(sData);
       setLandingDoctors(ldData);
       setAppointments(apptData.filter((a) => a.status !== "ยกเลิก"));
       setWeeklyOffDays(offData);
+      setShifts(shData);
     });
   }, []);
 
@@ -198,6 +200,32 @@ export default function BookingView({
     }
   }, [step, selDay]);
 
+  // ─── Shift helpers ──────────────────────────────────────────────────────────
+  /** ตรวจว่าหมอมีเวรในวันที่ระบุหรือไม่ */
+  const isDoctorOnShift = (doctorId: number, dateObj: Date): boolean => {
+    const dow = dateObj.getDay();
+    const shift = shifts.find(
+      (s) => s.person_type === "dentist" && s.person_id === doctorId && s.day_of_week === dow
+    );
+    // ไม่มี record หรือ is_off → ไม่มีเวร
+    if (!shift || shift.is_off) return false;
+    return true;
+  };
+
+  /** ตรวจว่า time slot อยู่ในช่วงเวรของหมอหรือไม่ */
+  const isTimeInShift = (doctorId: number, dateObj: Date, timeStr: string): boolean => {
+    const dow = dateObj.getDay();
+    const shift = shifts.find(
+      (s) => s.person_type === "dentist" && s.person_id === doctorId && s.day_of_week === dow
+    );
+    if (!shift || shift.is_off) return false;
+    // ถ้าไม่ได้กำหนดเวลาเวร (null) → ถือว่าทำงานทั้งวัน
+    if (!shift.start_time && !shift.end_time) return true;
+    const shiftStart = shift.start_time?.substring(0, 5) || "00:00";
+    const shiftEnd = shift.end_time?.substring(0, 5) || "23:59";
+    return timeStr >= shiftStart && timeStr < shiftEnd;
+  };
+
   // Calendar helpers
   const today = new Date();
   const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
@@ -218,28 +246,33 @@ export default function BookingView({
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const closure = closures.find((c) => c.date === dateStr);
     if (closure) return { status: "past" as const };
+
     if (selDoctor !== null && selDoctor !== "any") {
+      // ── เลือกหมอเฉพาะคน ──
+      // 1) ตรวจว่าหมอมีเวรวันนี้ไหม
+      if (!isDoctorOnShift(selDoctor as number, dateObj)) return { status: "past" as const };
+      // 2) ตรวจว่าหมอลาเต็มวัน (อนุมัติแล้ว) ไหม
       const docInfo = dentistsData.find((db) => db.id === selDoctor);
       if (docInfo?.userId) {
         const fullLeave = leaves.find((l) => l.doctorId === docInfo.userId && l.startDate === dateStr && l.leavePeriod === "เต็มวัน");
         if (fullLeave) return { status: "past" as const };
       }
     } else if (filteredDoctors.length > 0) {
-      let allOnLeave = true;
+      // ── ท่านใดก็ได้ ── ต้องมีหมออย่างน้อย 1 คนที่มีเวร + ไม่ได้ลาเต็มวัน
+      let anyAvailable = false;
       for (const doc of filteredDoctors) {
+        // ไม่มีเวร → ข้ามไป
+        if (!isDoctorOnShift(doc.id, dateObj)) continue;
+        // ลาเต็มวัน (อนุมัติแล้ว) → ข้ามไป
         const docInfo = dentistsData.find((db) => db.id === doc.id);
         if (docInfo?.userId) {
           const fullLeave = leaves.find((l) => l.doctorId === docInfo.userId && l.startDate === dateStr && l.leavePeriod === "เต็มวัน");
-          if (!fullLeave) {
-            allOnLeave = false;
-            break;
-          }
-        } else {
-          allOnLeave = false;
-          break;
+          if (fullLeave) continue;
         }
+        anyAvailable = true;
+        break;
       }
-      if (allOnLeave) return { status: "past" as const };
+      if (!anyAvailable) return { status: "past" as const };
     }
     return { status: "available" as const };
   };
@@ -261,8 +294,15 @@ export default function BookingView({
     let blocked = false, booked = false;
     if (selDay) {
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(selDay).padStart(2, "0")}`;
+      const slotDateObj = new Date(year, month, selDay);
       const dayAppts = appointments.filter((a) => a.date === dateStr);
       if (selDoctor !== null && selDoctor !== "any") {
+        // ── เลือกหมอเฉพาะคน ──
+        // ตรวจเวร: ไม่มีเวร หรือ slot อยู่นอกเวลาเวร → blocked
+        if (!isTimeInShift(selDoctor as number, slotDateObj, t)) {
+          blocked = true;
+        }
+        // ตรวจการลา (อนุมัติแล้ว)
         const docInfo = dentistsData.find((db) => db.id === selDoctor);
         if (docInfo?.userId) {
           const lv = leaves.filter((l) => l.doctorId === docInfo.userId && l.startDate === dateStr);
@@ -272,12 +312,17 @@ export default function BookingView({
         }
         if (dayAppts.some((a) => a.doctorId === (selDoctor as number) && t >= a.time && (a.endTime ? t < a.endTime : a.time.startsWith(t)))) booked = true;
       } else {
+        // ── ท่านใดก็ได้ ──
         let anyDocAvailable = false;
         if (filteredDoctors.length > 0) {
           for (const doc of filteredDoctors) {
             const docInfo = dentistsData.find((db) => db.id === doc.id);
             if (!docInfo) continue;
             
+            // ตรวจเวร: ไม่มีเวร หรือ slot อยู่นอกเวลาเวร → ข้ามหมอคนนี้
+            if (!isTimeInShift(doc.id, slotDateObj, t)) continue;
+
+            // ตรวจการลา (อนุมัติแล้ว)
             let docBlocked = false;
             if (docInfo.userId) {
               const lv = leaves.filter((l) => l.doctorId === docInfo.userId && l.startDate === dateStr);
@@ -330,8 +375,29 @@ export default function BookingView({
     setIsPending(requiresApproval);
     let finalDoctor = { name: "ไม่ระบุแพทย์", id: 1 };
     if (selDoctor === "any" || selDoctor === null) {
-      const idx = Math.floor(Math.random() * (filteredDoctors.length || 1));
-      if (filteredDoctors[idx]) finalDoctor = { name: filteredDoctors[idx].name, id: filteredDoctors[idx].id };
+      // กรองเฉพาะหมอที่มีเวร + ไม่ได้ลา + slot ว่าง ในวัน/เวลาที่เลือก
+      const bookingDateObj = new Date(year, month, selDay!);
+      const bookingDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${selDay?.toString().padStart(2, "0")}`;
+      const dayAppts = appointments.filter((a) => a.date === bookingDateStr);
+      const availableDocs = filteredDoctors.filter((doc: any) => {
+        // ต้องมีเวร
+        if (!isDoctorOnShift(doc.id, bookingDateObj)) return false;
+        // slot เวลาต้องอยู่ในช่วงเวร
+        if (selTime && !isTimeInShift(doc.id, bookingDateObj, selTime)) return false;
+        // ต้องไม่ลา (อนุมัติแล้ว)
+        const docInfo = dentistsData.find((db) => db.id === doc.id);
+        if (docInfo?.userId) {
+          const lv = leaves.filter((l) => l.doctorId === docInfo.userId && l.startDate === bookingDateStr);
+          if (lv.some((l) => l.leavePeriod === "เต็มวัน")) return false;
+          if (lv.some((l) => l.leavePeriod === "ครึ่งวันเช้า") && selTime && selTime < "13:00") return false;
+          if (lv.some((l) => l.leavePeriod === "ครึ่งวันบ่าย") && selTime && selTime >= "13:00") return false;
+        }
+        // slot ต้องไม่ถูกจองโดยหมอคนนี้
+        if (selTime && dayAppts.some((a) => a.doctorId === doc.id && selTime >= a.time && (a.endTime ? selTime < a.endTime : a.time.startsWith(selTime)))) return false;
+        return true;
+      });
+      const idx = Math.floor(Math.random() * (availableDocs.length || 1));
+      if (availableDocs[idx]) finalDoctor = { name: availableDocs[idx].name, id: availableDocs[idx].id };
       setMatchedDoctor(finalDoctor.id);
     } else {
       const doc = landingDoctors.find((d) => d.id === selDoctor);
