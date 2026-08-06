@@ -8,7 +8,7 @@ import { View, PatientUser } from "../types";
 import {
   addAppointment, getClinicClosures, getLeaveRequests, getDentists,
   getLandingServices, getLandingDoctors, getDentistsByService,
-  getAppointments, getPaymentPlans,
+  getAppointments, getPaymentPlans, getWeeklyOffDays,
 } from "../../shared/supabaseApi";
 import { SpecialClosure, LeaveRequest, DentistInfo, Appointment } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star } from "lucide-react";
@@ -160,18 +160,20 @@ export default function BookingView({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
   const [selPaymentPlan, setSelPaymentPlan] = useState<number | null>(null);
+  const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([0]);
 
   useEffect(() => {
     Promise.all([
       getClinicClosures(), getLeaveRequests(), getDentists(),
-      getLandingServices(), getLandingDoctors(), getAppointments(),
-    ]).then(([cData, lData, dData, sData, ldData, apptData]) => {
+      getLandingServices(), getLandingDoctors(), getAppointments(), getWeeklyOffDays()
+    ]).then(([cData, lData, dData, sData, ldData, apptData, offData]) => {
       setClosures(cData);
       setLeaves(lData.filter((l) => l.status === "อนุมัติแล้ว" || l.status === "รอการอนุมัติ"));
       setDentistsData(dData);
       setServicesData(sData);
       setLandingDoctors(ldData);
       setAppointments(apptData.filter((a) => a.status !== "ยกเลิก"));
+      setWeeklyOffDays(offData);
     });
   }, []);
 
@@ -209,6 +211,10 @@ export default function BookingView({
   const dayStatus = (d: number) => {
     if (isCurrentMonth && d < todayN) return { status: "past" as const };
     if (monthOffset < 0) return { status: "past" as const };
+    
+    const dateObj = new Date(year, month, d);
+    if (weeklyOffDays.includes(dateObj.getDay())) return { status: "past" as const };
+
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const closure = closures.find((c) => c.date === dateStr);
     if (closure) return { status: "past" as const };
@@ -500,7 +506,7 @@ export default function BookingView({
                   <p style={{ fontWeight: 700, fontSize: 13, color: "#1A365D" }}>เลือกทันตแพทย์เอง</p>
                   <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>ไม่เลือก = ระบบจัดให้อัตโนมัติ</p>
                 </div>
-                <button onClick={() => { setWantSelectDoctor(!wantSelectDoctor); if (!wantSelectDoctor) setSelDoctor("any"); }}
+                <button onClick={() => { setWantSelectDoctor(!wantSelectDoctor); if (wantSelectDoctor) setSelDoctor("any"); }}
                   style={{ position: "relative", width: 44, height: 24, borderRadius: 999, border: "none", cursor: "pointer", backgroundColor: wantSelectDoctor ? "#FF8C9A" : "#E2E8F0", transition: "background 0.25s", flexShrink: 0 }}>
                   <span style={{ position: "absolute", top: 2, left: wantSelectDoctor ? 20 : 2, width: 20, height: 20, borderRadius: "50%", backgroundColor: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left 0.25s" }} />
                 </button>

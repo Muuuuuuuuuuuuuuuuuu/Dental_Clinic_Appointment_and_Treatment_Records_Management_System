@@ -29,21 +29,24 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  const targetDateStr = selectedDate.toISOString().split('T')[0];
+  const getLocalDateStr = (d: Date) => {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  
+  const targetDateStr = getLocalDateStr(selectedDate);
   
   // Filter appointments based on timeframe and selectedDate
   const filteredAppts = appointments.filter(a => {
-    const apptDate = new Date(a.date);
     if (timeframe === "today") {
       return a.date === targetDateStr;
     } else if (timeframe === "week") {
       const pastWeek = new Date(selectedDate);
       pastWeek.setDate(selectedDate.getDate() - 6);
-      return apptDate >= pastWeek && apptDate <= selectedDate;
+      const pastWeekStr = getLocalDateStr(pastWeek);
+      return a.date >= pastWeekStr && a.date <= targetDateStr;
     } else {
-      const pastMonth = new Date(selectedDate);
-      pastMonth.setMonth(selectedDate.getMonth() - 1);
-      return apptDate >= pastMonth && apptDate <= selectedDate;
+      const targetYearMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
+      return a.date.startsWith(targetYearMonth);
     }
   });
 
@@ -60,11 +63,21 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
       const hourRev = hourAppts.filter(a => ["ชำระเงินแล้ว", "เสร็จสิ้น"].includes(a.status)).reduce((s, a) => s + (a.cost ?? 0), 0);
       return { day: timeLabel, appts: hourAppts.length, revenue: hourRev, fullDate: targetDateStr };
     })
-  : Array.from({ length: timeframe === "month" ? 30 : 7 }).map((_, i) => {
-    const chartDays = timeframe === "month" ? 30 : 7;
+  : timeframe === "month" ? (() => {
+    const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+    return Array.from({ length: daysInMonth }).map((_, i) => {
+      const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i + 1);
+      const dStr = getLocalDateStr(d);
+      const dayLabel = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+      const dayAppts = appointments.filter(a => a.date === dStr);
+      const dayRev = dayAppts.filter(a => ["ชำระเงินแล้ว", "เสร็จสิ้น"].includes(a.status)).reduce((s, a) => s + (a.cost ?? 0), 0);
+      return { day: dayLabel, appts: dayAppts.length, revenue: dayRev, fullDate: dStr };
+    });
+  })()
+  : Array.from({ length: 7 }).map((_, i) => {
     const d = new Date(selectedDate);
-    d.setDate(d.getDate() - ((chartDays - 1) - i));
-    const dStr = d.toISOString().split('T')[0];
+    d.setDate(d.getDate() - (6 - i));
+    const dStr = getLocalDateStr(d);
     const dayLabel = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     const dayAppts = appointments.filter(a => a.date === dStr);
     const dayRev = dayAppts.filter(a => ["ชำระเงินแล้ว", "เสร็จสิ้น"].includes(a.status)).reduce((s, a) => s + (a.cost ?? 0), 0);
@@ -151,19 +164,19 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         {/* Appointment chart */}
         <div className="rounded-xl bg-white p-4 flex flex-col" style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}>
           <div className="flex items-center justify-between mb-2 flex-shrink-0">
-            <h2 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
-              กราฟนัดหมาย ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "30 วัน" : "7 วัน"})
-            </h2>
+              <h2 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
+                กราฟนัดหมาย ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "รายเดือน" : "7 วัน"})
+              </h2>
             {timeframe !== "today" && (
               <span className="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">💡 คลิกแท่ง</span>
             )}
           </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} barSize={timeframe === "month" ? 5 : timeframe === "today" ? 10 : 16} 
+              <BarChart data={chartData} barSize={timeframe === "month" ? 10 : timeframe === "today" ? 10 : 16} 
                         onClick={handleChartClick} style={{ cursor: timeframe !== "today" ? 'pointer' : 'default' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,54,93,0.06)" />
-                <XAxis dataKey="day" tick={{ fontSize: 9, fill: "#4A6080" }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 9, fill: "#4A6080" }} axisLine={false} tickLine={false} minTickGap={15} />
                 <YAxis tick={{ fontSize: 9, fill: "#4A6080" }} axisLine={false} tickLine={false} width={25} />
                 <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 16px rgba(26,54,93,0.15)", fontSize: 10 }}
                   formatter={(v: number) => [`${v} ราย`, "นัดหมาย"]} />
@@ -176,15 +189,15 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         {/* Revenue Chart */}
         <div className="rounded-xl bg-white p-4 flex flex-col" style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}>
           <div className="flex items-center justify-between mb-2 flex-shrink-0">
-            <h3 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
-              กราฟรายได้ ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "30 วัน" : "7 วัน"})
-            </h3>
+              <h3 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
+                กราฟรายได้ ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "รายเดือน" : "7 วัน"})
+              </h3>
           </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} onClick={handleChartClick} style={{ cursor: timeframe !== "today" ? 'pointer' : 'default' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,54,93,0.06)" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 9, fill: "#4A6080" }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 9, fill: "#4A6080" }} axisLine={false} tickLine={false} minTickGap={15} />
                 <YAxis tick={{ fontSize: 9, fill: "#4A6080" }} axisLine={false} tickLine={false} width={25} />
                 <Line type="monotone" dataKey="revenue" stroke="#22C55E" strokeWidth={2.5} dot={{ fill: "#22C55E", r: 2.5 }} />
                 <Tooltip formatter={(v: number) => [`฿${v.toLocaleString()}`, "รายได้"]}

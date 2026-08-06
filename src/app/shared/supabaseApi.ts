@@ -1052,6 +1052,34 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
     }
   }
 
+  // 2.5 Conflict Check (Patient Level)
+  if (finalPatientId) {
+    const { data: overlappingPat } = await supabase.from('appointment')
+      .select('appointment_date, start_time, end_time_est, appointment_status')
+      .eq('patient_id', finalPatientId)
+      .eq('appointment_date', appointment.date);
+    
+    if (overlappingPat && overlappingPat.length > 0) {
+      const duration = appointment.durationMins || 30;
+      const [newH, newM] = (appointment.time || "00:00").split(':').map(Number);
+      const newStartMins = (newH * 60) + newM;
+      const newEndMins = newStartMins + duration;
+
+      for (const apptData of overlappingPat) {
+        if (apptData.appointment_status === 'ยกเลิก' || apptData.appointment_status === 'ไม่มาตามนัด') continue;
+        
+        const [existH, existM] = (apptData.start_time || "00:00").split(':').map(Number);
+        const existStartMins = (existH * 60) + existM;
+        const [existEH, existEM] = (apptData.end_time_est || "00:00").split(':').map(Number);
+        const existEndMins = (existEH * 60) + existEM;
+
+        if (newStartMins < existEndMins && newEndMins > existStartMins) {
+          throw new Error(`คิวทับซ้อน: คุณมีนัดหมายในช่วงเวลา ${apptData.start_time.substring(0,5)} - ${apptData.end_time_est.substring(0,5)} อยู่แล้ว`);
+        }
+      }
+    }
+  }
+
   // 3. Resolve Service ID
   let finalServiceId = appointment.serviceId;
   if (!finalServiceId) {
