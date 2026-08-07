@@ -4,7 +4,7 @@ import { Calendar, Clock, UserPlus, CheckCircle, ChevronLeft, ChevronRight, Arro
 import { Appointment, DentistInfo, ServiceInfo } from "../../shared/data";
 import { getDentists, getServices, addAppointment } from "../../shared/supabaseApi";
 
-export default function WalkInBooking() {
+export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appointment) => void }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ name: "", phone: "", service: "", doctorId: 0, day: 0, time: "", note: "", openAppt: false });
   const [done, setDone] = useState(false);
@@ -69,7 +69,10 @@ export default function WalkInBooking() {
       note: form.note
     };
     try {
-      await addAppointment(newAppt);
+      const added = await addAppointment(newAppt);
+      if (onAddAppt) {
+        onAddAppt({ ...newAppt, id: added.appointment_id.toString() });
+      }
       setDone(true);
     } catch (err) {
       console.error(err);

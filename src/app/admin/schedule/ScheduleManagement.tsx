@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Calendar as CalendarIcon, AlertCircle, Plus, Trash2, Clock, MapPin, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Calendar as CalendarIcon, AlertCircle, Plus, Trash2, Clock, MapPin, ChevronLeft, ChevronRight, X, Search, ChevronUp, ChevronDown } from "lucide-react";
 import { DentistInfo, StaffInfo, Shift, SpecialClosure, LeaveRequest } from "../../shared/data";
 import { 
   getDentists, getStaff, getShifts, updateShift, 
@@ -37,6 +37,11 @@ export default function ScheduleManagement() {
   // Calendar State
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarFilter, setCalendarFilter] = useState<'all' | 'dentist' | 'staff'>('all');
+
+  // Weekly Template State
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateFilter, setTemplateFilter] = useState<'all' | 'dentist' | 'staff'>('all');
+  const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(false);
 
   // Modals
   const [newClosure, setNewClosure] = useState({ date: "", reason: "" });
@@ -207,26 +212,75 @@ export default function ScheduleManagement() {
 
       {/* ─── SECTION 1: Weekly Template (Matrix) ─── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 bg-gray-50/50">
-          <h2 className="text-lg font-bold text-[#1A365D] flex items-center gap-2">
-            <CalendarIcon size={18} /> ตารางเวรประจำสัปดาห์ (Weekly Template)
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">คลิกที่ช่วงเวลาเพื่อแก้ไขเวลาหรือตั้งเป็นวันหยุด</p>
+        <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-[#1A365D] flex items-center gap-2">
+              <CalendarIcon size={18} /> ตารางเวรประจำสัปดาห์ (Weekly Template)
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">คลิกที่ช่วงเวลาเพื่อแก้ไขเวลาหรือตั้งเป็นวันหยุด</p>
+          </div>
+          
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+              <input 
+                type="text" 
+                placeholder="ค้นหาชื่อ..." 
+                value={templateSearch}
+                onChange={(e) => setTemplateSearch(e.target.value)}
+                className="pl-9 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all w-40 md:w-48"
+              />
+            </div>
+            
+            <div className="flex bg-gray-200/50 p-1 rounded-lg">
+              <button 
+                onClick={() => setTemplateFilter('all')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${templateFilter === 'all' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                ทั้งหมด
+              </button>
+              <button 
+                onClick={() => setTemplateFilter('dentist')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${templateFilter === 'dentist' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                ทันตแพทย์
+              </button>
+              <button 
+                onClick={() => setTemplateFilter('staff')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${templateFilter === 'staff' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                พนักงาน
+              </button>
+            </div>
+            
+            <button 
+              onClick={() => setIsTemplateCollapsed(!isTemplateCollapsed)}
+              className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors bg-white"
+              title={isTemplateCollapsed ? "ขยาย" : "ย่อ"}
+            >
+              {isTemplateCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+            </button>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="border-b bg-white">
-                <th className="p-3 font-semibold text-gray-600 border-r min-w-[200px]">บุคลากร</th>
-                {DAY_TH.map((d, i) => (
-                  <th key={i} className="p-3 font-semibold text-center min-w-[100px]" style={{ color: DAY_COLORS[i].text, backgroundColor: DAY_COLORS[i].bg }}>
-                    {d}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {allPersons.map(person => (
+        
+        {!isTemplateCollapsed && (
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="sticky top-0 z-10 shadow-sm">
+                <tr className="border-b bg-white">
+                  <th className="p-3 font-semibold text-gray-600 border-r min-w-[200px]">บุคลากร</th>
+                  {DAY_TH.map((d, i) => (
+                    <th key={i} className="p-3 font-semibold text-center min-w-[100px]" style={{ color: DAY_COLORS[i].text, backgroundColor: DAY_COLORS[i].bg }}>
+                      {d}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {allPersons
+                  .filter(p => templateFilter === 'all' || p.type === templateFilter)
+                  .filter(p => p.name.toLowerCase().includes(templateSearch.toLowerCase()))
+                  .map(person => (
                 <tr key={`${person.type}-${person.id}`} className="border-b last:border-0 hover:bg-gray-50 transition-colors">
                   <td className="p-3 border-r">
                     <div className="flex items-center gap-3">
@@ -255,9 +309,10 @@ export default function ScheduleManagement() {
                   })}
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ─── SECTION 2: Actual Calendar ─── */}
