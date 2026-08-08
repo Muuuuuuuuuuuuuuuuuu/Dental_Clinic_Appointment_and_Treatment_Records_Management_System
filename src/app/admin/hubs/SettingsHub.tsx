@@ -1,19 +1,12 @@
 import React, { useState } from "react";
-import { Clock, Lock, ArrowLeft, ChevronRight } from "lucide-react";
-import ClinicSettingsManagement from "../settings/ClinicSettingsManagement";
+import { Lock, ArrowLeft, ChevronRight, BookOpen } from "lucide-react";
 import AccountSettings from "../profile/AccountSettings";
+import UserManual from "../help/UserManual";
 
-type SettingsSubView = null | "clinic" | "account";
+type SettingsSubView = null | "account" | "manual";
 
 const CARD_DEFS = [
-  {
-    key: "clinic" as const,
-    icon: Clock,
-    title: "ตั้งค่าคลินิก",
-    desc: "จัดการเวลาเปิด-ปิด วันหยุดประจำสัปดาห์ และวันปิดพิเศษ",
-    gradient: "linear-gradient(135deg, #1A365D 0%, #2C5282 100%)",
-    bgLight: "#EBF2FF",
-  },
+
   {
     key: "account" as const,
     icon: Lock,
@@ -22,14 +15,22 @@ const CARD_DEFS = [
     gradient: "linear-gradient(135deg, #6B7280 0%, #4B5563 100%)",
     bgLight: "#F3F4F6",
   },
+  {
+    key: "manual" as const,
+    icon: BookOpen,
+    title: "คู่มือการใช้งาน",
+    desc: "ศึกษาขั้นตอนและวิธีการใช้งานระบบสำหรับผู้ดูแล",
+    gradient: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+    bgLight: "#D1FAE5",
+  },
 ];
 
 export default function SettingsHub() {
   const [subView, setSubView] = useState<SettingsSubView>(null);
 
   // Sub-view rendering
-  if (subView === "clinic") return <SubViewWrapper title="ตั้งค่าคลินิก" onBack={() => setSubView(null)}><ClinicSettingsManagement /></SubViewWrapper>;
   if (subView === "account") return <SubViewWrapper title="ตั้งค่าบัญชี" onBack={() => setSubView(null)}><AccountSettings /></SubViewWrapper>;
+  if (subView === "manual") return <SubViewWrapper title="คู่มือการใช้งาน" onBack={() => setSubView(null)}><UserManual /></SubViewWrapper>;
 
   // Hub card selector
   return (
@@ -38,7 +39,7 @@ export default function SettingsHub() {
         <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
           ตั้งค่า
         </h1>
-        <p className="text-sm" style={{ color: "#4A6080" }}>จัดการการตั้งค่าคลินิกและบัญชีผู้ใช้</p>
+        <p className="text-sm" style={{ color: "#4A6080" }}>จัดการการตั้งค่าบัญชีผู้ใช้และความปลอดภัย</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">

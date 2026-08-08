@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Settings, Megaphone, Percent, ArrowLeft, ChevronRight } from "lucide-react";
+import { Settings, Megaphone, Percent, ArrowLeft, ChevronRight, Clock } from "lucide-react";
 import { getServices, getAnnouncements, getPromotions } from "../../shared/supabaseApi";
 import ServiceManagement from "../settings/ServiceManagement";
 import AnnouncementManagement from "../announcements/AnnouncementManagement";
 import PromotionManagement from "../announcements/PromotionManagement";
+import ClinicSettingsManagement from "../settings/ClinicSettingsManagement";
 
-type ClinicSubView = null | "services" | "announcements" | "promotions";
+type ClinicSubView = null | "services" | "announcements" | "promotions" | "settings";
 
 const CARD_DEFS = [
   {
@@ -35,6 +36,15 @@ const CARD_DEFS = [
     bgLight: "#FFF0F2",
     countLabel: "รายการ",
   },
+  {
+    key: "settings" as const,
+    icon: Clock,
+    title: "ตั้งค่าเวลาและวันหยุด",
+    desc: "จัดการเวลาเปิด-ปิด วันหยุดประจำสัปดาห์ และวันปิดพิเศษ",
+    gradient: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
+    bgLight: "#FEF3C7",
+    countLabel: "ตั้งค่า",
+  },
 ];
 
 export default function ClinicHub() {
@@ -53,6 +63,7 @@ export default function ClinicHub() {
   if (subView === "services") return <SubViewWrapper title="บริการ" onBack={() => setSubView(null)}><ServiceManagement /></SubViewWrapper>;
   if (subView === "announcements") return <SubViewWrapper title="ประกาศ" onBack={() => setSubView(null)}><AnnouncementManagement /></SubViewWrapper>;
   if (subView === "promotions") return <SubViewWrapper title="โปรโมชั่น" onBack={() => setSubView(null)}><PromotionManagement /></SubViewWrapper>;
+  if (subView === "settings") return <SubViewWrapper title="ตั้งค่าเวลาและวันหยุด" onBack={() => setSubView(null)}><ClinicSettingsManagement /></SubViewWrapper>;
 
   // Hub card selector
   return (
@@ -88,8 +99,8 @@ export default function ClinicHub() {
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold px-3 py-1.5 rounded-full"
-                  style={{ backgroundColor: card.bgLight, color: card.gradient.includes("FF6B7E") ? "#E05B6E" : card.gradient.includes("1A365D") ? "#1A365D" : "#5B4DC7" }}>
-                  {counts[card.key] !== undefined ? `${counts[card.key]} ${card.countLabel}` : "กำลังโหลด..."}
+                  style={{ backgroundColor: card.bgLight, color: card.gradient.includes("FF6B7E") ? "#E05B6E" : card.gradient.includes("1A365D") ? "#1A365D" : card.gradient.includes("F59E0B") ? "#D97706" : "#5B4DC7" }}>
+                  {card.key === "settings" ? "ข้อมูลทั่วไป" : (counts[card.key] !== undefined ? `${counts[card.key]} ${card.countLabel}` : "กำลังโหลด...")}
                 </span>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 group-hover:translate-x-1"
                   style={{ backgroundColor: "#F0F4F8" }}>

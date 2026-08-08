@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, FileText, ArrowLeft, ChevronRight, Bell } from "lucide-react";
+import { Calendar, FileText, ArrowLeft, ChevronRight, Bell, Settings } from "lucide-react";
 import { getLeaveRequests } from "../../shared/supabaseApi";
 import ScheduleManagement from "../schedule/ScheduleManagement";
 import LeaveApprovals from "../leave/LeaveApprovals";
+import ClinicSettingsManagement from "../settings/ClinicSettingsManagement";
 
-type ScheduleSubView = null | "schedule" | "leaves";
+type ScheduleSubView = null | "schedule" | "leaves" | "clinic_settings";
 
 export default function ScheduleHub() {
   const [subView, setSubView] = useState<ScheduleSubView>(null);
+  const [prevSubView, setPrevSubView] = useState<ScheduleSubView>(null);
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
@@ -16,18 +18,39 @@ export default function ScheduleHub() {
       .catch(console.error);
   }, []);
 
+  const handleNavigate = (view: ScheduleSubView) => {
+    setPrevSubView(subView);
+    setSubView(view);
+  };
+
+  const handleBack = () => {
+    setSubView(prevSubView);
+    setPrevSubView(null); // Reset prev after going back
+  };
+
   // Sub-view rendering
-  if (subView === "schedule") return <SubViewWrapper onBack={() => setSubView(null)}><ScheduleManagement /></SubViewWrapper>;
+  if (subView === "schedule") return <SubViewWrapper onBack={() => setSubView(null)}><ScheduleManagement onNavigateToSettings={() => handleNavigate("clinic_settings")} /></SubViewWrapper>;
   if (subView === "leaves") return <SubViewWrapper onBack={() => setSubView(null)}><LeaveApprovals /></SubViewWrapper>;
+  if (subView === "clinic_settings") return <SubViewWrapper onBack={handleBack}><ClinicSettingsManagement /></SubViewWrapper>;
 
   // Hub card selector
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
-          ตารางเวรและการลา
-        </h1>
-        <p className="text-sm" style={{ color: "#4A6080" }}>จัดการตารางเวรบุคลากรและอนุมัติคำขอลา</p>
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+            ตารางเวรและการลา
+          </h1>
+          <p className="text-sm" style={{ color: "#4A6080" }}>จัดการตารางเวรบุคลากรและอนุมัติคำขอลา</p>
+        </div>
+        <button
+          onClick={() => handleNavigate("clinic_settings")}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl shadow-sm text-sm font-medium hover:bg-gray-50 transition-colors"
+          style={{ color: "#1A365D" }}
+        >
+          <Settings size={16} />
+          ตั้งค่าคลินิก
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Calendar as CalendarIcon, AlertCircle, Plus, Trash2, Clock, MapPin, ChevronLeft, ChevronRight, X, Search, ChevronUp, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon, AlertCircle, Plus, Trash2, Clock, MapPin, ChevronLeft, ChevronRight, X, Search, ChevronUp, ChevronDown, Settings } from "lucide-react";
 import { DentistInfo, StaffInfo, Shift, SpecialClosure, LeaveRequest } from "../../shared/data";
 import { 
   getDentists, getStaff, getShifts, updateShift, 
   getClinicClosures, addClinicClosure, deleteClinicClosure, 
-  getClinicRooms, updateClinicRooms, updateDentistRoom, 
-  getLeaveRequests 
+  getLeaveRequests, getWeeklyOffDays 
 } from "../../shared/supabaseApi";
 
 const DAY_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -25,13 +24,13 @@ function getStaffRoom(): string {
   return 'เคาน์เตอร์ต้อนรับ';
 }
 
-export default function ScheduleManagement() {
+export default function ScheduleManagement({ onNavigateToSettings }: { onNavigateToSettings?: () => void }) {
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
   const [staffList, setStaffList] = useState<StaffInfo[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
-  const [clinicRooms, setClinicRooms] = useState<string[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Calendar State
@@ -45,8 +44,6 @@ export default function ScheduleManagement() {
 
   // Modals
   const [newClosure, setNewClosure] = useState({ date: "", reason: "" });
-  const [showRoomModal, setShowRoomModal] = useState(false);
-  const [newRoomName, setNewRoomName] = useState("");
   const [selectedDayInfo, setSelectedDayInfo] = useState<{ dateObj: Date; dateStr: string } | null>(null);
   
   // Shift Edit Modal
@@ -58,20 +55,20 @@ export default function ScheduleManagement() {
 
   const fetchData = async () => {
     try {
-      const [dData, sData, shData, cData, rData, lData] = await Promise.all([
+      const [dData, sData, shData, cData, lData, offDaysData] = await Promise.all([
         getDentists(),
         getStaff(),
         getShifts(),
         getClinicClosures(),
-        getClinicRooms(),
-        getLeaveRequests()
+        getLeaveRequests(),
+        getWeeklyOffDays()
       ]);
       setDentists(dData);
       setStaffList(sData);
       setShifts(shData);
       setClosures(cData);
-      setClinicRooms(rData);
       setLeaves(lData.filter(l => l.status === "อนุมัติแล้ว"));
+      setWeeklyOffDays(offDaysData);
     } catch (err) {
       console.error("Error fetching schedule data", err);
     } finally {
@@ -119,29 +116,6 @@ export default function ScheduleManagement() {
     }
   };
 
-  const handleAddRoom = async () => {
-    if (!newRoomName.trim()) return;
-    try {
-      const updatedRooms = [...clinicRooms, newRoomName.trim()];
-      await updateClinicRooms(updatedRooms);
-      setClinicRooms(updatedRooms);
-      setNewRoomName("");
-    } catch (err) {
-      console.error("Error adding room", err);
-      alert("ไม่สามารถเพิ่มห้องตรวจได้");
-    }
-  };
-
-  const handleDeleteRoom = async (roomToDelete: string) => {
-    if (!confirm(`คุณต้องการลบ ${roomToDelete} ออกจากระบบ?`)) return;
-    try {
-      const updatedRooms = clinicRooms.filter(r => r !== roomToDelete);
-      await updateClinicRooms(updatedRooms);
-      setClinicRooms(updatedRooms);
-    } catch (err) {
-      console.error("Error deleting room", err);
-    }
-  };
 
   const allPersons = [
     ...dentists.map(d => ({ id: d.id, name: d.name, type: 'dentist' as const, userId: d.userId, color: '#FF8C9A' })),
@@ -198,13 +172,15 @@ export default function ScheduleManagement() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการตารางเวร (ศูนย์บัญชาการ)</h1>
-            <button
-              onClick={() => setShowRoomModal(true)}
-              className="text-xs px-3 py-1.5 rounded-lg border flex items-center gap-1 hover:bg-gray-50 transition-colors bg-white"
-              style={{ color: "#4A6080", borderColor: "#E2E8F0" }}
-            >
-              <MapPin size={12} /> จัดการห้องตรวจ
-            </button>
+            {onNavigateToSettings && (
+              <button
+                onClick={onNavigateToSettings}
+                className="text-xs px-3 py-1.5 rounded-lg border flex items-center gap-1 hover:bg-gray-50 transition-colors bg-white shadow-sm"
+                style={{ color: "#1A365D", borderColor: "#E2E8F0" }}
+              >
+                <Settings size={12} /> ตั้งค่าคลินิก
+              </button>
+            )}
           </div>
           <p className="text-sm mt-1" style={{ color: "#4A6080" }}>กำหนดเวรประจำ และตรวจสอบการเข้างานจริงรายวัน</p>
         </div>
@@ -269,7 +245,7 @@ export default function ScheduleManagement() {
               <thead className="sticky top-0 z-10 shadow-sm">
                 <tr className="border-b bg-white">
                   <th className="p-3 font-semibold text-gray-600 border-r min-w-[200px]">บุคลากร</th>
-                  {DAY_TH.map((d, i) => (
+                  {DAY_TH.map((d, i) => !weeklyOffDays.includes(i) && (
                     <th key={i} className="p-3 font-semibold text-center min-w-[100px]" style={{ color: DAY_COLORS[i].text, backgroundColor: DAY_COLORS[i].bg }}>
                       {d}
                     </th>
@@ -294,6 +270,7 @@ export default function ScheduleManagement() {
                     </div>
                   </td>
                   {DAY_LABELS.map((_, dayIndex) => {
+                    if (weeklyOffDays.includes(dayIndex)) return null;
                     const shift = shifts.find(s => s.person_id === person.id && s.person_type === person.type && s.day_of_week === dayIndex);
                     const isWorking = shift && !shift.is_off;
                     return (
@@ -621,33 +598,6 @@ export default function ScheduleManagement() {
         </div>
       )}
 
-      {/* Room Management Modal (Existing) */}
-      {showRoomModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold" style={{ color: "#1A365D" }}>จัดการห้องตรวจ</h3>
-              <button onClick={() => setShowRoomModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
-            </div>
-            
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-              {clinicRooms.map(r => (
-                <div key={r} className="flex justify-between items-center p-3 rounded-lg border bg-gray-50">
-                  <span className="font-medium text-sm" style={{ color: "#1A365D" }}>{r}</span>
-                  <button onClick={() => handleDeleteRoom(r)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-md">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 pt-6 border-t flex gap-2">
-              <input type="text" placeholder="ชื่อห้องใหม่" value={newRoomName} onChange={e => setNewRoomName(e.target.value)} className="flex-1 px-3 py-2 rounded-lg border text-sm" />
-              <button onClick={handleAddRoom} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">เพิ่ม</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
