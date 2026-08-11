@@ -29,7 +29,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  const targetDateStr = selectedDate.toISOString().split('T')[0];
+  const targetDateStr = selectedDate.toLocaleDateString('en-CA');
   
   // Filter appointments based on timeframe and selectedDate
   const filteredAppts = appointments.filter(a => {
@@ -64,7 +64,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
     const chartDays = timeframe === "month" ? 30 : 7;
     const d = new Date(selectedDate);
     d.setDate(d.getDate() - ((chartDays - 1) - i));
-    const dStr = d.toISOString().split('T')[0];
+    const dStr = d.toLocaleDateString('en-CA');
     const dayLabel = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     const dayAppts = appointments.filter(a => a.date === dStr);
     const dayRev = dayAppts.filter(a => a.status === "เสร็จสิ้นเรียบร้อย").reduce((s, a) => s + (a.cost ?? 0), 0);
@@ -129,7 +129,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         {[
           { label: "นัดหมาย",      val: filteredAppts.length,            icon: Calendar,    bg: "#E8F4FF", ic: "#1D6FA4" },
           { label: "รายได้",       val: `฿${revenue.toLocaleString()}`,  icon: TrendingUp,  bg: "#E8FFF0", ic: "#1B7A3E" },
-          { label: "แพทย์ออกตรวจ",  val: dentists.length,                 icon: UserCheck,   bg: "#FFE8EC", ic: "#FF6B7E" },
+          { label: "แพทย์ออกตรวจ",  val: new Set(filteredAppts.map(a => a.doctorId).filter(Boolean)).size, icon: UserCheck,   bg: "#FFE8EC", ic: "#FF6B7E" },
           { label: "รออนุมัติลา",   val: pending,                         icon: AlertCircle, bg: "#FFF3E0", ic: "#E65100" },
         ].map(s => (
           <div key={s.label} className="rounded-xl bg-white px-4 py-3 cursor-pointer hover:shadow-md transition-shadow flex items-center gap-3"
