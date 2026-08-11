@@ -53,6 +53,29 @@ export default function AppointmentsView({
     }
   };
 
+  const activeAppts = appts.filter(a => {
+    if (a.status === "ยกเลิก") return false;
+    if (a.status === "เสร็จสิ้นเรียบร้อย" || a.status === "เสร็จสิ้น" || a.status === "ไม่มาตามนัด") return false;
+    if (a.date) {
+      const timeStr = a.time || "00:00";
+      const apptDate = new Date(`${a.date}T${timeStr}:00`);
+      const now = new Date();
+      if (apptDate.getTime() < now.getTime()) {
+        return false;
+      }
+    }
+    return true;
+  }).sort((a, b) => {
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    const timeA = a.time || "00:00";
+    const timeB = b.time || "00:00";
+    const dateA = new Date(`${a.date}T${timeA}:00`).getTime();
+    const dateB = new Date(`${b.date}T${timeB}:00`).getTime();
+    return dateA - dateB;
+  });
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -68,16 +91,27 @@ export default function AppointmentsView({
       </div>
 
       <div className="space-y-4">
-        {appts.length === 0 && (
+        {activeAppts.length === 0 && (
           <div className="text-center py-16 rounded-2xl bg-white" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <Calendar size={40} className="mx-auto mb-3 opacity-20" style={{ color: "#1A365D" }} />
             <p className="text-sm" style={{ color: "#4A6080" }}>ยังไม่มีนัดหมาย</p>
           </div>
         )}
-        {appts.map(a => {
+        {activeAppts.map(a => {
           const sc = statusColor[a.status] ?? { bg: "#F0F4F8", text: "#4A6080" };
-          const canCancel = a.status === "ยืนยันการจอง" && (a as any).source !== "doctor";
-          const isPending = a.status !== "เสร็จสิ้น" && (a.status as any) !== "เสร็จเรียบร้อย";
+          const canCancel = a.status !== "ยกเลิก";
+          const isDone = a.status === "เสร็จสิ้นเรียบร้อย" || a.status === "ยกเลิก" || a.status === "ไม่มาตามนัด" || (a.status as string) === "เสร็จสิ้น";
+          const isPending = !isDone;
+
+          let isWithin24Hours = false;
+          if (a.date && a.time) {
+            const apptDate = new Date(`${a.date}T${a.time}:00`);
+            const now = new Date();
+            const diffMs = apptDate.getTime() - now.getTime();
+            if (diffMs <= 24 * 60 * 60 * 1000) {
+              isWithin24Hours = true;
+            }
+          }
           return (
             <div key={a.id} className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
               <div className="flex items-start justify-between gap-4">
@@ -100,38 +134,14 @@ export default function AppointmentsView({
                     <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "#4A6080" }}>
                       <Clock size={10} /> {a.date ? `${a.time} น. • ${thDate(a.date)}` : "รอการระบุวัน-เวลา"}
                     </p>
-                    {isPending && a.date !== "" && (
+                    {(a.note || (a as any).source === "doctor") && (
                       <div className="mt-2 p-2.5 rounded-lg text-xs" style={{ backgroundColor: "#F8F9FA" }}>
-                        <p className="font-medium mb-0.5" style={{ color: "#1A365D" }}>รายละเอียดนัดหมาย</p>
-                        <p style={{ color: "#4A6080" }}>บริการ: {a.service}</p>
-                        {a.date && <p style={{ color: "#4A6080" }}>วันที่: {thDate(a.date)} เวลา {a.time} น.</p>}
                         {a.note && <p style={{ color: "#DB2777" }}>หมายเหตุ: {a.note}</p>}
                         {(a as any).source === "doctor" && <p style={{ color: "#7C3AED" }}>นัดนี้ถูกสร้างโดยทันตแพทย์หลังการรักษา</p>}
                       </div>
                     )}
-                    {(a.status as any) === "รอระบุวัน-เวลา" && (
-                      <div className="mt-3">
-                        {a.note && (
-                          <div className="mb-2 p-2.5 rounded-lg text-xs" style={{ backgroundColor: "#FFF1F2" }}>
-                            <p className="font-medium text-pink-700">หมายเหตุถึงคนไข้:</p>
-                            <p className="text-pink-600">{a.note}</p>
-                          </div>
-                        )}
-                        {onBookFollowUp && (
-                          <button onClick={() => {
-                            // Mocking matching ID from name for demo
-                            const serviceId = (a as any).serviceId || 1; 
-                            const doctorId = (a as any).doctorId || 0;
-                            onBookFollowUp(serviceId, doctorId);
-                          }}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90"
-                            style={{ background: "linear-gradient(135deg,#DB2777,#BE185D)" }}>
-                            <Calendar size={12} /> คลิกเพื่อเลือกวัน-เวลา (สำหรับนัดต่อเนื่อง)
-                          </button>
-                        )}
-                      </div>
-                    )}
                   </div>
+
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0"
                   style={{ backgroundColor: sc.bg, color: sc.text }}>
@@ -140,7 +150,11 @@ export default function AppointmentsView({
               </div>
               {canCancel && (
                 <div className="mt-4 pt-3 flex items-center gap-2" style={{ borderTop: "1px solid rgba(26,54,93,0.06)" }}>
-                  {cancelId === a.id ? (
+                  {isWithin24Hours ? (
+                    <p className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+                      ยกเลิกไม่ได้ (น้อยกว่า 24 ชม.)
+                    </p>
+                  ) : cancelId === a.id ? (
                     <>
                       <p className="text-xs flex-1" style={{ color: "#E65100" }}>ยืนยันการยกเลิกนัดหมาย?</p>
                       <button onClick={() => doCancel(a.id)} className="text-xs px-3 py-1.5 rounded-lg text-white" style={{ backgroundColor: "#E74C3C" }}>
@@ -152,17 +166,12 @@ export default function AppointmentsView({
                     </>
                   ) : (
                     <button onClick={() => setCancelId(a.id)} className="text-xs font-medium hover:opacity-70" style={{ color: "#E74C3C" }}>
-                      ยกเลิกนัดหมาย (ก่อน 24 ชม.)
+                      ยกเลิกนัดหมาย
                     </button>
                   )}
                 </div>
               )}
-              {(a as any).source === "doctor" && a.status === "ยืนยันการจอง" && (
-                <div className="mt-3 pt-3 flex items-center gap-2" style={{ borderTop: "1px solid rgba(26,54,93,0.06)" }}>
-                  <AlertCircle size={12} style={{ color: "#7C3AED" }} />
-                  <p className="text-xs" style={{ color: "#7C3AED" }}>นัดหมายนี้สร้างโดยทันตแพทย์ ไม่สามารถยกเลิกผ่านระบบออนไลน์ได้ กรุณาติดต่อคลินิกโดยตรง</p>
-                </div>
-              )}
+
             </div>
           );
         })}

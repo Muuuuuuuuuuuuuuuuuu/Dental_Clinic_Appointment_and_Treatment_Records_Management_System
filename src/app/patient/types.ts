@@ -87,11 +87,14 @@ export function thDate(s: string) {
 }
 
 export const patientStatusColor: Record<string, { bg: string; text: string }> = {
-  "ยืนยันการจอง": { bg: "#E8F4FF", text: "#1D6FA4" },
-  "รอรักษา":       { bg: "#FFF3E0", text: "#E65100" },
-  "เสร็จเรียบร้อย": { bg: "#E8FFF0", text: "#1B7A3E" },
-  "รอระบุวัน-เวลา": { bg: "#FCE7F3", text: "#DB2777" }, // pink
+  "ยืนยันการจอง":    { bg: "#E8F4FF", text: "#1D6FA4" },
+  "เช็คอินเรียบร้อย":{ bg: "#F3E8FF", text: "#6B21A8" },
+  "รอชำระเงิน":      { bg: "#FFFDE7", text: "#B45309" },
+  "เสร็จสิ้นเรียบร้อย":{ bg: "#E8FFF0", text: "#1B7A3E" },
+  "ยกเลิก":          { bg: "#FEF2F2", text: "#B91C1C" },
+  "ไม่มาตามนัด":     { bg: "#F3F4F6", text: "#4B5563" },
 };
+
 
 // ─── Auth constants ───────────────────────────────────────────────────────────
 

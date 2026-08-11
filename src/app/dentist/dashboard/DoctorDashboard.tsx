@@ -31,13 +31,14 @@ export default function DoctorDashboard({
   }, []);
 
   const today = new Date();
-  const todayString = today.toISOString().split('T')[0];
+  const todayString = today.toLocaleDateString('en-CA'); // Gets local YYYY-MM-DD
   const formattedDate = today.toLocaleDateString("th-TH", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   const myAppts = appointments.filter(a => a.doctorId === doctor?.id && a.date === todayString);
-  const waiting  = myAppts.filter(a => a.status === "รอรักษา").length;
-  const treating = myAppts.filter(a => a.status === "กำลังรักษา").length;
-  const done     = myAppts.filter(a => ["เสร็จสิ้น", "รอชำระเงิน", "ชำระเงินแล้ว"].includes(a.status)).length;
+  const waiting  = myAppts.filter(a => a.status === "เช็คอินเรียบร้อย").length;
+  const treating = myAppts.filter(a => a.status === "รอชำระเงิน").length;
+  const done     = myAppts.filter(a => a.status === "เสร็จสิ้นเรียบร้อย").length;
+
 
   return (
     <div>

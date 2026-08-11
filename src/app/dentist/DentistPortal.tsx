@@ -17,8 +17,9 @@ import {
   CalendarX, Menu, X, Plus, Check, Megaphone
 } from "lucide-react";
 import {
-  getClinicStatus, DocView, DentistInfo, ClinicStatus
+  getClinicStatus, DocView, DentistInfo, ClinicStatus, Appointment
 } from "../shared/data";
+
 import { getDentists, getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
 
 function PortalStatusBanner() {

@@ -27,14 +27,14 @@ export default function CheckInView() {
   };
 
   const todayStr = fmtDate(new Date());
-  
+
   // Real-time statuses for today
   const todayApps = appointments
     .filter(a => a.date === todayStr)
     .sort((a, b) => a.time.localeCompare(b.time));
 
   const toCheckIn = todayApps.filter(a => a.status === "ยืนยันการจอง");
-  const inQueue = todayApps.filter(a => a.status === "รอรักษา" || a.status === "กำลังรักษา");
+  const inQueue = todayApps.filter(a => a.status === "เช็คอินเรียบร้อย");
   const toPay = todayApps.filter(a => a.status === "รอชำระเงิน");
 
   return (
@@ -55,7 +55,7 @@ export default function CheckInView() {
             </div>
             <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>รอเช็คอิน ({toCheckIn.length})</h2>
           </div>
-          
+
           {toCheckIn.length === 0 ? (
             <div className="text-center py-10 rounded-2xl bg-white border border-dashed border-gray-200">
               <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคนไข้รอเช็คอิน</p>
@@ -70,7 +70,7 @@ export default function CheckInView() {
                 </div>
                 <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
                 <p className="text-xs mb-3" style={{ color: "#4A6080" }}>{a.service} • ทพ. {a.doctorName}</p>
-                
+
                 {(a.conditions !== "ไม่มี" || a.allergies !== "ไม่มี") && (
                   <div className="flex items-center gap-1 mb-3 bg-orange-50 p-1.5 rounded-lg">
                     <AlertTriangle size={11} style={{ color: "#E65100" }} />
@@ -81,9 +81,9 @@ export default function CheckInView() {
                     </span>
                   </div>
                 )}
-                
+
                 <button
-                  onClick={() => onUpdate(a.id, { status: "รอรักษา" })}
+                  onClick={() => onUpdate(a.id, { status: "เช็คอินเรียบร้อย" })}
                   className="w-full flex justify-center items-center gap-2 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:bg-blue-600"
                   style={{ backgroundColor: "#3B82F6" }}>
                   <UserCheck size={16} /> เช็คอินมาถึงแล้ว
@@ -99,32 +99,31 @@ export default function CheckInView() {
             <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-100 text-orange-600">
               <Clock size={16} />
             </div>
-            <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>รอ/กำลังรักษา ({inQueue.length})</h2>
+            <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>เช็คอินแล้ว / ระหว่างรักษา ({inQueue.length})</h2>
           </div>
-          
+
           {inQueue.length === 0 ? (
             <div className="text-center py-10 rounded-2xl bg-white border border-dashed border-gray-200">
               <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคิวในห้องตรวจ</p>
             </div>
           ) : (
             inQueue.map(a => {
-              const isTreating = a.status === "กำลังรักษา";
-              const colorObj = STATUS_COLORS[a.status];
-              
+              const colorObj = STATUS_COLORS[a.status] || { bg: "#F3E8FF", text: "#6B21A8", dot: "#9333EA" };
+
               return (
                 <div key={a.id} className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: colorObj.dot }}></div>
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-sm font-bold" style={{ color: "#1A365D" }}>{a.time} น.</span>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1" 
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
                       style={{ backgroundColor: colorObj.bg, color: colorObj.text }}>
-                      {isTreating && <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
-                      {a.status}
+                    {a.status}
+
                     </span>
                   </div>
                   <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
                   <p className="text-xs mb-3" style={{ color: "#4A6080" }}>ห้องตรวจ: ทพ. {a.doctorName}</p>
-                  
+
                   {(a.conditions?.includes("Walk-in") || a.allergies?.includes("Walk-in")) && (
                     <div className="flex items-center gap-1 mb-2 bg-red-50 p-1.5 rounded-lg border border-red-100">
                       <AlertTriangle size={11} className="text-red-600" />
@@ -147,7 +146,7 @@ export default function CheckInView() {
             </div>
             <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>รอชำระเงิน ({toPay.length})</h2>
           </div>
-          
+
           {toPay.length === 0 ? (
             <div className="text-center py-10 rounded-2xl bg-white border border-dashed border-gray-200">
               <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคิวรอชำระเงิน</p>
@@ -161,7 +160,7 @@ export default function CheckInView() {
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFFDE7", color: "#B45309" }}>{a.status}</span>
                 </div>
                 <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
-                
+
                 {/* Normally we'd fetch cost from treatment_record, mock it here */}
                 <div className="mt-3 bg-gray-50 rounded-lg p-2 text-center border border-gray-100">
                   <p className="text-xs text-gray-500 mb-0.5">ยอดประเมินเบื้องต้น</p>

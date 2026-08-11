@@ -47,8 +47,8 @@ export default function PaymentView() {
   // Payable: Any appointment with status "รอชำระเงิน"
   const payable = appointments.filter(a => a.status === "รอชำระเงิน");
   
-  // Paid today: Appointments with status "เสร็จสิ้น" AND date is today
-  const paid = appointments.filter(a => a.status === "เสร็จสิ้น" && a.date === todayStr);
+  // Paid today: Appointments with status "เสร็จสิ้นเรียบร้อย" AND date is today
+  const paid = appointments.filter(a => a.status === "เสร็จสิ้นเรียบร้อย" && a.date === todayStr);
 
   const selectedAppt = appointments.find(a => a.id === selectedApptId);
 
@@ -73,7 +73,7 @@ export default function PaymentView() {
     try {
       const updated = await processPaymentApi(selectedAppt.id, netTotal, paymentMethod);
       
-      setAppointments(apps => apps.map(a => a.id === selectedAppt.id ? { ...a, ...updated, status: "เสร็จสิ้น", cost: netTotal, paid: true } : a));
+      setAppointments(apps => apps.map(a => a.id === selectedAppt.id ? { ...a, ...updated, status: "เสร็จสิ้นเรียบร้อย", cost: netTotal, paid: true } : a));
       
       // Prepare receipt data
       setReceiptData({
@@ -495,7 +495,7 @@ export default function PaymentView() {
                             doctorId: isBound ? followUp.doctorId : undefined,
                             date: isOpenTicket ? '' : followUpDate,
                             time: isOpenTicket ? '' : followUpTime,
-                            status: isOpenTicket ? 'รอระบุวัน-เวลา' : 'รอการยืนยัน',
+                            status: isOpenTicket ? 'ยืนยันการจอง' : 'ยืนยันการจอง',
                             source: 'doctor',
                             note: isBound ? `แพทย์ประจำเคส: ${followUp.doctorName}` : ''
                           } as any);

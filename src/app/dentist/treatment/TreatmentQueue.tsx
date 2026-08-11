@@ -40,7 +40,7 @@ export default function TreatmentQueue({
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
 
   const today = new Date();
-  const todayString = today.toISOString().split('T')[0];
+  const todayString = today.toLocaleDateString('en-CA');
   const formattedDate = today.toLocaleDateString("th-TH", { year: 'numeric', month: 'long', day: 'numeric' });
 
   const getWeekRange = () => {
@@ -156,8 +156,7 @@ export default function TreatmentQueue({
   };
 
   const statusActions: Record<string, { label: string; next: AppointmentStatus; color: string }> = {
-    "รอรักษา":     { label: "เริ่มรักษา",        next: "กำลังรักษา", color: "#7C3AED" },
-    "กำลังรักษา": { label: "บันทึกการรักษา",     next: "เสร็จสิ้น",  color: "#FF8C9A" },
+    "เช็คอินเรียบร้อย": { label: "เริ่มรักษา", next: "รอชำระเงิน", color: "#7C3AED" },
   };
 
   return (
@@ -256,12 +255,12 @@ export default function TreatmentQueue({
                   <div className="flex gap-2">
                     {act && (
                       <button
-                        onClick={() => act.next === "กำลังรักษา"
-                          ? onUpdateAppt(a.id, { status: "กำลังรักษา" })
-                          : handleStartRecording(a)}
+                        onClick={() => act.next === "รอชำระเงิน"
+                          ? handleStartRecording(a)
+                          : onUpdateAppt(a.id, { status: act.next })}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
                         style={{ backgroundColor: act.color }}>
-                        {act.next === "กำลังรักษา" ? <><Clock size={14} /> {act.label}</> : <><ClipboardList size={14} /> {act.label}</>}
+                        {act.next === "รอชำระเงิน" ? <><ClipboardList size={14} /> {act.label}</> : <><Clock size={14} /> {act.label}</>}
                       </button>
                     )}
                   </div>
@@ -314,17 +313,7 @@ export default function TreatmentQueue({
                         className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none"
                         style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                     </div>
-                    <div>
-                      <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ประเมินค่ารักษา (บาท) *</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-gray-500 font-medium">฿</span>
-                        <input type="number" required min="0" value={form.actualCost} onChange={e => setForm(f => ({ ...f, actualCost: e.target.value === "" ? "" : Number(e.target.value) }))}
-                          placeholder="0"
-                          className="w-full pl-8 pr-3 py-2.5 rounded-xl text-sm outline-none font-bold"
-                          style={{ backgroundColor: "#F0F4F8", color: "#1A365D", border: "1px solid #E2E8F0" }} />
-                      </div>
-                      <p className="text-[10px] text-gray-500 mt-1">ราคาจะอ้างอิงเบื้องต้นจากบริการที่เลือก แต่สามารถปรับแก้ได้ตามที่ประเมินจริง</p>
-                    </div>
+
                     <div className="flex gap-2">
                       <button onClick={() => submitTreatment(a)}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"

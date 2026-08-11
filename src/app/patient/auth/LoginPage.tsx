@@ -43,43 +43,48 @@ export default function LoginPage({
       });
       
       if (authError || !authData.user) {
-        throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        const msg = authError?.message || "";
+        if (msg.includes("Email not confirmed"))
+          throw new Error("อีเมลยังไม่ได้ยืนยัน กรุณาตรวจสอบอีเมลและกดลิงก์ยืนยันใน inbox");
+        if (msg.includes("Invalid login credentials") || msg.includes("invalid"))
+          throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        throw new Error(msg || "ไม่สามารถเข้าสู่ระบบได้");
       }
 
-      // Check role from public.users table
-      const { data: userData, error: userError } = await supabase
+      // Check role from public.users table (default to patient if not found)
+      const { data: userData } = await supabase
         .from('users')
         .select('role')
         .eq('user_id', authData.user.id)
         .single();
 
-      if (userError || !userData) {
-        throw new Error("ไม่พบข้อมูลสิทธิ์ผู้ใช้งาน โปรดติดต่อผู้ดูแลระบบ");
-      }
+      const role = userData?.role || "patient";
+      // Handle both Thai and English role names
+      const isPatient = role === "patient" || role === "คนไข้";
 
-      const role = userData.role;
-
-      if (role === "patient") {
-        const profile = await loginPatient(email, pass) as any;
+      if (isPatient) {
+        // Fetch profile using the already-authenticated user ID
+        const { getPatientProfileByUserId } = await import("../../shared/supabaseApi");
+        const profile = await getPatientProfileByUserId(authData.user.id) as any;
         onLogin({
-          patientId: profile.patientId,
-          idCard: profile.idCard,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          dob: profile.dob,
-          gender: profile.gender,
-          phone: profile.phone,
+          patientId: profile?.patientId || null,
+          idCard: profile?.idCard || "",
+          firstName: profile?.firstName || "",
+          lastName: profile?.lastName || "",
+          dob: profile?.dob || "",
+          gender: profile?.gender || "",
+          phone: profile?.phone || "",
           email: email,
-          emergencyName: profile.emergencyName,
-          emergencyPhone: profile.emergencyPhone,
-          conditions: profile.conditions,
-          allergies: profile.allergies
+          emergencyName: profile?.emergencyName || "",
+          emergencyPhone: profile?.emergencyPhone || "",
+          conditions: profile?.conditions || "",
+          allergies: profile?.allergies || ""
         });
       } else {
         let mappedRole: UserRole = "patient";
         if (role === "admin") mappedRole = "admin";
-        else if (role === "dentist" || role === "doctor") mappedRole = "doctor";
-        else if (role === "staff") mappedRole = "staff";
+        else if (role === "dentist" || role === "doctor" || role === "ทันตแพทย์") mappedRole = "doctor";
+        else if (role === "staff" || role === "พนักงาน") mappedRole = "staff";
         
         onLoginRole(mappedRole, email);
       }

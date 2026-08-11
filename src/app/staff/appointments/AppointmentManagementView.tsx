@@ -112,13 +112,12 @@ export default function AppointmentManagementView({
   };
 
   // Derived state
-  const pendingAppointments = appointments.filter(a => a.status === "รอการยืนยัน");
-  const activeAppointments = appointments.filter(a => !["เสร็จสิ้น", "ยกเลิก", "ชำระเงินแล้ว", "รอการยืนยัน"].includes(a.status));
+  const activeAppointments = appointments.filter(a => !["เสร็จสิ้นเรียบร้อย", "ยกเลิก", "ไม่มาตามนัด"].includes(a.status));
+
   
   const displayAppointments = useMemo(() => {
     let list = appointments;
-    if (activeTab === "confirm") list = pendingAppointments;
-    else if (activeTab === "reschedule" || activeTab === "transfer") list = activeAppointments;
+    if (activeTab === "reschedule" || activeTab === "transfer") list = activeAppointments;
     
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -127,10 +126,10 @@ export default function AppointmentManagementView({
     
     // Sort by date/time
     return list.sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
-  }, [appointments, activeTab, searchQuery, pendingAppointments, activeAppointments]);
+  }, [appointments, activeTab, searchQuery, activeAppointments]);
+
 
   const TABS = [
-    { key: "confirm" as TabView, label: "ยืนยันเคสพิเศษ", count: pendingAppointments.length, icon: CheckCircle },
     { key: "transfer" as TabView, label: "ย้ายเคส", icon: ArrowRightLeft },
     { key: "reschedule" as TabView, label: "เลื่อน/ยกเลิกนัด", icon: Clock },
     { key: "all" as TabView, label: "นัดหมายทั้งหมด", icon: CalendarDays }
@@ -179,12 +178,8 @@ export default function AppointmentManagementView({
           >
             <tab.icon size={16} />
             {tab.label}
-            {tab.count !== undefined && tab.count > 0 && (
-              <span className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold text-white ml-1" style={{ backgroundColor: "#F57F17" }}>
-                {tab.count}
-              </span>
-            )}
           </button>
+
         ))}
       </div>
 

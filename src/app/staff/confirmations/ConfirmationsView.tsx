@@ -23,15 +23,17 @@ export default function ConfirmationsView() {
     }
   };
 
-  // Mock filter for "รอการยืนยัน"
-  const pendingAppointments = appointments.filter(a => a.status === "รอการยืนยัน");
+  const todayStr = new Date().toISOString().split("T")[0];
+  // แสดงนัดหมายที่ยืนยันแล้วสำหรับวันนี้ (ไม่มีสถานะ รอการยืนยัน อีกต่อไป)
+  const pendingAppointments = appointments.filter(a => a.date === todayStr && a.status === "ยืนยันการจอง");
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ยืนยันนัดหมาย</h1>
-        <p className="text-sm" style={{ color: "#4A6080" }}>ตรวจสอบและยืนยันนัดหมายสำหรับเคสที่ต้องใช้เวลาพิเศษ (จัดฟัน, รากเทียม, ฯลฯ)</p>
+        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>นัดหมายวันนี้</h1>
+        <p className="text-sm" style={{ color: "#4A6080" }}>รายการนัดหมายที่ยืนยันแล้วและรอเช็คอินสำหรับวันนี้</p>
       </div>
+
 
       {pendingAppointments.length === 0 ? (
         <div className="rounded-2xl bg-white p-10 flex flex-col items-center justify-center text-center" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
