@@ -55,7 +55,7 @@ export default function AppointmentsView({
 
   const activeAppts = appts.filter(a => {
     if (a.status === "ยกเลิก") return false;
-    if (a.status === "เสร็จสิ้นเรียบร้อย" || a.status === "เสร็จสิ้น" || a.status === "ไม่มาตามนัด") return false;
+    if (a.status === "เสร็จสิ้นเรียบร้อย" || (a.status as string) === "เสร็จสิ้น" || a.status === "ไม่มาตามนัด") return false;
     if (a.date) {
       const timeStr = a.time || "00:00";
       const apptDate = new Date(`${a.date}T${timeStr}:00`);
