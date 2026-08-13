@@ -19,6 +19,7 @@ import {
 import {
   getClinicStatus, DocView, DentistInfo, ClinicStatus, Appointment
 } from "../shared/data";
+
 import { getDentists, getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
 
 function PortalStatusBanner() {

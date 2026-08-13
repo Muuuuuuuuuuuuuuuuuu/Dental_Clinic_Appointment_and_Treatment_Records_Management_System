@@ -32,16 +32,16 @@ function getMonday(d: Date) {
 
 // ─── Stat Cards ───────────────────────────────────────────────────────────────
 function StatCards({ appts, setView }: { appts: Appointment[]; setView: (v: StaffView) => void }) {
-  const waiting  = appts.filter(a => a.status === "รอรักษา").length;
-  const treating = appts.filter(a => a.status === "กำลังรักษา").length;
-  const pending  = appts.filter(a => a.status === "รอชำระเงิน").length;
-  const done     = appts.filter(a => a.status === "ชำระเงินแล้ว").length;
+  const waitCheckin = appts.filter(a => a.status === "ยืนยันการจอง").length;
+  const checkedIn = appts.filter(a => a.status === "เช็คอินเรียบร้อย").length;
+  const pending = appts.filter(a => a.status === "รอชำระเงิน").length;
+  const done = appts.filter(a => a.status === "เสร็จสิ้นเรียบร้อย").length;
 
   const stats = [
-    { label: "รอรักษา",        val: waiting,  icon: Clock,        bg: "#FFF3E0", ic: "#E65100", action: "checkin" as StaffView },
-    { label: "กำลังรักษา",    val: treating, icon: Users,        bg: "#F3E8FF", ic: "#7C3AED", action: null },
-    { label: "รอชำระเงิน",    val: pending,  icon: CreditCard,   bg: "#FFFDE7", ic: "#B45309", action: "payment" as StaffView },
-    { label: "ชำระเงินแล้ว", val: done,     icon: CheckCircle,  bg: "#E8FFF0", ic: "#1B7A3E", action: null },
+    { label: "รอเช็คอิน", val: waitCheckin, icon: UserCheck, bg: "#E8F4FF", ic: "#1D6FA4", action: null },
+    { label: "เช็คอินเรียบร้อย", val: checkedIn, icon: Clock, bg: "#F3E8FF", ic: "#7C3AED", action: null },
+    { label: "รอชำระเงิน", val: pending, icon: CreditCard, bg: "#FFFDE7", ic: "#B45309", action: "payment" as StaffView },
+    { label: "เสร็จสิ้นเรียบร้อย", val: done, icon: CheckCircle, bg: "#E8FFF0", ic: "#1B7A3E", action: null },
   ];
 
   return (
@@ -61,6 +61,7 @@ function StatCards({ appts, setView }: { appts: Appointment[]; setView: (v: Staf
     </div>
   );
 }
+
 
 // ─── Appointment List Table ───────────────────────────────────────────────────
 function AppointmentList({ appts }: { appts: Appointment[] }) {
@@ -110,7 +111,7 @@ function AppointmentList({ appts }: { appts: Appointment[] }) {
 // ─── Today's Kanban Board ─────────────────────────────────────────────────────
 function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], onUpdate: (id: number, s: Partial<Appointment>) => void, setView?: (v: StaffView) => void }) {
   const toCheckIn = appts.filter(a => a.status === "ยืนยันการจอง");
-  const inQueue = appts.filter(a => a.status === "รอรักษา" || a.status === "กำลังรักษา");
+  const inQueue = appts.filter(a => a.status === "เช็คอินเรียบร้อย");
   const toPay = appts.filter(a => a.status === "รอชำระเงิน");
 
   return (
@@ -123,7 +124,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
           </div>
           <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>รอเช็คอิน ({toCheckIn.length})</h2>
         </div>
-        
+
         {toCheckIn.length === 0 ? (
           <div className="text-center py-10 rounded-2xl bg-white border border-dashed border-gray-200">
             <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคนไข้รอเช็คอิน</p>
@@ -138,7 +139,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
               </div>
               <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
               <p className="text-xs mb-3" style={{ color: "#4A6080" }}>{a.service} • ทพ. {a.doctorName}</p>
-              
+
               {(a.conditions !== "ไม่มี" || a.allergies !== "ไม่มี") && (
                 <div className="flex items-center gap-1 mb-3 bg-orange-50 p-1.5 rounded-lg">
                   <AlertTriangle size={11} style={{ color: "#E65100" }} />
@@ -149,12 +150,12 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
                   </span>
                 </div>
               )}
-              
+
               <button
-                onClick={() => onUpdate(a.id, { status: "รอรักษา" })}
+                onClick={() => onUpdate(a.id, { status: "เช็คอินเรียบร้อย" })}
                 className="w-full flex justify-center items-center gap-2 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:bg-blue-600"
                 style={{ backgroundColor: "#3B82F6" }}>
-                <UserCheck size={16} /> เช็คอินมาถึงแล้ว
+                <UserCheck size={16} /> กดเช็คอิน (คนไข้มาถึงแล้ว)
               </button>
             </div>
           ))
@@ -167,27 +168,26 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
           <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-100 text-orange-600">
             <Clock size={16} />
           </div>
-          <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>รอ/กำลังรักษา ({inQueue.length})</h2>
+          <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>เช็คอินแล้ว / ระหว่างรักษา ({inQueue.length})</h2>
         </div>
-        
+
         {inQueue.length === 0 ? (
           <div className="text-center py-10 rounded-2xl bg-white border border-dashed border-gray-200">
             <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคิวในห้องตรวจ</p>
           </div>
         ) : (
           inQueue.map(a => {
-            const isTreating = a.status === "กำลังรักษา";
             const colorObj = STATUS_COLORS[a.status] || { bg: "#F0F4F8", text: "#4A6080", dot: "#ccc" };
-            
+
             return (
               <div key={a.id} className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: colorObj.dot }}></div>
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-sm font-bold" style={{ color: "#1A365D" }}>{a.time} น.</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1" 
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
                     style={{ backgroundColor: colorObj.bg, color: colorObj.text }}>
-                    {isTreating && <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
                     {a.status}
+
                   </span>
                 </div>
                 <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
@@ -206,15 +206,15 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
           </div>
           <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>รอชำระเงิน ({toPay.length})</h2>
         </div>
-        
+
         {toPay.length === 0 ? (
           <div className="text-center py-10 rounded-2xl bg-white border border-dashed border-gray-200">
             <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคิวรอชำระเงิน</p>
           </div>
         ) : (
           toPay.map(a => (
-            <div 
-              key={a.id} 
+            <div
+              key={a.id}
               onClick={() => setView && setView("payment")}
               className="rounded-2xl bg-white p-4 shadow-sm border border-green-50 relative overflow-hidden cursor-pointer hover:shadow-md hover:border-green-200 transition-all active:scale-[0.98]"
             >
@@ -239,9 +239,9 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
 // ─── View Mode Toggle ─────────────────────────────────────────────────────────
 function ViewToggle({ mode, setMode }: { mode: ViewMode; setMode: (m: ViewMode) => void }) {
   const items: { key: ViewMode; label: string; icon: React.ElementType }[] = [
-    { key: "daily",   label: "รายวัน",     icon: CalendarDays },
-    { key: "weekly",  label: "รายสัปดาห์", icon: CalendarRange },
-    { key: "monthly", label: "รายเดือน",   icon: CalendarIcon },
+    { key: "daily", label: "รายวัน", icon: CalendarDays },
+    { key: "weekly", label: "รายสัปดาห์", icon: CalendarRange },
+    { key: "monthly", label: "รายเดือน", icon: CalendarIcon },
   ];
   return (
     <div className="inline-flex rounded-xl p-1" style={{ backgroundColor: "#F0F4F8" }}>
@@ -284,7 +284,6 @@ function DailyView({
     .filter(a => a.date === dateStr)
     .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 
-  const confirms = appointments.filter(a => a.status === "รอการยืนยัน").length;
 
   return (
     <div>
@@ -307,8 +306,8 @@ function DailyView({
               </p>
               <div className="relative overflow-hidden w-6 h-6 rounded hover:bg-gray-100 flex items-center justify-center cursor-pointer">
                 <CalendarIcon size={14} style={{ color: "#4A6080" }} />
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={fmtDate(selectedDate)}
                   onChange={(e) => e.target.value && setSelectedDate(new Date(e.target.value))}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
@@ -331,12 +330,8 @@ function DailyView({
               กลับวันนี้
             </button>
           )}
-          {confirms > 0 && (
-            <button onClick={() => setView("appointments")} className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:bg-orange-600 w-full md:w-auto" style={{ backgroundColor: "#F57F17", boxShadow: "0 4px 12px rgba(245, 127, 23, 0.2)" }}>
-              <AlertTriangle size={16} /> รอยืนยัน ({confirms})
-            </button>
-          )}
         </div>
+
       </div>
 
       {/* Closure Banner */}
@@ -411,7 +406,7 @@ function DailyView({
         <>
           {/* Stat Cards */}
           <StatCards appts={dayAppts} setView={setView} />
-          
+
           {/* Appointment List */}
           <div className="mb-3">
             <p className="text-xs font-medium mb-3" style={{ color: "#94A3B8" }}>
@@ -465,8 +460,8 @@ function WeeklyView({
             </p>
             <div className="relative overflow-hidden w-6 h-6 rounded hover:bg-gray-100 flex items-center justify-center cursor-pointer">
               <CalendarIcon size={14} style={{ color: "#4A6080" }} />
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={fmtDate(selectedDate)}
                 onChange={(e) => e.target.value && setSelectedDate(new Date(e.target.value))}
                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
@@ -492,7 +487,7 @@ function WeeklyView({
             </div>
           ))}
         </div>
-        
+
         {/* Days */}
         <div className="flex-1 grid grid-cols-7 overflow-x-auto">
           {weekDays.map(day => {
@@ -500,7 +495,7 @@ function WeeklyView({
             const isToday = ds === todayStr;
             const dayAppts = appointments.filter(a => a.date === ds);
             const closure = closures.find(c => c.date === ds);
-            
+
             return (
               <div key={ds} className="border-r border-gray-100 last:border-r-0 relative min-w-[120px]">
                 {/* Day Header */}
@@ -510,38 +505,38 @@ function WeeklyView({
                     {day.getDate()}
                   </div>
                 </div>
-                
+
                 {/* Day Body */}
                 <div className="relative flex flex-col" style={{ height: `${12 * 6}rem` /* 12 hours * 6rem (h-24) */ }}>
-                   {/* Appointments */}
-                   {closure ? (
-                     <div className="absolute inset-0 flex items-center justify-center p-2 text-center" style={{ backgroundColor: "rgba(255, 243, 224, 0.4)", zIndex: 5 }}>
-                       <span className="text-[11px] font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-md">ปิด: {closure.reason}</span>
-                     </div>
-                   ) : (
-                     hours.map(h => {
-                       const hAppts = dayAppts.filter(a => parseInt((a.time || "09:00").split(":")[0]) === h);
-                       return (
-                         <div key={h} className="h-24 border-b border-gray-50 box-border p-1 flex gap-1 flex-wrap overflow-y-auto content-start custom-scrollbar">
-                           {hAppts.map(a => {
-                             const sc = STATUS_COLORS[a.status] || { bg: "#F0F4F8", text: "#4A6080", dot: "#ccc" };
-                             return (
-                               <div key={a.id} onClick={() => handleDayClick(day)}
-                                 className="flex-auto min-w-[45%] h-[40px] rounded-lg p-1.5 overflow-hidden border-l-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow group flex flex-col justify-center"
-                                 style={{ backgroundColor: sc.bg, borderColor: sc.dot }}
-                                 title={`${a.time} - ${a.patientName} (${a.service})`}
-                               >
-                                 <p className="text-[10px] font-bold leading-tight truncate mb-0.5" style={{ color: sc.text }}>
-                                   {a.time} {a.patientName.split(" ")[0]}
-                                 </p>
-                                 <p className="text-[9px] truncate leading-tight opacity-75" style={{ color: sc.text }}>{a.service}</p>
-                               </div>
-                             );
-                           })}
-                         </div>
-                       );
-                     })
-                   )}
+                  {/* Appointments */}
+                  {closure ? (
+                    <div className="absolute inset-0 flex items-center justify-center p-2 text-center" style={{ backgroundColor: "rgba(255, 243, 224, 0.4)", zIndex: 5 }}>
+                      <span className="text-[11px] font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-md">ปิด: {closure.reason}</span>
+                    </div>
+                  ) : (
+                    hours.map(h => {
+                      const hAppts = dayAppts.filter(a => parseInt((a.time || "09:00").split(":")[0]) === h);
+                      return (
+                        <div key={h} className="h-24 border-b border-gray-50 box-border p-1 flex gap-1 flex-wrap overflow-y-auto content-start custom-scrollbar">
+                          {hAppts.map(a => {
+                            const sc = STATUS_COLORS[a.status] || { bg: "#F0F4F8", text: "#4A6080", dot: "#ccc" };
+                            return (
+                              <div key={a.id} onClick={() => handleDayClick(day)}
+                                className="flex-auto min-w-[45%] h-[40px] rounded-lg p-1.5 overflow-hidden border-l-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow group flex flex-col justify-center"
+                                style={{ backgroundColor: sc.bg, borderColor: sc.dot }}
+                                title={`${a.time} - ${a.patientName} (${a.service})`}
+                              >
+                                <p className="text-[10px] font-bold leading-tight truncate mb-0.5" style={{ color: sc.text }}>
+                                  {a.time} {a.patientName.split(" ")[0]}
+                                </p>
+                                <p className="text-[9px] truncate leading-tight opacity-75" style={{ color: sc.text }}>{a.service}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             );
@@ -670,10 +665,10 @@ function MonthlyView({
 }
 
 // ─── Main QueueBoard ──────────────────────────────────────────────────────────
-export default function QueueBoard({ 
+export default function QueueBoard({
   setView,
   appointments: initialAppointments
-}: { 
+}: {
   setView: (v: StaffView) => void;
   appointments?: Appointment[];
 }) {

@@ -815,7 +815,7 @@ export async function getAppointments(date?: string) {
       date: d.appointment_date,
       time: d.start_time?.slice(0,5) || '00:00',
       endTime: d.end_time_est?.slice(0,5) || d.start_time?.slice(0,5) || '00:00',
-      status: d.appointment_status || 'รอการยืนยัน',
+      status: (d.appointment_status === 'รอการยืนยัน' ? 'ยืนยันการจอง' : d.appointment_status === 'กำลังรักษา' ? 'เช็คอินเรียบร้อย' : d.appointment_status === 'เสร็จสิ้น' ? 'เสร็จสิ้นเรียบร้อย' : d.appointment_status) || 'ยืนยันการจอง',
       conditions: d.patient?.underlying_disease || '',
       allergies: d.patient?.allergy_history || '',
       treatmentNotes,
@@ -905,7 +905,7 @@ export async function getPatientAppointments(patientId?: number) {
       date: d.appointment_date,
       time: d.start_time?.slice(0,5) || '00:00',
       endTime: d.end_time_est?.slice(0,5) || d.start_time?.slice(0,5) || '00:00',
-      status: d.appointment_status || 'รอการยืนยัน',
+      status: (d.appointment_status === 'รอการยืนยัน' ? 'ยืนยันการจอง' : d.appointment_status === 'กำลังรักษา' ? 'เช็คอินเรียบร้อย' : d.appointment_status === 'เสร็จสิ้น' ? 'เสร็จสิ้นเรียบร้อย' : d.appointment_status) || 'ยืนยันการจอง',
       conditions: d.patient?.underlying_disease || '',
       allergies: d.patient?.allergy_history || '',
       treatmentNotes,
@@ -1155,10 +1155,17 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   return newAppt;
 }
 export async function updateAppointmentStatus(id: number, status: string) {
-  const { data, error } = await supabase.from('appointment').update({ appointment_status: status }).eq('appointment_id', id).select().single();
+  let dbStatus = status;
+  if (status === "เช็คอินเรียบร้อย") dbStatus = "กำลังรักษา";
+  if (status === "เสร็จสิ้นเรียบร้อย") dbStatus = "เสร็จสิ้น";
+
+  const { data, error } = await supabase.from('appointment').update({ appointment_status: dbStatus }).eq('appointment_id', id).select().single();
   if (error) throw error;
   notifyAppointmentsUpdated();
-  return { id: data.appointment_id, status: data.appointment_status } as any;
+  let returnedStatus = data.appointment_status;
+  if (returnedStatus === "กำลังรักษา") returnedStatus = "เช็คอินเรียบร้อย";
+  if (returnedStatus === "เสร็จสิ้น") returnedStatus = "เสร็จสิ้นเรียบร้อย";
+  return { id: data.appointment_id, status: returnedStatus } as any;
 }
 
 export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>) {
@@ -1752,19 +1759,8 @@ function generateOTP(): string {
  * - Supabase จะส่งตัวเลข OTP 6 หลักไปทางอีเมลโดยอัตโนมัติ
  */
 export async function sendPasswordResetOTP(email: string): Promise<void> {
-  // 1. ตรวจสอบว่ามีอีเมลนี้ในระบบหรือไม่
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('user_id, email')
-    .eq('email', email)
-    .single();
-
-  if (userError || !userData) {
-    throw new Error("ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีเมลอีกครั้ง");
-  }
-
-  // 2. ใช้ Supabase signInWithOtp เพื่อส่งตัวเลข OTP 6 หลักไปยังอีเมล
-  // shouldCreateUser: false = ไม่สร้าง user ใหม่
+  // ใช้ Supabase signInWithOtp เพื่อส่ง OTP 6 หลักไปยังอีเมล
+  // shouldCreateUser: false = ถ้าไม่มีอีเมลนี้ใน auth.users จะ error อัตโนมัติ
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
@@ -1774,9 +1770,16 @@ export async function sendPasswordResetOTP(email: string): Promise<void> {
 
   if (error) {
     console.error("signInWithOtp error:", error);
+    // Supabase จะ return error ถ้าอีเมลนี้ไม่มีใน auth.users
+    if (error.message?.toLowerCase().includes("user not found") ||
+        error.message?.toLowerCase().includes("email not confirmed") ||
+        error.status === 422 || error.status === 400) {
+      throw new Error("ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีเมลอีกครั้ง");
+    }
     throw new Error("ไม่สามารถส่ง OTP ได้ กรุณาตรวจสอบอีเมลและลองใหม่อีกครั้ง");
   }
 }
+
 
 
 /**

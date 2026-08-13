@@ -1,16 +1,11 @@
 // ─── Shared types & mock data across all portals ──────────────────────────────
 
 export type AppointmentStatus =
-  | "รอการยืนยัน"
   | "ยืนยันการจอง"
-  | "รอระบุวัน-เวลา"
-  | "รอรักษา"
-  | "กำลังรักษา"
-  | "เสร็จสิ้น"
+  | "เช็คอินเรียบร้อย"
   | "รอชำระเงิน"
-  | "ชำระเงินแล้ว"
+  | "เสร็จสิ้นเรียบร้อย"
   | "ยกเลิก"
-  | "เลื่อนนัด"
   | "ไม่มาตามนัด";
 
 export interface Appointment {
@@ -242,15 +237,12 @@ export function getClinicStatus(
 // ─── Status colors ────────────────────────────────────────────────────────────
 
 export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  "รอการยืนยัน": { bg: "#FFF8E1", text: "#F57F17", dot: "#FBC02D" },
-  "ยืนยันการจอง": { bg: "#E8F4FF", text: "#1D6FA4", dot: "#1D6FA4" },
-  "รอรักษา": { bg: "#FFF3E0", text: "#E65100", dot: "#E65100" },
-  "กำลังรักษา": { bg: "#F3E8FF", text: "#6B21A8", dot: "#9333EA" },
-  "เสร็จสิ้น": { bg: "#E8FFF0", text: "#1B7A3E", dot: "#22C55E" },
-  "รอชำระเงิน": { bg: "#FFFDE7", text: "#B45309", dot: "#F59E0B" },
-  "ชำระเงินแล้ว": { bg: "#F0FDF4", text: "#15803D", dot: "#16A34A" },
-  "ยกเลิก": { bg: "#FEF2F2", text: "#B91C1C", dot: "#EF4444" },
-  "เลื่อนนัด": { bg: "#F3F4F6", text: "#4B5563", dot: "#6B7280" },
+  "ยืนยันการจอง":     { bg: "#E8F4FF", text: "#1D6FA4", dot: "#1D6FA4" },
+  "เช็คอินเรียบร้อย": { bg: "#F3E8FF", text: "#6B21A8", dot: "#9333EA" },
+  "รอชำระเงิน":       { bg: "#FFFDE7", text: "#B45309", dot: "#F59E0B" },
+  "เสร็จสิ้นเรียบร้อย":{ bg: "#E8FFF0", text: "#1B7A3E", dot: "#22C55E" },
+  "ยกเลิก":           { bg: "#FEF2F2", text: "#B91C1C", dot: "#EF4444" },
+  "ไม่มาตามนัด":      { bg: "#F3F4F6", text: "#4B5563", dot: "#6B7280" },
 };
 
 export type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub";

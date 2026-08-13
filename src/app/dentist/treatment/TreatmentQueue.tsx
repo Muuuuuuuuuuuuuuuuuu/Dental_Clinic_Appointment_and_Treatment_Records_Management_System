@@ -41,7 +41,7 @@ export default function TreatmentQueue({
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
 
   const today = new Date();
-  const todayString = today.toISOString().split('T')[0];
+  const todayString = today.toLocaleDateString('en-CA');
   const formattedDate = today.toLocaleDateString("th-TH", { year: 'numeric', month: 'long', day: 'numeric' });
 
   const getWeekRange = () => {
@@ -166,8 +166,7 @@ export default function TreatmentQueue({
   };
 
   const statusActions: Record<string, { label: string; next: AppointmentStatus; color: string }> = {
-    "รอรักษา":     { label: "เริ่มรักษา",        next: "กำลังรักษา", color: "#7C3AED" },
-    "กำลังรักษา": { label: "บันทึกการรักษา",     next: "เสร็จสิ้น",  color: "#FF8C9A" },
+    "เช็คอินเรียบร้อย": { label: "เริ่มรักษา", next: "รอชำระเงิน", color: "#7C3AED" },
   };
 
   return (
@@ -266,12 +265,12 @@ export default function TreatmentQueue({
                   <div className="flex gap-2">
                     {act && (
                       <button
-                        onClick={() => act.next === "กำลังรักษา"
-                          ? onUpdateAppt(a.id, { status: "กำลังรักษา" })
-                          : handleStartRecording(a)}
+                        onClick={() => act.next === "รอชำระเงิน"
+                          ? handleStartRecording(a)
+                          : onUpdateAppt(a.id, { status: act.next })}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
                         style={{ backgroundColor: act.color }}>
-                        {act.next === "กำลังรักษา" ? <><Clock size={14} /> {act.label}</> : <><ClipboardList size={14} /> {act.label}</>}
+                        {act.next === "รอชำระเงิน" ? <><ClipboardList size={14} /> {act.label}</> : <><Clock size={14} /> {act.label}</>}
                       </button>
                     )}
                   </div>
@@ -353,12 +352,12 @@ export default function TreatmentQueue({
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => submitTreatment(a)}
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-semibold text-white transition-all hover:opacity-90"
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
                           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-                          <Send size={12} /> ส่งให้พนักงาน
+                          <Send size={14} /> ส่งข้อมูลให้พนักงาน
                         </button>
                         <button onClick={() => setRecording(null)}
-                          className="px-3 py-1.5 rounded-xl text-[13px] font-medium"
+                          className="px-5 py-2.5 rounded-xl text-sm font-medium"
                           style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
                           ยกเลิก
                         </button>

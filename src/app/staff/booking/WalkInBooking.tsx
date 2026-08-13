@@ -64,7 +64,8 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
       doctorId: form.doctorId,
       date: form.openAppt ? "" : `${yearStr}-${monthStr}-${String(form.day).padStart(2, "0")}`,
       time: form.openAppt ? "" : form.time, 
-      status: form.openAppt ? "รอระบุวัน-เวลา" : "รอรักษา",
+      status: form.openAppt ? "ยืนยันการจอง" : "เช็คอินเรียบร้อย",
+
       conditions: "ไม่ทราบ (Walk-in)", allergies: "ไม่ทราบ (Walk-in)",
       note: form.note
     };

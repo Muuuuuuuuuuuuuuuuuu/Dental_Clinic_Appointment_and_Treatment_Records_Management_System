@@ -19,96 +19,63 @@ const iconMap: Record<string, any> = { Smile, Sparkles, Shield, Award, Heart, Ca
 // Service detail static data
 // ─────────────────────────────────────────────────────────────────────────────
 interface ServiceDetail {
-  why: string;
   benefits: string[];
-  pros: string[];
-  cons: string[];
-  symptoms: string[];
-  afterCare: string[];
+  procedures: string[];
+  care: string[];
 }
 
 const SERVICE_DETAILS: Record<string, ServiceDetail> = {
   "ตรวจฟันและขูดหินปูน": {
-    why: "ฟันและเหงือกสะสมคราบหินปูนและแบคทีเรียได้ตลอดเวลา การตรวจและขูดหินปูนช่วยป้องกันโรคเหงือกและฟันผุก่อนที่จะลุกลาม",
-    benefits: ["ป้องกันโรคปริทันต์", "ตรวจพบปัญหาในระยะเริ่มต้น", "ลมหายใจสดชื่นขึ้น", "ฟันขาวสะอาดขึ้น"],
-    pros: ["ไม่เจ็บปวด หรือเจ็บเล็กน้อย", "ทำเสร็จ 30–60 นาที", "ป้องกันค่าใช้จ่ายในอนาคต"],
-    cons: ["อาจเสียวฟันเล็กน้อย 1–2 วัน", "เหงือกอาจบวมชั่วคราว"],
-    symptoms: ["เหงือกบวม แดง มีเลือดออก", "มีหินปูนสะสม", "ปากมีกลิ่น"],
-    afterCare: ["หลีกเลี่ยงอาหารร้อน/เย็น 24 ชั่วโมงแรก", "แปรงฟันเบาๆ และใช้ไหมขัดฟัน"],
+    benefits: ["ป้องกันโรคปริทันต์และเหงือกอักเสบ", "ขจัดคราบหินปูนและคราบแบคทีเรียที่แปรงไม่ออก", "ลดกลิ่นปาก ช่วยให้ลมหายใจสดชื่น", "ช่วยให้ฟันดูขาวสะอาดขึ้น"],
+    procedures: ["ทันตแพทย์ตรวจประเมินสุขภาพช่องปากโดยรวม", "ใช้เครื่องมืออัลตราโซนิกกะเทาะคราบหินปูนที่เกาะตามคอฟัน", "ใช้เครื่องมือขูดหินปูนในจุดที่เข้าถึงยากและใต้เหงือก", "ขัดฟันด้วยผงขัดเพื่อขจัดคราบสีและทำให้ผิวฟันเรียบ"],
+    care: ["ก่อนทำ:", "ไม่ต้องเตรียมตัวพิเศษ สามารถทานอาหารและแปรงฟันได้ตามปกติ", "หลังทำ:", "งดทานอาหารและเครื่องดื่มที่ร้อนจัดหรือเย็นจัด 24 ชั่วโมงแรก หากมีอาการเสียวฟัน", "อาจมีอาการเสียวฟันหรือเลือดออกตามไรเหงือกเล็กน้อย 1-2 วัน", "แปรงฟันอย่างน้อยวันละ 2 ครั้ง และใช้ไหมขัดฟันเป็นประจำ"],
   },
   "ฟอกสีฟัน": {
-    why: "ฟันเปลี่ยนสีจากชา กาแฟ และอายุ การฟอกสีฟันช่วยคืนความขาวสว่างอย่างปลอดภัย",
-    benefits: ["ฟันขาวสว่างขึ้น 5–8 เฉด", "เสริมความมั่นใจ", "ผลอยู่ได้ 1–2 ปี"],
-    pros: ["ปลอดภัยได้มาตรฐาน", "ทำเสร็จในนัดเดียว"],
-    cons: ["เสียวฟัน 1–3 วัน", "ต้องงดอาหารสีเข้ม 48 ชั่วโมง"],
-    symptoms: ["ฟันเหลือง ทึบ จากชา กาแฟ บุหรี่"],
-    afterCare: ["งดชา กาแฟ ไวน์แดง 48 ชั่วโมง", "ใช้ยาสีฟันสำหรับฟันเสียว"],
+    benefits: ["ปรับสีฟันให้ขาวสว่างขึ้น 5-8 เฉด อย่างเห็นได้ชัด", "เสริมสร้างความมั่นใจในรอยยิ้ม", "มีความปลอดภัยสูง ภายใต้การดูแลของทันตแพทย์", "เห็นผลลัพธ์ทันทีหลังทำเสร็จใน 1 ชั่วโมง"],
+    procedures: ["ทันตแพทย์เทียบสีฟันก่อนทำและประเมินสุขภาพช่องปาก", "ทำความสะอาดผิวฟันและใส่ยางป้องกันเหงือก", "ทาน้ำยาฟอกสีฟันลงบนผิวฟันและฉายแสงเย็น  กระตุ้นน้ำยา", "ทำซ้ำ 2-3 รอบ รอบละ 15-20 นาที", "ล้างน้ำยาออกและเทียบสีฟันหลังทำ"],
+    care: ["ก่อนทำ:", "ควรขูดหินปูนและอุดฟันผุให้เรียบร้อยก่อน", "หลังทำ:", "งดอาหารและเครื่องดื่มที่มีสีเข้ม (ชา กาแฟ ไวน์ ซอส) เป็นเวลา 48 ชั่วโมง", "งดสูบบุหรี่", "อาจมีอาการเสียวฟัน 1-3 วัน แนะนำให้ใช้ยาสีฟันลดอาการเสียวฟัน"],
   },
   "จัดฟันแบบโลหะ": {
-    why: "ฟันซ้อนเกหรือสบฟันผิดปกติส่งผลต่อการเคี้ยว การพูด และความสวยงาม การจัดฟันแบบโลหะมีประสิทธิภาพสูงและราคาจับต้องได้",
-    benefits: ["แก้ไขฟันซ้อนเก ฟันห่าง ฟันยื่น", "ปรับการสบฟัน", "ดูแลสุขภาพช่องปากง่ายขึ้น"],
-    pros: ["ประสิทธิภาพสูง รักษาได้ทุกกรณี", "ราคาเข้าถึงได้", "ทนทาน"],
-    cons: ["มองเห็นได้ชัดเจน", "ดูแลทำความสะอาดพิเศษ", "ใช้เวลา 1.5–3 ปี"],
-    symptoms: ["ฟันซ้อนเก ฟันห่าง ฟันยื่น", "การสบฟันผิดปกติ"],
-    afterCare: ["แปรงฟันหลังทุกมื้ออาหาร", "ใช้แปรงซอกฟัน", "งดอาหารแข็ง/เหนียว"],
+    benefits: ["แก้ไขปัญหาฟันซ้อนเก ฟันห่าง ฟันยื่น ได้ทุกรูปแบบ", "ปรับการสบฟันให้เป็นปกติ เพิ่มประสิทธิภาพในการเคี้ยวอาหาร", "ปรับรูปหน้าและรอยยิ้มให้สมส่วน", "ราคาเข้าถึงได้ง่ายและมีความทนทานสูง"],
+    procedures: ["พิมพ์ปากและเอกซเรย์เพื่อวางแผนการรักษา", "เคลียร์ช่องปาก ", "ติดเครื่องมือจัดฟัน ลงบนผิวฟัน", "ใส่ลวดและยางรัด  เพื่อเริ่มเคลื่อนฟัน", "ปรับเครื่องมือทุกๆ 3-4 สัปดาห์ จนกว่าฟันจะเข้าที่"],
+    care: ["ก่อนทำ:", "เตรียมเวลาสำหรับการเคลียร์ช่องปากก่อนติดเครื่องมือ", "หลังทำ:", "แปรงฟันหลังมื้ออาหารทุกครั้งและใช้แปรงซอกฟัน", "หลีกเลี่ยงอาหารแข็ง เหนียว กรอบ เพื่อป้องกันเครื่องมือหลุด", "หากมีแผลในปากจากเครื่องมือ สามารถใช้ขี้ผึ้ง (Wax) ปิดทับได้"],
   },
   "จัดฟันแบบเซรามิก": {
-    why: "สำหรับผู้ต้องการจัดฟันแต่อยากให้ดูเป็นธรรมชาติ เซรามิกมีสีใกล้เคียงฟันจริง",
-    benefits: ["สวยงามกว่าโลหะ", "ประสิทธิภาพเทียบเท่าโลหะ"],
-    pros: ["สีใกล้เคียงธรรมชาติ"],
-    cons: ["ราคาสูงกว่าโลหะ", "อาจเปลี่ยนสีถ้าดูแลไม่ดี"],
-    symptoms: ["ต้องการจัดฟันแต่ไม่อยากให้เห็น bracket ชัด"],
-    afterCare: ["หลีกเลี่ยงเครื่องดื่มสีเข้ม", "แปรงฟันสม่ำเสมอ"],
+    benefits: ["ให้ความสวยงาม กลมกลืนกับสีฟันธรรมชาติ มองเห็นไม่ชัด", "มีประสิทธิภาพในการเคลื่อนฟันใกล้เคียงกับโลหะ", "ลดการระคายเคืองในช่องปาก", "เหมาะสำหรับวัยทำงานที่ต้องการความสุภาพ"],
+    procedures: ["ปรึกษาและวางแผนการรักษาด้วยการพิมพ์ปาก/สแกนฟันและเอกซเรย์", "เคลียร์ช่องปากให้เรียบร้อย", "ติดเครื่องมือเซรามิก", "ใส่ลวดและยางรัด", "พบทันตแพทย์เพื่อปรับเครื่องมือทุก 3-4 สัปดาห์"],
+    care: ["ก่อนทำ:", "รักษาความสะอาดช่องปากให้ดี", "หลังทำ:", "ระมัดระวังในการรับประทานอาหารแข็ง เนื่องจากเซรามิกอาจแตกหักได้", "หลีกเลี่ยงเครื่องดื่มหรืออาหารที่มีสีเข้มจัด เพราะยางรัดสีใสอาจติดสีได้ง่าย", "ทำความสะอาดอย่างเคร่งครัดด้วยอุปกรณ์จัดฟันเฉพาะ"],
   },
   "จัดฟันแบบใส (Invisalign)": {
-    why: "เทคโนโลยีใหม่ที่ใช้ถาดใสพลาสติกพิเศษ ถอดได้ เหมาะสำหรับผู้ใหญ่ที่ต้องการความสะดวกและสวยงาม",
-    benefits: ["มองไม่เห็น", "ถอดออกได้ตอนทานอาหาร", "เจ็บน้อยกว่าเหล็ก"],
-    pros: ["สวยงามที่สุด", "ไม่มีข้อห้ามอาหาร"],
-    cons: ["ราคาสูงสุด", "ต้องใส่ 20–22 ชั่วโมงต่อวัน"],
-    symptoms: ["ต้องการจัดฟันแบบไม่เห็น ฟันซ้อนเก/ห่าง ปานกลาง"],
-    afterCare: ["ใส่ถาดให้ครบเวลา", "แปรงฟันและทำความสะอาดถาดก่อนใส่"],
+    benefits: ["มองแทบไม่เห็นเครื่องมือ สวยงามที่สุด", "สามารถถอดออกขณะรับประทานอาหารและแปรงฟันได้", "ทำความสะอาดช่องปากได้ง่าย ลดความเสี่ยงฟันผุและเหงือกอักเสบ", "เจ็บน้อยกว่าการจัดฟันแบบติดเครื่องมือ และพบแพทย์น้อยลง"],
+    procedures: ["สแกนฟัน 3 มิติ และเอกซเรย์ เพื่อจำลองการเคลื่อนตัวของฟันผ่านโปรแกรม ", "ทันตแพทย์ออกแบบแผนการรักษา และสั่งทำชุดอุปกรณ์จัดฟันใส", "ติดปุ่ม Attachment (บางกรณี) และรับชุดชิ้นงานจัดฟัน", "คนไข้เปลี่ยนชุดอุปกรณ์ใหม่ด้วยตนเองทุกๆ 1-2 สัปดาห์", "พบทันตแพทย์ทุกๆ 6-8 สัปดาห์เพื่อติดตามผล"],
+    care: ["ก่อนทำ:", "เข้าใจว่าต้องมีวินัยในการใส่เครื่องมืออย่างน้อยวันละ 20-22 ชั่วโมง", "หลังทำ:", "ถอดเครื่องมือทุกครั้งเมื่อรับประทานอาหารหรือดื่มเครื่องดื่มร้อน", "ทำความสะอาดชิ้นงานใสด้วยแปรงขนนุ่มและน้ำสบู่อ่อนๆ", "เก็บเครื่องมือในกล่องทุกครั้งที่ถอด ห้ามห่อทิชชู่"],
   },
   "รากฟันเทียม (Implant)": {
-    why: "เมื่อสูญเสียฟันแท้ รากฟันเทียมคือการทดแทนที่ใกล้เคียงฟันธรรมชาติที่สุด โดยฝังรากไทเทเนียมลงในกระดูกขากรรไกร",
-    benefits: ["ทนทาน 15–25 ปี", "ป้องกันกระดูกยุบ", "ใช้งานเหมือนฟันจริง"],
-    pros: ["แข็งแรงที่สุด ไม่กระทบฟันข้างเคียง"],
-    cons: ["ราคาสูง", "ต้องผ่าตัด ใช้เวลา 3–6 เดือน"],
-    symptoms: ["สูญเสียฟันแท้ ต้องการทดแทนถาวร"],
-    afterCare: ["งดอาหารแข็ง 2 สัปดาห์", "แปรงฟันอ่อนๆ รอบรากฟัน"],
+    benefits: ["ทดแทนฟันที่สูญเสียไปได้อย่างถาวรและเป็นธรรมชาติที่สุด", "ป้องกันการละลายตัวของกระดูกขากรรไกร", "ไม่ส่งผลกระทบหรือต้องกรอฟันข้างเคียง", "เพิ่มประสิทธิภาพในการบดเคี้ยวอาหารได้ใกล้เคียงฟันจริง"],
+    procedures: ["ตรวจประเมินกระดูกขากรรไกรด้วย 3D CT Scan", "ผ่าตัดฝังรากฟันเทียม ลงในกระดูกขากรรไกร", "รอให้กระดูกสมานกับรากฟันเทียมประมาณ 2-4 เดือน", "ใส่แกนยึด (Abutment)", "พิมพ์ปากเพื่อทำครอบฟัน และใส่ครอบฟันลงบนรากเทียม"],
+    care: ["ก่อนทำ:", "ควบคุมโรคประจำตัวให้ปกติ แจ้งประวัติการแพ้ยา", "หลังทำ:", "ประคบเย็นเพื่อลดอาการบวม ทานยาและบ้วนปากตามแพทย์สั่ง (ระยะผ่าตัด)", "รับประทานอาหารอ่อน หลีกเลี่ยงการเคี้ยวบริเวณที่ผ่าตัด (ระยะผ่าตัด)", "ดูแลเหมือนฟันธรรมชาติ แปรงฟัน ใช้ไหมขัดฟัน และตรวจเช็คทุก 6 เดือน (ระยะใส่ครอบฟัน)"],
   },
   "อุดฟัน / ถอนฟัน": {
-    why: "ฟันผุที่ไม่รักษาจะลุกลามเข้าโพรงประสาท การอุดฟันเนิ่นๆ ช่วยหยุดการทำลายและรักษาฟันไว้",
-    benefits: ["หยุดฟันผุไม่ให้ลุกลาม", "บรรเทาอาการปวด", "รักษาฟันแท้ให้อยู่นานขึ้น"],
-    pros: ["รวดเร็ว ทำเสร็จในนัดเดียว", "ราคาไม่แพง"],
-    cons: ["วัสดุอุดอาจสึกหรอ", "การถอนฟันทำให้ฟันข้างเคียงเอียงได้"],
-    symptoms: ["ปวดฟัน เสียวฟัน มีรูหรือสีดำบนฟัน"],
-    afterCare: ["งดทานที่ซี่อุด 1–2 ชั่วโมง", "กินยาแก้ปวดตามที่แพทย์สั่ง"],
+    benefits: ["ระงับอาการปวดและหยุดการลุกลามของโรคฟันผุ", "ฟื้นฟูรูปร่างและการทำงานของฟันให้กลับมาเคี้ยวได้ปกติ", "กำจัดแหล่งสะสมเชื้อโรคในช่องปาก", "ป้องกันปัญหาฟันล้ม เอียง จากการปล่อยฟันผุทิ้งไว้"],
+    procedures: ["อุดฟัน: กรอส่วนที่ผุออก ล้างทำความสะอาด แล้วใส่วัสดุอุดฟัน ฉายแสง และขัดแต่งรูปร่าง", "ถอนฟัน: ฉีดยาชา เมื่อชาเต็มที่ จะใช้เครื่องมือดึงออก ทำความสะอาดแผล และให้กัดผ้าก๊อซ"],
+    care: ["ก่อนทำ:", "แจ้งประวัติโรคประจำตัว ยาที่ทานประจำ และประวัติการแพ้ยา ", "หลังทำ:", "งดเคี้ยวอาหารด้วยซี่ที่อุด 1-2 ชั่วโมงแรก หรือจนกว่ายาชาจะหมดฤทธิ์ (อุดฟัน)", "กัดผ้าก๊อซให้แน่น 1-2 ชั่วโมง ห้ามบ้วนน้ำหรือน้ำลาย (ถอนฟัน)", "วันแรกงดแปรงฟันบริเวณแผล วันต่อไปแปรงฟันได้เบาๆ (ถอนฟัน)"],
   },
   "กันตกรรมเด็ก": {
-    why: "ฟันน้ำนมสำคัญต่อพัฒนาการเคี้ยว การพูด และทิศทางฟันแท้ การดูแลตั้งแต่เนิ่นๆ ป้องกันปัญหาระยะยาว",
-    benefits: ["ป้องกันฟันผุในเด็ก", "สร้างนิสัยดูแลฟัน", "ป้องกันฟันแท้ขึ้นผิดตำแหน่ง"],
-    pros: ["แพทย์ชำนาญด้านเด็ก อุปกรณ์เหมาะกับขนาดปาก"],
-    cons: ["เด็กเล็กอาจให้ความร่วมมือน้อย"],
-    symptoms: ["ฟันน้ำนมผุ เด็กบ่นปวดฟัน"],
-    afterCare: ["แปรงฟัน 2 ครั้งต่อวัน", "ลดขนมหวาน มาตรวจทุก 6 เดือน"],
+    benefits: ["ดูแลรักษาสุขภาพฟันน้ำนมให้อยู่ได้นานจนฟันแท้ขึ้น", "ป้องกันปัญหาฟันผุและการสูญเสียฟันก่อนวัยอันควร", "ช่วยให้เด็กมีทัศนคติที่ดีต่อการทำฟัน", "ส่งเสริมพัฒนาการการเคี้ยวอาหารและการพูดที่ถูกต้อง"],
+    procedures: ["ทันตแพทย์สร้างความคุ้นเคยกับเด็กก่อนเริ่มการรักษา", "ตรวจประเมินสุขภาพช่องปาก เคลือบฟลูออไรด์ หรือเคลือบหลุมร่องฟัน", "หากพบฟันผุ จะทำการกรอและอุดฟัน หรือรักษารากฟันน้ำนมตามความเหมาะสม", "ถอนฟันน้ำนมกรณีที่ฟันแท้ขึ้นซ้อน หรือผุมากจนรักษาไม่ได้"],
+    care: ["ก่อนทำ:", "ผู้ปกครองควรสร้างทัศนคติเชิงบวกเกี่ยวกับการทำฟันให้เด็ก ไม่หลอกให้กลัว", "หลังทำ:", "หากมียาชา ควรดูแลไม่ให้เด็กกัดริมฝีปากหรือกระพุ้งแก้มเล่นจนเป็นแผล", "ดูแลการแปรงฟันของเด็กอย่างใกล้ชิด (แปรงให้เด็กจนถึงอายุ 7-8 ขวบ)", "ควบคุมการรับประทานขนมหวาน และพบแพทย์ทุก 6 เดือน"],
   },
   "รักษารากฟัน (Root Canal)": {
-    why: "เมื่อฟันผุลุกลามถึงโพรงประสาท การรักษารากฟันช่วยเอาเนื้อเยื่อติดเชื้อออกและรักษาฟันไว้",
-    benefits: ["รักษาฟันแท้ไม่ต้องถอน", "บรรเทาปวดถาวร", "ป้องกันการติดเชื้อลุกลาม"],
-    pros: ["หยุดปวดได้เด็ดขาด"],
-    cons: ["ใช้เวลา 2–3 นัด", "ต้องทำครอบฟันภายหลัง"],
-    symptoms: ["ปวดฟันรุนแรงกลางคืน", "เหงือกบวมหรือเป็นตุ่มหนอง", "ฟันดำ"],
-    afterCare: ["กินยาครบตามที่สั่ง", "หลีกเลี่ยงเคี้ยวด้านที่รักษา", "กลับมาทำครอบฟันตามนัด"],
+    benefits: ["สามารถเก็บรักษาฟันแท้ไว้ได้ ไม่ต้องถอน", "กำจัดอาการปวดฟันที่รุนแรงและอาการอักเสบติดเชื้อ", "ฟื้นฟูประสิทธิภาพการบดเคี้ยว (หลังจากทำครอบฟัน)", "ป้องกันไม่ให้การติดเชื้อลุกลามไปยังกระดูกเบ้าฟัน"],
+    procedures: ["ฉีดยาชาและใส่แผ่นยางกันน้ำลาย ", "กรอเปิดทางเข้าสู่โพรงประสาทฟัน", "เอาเนื้อเยื่อที่ติดเชื้อออก ทำความสะอาดคลองรากฟัน และขยายขนาด", "ใส่ยาฆ่าเชื้อและอุดปิดชั่วคราว (อาจต้องรักษา 1-3 ครั้ง)", "เมื่อหายอักเสบ จะทำการอุดคลองรากฟันแบบถาวร และเตรียมทำครอบฟัน"],
+    care: ["ก่อนทำ:", "รับประทานอาหารมาให้เรียบร้อย และแจ้งโรคประจำตัว", "หลังทำ:", "ห้ามใช้ฟันซี่นั้นเคี้ยวอาหารแข็งเด็ดขาดระหว่างรอการรักษาเสร็จสมบูรณ์ เพราะฟันอาจแตกได้", "หากมีอาการปวด สามารถรับประทานยาแก้ปวดตามที่สั่ง", "เมื่อรักษารากฟันเสร็จแล้ว จำเป็นต้องทำครอบฟันเพื่อความแข็งแรง"],
   },
 };
 
 const DEFAULT_SERVICE_DETAIL: ServiceDetail = {
-  why: "บริการนี้ออกแบบมาเพื่อดูแลสุขภาพช่องปากของคุณอย่างครบถ้วนโดยทันตแพทย์ผู้เชี่ยวชาญ",
-  benefits: ["ดูแลสุขภาพช่องปากครบถ้วน", "ป้องกันปัญหาระยะยาว"],
-  pros: ["ปลอดภัยและได้มาตรฐาน"],
-  cons: ["ควรปรึกษาทันตแพทย์ก่อนเพื่อรับข้อมูลเพิ่มเติม"],
-  symptoms: ["มีปัญหาช่องปากที่ต้องการดูแล"],
-  afterCare: ["ปฏิบัติตามคำแนะนำของทันตแพทย์"],
+  benefits: ["ดูแลสุขภาพช่องปากครบถ้วน", "ป้องกันปัญหาระยะยาว", "เพิ่มความมั่นใจในการใช้ชีวิตประจำวัน"],
+  procedures: ["ประเมินและตรวจสภาพช่องปาก", "ให้คำปรึกษาและวางแผนการรักษา", "ดำเนินการรักษาตามขั้นตอนโดยทันตแพทย์ผู้เชี่ยวชาญ", "ตรวจสอบความเรียบร้อยและนัดหมายติดตามผล"],
+  care: ["ก่อนทำ:", "เตรียมตัวและพักผ่อนให้เพียงพอ ทำความสะอาดช่องปาก", "หลังทำ:", "ปฏิบัติตามคำแนะนำของทันตแพทย์อย่างเคร่งครัด", "ทานยาตามที่สั่ง (ถ้ามี)", "หากมีอาการผิดปกติ ให้รีบติดต่อคลินิกทันที"],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -274,13 +241,21 @@ export default function BookingView({
       }
       if (!anyAvailable) return { status: "past" as const };
     }
+    // Check if all time slots are fully booked → return 'full' (red day)
+    const dayAppts = appointments.filter((a) => a.date === dateStr);
+    const totalDoctors = filteredDoctors.length || 1;
+    const allFull = BASE_TIMES.every((t) => {
+      const cnt = dayAppts.filter((a) => t >= a.time && (a.endTime ? t < a.endTime : a.time.startsWith(t))).length;
+      return cnt >= totalDoctors || cnt >= 3;
+    });
+    if (allFull && dayAppts.length > 0) return { status: "full" as const };
     return { status: "available" as const };
   };
 
   const BASE_TIMES = [
-    "09:00","09:30","10:00","10:30","11:00","11:30",
-    "13:00","13:30","14:00","14:30","15:00","15:30",
-    "16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30",
+    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+    "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
   ];
   const estTime = selService !== null && servicesData[selService] ? servicesData[selService].baseTimeMins : 30;
   const reqSlots = Math.ceil((estTime + 15) / 30);
@@ -371,8 +346,6 @@ export default function BookingView({
     if (isSubmitting) return;
     setIsSubmitting(true);
     const serviceTitle = servicesData[selService!]?.title || "";
-    const requiresApproval = serviceTitle.includes("จัดฟัน") || serviceTitle.includes("รากฟันเทียม") || serviceTitle.includes("ผ่าฟันคุด");
-    setIsPending(requiresApproval);
     let finalDoctor = { name: "ไม่ระบุแพทย์", id: 1 };
     if (selDoctor === "any" || selDoctor === null) {
       // กรองเฉพาะหมอที่มีเวร + ไม่ได้ลา + slot ว่าง ในวัน/เวลาที่เลือก
@@ -416,7 +389,7 @@ export default function BookingView({
         date: `${year}-${String(month + 1).padStart(2, "0")}-${selDay?.toString().padStart(2, "0")}`,
         time: selTime || "",
         durationMins: estTime,
-        status: requiresApproval ? "รอการยืนยัน" : "ยืนยันการจอง",
+        status: "ยืนยันการจอง",
         source: "patient", cost: 0, paid: false,
         treatmentNotes: "", treatmentServices: [], recommendations: "",
         allergies: "ไม่มี", conditions: notes || "ไม่มี",
@@ -430,6 +403,7 @@ export default function BookingView({
     }
   };
 
+
   // Done screen
   if (done) {
     const displayDoc = selDoctor === "any" || selDoctor === null
@@ -438,21 +412,16 @@ export default function BookingView({
     return (
       <div className="max-w-lg mx-auto text-center py-16">
         <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5"
-          style={{ backgroundColor: isPending ? "#FFF3E0" : "#E8FFF0" }}>
-          {isPending ? <FileText size={36} style={{ color: "#E65100" }} /> : <CheckCircle size={36} style={{ color: "#22C55E" }} />}
+          style={{ backgroundColor: "#E8FFF0" }}>
+          <CheckCircle size={36} style={{ color: "#22C55E" }} />
         </div>
         <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
-          {isPending ? "ส่งคำขอจองนัดหมายแล้ว" : "จองนัดหมายสำเร็จ!"}
+          จองนัดหมายสำเร็จ!
         </h2>
         <p className="text-sm mb-2" style={{ color: "#4A6080" }}>{servicesData[selService!]?.title || ""} กับ {displayDoc}</p>
         <p className="text-sm font-semibold mb-6" style={{ color: "#1A365D" }}>
           วันที่ {selDay} {today.toLocaleDateString("th-TH", { month: "long", year: "numeric" })} เวลา {selTime} - {endTimeStr} น.
         </p>
-        {isPending && (
-          <p className="text-sm mb-6 px-4 py-3 rounded-xl text-left" style={{ backgroundColor: "#FFF3E0", color: "#E65100" }}>
-            บริการนี้เป็นบริการเฉพาะทาง คำขอกำลังรอให้พนักงานยืนยันคิว เราจะแจ้งให้ทราบทาง SMS
-          </p>
-        )}
         <div className="flex gap-3 justify-center">
           <button onClick={() => setView("appointments")} className="px-6 py-2.5 rounded-xl text-sm font-medium text-white"
             style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>ดูรายการนัดหมาย</button>
@@ -464,6 +433,7 @@ export default function BookingView({
         </div>
       </div>
     );
+
   }
 
   const steps = [{ id: 0, label: "บริการ" }, { id: 1, label: "รายละเอียดและนัดหมาย" }, { id: 4, label: "ยืนยัน" }];
@@ -535,65 +505,52 @@ export default function BookingView({
 
             {/* Service badge */}
             <div style={{ borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, background: "linear-gradient(135deg,#FFF0F2,#FFF8F9)", border: "1px solid rgba(255,140,154,0.25)" }}>
-              {(() => { const Icon = iconMap[servicesData[selService!]?.iconName] || Smile; return (
-                <div style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "white", boxShadow: "0 2px 8px rgba(255,140,154,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Icon size={20} style={{ color: "#FF8C9A" }} />
-                </div>
-              ); })()}
+              {(() => {
+                const Icon = iconMap[servicesData[selService!]?.iconName] || Smile; return (
+                  <div style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "white", boxShadow: "0 2px 8px rgba(255,140,154,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon size={20} style={{ color: "#FF8C9A" }} />
+                  </div>
+                );
+              })()}
               <div>
                 <p style={{ fontWeight: 700, fontSize: 14, color: "#1A365D", marginBottom: 2 }}>{serviceTitle}</p>
                 <p style={{ fontSize: 12, color: "#FF8C9A" }}>{servicesData[selService!]?.price}</p>
               </div>
             </div>
 
-            <DetailCard emoji="💡" title="ทำไมถึงต้องบริการนี้?" accent="#3B82F6">
-              <p style={{ fontSize: 13, color: "#4A6080", lineHeight: 1.7 }}>{detail.why}</p>
-            </DetailCard>
-
-            <DetailCard emoji="🦷" title="อาการที่ควรพบทันตแพทย์" accent="#FF8C9A">
-              {detail.symptoms.map((s, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#4A6080", marginBottom: 4 }}>
-                  <span style={{ color: "#FF8C9A", flexShrink: 0 }}>•</span>{s}
-                </div>
-              ))}
-            </DetailCard>
-
-            <DetailCard emoji="✨" title="ประโยชน์ของบริการ" accent="#22C55E">
+            <DetailCard emoji="✨" title={`ประโยชน์ของ${serviceTitle}`} accent="#22C55E">
               {detail.benefits.map((b, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#4A6080", marginBottom: 4, alignItems: "flex-start" }}>
+                <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#4A6080", marginBottom: 6, alignItems: "flex-start" }}>
                   <CheckCircle size={13} style={{ color: "#22C55E", flexShrink: 0, marginTop: 2 }} />{b}
                 </div>
               ))}
             </DetailCard>
 
-            <DetailCard emoji="⚖️" title="ข้อดีและข้อควรทราบ" accent="#1A365D">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "#22C55E", marginBottom: 6 }}>✅ ข้อดี</p>
-                  {detail.pros.map((p, i) => <p key={i} style={{ fontSize: 12, color: "#4A6080", marginBottom: 4 }}>• {p}</p>)}
-                </div>
-                <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "#F59E0B", marginBottom: 6 }}>⚠️ ข้อควรทราบ</p>
-                  {detail.cons.map((c, i) => <p key={i} style={{ fontSize: 12, color: "#4A6080", marginBottom: 4 }}>• {c}</p>)}
-                </div>
-              </div>
-            </DetailCard>
-
-            <DetailCard emoji="💊" title="การดูแลหลังรับบริการ" accent="#3B82F6">
-              {detail.afterCare.map((a, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#4A6080", marginBottom: 4 }}>
-                  <span style={{ color: "#3B82F6", flexShrink: 0 }}>→</span>{a}
+            <DetailCard emoji="🩺" title="ขั้นตอนการรักษา" accent="#FF8C9A">
+              {detail.procedures.map((p, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#4A6080", marginBottom: 6, alignItems: "flex-start" }}>
+                  <span style={{ color: "white", backgroundColor: "#FF8C9A", borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: "bold", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                  <span>{p}</span>
                 </div>
               ))}
             </DetailCard>
 
-            <div style={{ borderRadius: 14, backgroundColor: "white", padding: "14px 16px", boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "#1A365D", display: "block", marginBottom: 8 }}>📝 อาการเพิ่มเติม (ไม่บังคับ)</label>
-              <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
-                placeholder="เช่น ปวดฟันกลางคืน มีเลือดออก แพ้ยาชา..."
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, outline: "none", resize: "none", fontSize: 13, backgroundColor: "#F0F4F8", color: "#1A365D", border: "none", boxSizing: "border-box" }}
-              />
-            </div>
+            <DetailCard emoji="💊" title="การดูแลก่อนและหลังการรักษา" accent="#3B82F6">
+              {detail.care.map((c, i) => {
+                const isPre = c.startsWith("ก่อนทำ:");
+                const isPost = c.startsWith("หลังทำ:");
+                const text = c.replace(/^(ก่อนทำ:|หลังทำ:)\s*/, "");
+                return (
+                  <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#4A6080", marginBottom: 8, alignItems: "flex-start" }}>
+                    {isPre && <div style={{ backgroundColor: "#EFF6FF", color: "#3B82F6", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, flexShrink: 0, marginTop: 1 }}>ก่อนทำ</div>}
+                    {isPost && <div style={{ backgroundColor: "#F0FDF4", color: "#22C55E", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, flexShrink: 0, marginTop: 1 }}>หลังทำ</div>}
+                    {!isPre && !isPost && <span style={{ color: "#3B82F6", flexShrink: 0, fontWeight: "bold", marginTop: -2 }}>•</span>}
+                    <span style={{ lineHeight: 1.5 }}>{text}</span>
+                  </div>
+                );
+              })}
+            </DetailCard>
+
           </div>
 
           {/* RIGHT: Doctor + Calendar + Time */}
@@ -693,7 +650,7 @@ export default function BookingView({
               <div style={{ backgroundColor: "white", padding: "8px 10px 10px" }}>
                 {/* Day labels */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
-                  {["อา","จ","อ","พ","พฤ","ศ","ส"].map((d, i) => (
+                  {["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((d, i) => (
                     <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: i === 0 ? "#FDA4AF" : i === 6 ? "#93C5FD" : "#94A3B8", paddingBottom: 2 }}>{d}</div>
                   ))}
                 </div>
@@ -705,28 +662,40 @@ export default function BookingView({
                     const st = dayStatus(d).status;
                     const sel = selDay === d;
                     const isWeekend = (firstDow + i) % 7 === 0 || (firstDow + i) % 7 === 6;
+                    const isFull = st === "full";
+                    const isPast = st === "past";
+                    const isAvailable = st === "available";
                     return (
-                      <button key={d} disabled={st !== "available"} onClick={() => { setSelDay(d); setSelTime(null); }}
+                      <button key={d} disabled={!isAvailable} onClick={() => { setSelDay(d); setSelTime(null); }}
                         style={{
                           height: 30, borderRadius: 6, border: "none", width: "100%",
                           fontSize: 10, fontWeight: sel ? 700 : 500,
-                          cursor: st === "available" ? "pointer" : "not-allowed",
+                          cursor: isAvailable ? "pointer" : "not-allowed",
                           transition: "all 0.15s",
-                          background: sel ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)" : "transparent",
-                          color: sel ? "white" : st === "past" ? "#D1D5DB" : isWeekend ? "#F87171" : "#1A365D",
+                          background: sel
+                            ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)"
+                            : isFull
+                              ? "rgba(239,68,68,0.12)"
+                              : "transparent",
+                          color: sel ? "white" : isPast ? "#D1D5DB" : isFull ? "#EF4444" : isWeekend ? "#F87171" : "#1A365D",
                           boxShadow: sel ? "0 2px 6px rgba(255,140,154,0.5)" : "none",
+                          position: "relative",
                         }}
-                        onMouseEnter={e => { if (st === "available" && !sel) e.currentTarget.style.backgroundColor = "#FFF0F2"; }}
-                        onMouseLeave={e => { if (st === "available" && !sel) e.currentTarget.style.backgroundColor = "transparent"; }}>
+                        onMouseEnter={e => { if (isAvailable && !sel) e.currentTarget.style.backgroundColor = "#FFF0F2"; }}
+                        onMouseLeave={e => { if (isAvailable && !sel) e.currentTarget.style.backgroundColor = "transparent"; }}>
                         {d}
+                        {isFull && <span style={{ display: "block", fontSize: 7, color: "#EF4444", lineHeight: 1, marginTop: 1 }}>เต็ม</span>}
                       </button>
                     );
                   })}
                 </div>
                 {/* Legend */}
-                <div style={{ display: "flex", gap: 10, marginTop: 8, justifyContent: "flex-end" }}>
+                <div style={{ display: "flex", gap: 10, marginTop: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 8, color: "#94A3B8" }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }} />เลือก
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 8, color: "#94A3B8" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "rgba(239,68,68,0.5)" }} /><span style={{ color: "#EF4444" }}>เต็มทั้งวัน</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 8, color: "#94A3B8" }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#D1D5DB" }} />ไม่ว่าง
@@ -747,10 +716,19 @@ export default function BookingView({
                       const isSelected = selTime && t >= selTime && t < endTimeStr;
                       return (
                         <button key={t} disabled={!canBook} onClick={() => setSelTime(t)}
-                          style={{ padding: "8px 4px", borderRadius: 10, fontSize: 12, fontWeight: 600, border: "none", cursor: canBook ? "pointer" : "not-allowed", transition: "all 0.15s", opacity: !canBook && !booked ? 0.4 : 1, backgroundColor: isSelected ? "#FF8C9A" : booked ? "#F0F4F8" : "white", color: isSelected ? "white" : !canBook ? "#ccc" : "#1A365D", boxShadow: canBook && !isSelected ? "0 1px 4px rgba(26,54,93,0.1)" : "none" }}>
+                          style={{
+                            padding: "8px 4px", borderRadius: 10, fontSize: 12, fontWeight: 600,
+                            border: booked ? "1.5px solid #E5E7EB" : canBook && !isSelected ? "1.5px solid rgba(255,140,154,0.2)" : "none",
+                            cursor: canBook ? "pointer" : "not-allowed",
+                            transition: "all 0.15s",
+                            backgroundColor: isSelected ? "#FF8C9A" : booked ? "#F3F4F6" : !canBook ? "#F9FAFB" : "white",
+                            color: isSelected ? "white" : booked ? "#9CA3AF" : !canBook ? "#D1D5DB" : "#1A365D",
+                            boxShadow: canBook && !isSelected && !booked ? "0 1px 4px rgba(26,54,93,0.1)" : "none",
+                            textDecoration: booked ? "line-through" : "none",
+                          }}>
                           {t}
-                          {booked && <span style={{ display: "block", fontSize: 9, color: "#bbb" }}>จองแล้ว</span>}
-                          {!booked && !canBook && <span style={{ display: "block", fontSize: 9, color: "#bbb" }}>เวลาไม่พอ</span>}
+                          {booked && <span style={{ display: "block", fontSize: 9, color: "#9CA3AF", textDecoration: "none" }}>จองเต็ม</span>}
+                          {!booked && !canBook && <span style={{ display: "block", fontSize: 9, color: "#D1D5DB" }}>เวลาไม่พอ</span>}
                         </button>
                       );
                     })}
@@ -787,11 +765,11 @@ export default function BookingView({
           <div style={{ borderRadius: 20, backgroundColor: "white", padding: 24, boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <h3 style={{ fontWeight: 700, fontSize: 16, color: "#1A365D", marginBottom: 20 }}>สรุปการจองนัดหมาย</h3>
             {[
-              { label: "บริการ",        val: servicesData[selService!]?.title || "ไม่ระบุ" },
-              { label: "ทันตแพทย์",    val: (selDoctor === "any" || selDoctor === null) ? "จัดแพทย์ให้อัตโนมัติ" : (landingDoctors.find((d) => d.id === selDoctor)?.name || "ไม่ระบุ") },
-              { label: "แผนชำระเงิน",  val: paymentPlans.length > 0 && selPaymentPlan ? (paymentPlans.find((p) => p.plan_id === selPaymentPlan)?.plan_name || "ชำระปกติ") : "ชำระปกติ" },
-              { label: "วันที่",        val: `${selDay} ${today.toLocaleDateString("th-TH", { month: "long", year: "numeric" })}` },
-              { label: "เวลา",          val: `${selTime} – ${endTimeStr} น.` },
+              { label: "บริการ", val: servicesData[selService!]?.title || "ไม่ระบุ" },
+              { label: "ทันตแพทย์", val: (selDoctor === "any" || selDoctor === null) ? "จัดแพทย์ให้อัตโนมัติ" : (landingDoctors.find((d) => d.id === selDoctor)?.name || "ไม่ระบุ") },
+              { label: "แผนชำระเงิน", val: paymentPlans.length > 0 && selPaymentPlan ? (paymentPlans.find((p) => p.plan_id === selPaymentPlan)?.plan_name || "ชำระปกติ") : "ชำระปกติ" },
+              { label: "วันที่", val: `${selDay} ${today.toLocaleDateString("th-TH", { month: "long", year: "numeric" })}` },
+              { label: "เวลา", val: `${selTime} – ${endTimeStr} น.` },
               { label: "ราคาเริ่มต้น", val: servicesData[selService!]?.price || "-" },
             ].map((r) => (
               <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", fontSize: 14, borderBottom: "1px solid rgba(26,54,93,0.06)" }}>
