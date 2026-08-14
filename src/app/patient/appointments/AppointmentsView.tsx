@@ -55,7 +55,7 @@ export default function AppointmentsView({
 
   const activeAppts = appts.filter(a => {
     if (a.status === "ยกเลิก") return false;
-    if (a.status === "เสร็จสิ้นเรียบร้อย" || (a.status as string) === "เสร็จสิ้น" || a.status === "ไม่มาตามนัด") return false;
+    if (a.status === "เสร็จสิ้น" || a.status === "ไม่มาตามนัด") return false;
     if (a.date) {
       const timeStr = a.time || "00:00";
       const apptDate = new Date(`${a.date}T${timeStr}:00`);
@@ -100,7 +100,7 @@ export default function AppointmentsView({
         {activeAppts.map(a => {
           const sc = statusColor[a.status] ?? { bg: "#F0F4F8", text: "#4A6080" };
           const canCancel = a.status !== "ยกเลิก";
-          const isDone = a.status === "เสร็จสิ้นเรียบร้อย" || a.status === "ยกเลิก" || a.status === "ไม่มาตามนัด" || (a.status as string) === "เสร็จสิ้น";
+          const isDone = a.status === "เสร็จสิ้น" || a.status === "ยกเลิก" || a.status === "ไม่มาตามนัด";
           const isPending = !isDone;
 
           let isWithin24Hours = false;

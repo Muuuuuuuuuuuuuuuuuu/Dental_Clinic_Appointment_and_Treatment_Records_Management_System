@@ -35,13 +35,13 @@ function StatCards({ appts, setView }: { appts: Appointment[]; setView: (v: Staf
   const waitCheckin = appts.filter(a => a.status === "ยืนยันการจอง").length;
   const checkedIn = appts.filter(a => a.status === "เช็คอินเรียบร้อย").length;
   const pending = appts.filter(a => a.status === "รอชำระเงิน").length;
-  const done = appts.filter(a => a.status === "เสร็จสิ้นเรียบร้อย").length;
+  const done = appts.filter(a => a.status === "เสร็จสิ้น").length;
 
   const stats = [
     { label: "รอเช็คอิน", val: waitCheckin, icon: UserCheck, bg: "#E8F4FF", ic: "#1D6FA4", action: null },
-    { label: "เช็คอินเรียบร้อย", val: checkedIn, icon: Clock, bg: "#F3E8FF", ic: "#7C3AED", action: null },
+    { label: "เช็คอินเรียบร้อย", val: checkedIn, icon: Clock, bg: "#FDF4FF", ic: "#A21CAF", action: null },
     { label: "รอชำระเงิน", val: pending, icon: CreditCard, bg: "#FFFDE7", ic: "#B45309", action: "payment" as StaffView },
-    { label: "เสร็จสิ้นเรียบร้อย", val: done, icon: CheckCircle, bg: "#E8FFF0", ic: "#1B7A3E", action: null },
+    { label: "เสร็จสิ้น", val: done, icon: CheckCircle, bg: "#E8FFF0", ic: "#1B7A3E", action: null },
   ];
 
   return (
@@ -111,7 +111,7 @@ function AppointmentList({ appts }: { appts: Appointment[] }) {
 // ─── Today's Kanban Board ─────────────────────────────────────────────────────
 function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], onUpdate: (id: number, s: Partial<Appointment>) => void, setView?: (v: StaffView) => void }) {
   const toCheckIn = appts.filter(a => a.status === "ยืนยันการจอง");
-  const inQueue = appts.filter(a => a.status === "เช็คอินเรียบร้อย");
+  const inQueue = appts.filter(a => a.status === "เช็คอินเรียบร้อย" || a.status === "กำลังรักษา");
   const toPay = appts.filter(a => a.status === "รอชำระเงิน");
 
   return (
@@ -180,18 +180,25 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
             const colorObj = STATUS_COLORS[a.status] || { bg: "#F0F4F8", text: "#4A6080", dot: "#ccc" };
 
             return (
-              <div key={a.id} className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100 relative overflow-hidden">
+              <div key={a.id} className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100 relative overflow-hidden group">
                 <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: colorObj.dot }}></div>
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-sm font-bold" style={{ color: "#1A365D" }}>{a.time} น.</span>
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
                     style={{ backgroundColor: colorObj.bg, color: colorObj.text }}>
                     {a.status}
-
                   </span>
                 </div>
                 <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
-                <p className="text-xs" style={{ color: "#4A6080" }}>ห้องตรวจ: ทพ. {a.doctorName}</p>
+                <p className="text-xs mb-3" style={{ color: "#4A6080" }}>ห้องตรวจ: ทพ. {a.doctorName}</p>
+                {a.status === "เช็คอินเรียบร้อย" && (
+                  <button
+                    onClick={() => onUpdate(a.id, { status: "กำลังรักษา" })}
+                    className="w-full flex justify-center items-center gap-2 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                    style={{ backgroundColor: "#A21CAF" }}>
+                    เรียกเข้าห้องตรวจ
+                  </button>
+                )}
               </div>
             );
           })

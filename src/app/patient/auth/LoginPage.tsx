@@ -148,16 +148,24 @@ export default function LoginPage({
           
           {showDemos && (
             <div className="w-full flex flex-col gap-2 mt-3 p-4 rounded-xl" style={{ backgroundColor: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
-              <p className="text-xs text-center font-medium mb-1" style={{ color: "#1A365D" }}>คลิกเพื่อกรอกข้อมูลอัตโนมัติ</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {allDemos.map((demo, idx) => (
-                  <button key={idx} type="button" onClick={() => fillDemo(demo)}
-                    className="py-1.5 px-3 rounded-full text-[11px] font-medium transition-all hover:opacity-80 flex items-center gap-1.5 shadow-sm hover:shadow"
-                    style={{ backgroundColor: "white", color: "#4A6080", border: "1px solid #E2E8F0" }}
-                    title={`${demo.roleLabel}`}>
-                    <RefreshCw size={10} style={{ color: "#FF8C9A" }} />
-                    {demo.roleLabel}: {demo.label}
-                  </button>
+              <p className="text-xs text-center font-medium mb-3" style={{ color: "#1A365D" }}>คลิกเพื่อกรอกข้อมูลอัตโนมัติ</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-start">
+                {ROLE_TABS.map((tab, tIdx) => (
+                  <div key={tIdx} className="flex flex-col gap-2">
+                    <p className="text-[11px] font-bold text-slate-500 mb-1 border-b border-slate-200 pb-1 flex items-center gap-1.5">
+                      <tab.icon size={12} /> {tab.label}
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      {tab.demos.map((demo, idx) => (
+                        <button key={idx} type="button" onClick={() => fillDemo(demo as any)}
+                          className="py-1.5 px-3 rounded-lg text-[11px] font-medium transition-all hover:bg-slate-100 flex items-center justify-start gap-2 border border-slate-200 bg-white text-slate-600 hover:border-slate-300 w-full text-left"
+                          title={`${tab.label}`}>
+                          <RefreshCw size={10} style={{ color: "#FF8C9A" }} />
+                          <span className="truncate">{demo.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

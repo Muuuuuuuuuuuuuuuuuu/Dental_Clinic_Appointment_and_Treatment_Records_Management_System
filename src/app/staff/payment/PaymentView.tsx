@@ -57,8 +57,8 @@ export default function PaymentView({
   // Payable: Any appointment with status "รอชำระเงิน"
   const payable = appointments.filter(a => a.status === "รอชำระเงิน");
   
-  // Paid today: Appointments with status "เสร็จสิ้นเรียบร้อย" AND date is today
-  const paid = appointments.filter(a => a.status === "เสร็จสิ้นเรียบร้อย" && a.date === todayStr);
+  // Paid today: Appointments with status "เสร็จสิ้น" AND date is today
+  const paid = appointments.filter(a => a.status === "เสร็จสิ้น" && a.date === todayStr);
 
   const selectedAppt = appointments.find(a => a.id === selectedApptId);
 
@@ -83,7 +83,7 @@ export default function PaymentView({
     try {
       await processPaymentApi(selectedAppt.id, netTotal, paymentMethod);
       
-      const newApptData = { status: "เสร็จสิ้นเรียบร้อย" as AppointmentStatus, cost: netTotal, paid: true };
+      const newApptData = { status: "เสร็จสิ้น" as AppointmentStatus, cost: netTotal, paid: true };
       
       setAppointments(apps => apps.map(a => a.id === selectedAppt.id ? { ...a, ...newApptData } : a));
       

@@ -50,7 +50,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
     }
   });
 
-  const revenue = filteredAppts.filter(a => a.status === "เสร็จสิ้นเรียบร้อย").reduce((s, a) => s + (a.cost ?? 0), 0);
+  const revenue = filteredAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
   const pending = leaves.filter(l => l.status === "รอการอนุมัติ").length;
 
   // Chart data
@@ -60,7 +60,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
       const hourPrefix = hour.toString().padStart(2, '0');
       const timeLabel = `${hourPrefix}:00`;
       const hourAppts = filteredAppts.filter(a => a.time.startsWith(`${hourPrefix}:`));
-      const hourRev = hourAppts.filter(a => a.status === "เสร็จสิ้นเรียบร้อย").reduce((s, a) => s + (a.cost ?? 0), 0);
+      const hourRev = hourAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
       return { day: timeLabel, appts: hourAppts.length, revenue: hourRev, fullDate: targetDateStr };
     })
   : timeframe === "month" ? (() => {
@@ -76,11 +76,11 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   })()
   : Array.from({ length: 7 }).map((_, i) => {
     const d = new Date(selectedDate);
-    d.setDate(d.getDate() - ((chartDays ?? 7) - 1 - i));
+    d.setDate(d.getDate() - (7 - 1 - i));
     const dStr = getLocalDateStr(d);
     const dayLabel = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     const dayAppts = appointments.filter(a => a.date === dStr);
-    const dayRev = dayAppts.filter(a => a.status === "เสร็จสิ้นเรียบร้อย").reduce((s, a) => s + (a.cost ?? 0), 0);
+    const dayRev = dayAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
     return { day: dayLabel, appts: dayAppts.length, revenue: dayRev, fullDate: dStr };
   });
 
@@ -95,14 +95,14 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   };
 
   // Status Breakdown
-  const completedCnt = filteredAppts.filter(a => a.status === "เสร็จสิ้นเรียบร้อย").length;
-  const scheduledCnt = filteredAppts.filter(a => ["ยืนยันการจอง", "เช็คอินเรียบร้อย", "รอชำระเงิน"].includes(a.status)).length;
+  const completedCnt = filteredAppts.filter(a => a.status === "เสร็จสิ้น").length;
+  const scheduledCnt = filteredAppts.filter(a => ["ยืนยันการจอง", "เช็คอินเรียบร้อย", "กำลังรักษา", "รอชำระเงิน"].includes(a.status)).length;
   const cancelledCnt = filteredAppts.filter(a => a.status === "ยกเลิก").length;
   const postponedCnt = filteredAppts.filter(a => a.status === "ไม่มาตามนัด").length;
   const totalCnt = filteredAppts.length || 1;
 
   // Continuous Cases
-  const activeOrtho = appointments.filter(a => (a.service.includes("จัดฟัน") || a.service.includes("รากเทียม")) && !["ยกเลิก", "เสร็จสิ้นเรียบร้อย"].includes(a.status)).length;
+  const activeOrtho = appointments.filter(a => (a.service.includes("จัดฟัน") || a.service.includes("รากเทียม")) && !["ยกเลิก", "เสร็จสิ้น"].includes(a.status)).length;
 
   return (
     <div className="animate-fade-in flex flex-col" style={{ height: "calc(100vh - 7rem)" }}>

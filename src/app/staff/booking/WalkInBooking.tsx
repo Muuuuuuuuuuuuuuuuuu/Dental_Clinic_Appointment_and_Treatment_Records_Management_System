@@ -75,9 +75,9 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
         onAddAppt({ ...newAppt, id: added.appointment_id.toString() });
       }
       setDone(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to book appointment");
+      alert(err.message || "Failed to book appointment");
     }
   };
 

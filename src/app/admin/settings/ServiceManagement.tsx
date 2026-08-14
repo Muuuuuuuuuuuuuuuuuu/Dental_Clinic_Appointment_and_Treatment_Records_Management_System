@@ -15,9 +15,10 @@ export default function ServiceManagement() {
   const [names, setNames] = useState<Record<number, string>>({});
   const [descs, setDescs] = useState<Record<number, string>>({});
   const [cats, setCats] = useState<Record<number, string>>({});
+  const [reqConfs, setReqConfs] = useState<Record<number, boolean>>({});
   const [isAdding, setIsAdding] = useState(false);
   const [isCustomCategory, setIsCustomCategory] = useState(false);
-  const [newService, setNewService] = useState({ name: "", desc: "", price: "", time: "30", category: "ทันตกรรมทั่วไป" });
+  const [newService, setNewService] = useState({ name: "", desc: "", price: "", time: "30", category: "ทันตกรรมทั่วไป", requiresConfirmation: false, newCategoryIcon: "Smile", newCategoryColor: "#F0F4F8" });
 
   useEffect(() => {
     fetchServices();
@@ -40,6 +41,7 @@ export default function ServiceManagement() {
     const n = names[id];
     const d = descs[id];
     const c = cats[id];
+    const rc = reqConfs[id];
     
     if (!isNaN(p) && !isNaN(t)) {
       try {
@@ -47,6 +49,7 @@ export default function ServiceManagement() {
         if (n !== undefined) payload.name = n;
         if (d !== undefined) payload.description = d;
         if (c !== undefined) payload.category = c;
+        if (rc !== undefined) payload.requiresConfirmation = rc;
         const updated = await updateService(id, payload);
         setServices(ss => ss.map(s => s.id === id ? updated : s));
       } catch (err) {
@@ -85,12 +88,15 @@ export default function ServiceManagement() {
         basePrice: p,
         category: newService.category,
         estimatedTime: t,
-        active: true
+        active: true,
+        requiresConfirmation: newService.requiresConfirmation,
+        newCategoryIcon: newService.newCategoryIcon,
+        newCategoryColor: newService.newCategoryColor
       });
       setServices(prev => [...prev, added]);
       setIsAdding(false);
       setIsCustomCategory(false);
-      setNewService({ name: "", desc: "", price: "", time: "30", category: "ทันตกรรมทั่วไป" });
+      setNewService({ name: "", desc: "", price: "", time: "30", category: "ทันตกรรมทั่วไป", requiresConfirmation: false, newCategoryIcon: "Smile", newCategoryColor: "#F0F4F8" });
     } catch (err) {
       console.error(err);
       alert("Failed to add service");
@@ -119,7 +125,7 @@ export default function ServiceManagement() {
       {isAdding && (
         <div className="mb-6 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 animate-fade-in">
           <h2 className="text-sm font-bold mb-4" style={{ color: "#1A365D" }}>เพิ่มบริการใหม่</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-4">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">ชื่อบริการ</label>
               <input type="text" value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="เช่น ขูดหินปูน" />
@@ -127,9 +133,24 @@ export default function ServiceManagement() {
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">หมวดหมู่</label>
               {isCustomCategory ? (
-                <div className="flex gap-2">
-                  <input type="text" value={newService.category} onChange={e => setNewService({...newService, category: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="พิมพ์หมวดหมู่ใหม่" autoFocus />
-                  <button onClick={() => { setIsCustomCategory(false); setNewService({...newService, category: categories[0] || "ทันตกรรมทั่วไป"}); }} className="px-2 text-slate-400 hover:text-slate-600">✕</button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input type="text" value={newService.category} onChange={e => setNewService({...newService, category: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="พิมพ์หมวดหมู่ใหม่" autoFocus />
+                    <button onClick={() => { setIsCustomCategory(false); setNewService({...newService, category: categories[0] || "ทันตกรรมทั่วไป"}); }} className="px-2 text-slate-400 hover:text-slate-600">✕</button>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <input type="color" value={newService.newCategoryColor} onChange={e => setNewService({...newService, newCategoryColor: e.target.value})} className="w-8 h-8 p-0 border-0 rounded cursor-pointer" title="สีพื้นหลังหมวดหมู่" />
+                    <select value={newService.newCategoryIcon} onChange={e => setNewService({...newService, newCategoryIcon: e.target.value})} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none">
+                      <option value="Smile">😊 Smile</option>
+                      <option value="Sparkles">✨ Sparkles</option>
+                      <option value="Activity">📈 Activity</option>
+                      <option value="Heart">❤️ Heart</option>
+                      <option value="Star">⭐ Star</option>
+                      <option value="Shield">🛡️ Shield</option>
+                      <option value="Clock">🕒 Clock</option>
+                      <option value="Stethoscope">🩺 Stethoscope</option>
+                    </select>
+                  </div>
                 </div>
               ) : (
                 <select 
@@ -160,6 +181,12 @@ export default function ServiceManagement() {
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">คำอธิบาย</label>
               <input type="text" value={newService.desc} onChange={e => setNewService({...newService, desc: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="คำอธิบายสั้นๆ" />
+            </div>
+            <div className="flex flex-col justify-center">
+              <label className="flex items-center gap-2 cursor-pointer mt-5">
+                <input type="checkbox" checked={newService.requiresConfirmation} onChange={e => setNewService({...newService, requiresConfirmation: e.target.checked})} className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]" />
+                <span className="text-xs font-medium text-slate-700">เคสยาก (รอการยืนยัน)</span>
+              </label>
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -200,10 +227,26 @@ export default function ServiceManagement() {
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none border border-slate-200"
                         placeholder="คำอธิบาย"
                       />
+                      <label className="flex items-center gap-2 cursor-pointer mt-1">
+                        <input
+                          type="checkbox"
+                          defaultChecked={s.requiresConfirmation}
+                          onChange={e => setReqConfs(rc => ({ ...rc, [s.id]: e.target.checked }))}
+                          className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]"
+                        />
+                        <span className="text-xs font-medium text-slate-700">เคสยาก (รอการยืนยัน)</span>
+                      </label>
                     </div>
                   ) : (
                     <>
-                      <p className="font-medium text-sm" style={{ color: "#1A365D" }}>{s.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm" style={{ color: "#1A365D" }}>{s.name}</p>
+                        {s.requiresConfirmation && (
+                          <span className="px-2 py-0.5 text-[10px] font-bold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A] rounded-full">
+                            เคสยาก
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{s.description}</p>
                     </>
                   )}

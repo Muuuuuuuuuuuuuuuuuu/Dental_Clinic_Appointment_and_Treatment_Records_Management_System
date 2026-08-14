@@ -166,7 +166,8 @@ export default function TreatmentQueue({
   };
 
   const statusActions: Record<string, { label: string; next: AppointmentStatus; color: string }> = {
-    "เช็คอินเรียบร้อย": { label: "เริ่มรักษา", next: "รอชำระเงิน", color: "#7C3AED" },
+    "เช็คอินเรียบร้อย": { label: "เริ่มรักษา", next: "กำลังรักษา", color: "#A21CAF" },
+    "กำลังรักษา": { label: "เสร็จสิ้นการรักษา", next: "รอชำระเงิน", color: "#7C3AED" },
   };
 
   return (

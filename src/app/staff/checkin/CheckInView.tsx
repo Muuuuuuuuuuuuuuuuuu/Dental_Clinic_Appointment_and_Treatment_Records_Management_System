@@ -33,8 +33,8 @@ export default function CheckInView() {
     .filter(a => a.date === todayStr)
     .sort((a, b) => a.time.localeCompare(b.time));
 
-  const toCheckIn = todayApps.filter(a => a.status === "ยืนยันการจอง" || a.status === "รอการยืนยัน");
-  const inQueue = todayApps.filter(a => a.status === "รอรักษา" || a.status === "กำลังรักษา" || a.status === "เช็คอินเรียบร้อย");
+  const toCheckIn = todayApps.filter(a => a.status === "ยืนยันการจอง");
+  const inQueue = todayApps.filter(a => a.status === "เช็คอินเรียบร้อย" || a.status === "กำลังรักษา");
   const toPay = todayApps.filter(a => a.status === "รอชำระเงิน");
 
   return (
@@ -66,7 +66,7 @@ export default function CheckInView() {
                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-sm font-bold" style={{ color: "#1D6FA4" }}>{a.time} น.</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: a.status === "รอการยืนยัน" ? "#FFF3E0" : "#E8F4FF", color: a.status === "รอการยืนยัน" ? "#E65100" : "#1D6FA4" }}>{a.status === "รอการยืนยัน" ? "รออนุมัติ" : "ยืนยันแล้ว"}</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}>ยืนยันแล้ว</span>
                 </div>
                 <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
                 <p className="text-xs mb-3" style={{ color: "#4A6080" }}>{a.service} • ทพ. {a.doctorName}</p>
@@ -131,6 +131,15 @@ export default function CheckInView() {
                         ⚠️ ประวัติยังไม่สมบูรณ์ (Walk-in) กรุณาให้คนไข้กรอกประวัติเพิ่มเติม
                       </span>
                     </div>
+                  )}
+                  
+                  {a.status === "เช็คอินเรียบร้อย" && (
+                    <button
+                      onClick={() => onUpdate(a.id, { status: "กำลังรักษา" })}
+                      className="w-full mt-2 flex justify-center items-center gap-2 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                      style={{ backgroundColor: "#A21CAF" }}>
+                      เรียกเข้าห้องตรวจ
+                    </button>
                   )}
                 </div>
               );

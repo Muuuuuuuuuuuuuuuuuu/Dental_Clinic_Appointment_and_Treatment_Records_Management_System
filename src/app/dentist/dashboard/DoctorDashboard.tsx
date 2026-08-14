@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Users, FileText, Calendar, Clock, CheckCircle, AlertTriangle, ClipboardList } from "lucide-react";
+import { Users, FileText, Calendar, Clock, CheckCircle, AlertTriangle, ClipboardList, CreditCard } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, DocView, DentistInfo } from "../../shared/data";
 import { getAppointments } from "../../shared/supabaseApi";
@@ -35,15 +35,17 @@ export default function DoctorDashboard({
   const formattedDate = today.toLocaleDateString("th-TH", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   const myAppts = appointments.filter(a => a.doctorId === doctor?.id && a.date === todayString);
-  const waiting  = myAppts.filter(a => a.status === "เช็คอินเรียบร้อย").length;
-  const treating = myAppts.filter(a => a.status === "รอชำระเงิน").length;
-  const done     = myAppts.filter(a => a.status === "เสร็จสิ้นเรียบร้อย").length;
+  const waiting  = myAppts.filter(a => a.status === "เช็คอินเรียบร้อย" || a.status === "กำลังรักษา").length;
+  const pending  = myAppts.filter(a => a.status === "รอชำระเงิน").length;
+  const done     = myAppts.filter(a => a.status === "เสร็จสิ้น").length;
 
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>สวัสดีตอนเช้า 👩‍⚕️</h1>
+        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+          สวัสดีตอนเช้า {doctor ? `คุณหมอ${doctor.firstName} ${doctor.lastName}` : ''} 👩‍⚕️
+        </h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>{formattedDate} • เวลาทำการ 09:00–17:00 น.</p>
       </div>
 
@@ -52,7 +54,7 @@ export default function DoctorDashboard({
         {[
           { label: "คนไข้วันนี้",     val: myAppts.length,  icon: Users,        bg: "#E8F4FF", ic: "#1D6FA4" },
           { label: "รอรับการรักษา",   val: waiting,          icon: Clock,        bg: "#FFF3E0", ic: "#E65100" },
-          { label: "กำลังรักษา",      val: treating,         icon: ClipboardList, bg: "#F3E8FF", ic: "#7C3AED" },
+          { label: "รอชำระเงิน",      val: pending,         icon: CreditCard,   bg: "#FFFDE7", ic: "#B45309" },
           { label: "เสร็จสิ้นแล้ว",  val: done,             icon: CheckCircle,  bg: "#E8FFF0", ic: "#1B7A3E" },
         ].map(s => (
           <div key={s.label} className="rounded-2xl bg-white p-4" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>

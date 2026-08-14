@@ -1,6 +1,6 @@
 // ─── Patient-specific types ───────────────────────────────────────────────────
 
-import { Smile, Sparkles, Shield, Award, Heart, Calendar } from "lucide-react";
+import { Smile, Sparkles, Shield, Award, Heart, Calendar, Syringe, Baby } from "lucide-react";
 
 export type View =
   | "landing" | "login" | "register" | "otp" | "consent" | "forgot-password"
@@ -54,6 +54,14 @@ export interface ServiceItem {
   baseTimeMins: number; // minimum time in minutes
 }
 
+// Helper to map string icon names from DB to actual Lucide components
+export const getIconComponent = (iconName: string): any => {
+  const icons: Record<string, any> = {
+    Smile, Sparkles, Syringe, Shield, Heart, Award, Baby, Calendar
+  };
+  return icons[iconName] || Smile; // Fallback to Smile
+};
+
 export interface DoctorItem {
   id: number;
   name: string;
@@ -87,12 +95,13 @@ export function thDate(s: string) {
 }
 
 export const patientStatusColor: Record<string, { bg: string; text: string }> = {
-  "ยืนยันการจอง":    { bg: "#E8F4FF", text: "#1D6FA4" },
-  "เช็คอินเรียบร้อย":{ bg: "#F3E8FF", text: "#6B21A8" },
-  "รอชำระเงิน":      { bg: "#FFFDE7", text: "#B45309" },
-  "เสร็จสิ้นเรียบร้อย":{ bg: "#E8FFF0", text: "#1B7A3E" },
-  "ยกเลิก":          { bg: "#FEF2F2", text: "#B91C1C" },
-  "ไม่มาตามนัด":     { bg: "#F3F4F6", text: "#4B5563" },
+  "รอการยืนยัน": { bg: "#FFFBEB", text: "#D97706" },
+  "ยืนยันการจอง": { bg: "#EFF6FF", text: "#1D4ED8" },
+  "เช็คอินเรียบร้อย": { bg: "#FDF4FF", text: "#A21CAF" },
+  "กำลังรักษา": { bg: "#F3E8FF", text: "#6B21A8" },
+  "รอชำระเงิน": { bg: "#FEF2F2", text: "#B91C1C" },
+  "เสร็จสิ้น": { bg: "#E8FFF0", text: "#1B7A3E" },
+  "ไม่มาตามนัด": { bg: "#F3F4F6", text: "#4B5563" },
 };
 
 
@@ -100,22 +109,42 @@ export const patientStatusColor: Record<string, { bg: string; text: string }> = 
 
 import { User, Stethoscope, Users, Settings } from "lucide-react";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const ROLE_TABS: { key: UserRole; label: string; icon: any; demos: {label: string, email: string, pass: string}[] }[] = [
   { key: "patient", label: "คนไข้", icon: User, demos: [
-    { label: "สมหญิง", email: "somying@example.com", pass: "demo1234" },
-    { label: "มณี", email: "manee@example.com", pass: "demo1234" }
+    // ✅ บัญชีที่ล็อกอินได้จริง
+    { label: "สมหญิง", email: "somying@example.com", pass: "patient123" },
+    { label: "มณี", email: "manee@example.com", pass: "patient123" },
+    // ⏳ ยังไม่มีใน auth.users (ต้องสร้างเพิ่ม)
+    { label: "สมศักดิ์", email: "somsak@example.com", pass: "patient123" },
+    { label: "ศรีวรรณ", email: "sriwan@example.com", pass: "patient123" },
+    { label: "อนุชา", email: "anucha@example.com", pass: "patient123" },
+    { label: "กัลยา", email: "kanya@example.com", pass: "patient123" },
+    { label: "สุรชัย", email: "surachai@example.com", pass: "patient123" },
+    { label: "วรรณา", email: "wanna@example.com", pass: "patient123" },
+    { label: "ณัฐพงศ์", email: "nattapong@example.com", pass: "patient123" },
+    { label: "อารยา", email: "araya@example.com", pass: "patient123" },
+    { label: "ชาติชาย", email: "chatchai@example.com", pass: "patient123" },
+    { label: "กนกวรรณ", email: "kanokwan@example.com", pass: "patient123" },
+    { label: "ภัทร", email: "pattara@example.com", pass: "patient123" },
+    { label: "ศิริพร", email: "siriporn@example.com", pass: "patient123" },
+    { label: "ธนวัฒน์", email: "tanawat@example.com", pass: "patient123" },
+    { label: "พิมพา", email: "pimpa@example.com", pass: "patient123" },
+    { label: "วีระ", email: "weera@example.com", pass: "patient123" }
   ]},
   { key: "doctor", label: "ทันตแพทย์", icon: Stethoscope, demos: [
     { label: "ทพญ. อรนุช", email: "dr.ornuch@clinic.com", pass: "doctor123" },
     { label: "ทพ. วิชัย", email: "dr.wichai@clinic.com", pass: "doctor123" },
-    { label: "ทพญ. พิมพ์ใจ", email: "dr.pimjai@clinic.com", pass: "doctor123" }
+    { label: "ทพญ. พิมพ์ใจ", email: "dr.pimjai@clinic.com", pass: "doctor123" },
+    { label: "ทพ. ศิริชัย", email: "dr.sirichai@clinic.com", pass: "doctor123" },
+    { label: "ทพญ. นภาพร", email: "dr.napaporn@clinic.com", pass: "doctor123" }
   ]},
   { key: "staff", label: "พนักงาน", icon: Users, demos: [
-    { label: "รัตนา (ต้อนรับ)", email: "rattana@clinic.com", pass: "staff123" }
+    { label: "รัตนา (ต้อนรับ)", email: "rattana@clinic.com", pass: "staff123" },
+    { label: "สมศรี (ผู้ช่วย)", email: "somsri@clinic.com", pass: "staff123" }
   ]},
   { key: "admin", label: "ผู้ดูแลระบบ", icon: Settings, demos: [
-    { label: "Admin", email: "admin@clinic.com", pass: "admin123" }
+    { label: "Admin 1 (คลินิกหลัก)", email: "admin@clinic.com", pass: "admin123" },
+    { label: "Admin 2 (สมชาย)", email: "admin2@clinic.com", pass: "admin123" }
   ]}
 ];
 

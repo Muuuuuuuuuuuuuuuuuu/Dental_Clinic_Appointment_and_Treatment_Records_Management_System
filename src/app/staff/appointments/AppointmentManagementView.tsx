@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { CheckCircle, Clock, AlertTriangle, PhoneCall, XCircle, Search, Filter, Calendar as CalendarIcon, ArrowRightLeft, User, CalendarDays, X, UserX } from "lucide-react";
 import { Appointment, DentistInfo, STATUS_COLORS } from "../../shared/data";
-import { getAppointments, getDentists, updateAppointmentStatus } from "../../shared/supabaseApi";
+import { getAppointments, getDentists, updateAppointmentStatus, updateAppointmentDetails } from "../../shared/supabaseApi";
 import { supabase } from "../../shared/utils/supabaseClient";
 
 type TabView = "confirm" | "reschedule" | "transfer" | "all";
@@ -72,7 +72,7 @@ export default function AppointmentManagementView({
         const updated = await updateAppointmentStatus(id, updates.status);
         setAppointments(apps => apps.map(a => a.id === id ? { ...a, ...updates, status: updated.status } : a));
       } else {
-        // Mock update for non-status changes
+        await updateAppointmentDetails(id, { date: updates.date, time: updates.time, doctorId: updates.doctorId });
         setAppointments(apps => apps.map(a => a.id === id ? { ...a, ...updates } : a));
       }
     } catch (err) {
@@ -114,7 +114,7 @@ export default function AppointmentManagementView({
   };
 
   // Derived state
-  const activeAppointments = appointments.filter(a => !["เสร็จสิ้นเรียบร้อย", "ยกเลิก", "ไม่มาตามนัด"].includes(a.status));
+  const activeAppointments = appointments.filter(a => !["เสร็จสิ้น", "ยกเลิก", "ไม่มาตามนัด"].includes(a.status));
 
   
   const displayAppointments = useMemo(() => {
