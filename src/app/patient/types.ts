@@ -109,30 +109,30 @@ import { User, Stethoscope, Users, Settings } from "lucide-react";
 
 export const ROLE_TABS: { key: UserRole; label: string; icon: any; demos: {label: string, email: string, pass: string}[] }[] = [
   { key: "patient", label: "คนไข้", icon: User, demos: [
-    { label: "สมหญิง", email: "somying@example.com", pass: "patient123" },
-    { label: "สมศักดิ์", email: "somsak@example.com", pass: "patient123" },
-    { label: "ศรีวรรณ", email: "sriwan@example.com", pass: "patient123" },
-    { label: "อนุชา", email: "anucha@example.com", pass: "patient123" },
-    { label: "กัลยา", email: "kanya@example.com", pass: "patient123" },
-    { label: "สุรชัย", email: "surachai@example.com", pass: "patient123" },
-    { label: "วรรณา", email: "wanna@example.com", pass: "patient123" },
-    { label: "ณัฐพงศ์", email: "nattapong@example.com", pass: "patient123" },
-    { label: "อารยา", email: "araya@example.com", pass: "patient123" }
+    { label: "สมหญิง", email: "somying@example.com", pass: "12345678" },
+    { label: "สมศักดิ์", email: "somsak@example.com", pass: "12345678" },
+    { label: "ศรีวรรณ", email: "sriwan@example.com", pass: "12345678" },
+    { label: "อนุชา", email: "anucha@example.com", pass: "12345678" },
+    { label: "กัลยา", email: "kanya@example.com", pass: "12345678" },
+    { label: "สุรชัย", email: "surachai@example.com", pass: "12345678" },
+    { label: "วรรณา", email: "wanna@example.com", pass: "12345678" },
+    { label: "ณัฐพงศ์", email: "nattapong@example.com", pass: "12345678" },
+    { label: "อารยา", email: "araya@example.com", pass: "12345678" }
   ]},
   { key: "doctor", label: "ทันตแพทย์", icon: Stethoscope, demos: [
-    { label: "ทพญ. อรนุช", email: "dr.ornuch@clinic.com", pass: "doctor123" },
-    { label: "ทพ. วิชัย", email: "dr.wichai@clinic.com", pass: "doctor123" },
-    { label: "ทพญ. พิมพ์ใจ", email: "dr.pimjai@clinic.com", pass: "doctor123" },
-    { label: "ทพ. ศิริชัย", email: "dr.sirichai@clinic.com", pass: "doctor123" },
-    { label: "ทพญ. นภาพร", email: "dr.napaporn@clinic.com", pass: "doctor123" }
+    { label: "ทพญ. อรนุช", email: "dr.ornuch@clinic.com", pass: "12345678" },
+    { label: "ทพ. วิชัย", email: "dr.wichai@clinic.com", pass: "12345678" },
+    { label: "ทพญ. พิมพ์ใจ", email: "dr.pimjai@clinic.com", pass: "12345678" },
+    { label: "ทพ. ศิริชัย", email: "dr.sirichai@clinic.com", pass: "12345678" },
+    { label: "ทพญ. นภาพร", email: "dr.napaporn@clinic.com", pass: "12345678" }
   ]},
   { key: "staff", label: "พนักงาน", icon: Users, demos: [
-    { label: "รัตนา (ต้อนรับ)", email: "rattana@clinic.com", pass: "staff123" },
-    { label: "สมศรี (ผู้ช่วย)", email: "somsri@clinic.com", pass: "staff123" }
+    { label: "รัตนา (ต้อนรับ)", email: "rattana@clinic.com", pass: "12345678" },
+    { label: "สมศรี (ผู้ช่วย)", email: "somsri@clinic.com", pass: "12345678" }
   ]},
   { key: "admin", label: "ผู้ดูแลระบบ", icon: Settings, demos: [
-    { label: "Admin 1 (คลินิกหลัก)", email: "admin@clinic.com", pass: "admin123" },
-    { label: "Admin 2 (สมชาย)", email: "admin2@clinic.com", pass: "admin123" }
+    { label: "Admin 1 (คลินิกหลัก)", email: "admin@clinic.com", pass: "12345678" },
+    { label: "Admin 2 (สมชาย)", email: "admin2@clinic.com", pass: "12345678" }
   ]}
 ];
 
