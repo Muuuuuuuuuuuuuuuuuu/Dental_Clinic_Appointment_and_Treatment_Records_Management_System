@@ -780,7 +780,7 @@ export async function getPatientProfileByUserId(userId: string) {
   if (error || !data || !data.profile) return null;
   
   const p = data.profile;
-  const { data: patientData } = await supabase.from('patient').select('*').eq('user_id', userId).single();
+  const { data: patientData } = await supabase.from('patient').select('*').eq('user_id', userId).maybeSingle();
   
   return {
     patientId: patientData?.patient_id,
@@ -1010,11 +1010,14 @@ export async function getPatientTreatmentRecords(patientId?: number) {
   if (error) return [];
 
   return data.map((d: any) => {
-    const dr = d.dentist?.users?.profile || d.appointment?.dentist?.users?.profile;
-    const detail = d.treatment_detail?.[0];
-    const apptDetail = d.appointment?.appointment_detail?.[0];
+    const dr = d.dentist?.users?.profile || (d.appointment && !Array.isArray(d.appointment) ? d.appointment.dentist?.users?.profile : undefined);
+    const detail = d.treatment_detail ? (Array.isArray(d.treatment_detail) ? d.treatment_detail[0] : d.treatment_detail) : undefined;
+    const appt = d.appointment ? (Array.isArray(d.appointment) ? d.appointment[0] : d.appointment) : undefined;
+    const apptDetail = appt?.appointment_detail ? (Array.isArray(appt.appointment_detail) ? appt.appointment_detail[0] : appt.appointment_detail) : undefined;
+    const pay = d.payment ? (Array.isArray(d.payment) ? d.payment[0] : d.payment) : undefined;
+    
     const srvName = detail?.service?.service_name || apptDetail?.service?.service_name || 'ไม่ระบุบริการ';
-    const costAmt = d.payment?.[0]?.total_amount || detail?.actual_price || 0;
+    const costAmt = pay?.total_amount || detail?.actual_price || 0;
     
     let treatmentNotes = d.doctor_note || '';
     let recommendations = detail?.diagnosis || '';
@@ -1247,12 +1250,10 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
         if (availableDentists.length > 0) {
           finalDoctorId = availableDentists[Math.floor(Math.random() * availableDentists.length)];
         } else {
-          // Fallback to random capable dentist if no one is perfectly free (or logic failed)
-          finalDoctorId = capableDentists[Math.floor(Math.random() * capableDentists.length)];
+          throw new Error("ไม่มีทันตแพทย์ว่างในช่วงเวลานี้ กรุณาเลือกเวลาอื่น");
         }
       } else {
-        // Fallback
-        finalDoctorId = capableDentists[Math.floor(Math.random() * capableDentists.length)];
+        throw new Error("ไม่มีทันตแพทย์ปฏิบัติงานในวันนี้ กรุณาเลือกวันอื่น");
       }
     }
   }
@@ -1308,9 +1309,28 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   notifyAppointmentsUpdated();
   return { ...newAppt, assignedDoctorId: finalDoctorId };
 }
-export async function updateAppointmentStatus(id: number, status: string) {
+export async function updateAppointmentStatus(id: number, status: string, reason?: string) {
+  const { data: oldAppt } = await supabase.from('appointment')
+    .select('appointment_status')
+    .eq('appointment_id', id)
+    .single();
+
   const { data, error } = await supabase.from('appointment').update({ appointment_status: status }).eq('appointment_id', id).select().single();
   if (error) throw error;
+  
+  // Log if cancelled or no show
+  if (status === 'ยกเลิก' || status === 'ไม่มาตามนัด') {
+    const { data: userData } = await supabase.auth.getUser();
+    await supabase.from('appointment_log').insert({
+      appointment_id: id,
+      action_type: status === 'ยกเลิก' ? 'CANCEL' : 'NO_SHOW',
+      old_data: oldAppt,
+      new_data: { appointment_status: status },
+      reason: reason || (status === 'ยกเลิก' ? 'ยกเลิกการนัดหมาย' : 'คนไข้ไม่มาตามนัด'),
+      action_by: userData?.user?.id || null
+    });
+  }
+
   notifyAppointmentsUpdated();
   return { id: data.appointment_id, status: data.appointment_status } as any;
 }
@@ -1320,7 +1340,7 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
   await supabase.from('appointment').update({ appointment_status: 'รอชำระเงิน' }).eq('appointment_id', apptId);
   
   // 2. Fetch treatment_record
-  const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).single();
+  const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).maybeSingle();
   let treatmentId = trData?.treatment_id;
   
   // Update or insert treatment record
@@ -1372,7 +1392,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
   if (apptError) throw apptError;
   
   // 2. Fetch treatment_record
-  const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).single();
+  const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).maybeSingle();
   let treatmentId = trData?.treatment_id;
 
   if (treatmentId) {
@@ -2184,7 +2204,15 @@ export async function resetPassword(email: string, newPassword: string): Promise
 }
 
 export async function updateAppointmentDetails(id: number, updates: any) {
+  // Fetch old data
+  const { data: oldAppt } = await supabase.from('appointment')
+    .select('appointment_date, start_time, dentist_id')
+    .eq('appointment_id', id)
+    .single();
+
   const payload: any = {};
+  let actionType = 'RESCHEDULE';
+
   if (updates.date) payload.appointment_date = updates.date;
   if (updates.doctorId) payload.dentist_id = updates.doctorId;
   if (updates.time) {
@@ -2198,8 +2226,27 @@ export async function updateAppointmentDetails(id: number, updates: any) {
     payload.end_time_est = `${String(endHh).padStart(2, '0')}:${String(endMm).padStart(2, '0')}:00`;
   }
   
+  if (updates.doctorId && (!updates.date && !updates.time)) {
+    actionType = 'TRANSFER';
+  } else if (updates.doctorId && (updates.date || updates.time)) {
+    actionType = 'RESCHEDULE_AND_TRANSFER';
+  }
+  
   const { error } = await supabase.from('appointment').update(payload).eq('appointment_id', id);
   if (error) throw error;
+
+  // Insert log
+  const { data: userData } = await supabase.auth.getUser();
+  if (oldAppt) {
+    await supabase.from('appointment_log').insert({
+      appointment_id: id,
+      action_type: actionType,
+      old_data: oldAppt,
+      new_data: payload,
+      reason: updates.reason || 'อัปเดตผ่านระบบจัดการโดยพนักงาน',
+      action_by: userData?.user?.id || null
+    });
+  }
   
   notifyAppointmentsUpdated();
   return true;

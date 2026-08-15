@@ -25,6 +25,7 @@ export default function AppointmentManagementView({
   const [newDoctorId, setNewDoctorId] = useState<string>("");
   const [newDate, setNewDate] = useState<string>("");
   const [newTime, setNewTime] = useState<string>("");
+  const [updateReason, setUpdateReason] = useState<string>("");
 
   useEffect(() => {
     fetchData();
@@ -66,13 +67,13 @@ export default function AppointmentManagementView({
     fetchData();
   }, []);
 
-  const onUpdateAppt = async (id: number, updates: Partial<Appointment>) => {
+  const onUpdateAppt = async (id: number, updates: Partial<Appointment> & { reason?: string }) => {
     try {
       if (updates.status) {
-        const updated = await updateAppointmentStatus(id, updates.status);
+        const updated = await updateAppointmentStatus(id, updates.status, updates.reason);
         setAppointments(apps => apps.map(a => a.id === id ? { ...a, ...updates, status: updated.status } : a));
       } else {
-        await updateAppointmentDetails(id, { date: updates.date, time: updates.time, doctorId: updates.doctorId });
+        await updateAppointmentDetails(id, { date: updates.date, time: updates.time, doctorId: updates.doctorId, reason: updates.reason });
         setAppointments(apps => apps.map(a => a.id === id ? { ...a, ...updates } : a));
       }
     } catch (err) {
@@ -85,31 +86,35 @@ export default function AppointmentManagementView({
     if (!transferAppt || !newDoctorId) return;
     const doctor = dentists.find(d => d.id.toString() === newDoctorId);
     if (doctor) {
-      onUpdateAppt(transferAppt.id, { doctorId: doctor.id, doctorName: doctor.name });
+      onUpdateAppt(transferAppt.id, { doctorId: doctor.id, doctorName: doctor.name, reason: updateReason });
     }
     setTransferAppt(null);
     setNewDoctorId("");
+    setUpdateReason("");
   };
 
   const handleRescheduleSubmit = () => {
     if (!rescheduleAppt || !newDate || !newTime) return;
-    onUpdateAppt(rescheduleAppt.id, { date: newDate, time: newTime });
+    onUpdateAppt(rescheduleAppt.id, { date: newDate, time: newTime, reason: updateReason });
     setRescheduleAppt(null);
     setNewDate("");
     setNewTime("");
+    setUpdateReason("");
   };
 
   const handleCancelAppt = (appt: Appointment) => {
     if (confirm(`ยืนยันยกเลิกนัดหมายของคุณ ${appt.patientName} ใช่ไหม?`)) {
-      onUpdateAppt(appt.id, { status: "ยกเลิก" });
+      onUpdateAppt(appt.id, { status: "ยกเลิก", reason: updateReason });
       setRescheduleAppt(null);
+      setUpdateReason("");
     }
   };
 
   const handleNoShowAppt = (appt: Appointment) => {
     if (confirm(`ยืนยันว่าคุณ ${appt.patientName} ไม่มาตามนัดใช่ไหม?`)) {
-      onUpdateAppt(appt.id, { status: "ไม่มาตามนัด" });
+      onUpdateAppt(appt.id, { status: "ไม่มาตามนัด", reason: updateReason });
       setRescheduleAppt(null);
+      setUpdateReason("");
     }
   };
 
@@ -316,6 +321,14 @@ export default function AppointmentManagementView({
                     <option key={doc.id} value={doc.id}>ทพ. {doc.name} ({doc.specialty})</option>
                   ))}
                 </select>
+                <label className="block text-sm font-bold mt-4 mb-2" style={{ color: "#4A6080" }}>เหตุผลที่ย้ายเคส</label>
+                <input 
+                  type="text" 
+                  value={updateReason} 
+                  onChange={e => setUpdateReason(e.target.value)}
+                  placeholder="เช่น แพทย์ลาป่วย, คนไข้ขอเปลี่ยน ฯลฯ"
+                  className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-blue-500 text-sm"
+                />
               </div>
 
               <button 
@@ -347,7 +360,7 @@ export default function AppointmentManagementView({
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-bold mb-2" style={{ color: "#4A6080" }}>วันที่ใหม่</label>
                   <input 
@@ -366,6 +379,17 @@ export default function AppointmentManagementView({
                     className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-orange-400 text-sm font-medium"
                   />
                 </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-bold mb-2" style={{ color: "#4A6080" }}>เหตุผล (เลื่อน/ยกเลิก)</label>
+                <input 
+                  type="text" 
+                  value={updateReason} 
+                  onChange={e => setUpdateReason(e.target.value)}
+                  placeholder="เช่น คนไข้ติดธุระ, รถติดมาไม่ทัน ฯลฯ"
+                  className="w-full p-3 rounded-xl border border-gray-200 outline-none focus:border-orange-400 text-sm"
+                />
               </div>
 
               <div className="flex flex-col gap-3">
