@@ -56,14 +56,8 @@ export default function AppointmentsView({
   const activeAppts = appts.filter(a => {
     if (a.status === "ยกเลิก") return false;
     if (a.status === "เสร็จสิ้น" || a.status === "ไม่มาตามนัด") return false;
-    if (a.date) {
-      const timeStr = a.time || "00:00";
-      const apptDate = new Date(`${a.date}T${timeStr}:00`);
-      const now = new Date();
-      if (apptDate.getTime() < now.getTime()) {
-        return false;
-      }
-    }
+    // Don't filter out past times; if it's not finished/cancelled, it's still active!
+    // It could be that they are currently in treatment, or the queue is running late.
     return true;
   }).sort((a, b) => {
     if (!a.date && !b.date) return 0;

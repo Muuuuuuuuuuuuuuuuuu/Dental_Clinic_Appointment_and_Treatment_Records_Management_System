@@ -8,6 +8,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ name: "", phone: "", service: "", doctorId: 0, day: 0, time: "", note: "", openAppt: false });
   const [done, setDone] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
   const [services, setServices] = useState<ServiceInfo[]>([]);
@@ -57,6 +58,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
     const doctorName = dentists.find(d => d.id === form.doctorId)?.name ?? "";
     const yearStr = year.toString();
     const monthStr = String(month + 1).padStart(2, "0");
+    const isComplex = services.find(s => s.name === form.service)?.requiresConfirmation || false;
     const newAppt: Omit<Appointment, "id"> = {
       hn: `HN${Date.now().toString().slice(-3)}`,
       patientName: form.name, patientPhone: form.phone,
@@ -64,11 +66,12 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
       doctorId: form.doctorId,
       date: form.openAppt ? "" : `${yearStr}-${monthStr}-${String(form.day).padStart(2, "0")}`,
       time: form.openAppt ? "" : form.time, 
-      status: form.openAppt ? "ยืนยันการจอง" : "เช็คอินเรียบร้อย",
+      status: form.openAppt ? (isComplex ? "รอการยืนยัน" : "ยืนยันการจอง") : "เช็คอินเรียบร้อย",
 
       conditions: "ไม่ทราบ (Walk-in)", allergies: "ไม่ทราบ (Walk-in)",
       note: form.note
     };
+    setIsSubmitting(true);
     try {
       const added = await addAppointment(newAppt);
       if (onAddAppt) {
@@ -78,6 +81,8 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to book appointment");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -273,13 +278,14 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
             <button
               onClick={() => step < 3 ? setStep(s => s + 1) : confirm()}
               disabled={
+                isSubmitting ||
                 (step === 0 && (!form.name || !form.phone)) ||
                 (step === 1 && (!form.service || !form.doctorId)) ||
                 (step === 2 && (!form.openAppt && (!form.day || !form.time)))
               }
               className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40"
               style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-              {step < 3 ? <><span>ถัดไป</span><ArrowRight size={14} /></> : "ยืนยันการจอง"}
+              {step < 3 ? <><span>ถัดไป</span><ArrowRight size={14} /></> : (isSubmitting ? "กำลังบันทึก..." : "ยืนยันการจอง")}
             </button>
           </div>
         </div>

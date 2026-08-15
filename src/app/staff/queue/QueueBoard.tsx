@@ -194,10 +194,16 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
                 {a.status === "เช็คอินเรียบร้อย" && (
                   <button
                     onClick={() => onUpdate(a.id, { status: "กำลังรักษา" })}
-                    className="w-full flex justify-center items-center gap-2 py-2 rounded-xl text-sm font-semibold text-white transition-all"
-                    style={{ backgroundColor: "#A21CAF" }}>
-                    เรียกเข้าห้องตรวจ
+                    className="w-full flex justify-center items-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all hover:bg-fuchsia-50"
+                    style={{ color: "#A21CAF", border: "1px dashed #A21CAF" }}>
+                    ⏳ รอแพทย์เรียก
                   </button>
+                )}
+                {a.status === "กำลังรักษา" && (
+                  <div className="w-full flex justify-center items-center gap-2 py-2 rounded-xl text-xs font-bold"
+                    style={{ backgroundColor: "#F3E8FF", color: "#7C3AED", border: "1px solid #D8B4FE" }}>
+                    <Play size={14} fill="currentColor" /> แพทย์เรียกเข้าห้องตรวจแล้ว
+                  </div>
                 )}
               </div>
             );

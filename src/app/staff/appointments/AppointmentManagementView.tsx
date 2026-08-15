@@ -120,7 +120,7 @@ export default function AppointmentManagementView({
   const displayAppointments = useMemo(() => {
     let list = appointments;
     if (activeTab === "confirm") {
-      list = activeAppointments.filter(a => a.status === "รอการยืนยัน" || a.status === "ยืนยันการจอง");
+      list = activeAppointments.filter(a => a.status === "รอการยืนยัน");
     } else if (activeTab === "reschedule" || activeTab === "transfer") {
       list = activeAppointments;
     }

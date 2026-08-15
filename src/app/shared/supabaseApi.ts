@@ -8,18 +8,30 @@ import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveReq
 // ============================================================================
 // REALTIME HELPERS
 // ============================================================================
+let globalUpdateChannel: any = null;
+
 export function notifyAppointmentsUpdated() {
-  const channel = supabase.channel('icemu-updates');
-  channel.subscribe((status) => {
-    if (status === 'SUBSCRIBED') {
-      channel.send({
+  if (!globalUpdateChannel) {
+    globalUpdateChannel = supabase.channel('icemu-updates', { config: { broadcast: { self: true } } });
+    globalUpdateChannel.subscribe();
+  }
+  
+  if (globalUpdateChannel.state === 'joined') {
+    globalUpdateChannel.send({
+      type: 'broadcast',
+      event: 'appointments-updated',
+      payload: { timestamp: Date.now() },
+    }).catch(console.error);
+  } else {
+    // If not fully joined yet, it might drop the message, but setting up a single channel reduces the chance of drops.
+    setTimeout(() => {
+      globalUpdateChannel.send({
         type: 'broadcast',
         event: 'appointments-updated',
         payload: { timestamp: Date.now() },
-      });
-      setTimeout(() => supabase.removeChannel(channel), 1000);
-    }
-  });
+      }).catch(console.error);
+    }, 500);
+  }
 }
 
 // ============================================================================
@@ -468,7 +480,8 @@ export async function getLandingServices() {
     price: `เริ่มต้น ${d.base_price.toLocaleString()} บาท`,
     color: d.service_category?.color_code || '#FFE8EC',
     type: d.service_type || 'general',
-    baseTimeMins: d.estimated_time || 30
+    baseTimeMins: d.estimated_time || 30,
+    requiresConfirmation: d.requires_confirmation || false
   }));
 }
 
@@ -848,7 +861,7 @@ export async function getAppointments(date?: string) {
       date: d.appointment_date,
       time: d.start_time?.slice(0,5) || '00:00',
       endTime: d.end_time_est?.slice(0,5) || d.start_time?.slice(0,5) || '00:00',
-      status: (d.appointment_status === 'รอการยืนยัน' ? 'ยืนยันการจอง' : d.appointment_status === 'กำลังรักษา' ? 'เช็คอินเรียบร้อย' : d.appointment_status === 'เสร็จสิ้น' ? 'เสร็จสิ้นเรียบร้อย' : d.appointment_status) || 'ยืนยันการจอง',
+      status: d.appointment_status || 'รอการยืนยัน',
       conditions: d.patient?.underlying_disease || '',
       allergies: d.patient?.allergy_history || '',
       treatmentNotes,
@@ -938,7 +951,7 @@ export async function getPatientAppointments(patientId?: number) {
       date: d.appointment_date,
       time: d.start_time?.slice(0,5) || '00:00',
       endTime: d.end_time_est?.slice(0,5) || d.start_time?.slice(0,5) || '00:00',
-      status: (d.appointment_status === 'รอการยืนยัน' ? 'ยืนยันการจอง' : d.appointment_status === 'กำลังรักษา' ? 'เช็คอินเรียบร้อย' : d.appointment_status === 'เสร็จสิ้น' ? 'เสร็จสิ้นเรียบร้อย' : d.appointment_status) || 'ยืนยันการจอง',
+      status: d.appointment_status || 'รอการยืนยัน',
       conditions: d.patient?.underlying_disease || '',
       allergies: d.patient?.allergy_history || '',
       treatmentNotes,
@@ -1258,14 +1271,12 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   if (finalDoctorId) {
     const { error: trErr } = await supabase.from('treatment_record').insert({
       appointment_id: newAppt.appointment_id,
-      dentist_id: finalDoctorId,
-      patient_id: finalPatientId,
+      attending_dentist_id: finalDoctorId,
       treatment_date: appointment.date,
       doctor_note: ''
     });
     if (trErr) {
       console.error("Error inserting treatment record:", trErr);
-      // We log but might not want to crash the whole appointment if dentist is invalid
     }
   }
 
@@ -1321,6 +1332,8 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
       });
     }
   }
+
+  notifyAppointmentsUpdated();
 }
 
 export async function processPaymentApi(apptId: number, finalCost: number, method: string) {
