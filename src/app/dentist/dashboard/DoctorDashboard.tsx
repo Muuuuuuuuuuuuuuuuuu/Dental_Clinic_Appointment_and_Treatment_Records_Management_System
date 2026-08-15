@@ -44,7 +44,7 @@ export default function DoctorDashboard({
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
-          สวัสดีตอนเช้า {doctor ? `คุณหมอ${doctor.firstName} ${doctor.lastName}` : ''} 👩‍⚕️
+          สวัสดีตอนเช้า {doctor ? `คุณหมอ${doctor.name}` : ''} 👩‍⚕️
         </h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>{formattedDate} • เวลาทำการ 09:00–17:00 น.</p>
       </div>

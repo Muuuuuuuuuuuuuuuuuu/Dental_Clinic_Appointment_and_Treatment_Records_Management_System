@@ -131,6 +131,16 @@ export default function AdminPortal({
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    const handleNavigation = (e: any) => {
+      if (e.detail) {
+        setView(e.detail as AdminView);
+      }
+    };
+    window.addEventListener("navigate-admin", handleNavigation);
+    return () => window.removeEventListener("navigate-admin", handleNavigation);
+  }, []);
+
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "Prompt, sans-serif", backgroundColor: "#F0F4F8" }}>
       {sideOpen && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setSideOpen(false)} />}

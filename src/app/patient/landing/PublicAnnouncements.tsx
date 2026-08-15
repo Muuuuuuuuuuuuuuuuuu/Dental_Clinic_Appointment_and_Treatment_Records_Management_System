@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { Megaphone, Link as LinkIcon } from "lucide-react";
 import { Announcement } from "../../shared/data";
-import { getAnnouncements } from "../../shared/supabaseApi";
+import { getPublicAnnouncements } from "../../shared/supabaseApi";
 
 export default function PublicAnnouncements({ onCTA }: { onCTA: () => void }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAnnouncements()
+    getPublicAnnouncements()
       .then(data => {
-        setAnnouncements(data.filter(a => a.target === "public"));
+        setAnnouncements(data.filter(a => a.target === "public" || a.target === "all_internal"));
       })
       .catch(console.error)
       .finally(() => setLoading(false));

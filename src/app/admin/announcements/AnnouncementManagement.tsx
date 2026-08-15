@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Image as ImageIcon, Link as LinkIcon, Users, Globe, UserCheck, Megaphone } from "lucide-react";
+import { Plus, Trash2, Image as ImageIcon, Link as LinkIcon, Users, Globe, UserCheck, Megaphone, Copy, Eye, EyeOff, CalendarX } from "lucide-react";
 import { Announcement } from "../../shared/data";
-import { getAnnouncements, addAnnouncement, deleteAnnouncement } from "../../shared/supabaseApi";
+import { getAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement } from "../../shared/supabaseApi";
+import { Pencil } from "lucide-react";
 
 export default function AnnouncementManagement() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
     content: "",
     target: "all_internal" as Announcement["target"],
     link: "",
-    mediaUrl: ""
+    mediaUrl: "",
+    isActive: true,
+    expiresAt: ""
   });
 
   useEffect(() => {
@@ -34,20 +38,70 @@ export default function AnnouncementManagement() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const newAnnouncement = await addAnnouncement({
-        title: formData.title,
-        content: formData.content,
-        target: formData.target,
-        link: formData.link || undefined,
-        mediaUrl: formData.mediaUrl || undefined,
-      });
-      setAnnouncements([newAnnouncement, ...announcements]);
-      setShowForm(false);
-      setFormData({ title: "", content: "", target: "all_internal", link: "", mediaUrl: "" });
+      if (editingId) {
+        await updateAnnouncement(editingId, {
+          title: formData.title,
+          content: formData.content,
+          target: formData.target,
+          link: formData.link || undefined,
+          mediaUrl: formData.mediaUrl || undefined,
+          isActive: formData.isActive,
+          expiresAt: formData.expiresAt || null,
+        });
+        setAnnouncements(announcements.map(a => 
+          a.id === editingId ? { ...a, ...formData, link: formData.link || undefined, mediaUrl: formData.mediaUrl || undefined, expiresAt: formData.expiresAt || null } : a
+        ));
+      } else {
+        const newAnnouncement = await addAnnouncement({
+          title: formData.title,
+          content: formData.content,
+          target: formData.target,
+          link: formData.link || undefined,
+          mediaUrl: formData.mediaUrl || undefined,
+          isActive: formData.isActive,
+          expiresAt: formData.expiresAt || null,
+        });
+        setAnnouncements([newAnnouncement, ...announcements]);
+      }
+      handleCloseForm();
     } catch (error) {
-      console.error("Error adding announcement:", error);
-      alert("Failed to add announcement. Please check your connection.");
+      console.error("Error saving announcement:", error);
+      alert("Failed to save announcement. Please check your connection.");
     }
+  };
+
+  const handleEdit = (ann: Announcement) => {
+    setEditingId(ann.id);
+    setFormData({
+      title: ann.title,
+      content: ann.content,
+      target: ann.target,
+      link: ann.link || "",
+      mediaUrl: ann.mediaUrl || "",
+      isActive: ann.isActive !== false,
+      expiresAt: ann.expiresAt || ""
+    });
+    setShowForm(true);
+  };
+
+  const handleReuse = (ann: Announcement) => {
+    setEditingId(null); // Creating new
+    setFormData({
+      title: ann.title + " (สำเนา)",
+      content: ann.content,
+      target: ann.target,
+      link: ann.link || "",
+      mediaUrl: ann.mediaUrl || "",
+      isActive: true,
+      expiresAt: ""
+    });
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData({ title: "", content: "", target: "all_internal", link: "", mediaUrl: "", isActive: true, expiresAt: "" });
   };
 
   const handleDelete = async (id: number) => {
@@ -77,7 +131,14 @@ export default function AnnouncementManagement() {
           <p className="text-sm" style={{ color: "#4A6080" }}>เพิ่มและจัดการประกาศสำคัญของคลินิก</p>
         </div>
         <button 
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            if (showForm) {
+              handleCloseForm();
+            } else {
+              handleCloseForm();
+              setShowForm(true);
+            }
+          }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium shadow-sm transition-transform hover:scale-105"
           style={{ backgroundColor: "#1A365D" }}
         >
@@ -113,6 +174,14 @@ export default function AnnouncementManagement() {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: "#4A6080" }}>วันสิ้นสุดการแสดงผล (ปล่อยว่างถ้าไม่มีวันหมดอายุ)</label>
+              <div className="relative">
+                <CalendarX size={16} className="absolute left-3 top-3 text-gray-400" />
+                <input type="date" value={formData.expiresAt} onChange={e => setFormData({...formData, expiresAt: e.target.value})}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl border focus:outline-none focus:border-[#1A365D]" />
+              </div>
+            </div>
+            <div>
               <label className="block text-sm font-medium mb-1" style={{ color: "#4A6080" }}>ลิงก์เพิ่มเติม (ถ้ามี)</label>
               <div className="relative">
                 <LinkIcon size={16} className="absolute left-3 top-3 text-gray-400" />
@@ -129,7 +198,11 @@ export default function AnnouncementManagement() {
               </div>
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={formData.isActive} onChange={e => setFormData({...formData, isActive: e.target.checked})} className="w-4 h-4 text-[#1A365D] rounded" />
+              <span className="text-sm font-medium" style={{ color: "#4A6080" }}>เปิดใช้งานประกาศนี้ทันที</span>
+            </label>
             <button type="submit" className="px-6 py-2 bg-[#22C55E] text-white font-medium rounded-xl hover:bg-green-600 transition-colors">
               บันทึกและประกาศ
             </button>
@@ -153,15 +226,31 @@ export default function AnnouncementManagement() {
             <div className="p-5 flex-1 flex flex-col">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <TargetIcon target={a.target} />
-                <button onClick={() => handleDelete(a.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex items-center gap-1">
+                  {a.isActive === false && (
+                    <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-md mr-1 flex items-center gap-1">
+                      <EyeOff size={12} /> ซ่อน
+                    </span>
+                  )}
+                  <button onClick={() => handleReuse(a)} className="text-gray-400 hover:text-green-500 transition-colors p-1" title="นำมาใช้ใหม่">
+                    <Copy size={16} />
+                  </button>
+                  <button onClick={() => handleEdit(a)} className="text-gray-400 hover:text-blue-500 transition-colors p-1" title="แก้ไข">
+                    <Pencil size={16} />
+                  </button>
+                  <button onClick={() => handleDelete(a.id)} className="text-gray-400 hover:text-red-500 transition-colors p-1" title="ลบ">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
               <h3 className="font-bold mb-2 text-lg leading-tight" style={{ color: "#1A365D" }}>{a.title}</h3>
               <p className="text-sm mb-4 flex-1 text-gray-600 line-clamp-3">{a.content}</p>
               
               <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                <span className="text-xs text-gray-400">ประกาศเมื่อ: {a.createdAt}</span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-gray-400">ประกาศเมื่อ: {a.createdAt}</span>
+                  {a.expiresAt && <span className="text-xs text-red-400">สิ้นสุด: {a.expiresAt}</span>}
+                </div>
                 {a.link && (
                   <a href={a.link} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1">
                     เปิดลิงก์ <LinkIcon size={12} />

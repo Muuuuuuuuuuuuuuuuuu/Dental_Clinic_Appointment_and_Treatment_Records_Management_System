@@ -11,9 +11,9 @@ import {
   getPaymentPlans, getWeeklyOffDays, getAvailableTimeSlots,
 } from "../../shared/supabaseApi";
 import { SpecialClosure } from "../../shared/data";
-import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star } from "lucide-react";
+import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";
 
-const iconMap: Record<string, any> = { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star };
+const iconMap: Record<string, any> = { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity, Clock };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service detail static data
@@ -125,7 +125,7 @@ export default function BookingView({
   const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
   const [selPaymentPlan, setSelPaymentPlan] = useState<number | null>(null);
   const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([0]);
-  const [backendSlots, setBackendSlots] = useState<{ time: string; availableDoctors: number[] }[]>([]);
+  const [backendSlots, setBackendSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   useEffect(() => {
@@ -210,12 +210,12 @@ export default function BookingView({
       if (i + j >= backendSlots.length) { ok = false; break; }
       // Check consecutive: next slot must be exactly 30 min after current
       if (j > 0) {
-        const [prevH, prevM] = backendSlots[i + j - 1].time.split(":").map(Number);
-        const [curH, curM] = backendSlots[i + j].time.split(":").map(Number);
+        const [prevH, prevM] = backendSlots[i + j - 1].split(":").map(Number);
+        const [curH, curM] = backendSlots[i + j].split(":").map(Number);
         if ((curH * 60 + curM) - (prevH * 60 + prevM) !== 30) { ok = false; break; }
       }
     }
-    return { t: slot.time, canBook: ok };
+    return { t: slot, canBook: ok };
   });
 
   const canNext = () => step === 0 ? selService !== null : selDay !== null && selTime !== null;

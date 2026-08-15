@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Tag, Percent, X, Calendar as CalendarIcon, DollarSign } from "lucide-react";
+import { Plus, Trash2, Tag, Percent, X, Calendar as CalendarIcon, DollarSign, Pencil, Copy, EyeOff } from "lucide-react";
 import { Promotion } from "../../shared/data";
 import { getPromotions, addPromotion, deletePromotion } from "../../shared/supabaseApi";
 
@@ -17,7 +17,8 @@ export default function PromotionManagement() {
     tag: "โปรโมชั่น",
     tagColor: "#FF6B7E",
     highlight: "#FFE8EC",
-    icon: "✨"
+    icon: "✨",
+    isActive: true
   });
 
   useEffect(() => {
@@ -47,13 +48,14 @@ export default function PromotionManagement() {
         tag: formData.tag,
         tagColor: formData.tagColor,
         highlight: formData.highlight,
-        icon: formData.icon
+        icon: formData.icon,
+        isActive: formData.isActive
       });
       setPromotions([...promotions, newPromo]);
       setShowForm(false);
       setFormData({
         title: "", desc: "", originalPrice: "", salePrice: "",
-        validUntil: "", tag: "โปรโมชั่น", tagColor: "#FF6B7E", highlight: "#FFE8EC", icon: "✨"
+        validUntil: "", tag: "โปรโมชั่น", tagColor: "#FF6B7E", highlight: "#FFE8EC", icon: "✨", isActive: true
       });
     } catch (error) {
       console.error("Error adding promotion:", error);
@@ -144,7 +146,11 @@ export default function PromotionManagement() {
               </div>
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={formData.isActive} onChange={e => setFormData({...formData, isActive: e.target.checked})} className="w-4 h-4 text-[#FF6B7E] rounded" />
+              <span className="text-sm font-medium" style={{ color: "#4A6080" }}>เปิดใช้งานโปรโมชั่นนี้ทันที</span>
+            </label>
             <button type="submit" className="px-6 py-2 bg-[#FF6B7E] text-white font-medium rounded-xl hover:bg-[#E05B6E] transition-colors">
               บันทึกโปรโมชั่น
             </button>
@@ -165,17 +171,24 @@ export default function PromotionManagement() {
             const pct = Math.round((saved / original) * 100);
             
             return (
-              <div key={p.id} className="bg-white rounded-2xl overflow-hidden flex flex-col shadow-sm border relative" style={{ borderColor: "rgba(26,54,93,0.1)" }}>
-                <button onClick={() => handleDelete(p.id)} className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors shadow-sm">
-                  <Trash2 size={14} />
-                </button>
+              <div key={p.id} className={`bg-white rounded-2xl overflow-hidden flex flex-col shadow-sm border relative ${p.isActive === false ? 'opacity-70' : ''}`} style={{ borderColor: "rgba(26,54,93,0.1)" }}>
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
+                  {p.isActive === false && (
+                    <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
+                      <EyeOff size={12} /> ซ่อน
+                    </span>
+                  )}
+                  <button onClick={() => handleDelete(p.id)} className="w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors shadow-sm">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
                 <div className="p-4 pb-3" style={{ backgroundColor: p.highlight || '#FFE8EC' }}>
                   <div className="flex items-start gap-2 mb-2">
                     <span className="text-xl">{p.icon || '✨'}</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: p.tagColor || '#FF6B7E' }}>{p.tag}</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: "#1A365D" }}>-{pct}%</span>
                   </div>
-                  <h3 className="font-bold text-sm leading-snug pr-6" style={{ color: "#1A365D" }}>{p.title}</h3>
+                  <h3 className="font-bold text-sm leading-snug pr-12" style={{ color: "#1A365D" }}>{p.title}</h3>
                 </div>
 
                 <div className="p-4 flex flex-col flex-1">

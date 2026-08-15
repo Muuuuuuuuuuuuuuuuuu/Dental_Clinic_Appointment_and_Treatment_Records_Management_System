@@ -1,6 +1,6 @@
 // ─── Patient-specific types ───────────────────────────────────────────────────
 
-import { Smile, Sparkles, Shield, Award, Heart, Calendar, Syringe, Baby } from "lucide-react";
+import { Smile, Sparkles, Shield, Award, Heart, Calendar, Syringe, Baby, Zap, Scissors, Crown, Layers, Star , Clock } from "lucide-react";
 
 export type View =
   | "landing" | "login" | "register" | "otp" | "consent" | "forgot-password"
@@ -56,9 +56,7 @@ export interface ServiceItem {
 
 // Helper to map string icon names from DB to actual Lucide components
 export const getIconComponent = (iconName: string): any => {
-  const icons: Record<string, any> = {
-    Smile, Sparkles, Syringe, Shield, Heart, Award, Baby, Calendar
-  };
+  const icons: Record<string, any> = { Smile, Sparkles, Syringe, Shield, Heart, Award, Baby, Calendar, Zap, Scissors, Crown, Layers, Star, Activity, Clock };
   return icons[iconName] || Smile; // Fallback to Smile
 };
 
@@ -111,10 +109,7 @@ import { User, Stethoscope, Users, Settings } from "lucide-react";
 
 export const ROLE_TABS: { key: UserRole; label: string; icon: any; demos: {label: string, email: string, pass: string}[] }[] = [
   { key: "patient", label: "คนไข้", icon: User, demos: [
-    // ✅ บัญชีที่ล็อกอินได้จริง
     { label: "สมหญิง", email: "somying@example.com", pass: "patient123" },
-    { label: "มณี", email: "manee@example.com", pass: "patient123" },
-    // ⏳ ยังไม่มีใน auth.users (ต้องสร้างเพิ่ม)
     { label: "สมศักดิ์", email: "somsak@example.com", pass: "patient123" },
     { label: "ศรีวรรณ", email: "sriwan@example.com", pass: "patient123" },
     { label: "อนุชา", email: "anucha@example.com", pass: "patient123" },
@@ -122,14 +117,7 @@ export const ROLE_TABS: { key: UserRole; label: string; icon: any; demos: {label
     { label: "สุรชัย", email: "surachai@example.com", pass: "patient123" },
     { label: "วรรณา", email: "wanna@example.com", pass: "patient123" },
     { label: "ณัฐพงศ์", email: "nattapong@example.com", pass: "patient123" },
-    { label: "อารยา", email: "araya@example.com", pass: "patient123" },
-    { label: "ชาติชาย", email: "chatchai@example.com", pass: "patient123" },
-    { label: "กนกวรรณ", email: "kanokwan@example.com", pass: "patient123" },
-    { label: "ภัทร", email: "pattara@example.com", pass: "patient123" },
-    { label: "ศิริพร", email: "siriporn@example.com", pass: "patient123" },
-    { label: "ธนวัฒน์", email: "tanawat@example.com", pass: "patient123" },
-    { label: "พิมพา", email: "pimpa@example.com", pass: "patient123" },
-    { label: "วีระ", email: "weera@example.com", pass: "patient123" }
+    { label: "อารยา", email: "araya@example.com", pass: "patient123" }
   ]},
   { key: "doctor", label: "ทันตแพทย์", icon: Stethoscope, demos: [
     { label: "ทพญ. อรนุช", email: "dr.ornuch@clinic.com", pass: "doctor123" },

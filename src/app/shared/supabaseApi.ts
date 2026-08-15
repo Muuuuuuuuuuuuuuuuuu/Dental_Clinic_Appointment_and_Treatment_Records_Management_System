@@ -3,7 +3,7 @@ import { supabase } from './utils/supabaseClient';
 import { sendOTPEmail } from './utils/emailService';
 export { supabase };
 import { RegForm } from '../patient/types';
-import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan } from './data';
+import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan, ServiceCategory } from './data';
 
 // ============================================================================
 // REALTIME HELPERS
@@ -122,7 +122,6 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
     citizen_id: mockCitizenId,
     email: dentist.email,
     role: 'ทันตแพทย์',
-    mock_password: 'password123',
     account_status: dentist.active ? 'active' : 'inactive'
   });
 
@@ -312,7 +311,6 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
     citizen_id: mockCitizenId,
     email: staff.email,
     role: 'พนักงาน',
-    mock_password: 'password123',
     account_status: staff.active ? 'active' : 'inactive'
   });
   const { data, error } = await supabase.from('staff').insert({
@@ -341,24 +339,58 @@ export async function deleteStaff(id: number): Promise<void> {
 }
 
 // --- Services ---
-export async function getServices() {
-  const { data, error } = await supabase.from('service').select('*');
+export async function getServiceCategories(): Promise<ServiceCategory[]> {
+  const { data, error } = await supabase.from('service_category').select('*').order('category_id');
   if (error) return [];
+  return data.map(d => ({
+    id: d.category_id,
+    name: d.category_name,
+    icon: d.icon_name,
+    color: d.color_code
+  }));
+}
+
+export async function addServiceCategory(name: string, icon: string, color: string): Promise<ServiceCategory> {
+  const { data, error } = await supabase.from('service_category').insert({
+    category_name: name,
+    icon_name: icon,
+    color_code: color
+  }).select().single();
+  if (error) throw error;
+  return { id: data.category_id, name: data.category_name, icon: data.icon_name, color: data.color_code };
+}
+
+export async function updateServiceCategory(id: number, updates: Partial<ServiceCategory>): Promise<ServiceCategory> {
+  const dbUpdates: any = {};
+  if (updates.name !== undefined) dbUpdates.category_name = updates.name;
+  if (updates.icon !== undefined) dbUpdates.icon_name = updates.icon;
+  if (updates.color !== undefined) dbUpdates.color_code = updates.color;
   
-  const { data: settingsData } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
-  let disabledIds: number[] = [];
-  if (settingsData && settingsData.setting_value) {
-    try { disabledIds = typeof settingsData.setting_value === 'string' ? JSON.parse(settingsData.setting_value) : settingsData.setting_value; } catch(e) {}
-  }
+  const { data, error } = await supabase.from('service_category').update(dbUpdates).eq('category_id', id).select().single();
+  if (error) throw error;
+  return { id: data.category_id, name: data.category_name, icon: data.icon_name, color: data.color_code };
+}
+
+export async function getServices() {
+  const { data, error } = await supabase.from('service').select(`
+    *,
+    service_category:category_id (*)
+  `);
+  if (error) return [];
 
   return data.map((d: any) => ({
     id: d.service_id,
     name: d.service_name,
     description: d.description || `ใช้เวลาประมาณ ${d.estimated_time} นาที`,
     basePrice: d.base_price,
-    category: d.service_category,
+    categoryId: d.category_id,
+    category: d.service_category?.category_name || 'ทั่วไป',
+    newCategoryIcon: d.service_category?.icon_name || 'Smile',
+    newCategoryColor: d.service_category?.color_code || '#F0F4F8',
     estimatedTime: d.estimated_time,
-    active: !disabledIds.includes(d.service_id)
+    requiresConfirmation: d.requires_confirmation,
+    isFixedPrice: d.is_fixed_price,
+    active: d.is_active
   })) as ServiceInfo[];
 }
 
@@ -368,8 +400,10 @@ export async function addService(service: Omit<ServiceInfo, 'id'>) {
     service_name: service.name,
     description: service.description,
     base_price: service.basePrice,
-    service_category: service.category,
-    estimated_time: estimatedTime
+    category_id: service.categoryId,
+    estimated_time: estimatedTime,
+    is_active: service.active !== false,
+    requires_confirmation: service.requiresConfirmation || false
   }).select().single();
   if (error) throw error;
   return { ...service, id: data.service_id, estimatedTime, description: data.description || `ใช้เวลาประมาณ ${estimatedTime} นาที` } as ServiceInfo;
@@ -379,10 +413,10 @@ export async function updateService(id: number, updates: Partial<ServiceInfo>): 
   if (updates.name !== undefined) serviceUpdates.service_name = updates.name;
   if (updates.description !== undefined) serviceUpdates.description = updates.description;
   if (updates.basePrice !== undefined) serviceUpdates.base_price = updates.basePrice;
-  if (updates.category !== undefined) serviceUpdates.service_category = updates.category;
+  if (updates.categoryId !== undefined) serviceUpdates.category_id = updates.categoryId;
   if (updates.estimatedTime !== undefined) serviceUpdates.estimated_time = updates.estimatedTime;
-  
-  // NOTE: active status is handled by updateServiceActiveStatus
+  if (updates.requiresConfirmation !== undefined) serviceUpdates.requires_confirmation = updates.requiresConfirmation;
+  if (updates.active !== undefined) serviceUpdates.is_active = updates.active;
   
   const { error } = await supabase.from('service').update(serviceUpdates).eq('service_id', id);
   if (error) throw error;
@@ -415,7 +449,7 @@ export async function updateServiceActiveStatus(id: number, active: boolean) {
 
 // --- Landing Page Data ---
 export async function getLandingServices() {
-  const { data, error } = await supabase.from('service').select('*');
+  const { data, error } = await supabase.from('service').select('*, service_category:category_id (icon_name, color_code)');
   if (error) return [];
   
   const { data: settingsData } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
@@ -428,11 +462,11 @@ export async function getLandingServices() {
     .filter((d: any) => !disabledIds.includes(d.service_id))
     .map((d: any) => ({
     serviceId: d.service_id,
-    iconName: d.icon_name || 'Smile',
+    iconName: d.service_category?.icon_name || 'Smile',
     title: d.service_name,
     desc: d.description || `บริการระดับมืออาชีพ ใช้เวลาประมาณ ${d.estimated_time} นาที`,
     price: `เริ่มต้น ${d.base_price.toLocaleString()} บาท`,
-    color: d.color_code || '#FFE8EC',
+    color: d.service_category?.color_code || '#FFE8EC',
     type: d.service_type || 'general',
     baseTimeMins: d.estimated_time || 30
   }));
@@ -629,7 +663,7 @@ export async function addPatient(patient: {
     import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
   );
 
-  const defaultPassword = patient.password || 'demo1234';
+  const defaultPassword = patient.password || 'patient123';
 
   // 1. สร้างบัญชีผู้ใช้ใน Supabase Auth จริงๆ
   const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
@@ -663,7 +697,6 @@ export async function addPatient(patient: {
     citizen_id: patient.citizenId,
     email: patient.email,
     role: 'คนไข้',
-    mock_password: defaultPassword,
     account_status: 'active'
   });
   if (uErr) { console.error("Users insert error:", uErr); throw uErr; }
@@ -762,7 +795,7 @@ export async function getAppointments(date?: string) {
       users ( profile (first_name, last_name, phone_number) )
     ),
     appointment_detail ( service (service_name) ),
-    treatment_record ( dentist_id, doctor_note, odontogram_data, payment (total_amount, payment_status), dentist ( users ( profile (first_name, last_name) ) ) )
+    treatment_record ( attending_dentist_id, doctor_note, odontogram_data, payment (total_amount, payment_status), attending_dentist:dentist ( users ( profile (first_name, last_name) ) ) )
   `);
   
   if (date) query = query.eq('appointment_date', date);
@@ -855,7 +888,7 @@ export async function getPatientAppointments(patientId?: number) {
       users ( profile (first_name, last_name, phone_number) )
     ),
     appointment_detail ( service (service_name) ),
-    treatment_record ( dentist_id, doctor_note, payment (total_amount, payment_status), dentist ( users ( profile (first_name, last_name) ) ) )
+    treatment_record ( attending_dentist_id, doctor_note, payment (total_amount, payment_status), attending_dentist:dentist ( users ( profile (first_name, last_name) ) ) )
   `).eq('patient_id', targetPatientId);
 
   if (error) {
@@ -940,10 +973,10 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     *,
     odontogram_data,
     appointment!inner(start_time, appointment_status, appointment_detail ( service (service_name) )),
-    dentist ( users ( profile (first_name, last_name) ) ),
+    attending_dentist:dentist ( users ( profile (first_name, last_name) ) ),
     treatment_detail ( actual_price, diagnosis, tooth_number, service (service_name) ),
     payment (total_amount)
-  `).eq('patient_id', targetPatientId).eq('appointment.appointment_status', 'เสร็จสิ้น');
+  `).eq('appointment.patient_id', targetPatientId).eq('appointment.appointment_status', 'เสร็จสิ้น');
 
   if (error) return [];
 
@@ -979,8 +1012,8 @@ export async function getPatientTreatmentRecords(patientId?: number) {
 
 export async function getPatientLatestOdontogram(patientId: number) {
   const { data } = await supabase.from('treatment_record')
-    .select('odontogram_data')
-    .eq('patient_id', patientId)
+    .select('odontogram_data, appointment!inner(patient_id)')
+    .eq('appointment.patient_id', patientId)
     .not('odontogram_data', 'is', null)
     .order('treatment_date', { ascending: false })
     .limit(1)
@@ -1155,17 +1188,10 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   return newAppt;
 }
 export async function updateAppointmentStatus(id: number, status: string) {
-  let dbStatus = status;
-  if (status === "เช็คอินเรียบร้อย") dbStatus = "กำลังรักษา";
-  if (status === "เสร็จสิ้นเรียบร้อย") dbStatus = "เสร็จสิ้น";
-
-  const { data, error } = await supabase.from('appointment').update({ appointment_status: dbStatus }).eq('appointment_id', id).select().single();
+  const { data, error } = await supabase.from('appointment').update({ appointment_status: status }).eq('appointment_id', id).select().single();
   if (error) throw error;
   notifyAppointmentsUpdated();
-  let returnedStatus = data.appointment_status;
-  if (returnedStatus === "กำลังรักษา") returnedStatus = "เช็คอินเรียบร้อย";
-  if (returnedStatus === "เสร็จสิ้น") returnedStatus = "เสร็จสิ้นเรียบร้อย";
-  return { id: data.appointment_id, status: returnedStatus } as any;
+  return { id: data.appointment_id, status: data.appointment_status } as any;
 }
 
 export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>) {
@@ -1184,12 +1210,11 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
       odontogram_data: toothData || null
     }).eq('treatment_id', treatmentId);
   } else {
-    const { data: apptData } = await supabase.from('appointment').select('patient_id, treatment_record(dentist_id)').eq('appointment_id', apptId).single();
+    const { data: apptData } = await supabase.from('appointment').select('patient_id, treatment_record(attending_dentist_id)').eq('appointment_id', apptId).single();
     if (apptData) {
        const { data: newTr } = await supabase.from('treatment_record').insert({
          appointment_id: apptId,
-         patient_id: apptData.patient_id,
-         dentist_id: apptData.treatment_record?.[0]?.dentist_id || null,
+           attending_dentist_id: apptData.treatment_record?.[0]?.attending_dentist_id || null,
          treatment_date: new Date().toISOString().split('T')[0],
          doctor_note: fullNote,
          odontogram_data: toothData || null
@@ -1312,9 +1337,60 @@ export async function addLeaveRequest(req: Omit<LeaveRequest, 'id' | 'createdAt'
   if (error) throw error;
   return data;
 }
+export async function checkAppointmentConflicts(userId: string, date: string, startTime?: string, endTime?: string) {
+  // First, find the dentist_id for the given userId
+  const { data: dentistData } = await supabase.from('dentist').select('dentist_id').eq('user_id', userId).single();
+  
+  if (!dentistData) {
+    // Not a dentist (likely staff), no direct patient appointments
+    return { hasConflict: false, count: 0 };
+  }
+  
+  const dentistId = dentistData.dentist_id;
+  
+  let query = supabase.from('appointment')
+    .select('appointment_id', { count: 'exact' })
+    .eq('dentist_id', dentistId)
+    .eq('appointment_date', date)
+    .in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']); // Active statuses
+    
+  if (startTime && endTime) {
+    // Overlap condition: (existing_start < new_end) AND (existing_end > new_start)
+    query = query.lt('start_time', endTime).gt('end_time_est', startTime);
+  }
+  
+  const { count, error } = await query;
+  if (error) {
+    console.error("checkAppointmentConflicts error:", error);
+    throw error;
+  }
+  
+  return { hasConflict: count! > 0, count: count! };
+}
+
 export async function updateLeaveStatus(id: number, status: string) {
   let is_approved = null;
   if (status === 'อนุมัติแล้ว') is_approved = true;
+  else if (status === 'ไม่อนุมัติ' || status === 'ปฏิเสธ') is_approved = false;
+
+  // Check conflicts if approving
+  if (is_approved === true) {
+    const { data: leaveRecord } = await supabase.from('leave_record').select('*').eq('leave_id', id).single();
+    if (leaveRecord) {
+      let start = '00:00';
+      let end = '23:59';
+      if (leaveRecord.leave_period === 'ครึ่งวันเช้า') {
+        end = '13:00'; 
+      } else if (leaveRecord.leave_period === 'ครึ่งวันบ่าย') {
+        start = '13:00';
+      }
+      
+      const conflict = await checkAppointmentConflicts(leaveRecord.user_id, leaveRecord.leave_date, start, end);
+      if (conflict.hasConflict) {
+        throw new Error(`ไม่สามารถอนุมัติได้ เนื่องจากมีคิวคนไข้จองไว้แล้ว ${conflict.count} คิว กรุณาเลื่อนหรือยกเลิกคิวก่อน`);
+      }
+    }
+  }
   else if (status === 'ไม่อนุมัติ' || status === 'ปฏิเสธ') is_approved = false;
 
   const { data, error } = await supabase
@@ -1334,26 +1410,93 @@ export async function updateLeaveStatus(id: number, status: string) {
 // ============================================================================
 
 export async function getAnnouncements() {
-  const { data, error } = await supabase.from('clinic_settings').select('*').eq('setting_key', 'announcements').maybeSingle();
+  const { data, error } = await supabase.from('announcement').select('*').order('created_at', { ascending: false });
   if (error || !data) return [];
-  try {
-    const announcements = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;
-    return announcements.map((d: any, index: number) => ({
-      id: d.id || index + 1,
-      title: d.title,
-      content: d.content,
-      link: d.link,
-      mediaUrl: d.mediaUrl || d.media_url,
-      target: d.target || "public",
-      createdAt: d.createdAt || d.created_at || new Date().toISOString().split('T')[0]
-    })) as Announcement[];
-  } catch (e) {
-    console.error("Error parsing announcements", e);
-    return [];
-  }
+  
+  return data.map((d: any) => ({
+    id: d.id,
+    title: d.title,
+    content: d.content,
+    link: d.link,
+    mediaUrl: d.media_url,
+    target: d.target,
+    isActive: d.is_active,
+    expiresAt: d.expires_at,
+    createdAt: d.created_at.split('T')[0]
+  })) as Announcement[];
 }
-export async function addAnnouncement(announcement: Omit<Announcement, 'id' | 'createdAt'>): Promise<Announcement> { throw new Error("Not implemented"); }
-export async function deleteAnnouncement(id: number): Promise<void> { throw new Error("Not implemented"); }
+
+export async function getPublicAnnouncements() {
+  // Fetch only active announcements that have not expired
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase
+    .from('announcement')
+    .select('*')
+    .eq('is_active', true)
+    .eq('target', 'public')
+    .or(`expires_at.is.null,expires_at.gte.${today}`)
+    .order('created_at', { ascending: false });
+    
+  if (error || !data) return [];
+  
+  return data.map((d: any) => ({
+    id: d.id,
+    title: d.title,
+    content: d.content,
+    link: d.link,
+    mediaUrl: d.media_url,
+    target: d.target,
+    isActive: d.is_active,
+    expiresAt: d.expires_at,
+    createdAt: d.created_at.split('T')[0]
+  })) as Announcement[];
+}
+
+export async function addAnnouncement(announcement: Omit<Announcement, 'id' | 'createdAt'>): Promise<Announcement> {
+  const payload = {
+    title: announcement.title,
+    content: announcement.content,
+    link: announcement.link || null,
+    media_url: announcement.mediaUrl || null,
+    target: announcement.target,
+    is_active: announcement.isActive,
+    expires_at: announcement.expiresAt || null
+  };
+  
+  const { data, error } = await supabase.from('announcement').insert(payload).select().single();
+  if (error) throw error;
+  
+  return {
+    id: data.id,
+    title: data.title,
+    content: data.content,
+    link: data.link,
+    mediaUrl: data.media_url,
+    target: data.target,
+    isActive: data.is_active,
+    expiresAt: data.expires_at,
+    createdAt: data.created_at.split('T')[0]
+  };
+}
+
+export async function updateAnnouncement(id: number, ann: Omit<Announcement, 'id' | 'createdAt'>): Promise<void> {
+  const { error } = await supabase.from('announcement').update({
+    title: ann.title,
+    content: ann.content,
+    link: ann.link || null,
+    media_url: ann.mediaUrl || null,
+    target: ann.target,
+    is_active: ann.isActive,
+    expires_at: ann.expiresAt || null
+  }).eq('id', id);
+
+  if (error) throw error;
+}
+
+export async function deleteAnnouncement(id: number): Promise<void> {
+  const { error } = await supabase.from('announcement').delete().eq('id', id);
+  if (error) throw error;
+}
 
 export async function getClinicClosures() {
   const { data, error } = await supabase.from('clinic_holiday').select('*');
@@ -1367,11 +1510,42 @@ export async function getClinicClosures() {
     id: d.holiday_id,
     date: d.holiday_date,
     reason: d.holiday_name,
-    isRecurring: d.is_recurring
+    isRecurring: d.is_recurring,
+    linkedAnnouncementId: d.linked_announcement_id
   })) as SpecialClosure[];
 }
-export async function addClinicClosure(closure: Omit<SpecialClosure, 'id'>): Promise<SpecialClosure> { throw new Error("Not implemented"); }
-export async function deleteClinicClosure(id: number): Promise<void> { throw new Error("Not implemented"); }
+export async function addClinicClosure(closure: Omit<SpecialClosure, 'id'>): Promise<SpecialClosure> {
+  const { data, error } = await supabase.from('clinic_holiday').insert({
+    holiday_date: closure.date,
+    holiday_name: closure.reason,
+    is_recurring: false,
+    linked_announcement_id: closure.linkedAnnouncementId || null
+  }).select().single();
+
+  if (error) throw error;
+
+  return {
+    id: data.holiday_id,
+    date: data.holiday_date,
+    reason: data.holiday_name,
+    isRecurring: data.is_recurring,
+    linkedAnnouncementId: data.linked_announcement_id
+  } as SpecialClosure;
+}
+
+export async function linkAnnouncementToHoliday(holidayId: number, announcementId: number): Promise<void> {
+  const { error } = await supabase
+    .from('clinic_holiday')
+    .update({ linked_announcement_id: announcementId })
+    .eq('holiday_id', holidayId);
+  if (error) throw error;
+}
+
+export async function deleteClinicClosure(id: number): Promise<void> {
+  const { error } = await supabase.from('clinic_holiday').delete().eq('holiday_id', id);
+  if (error) throw error;
+}
+
 
 export async function getShifts() {
   const { data, error } = await supabase.from('schedule').select(`
@@ -1430,55 +1604,113 @@ export async function updateShift(id: number, updates: Partial<Shift>) {
 }
 
 export async function getPromotions() {
-  const { data, error } = await supabase.from('clinic_settings').select('*').eq('setting_key', 'promotions').maybeSingle();
+  const { data, error } = await supabase.from('promotion').select('*').order('created_at', { ascending: false });
   if (error || !data) return [];
-  try {
-    const promos = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;
-    return promos.map((d: any, i: number) => ({
-      id: d.id || i + 1, tag: d.tag, tagColor: d.tagColor, title: d.title, desc: d.desc, originalPrice: d.originalPrice, salePrice: d.salePrice, validUntil: d.validUntil, icon: d.icon, highlight: d.highlight,
-    })) as Promotion[];
-  } catch (e) {
-    return [];
-  }
+  
+  return data.map((d: any) => ({
+    id: d.id,
+    tag: d.tag,
+    tagColor: d.tag_color,
+    title: d.title,
+    desc: d.desc_text,
+    originalPrice: d.original_price,
+    salePrice: d.sale_price,
+    validUntil: d.valid_until,
+    icon: d.icon,
+    highlight: d.highlight,
+    isActive: d.is_active,
+    expiresAt: d.expires_at
+  })) as Promotion[];
+}
+
+export async function getPublicPromotions() {
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase
+    .from('promotion')
+    .select('*')
+    .eq('is_active', true)
+    .gte('valid_until', today)
+    .order('created_at', { ascending: false });
+    
+  if (error || !data) return [];
+  
+  return data.map((d: any) => ({
+    id: d.id,
+    tag: d.tag,
+    tagColor: d.tag_color,
+    title: d.title,
+    desc: d.desc_text,
+    originalPrice: d.original_price,
+    salePrice: d.sale_price,
+    validUntil: d.valid_until,
+    icon: d.icon,
+    highlight: d.highlight,
+    isActive: d.is_active,
+    expiresAt: d.expires_at
+  })) as Promotion[];
 }
 
 export async function addPromotion(promo: Omit<Promotion, 'id'>) {
-  const promos = await getPromotions();
-  const newId = promos.length > 0 ? Math.max(...promos.map(p => p.id)) + 1 : 1;
-  const newPromo = { ...promo, id: newId };
-  promos.push(newPromo);
+  const payload = {
+    tag: promo.tag,
+    tag_color: promo.tagColor,
+    title: promo.title,
+    desc_text: promo.desc,
+    original_price: promo.originalPrice,
+    sale_price: promo.salePrice,
+    valid_until: promo.validUntil,
+    icon: promo.icon,
+    highlight: promo.highlight,
+    is_active: promo.isActive !== false,
+    expires_at: promo.expiresAt || null
+  };
   
-  const { error } = await supabase.from('clinic_settings').upsert({
-    setting_key: 'promotions',
-    setting_value: JSON.stringify(promos)
-  }, { onConflict: 'setting_key' });
+  const { data, error } = await supabase.from('promotion').insert(payload).select().single();
   if (error) throw error;
-  return newPromo as Promotion;
+  
+  return {
+    ...promo,
+    id: data.id,
+    isActive: data.is_active,
+    expiresAt: data.expires_at
+  } as Promotion;
 }
 
 export async function updatePromotion(id: number, promo: Partial<Promotion>) {
-  const promos = await getPromotions();
-  const index = promos.findIndex(p => p.id === id);
-  if (index === -1) throw new Error("Promotion not found");
-  
-  promos[index] = { ...promos[index], ...promo };
-  
-  const { error } = await supabase.from('clinic_settings').upsert({
-    setting_key: 'promotions',
-    setting_value: JSON.stringify(promos)
-  }, { onConflict: 'setting_key' });
+  const payload: any = {};
+  if (promo.tag !== undefined) payload.tag = promo.tag;
+  if (promo.tagColor !== undefined) payload.tag_color = promo.tagColor;
+  if (promo.title !== undefined) payload.title = promo.title;
+  if (promo.desc !== undefined) payload.desc_text = promo.desc;
+  if (promo.originalPrice !== undefined) payload.original_price = promo.originalPrice;
+  if (promo.salePrice !== undefined) payload.sale_price = promo.salePrice;
+  if (promo.validUntil !== undefined) payload.valid_until = promo.validUntil;
+  if (promo.icon !== undefined) payload.icon = promo.icon;
+  if (promo.highlight !== undefined) payload.highlight = promo.highlight;
+  if (promo.isActive !== undefined) payload.is_active = promo.isActive;
+  if (promo.expiresAt !== undefined) payload.expires_at = promo.expiresAt;
+
+  const { data, error } = await supabase.from('promotion').update(payload).eq('id', id).select().single();
   if (error) throw error;
-  return promos[index] as Promotion;
+  
+  return {
+    id: data.id,
+    tag: data.tag,
+    tagColor: data.tag_color,
+    title: data.title,
+    desc: data.desc_text,
+    originalPrice: data.original_price,
+    salePrice: data.sale_price,
+    validUntil: data.valid_until,
+    icon: data.icon,
+    highlight: data.highlight,
+    isActive: data.is_active,
+    expiresAt: data.expires_at
+  } as Promotion;
 }
 
 export async function deletePromotion(id: number) {
-  const promos = await getPromotions();
-  const newPromos = promos.filter(p => p.id !== id);
-  
-  const { error } = await supabase.from('clinic_settings').upsert({
-    setting_key: 'promotions',
-    setting_value: JSON.stringify(newPromos)
-  }, { onConflict: 'setting_key' });
+  const { error } = await supabase.from('promotion').delete().eq('id', id);
   if (error) throw error;
 }
 
@@ -1536,7 +1768,7 @@ export async function getTreatmentRecords(patientName?: string) {
   let query = supabase.from('treatment_record').select(`
     *,
     appointment!inner(start_time, appointment_status),
-    dentist ( users ( profile (first_name, last_name) ) ),
+    attending_dentist:dentist ( users ( profile (first_name, last_name) ) ),
     patient!inner ( users ( profile (first_name, last_name) ) ),
     treatment_detail ( actual_price, diagnosis, tooth_number, service (service_name) ),
     payment (total_amount)
@@ -1821,4 +2053,143 @@ export async function resetPassword(email: string, newPassword: string): Promise
 
   return true;
 
+}
+
+export async function updateAppointmentDetails(id: number, updates: any) {
+  const payload: any = {};
+  if (updates.date) payload.appointment_date = updates.date;
+  if (updates.doctorId) payload.dentist_id = updates.doctorId;
+  if (updates.time) {
+    payload.start_time = updates.time;
+    // Calculate end_time_est
+    const duration = updates.durationMins || 30;
+    const [hh, mm] = updates.time.split(':').map(Number);
+    const totalMins = (hh * 60) + mm + duration;
+    const endHh = Math.floor(totalMins / 60);
+    const endMm = totalMins % 60;
+    payload.end_time_est = `${String(endHh).padStart(2, '0')}:${String(endMm).padStart(2, '0')}:00`;
+  }
+  
+  const { error } = await supabase.from('appointment').update(payload).eq('appointment_id', id);
+  if (error) throw error;
+  
+  notifyAppointmentsUpdated();
+  return true;
+}
+
+export async function getAvailableTimeSlots(date: string, serviceId?: number, doctorId?: number) {
+  const dateObj = new Date(date);
+  const dayOfWeek = dateObj.getDay();
+
+  // 0. Check if clinic is closed
+  const { data: holiday } = await supabase.from('clinic_holiday').select('holiday_id').eq('holiday_date', date).single();
+  if (holiday) return []; // Clinic is closed, no slots available
+
+  // 1. Get target doctors
+  let targetDoctorIds: number[] = [];
+  if (doctorId) {
+    targetDoctorIds = [doctorId];
+  } else {
+    let query = supabase.from('dentist').select('dentist_id');
+    if (serviceId) {
+       // Only doctors providing this service
+       const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
+       if (dsData) {
+         targetDoctorIds = dsData.map(d => d.dentist_id);
+       }
+    } else {
+       const { data: dData } = await query;
+       if (dData) targetDoctorIds = dData.map(d => d.dentist_id);
+    }
+  }
+
+  if (targetDoctorIds.length === 0) return [];
+
+  // Fetch all users to map dentist_id to user_id
+  const { data: dentistUsers } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', targetDoctorIds);
+  const userIds = dentistUsers ? dentistUsers.map(d => d.user_id) : [];
+
+  // Fetch approved leaves
+  const { data: leaves } = await supabase.from('leave_record')
+    .select('user_id, leave_period')
+    .in('user_id', userIds)
+    .eq('leave_date', date)
+    .eq('is_approved', true);
+
+  // Fetch shifts for this day of week
+  const { data: shifts } = await supabase.from('schedule')
+    .select('users!inner(dentist(dentist_id)), start_shift, end_shift, is_off')
+    .eq('day_of_week', dayOfWeek);
+
+  // Fetch appointments for the date
+  const { data: appointments } = await supabase.from('appointment')
+    .select('dentist_id, start_time, end_time_est')
+    .eq('appointment_date', date)
+    .in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']);
+
+  const availableSlots = new Set<string>();
+
+  for (const dId of targetDoctorIds) {
+    const dUser = dentistUsers?.find(du => du.dentist_id === dId);
+    if (!dUser) continue;
+
+    // Check leave
+    const docLeave = leaves?.find(l => l.user_id === dUser.user_id);
+    if (docLeave && docLeave.leave_period === 'เต็มวัน') continue; // Skip if full day leave
+
+    // Find shift
+    const shift = shifts?.find((s: any) => s.users?.dentist?.[0]?.dentist_id === dId);
+    if (!shift || shift.is_off || !shift.start_shift || !shift.end_shift) continue;
+
+    const [startH, startM] = shift.start_shift.split(':').map(Number);
+    const [endH, endM] = shift.end_shift.split(':').map(Number);
+    const shiftStartMin = startH * 60 + startM;
+    const shiftEndMin = endH * 60 + endM;
+    
+    // Determine leave block if partial leave
+    let leaveStartMin = -1;
+    let leaveEndMin = -1;
+    if (docLeave?.leave_period === 'ครึ่งวันเช้า') {
+      leaveStartMin = 0; leaveEndMin = 13 * 60; // Up to 13:00
+    } else if (docLeave?.leave_period === 'ครึ่งวันบ่าย') {
+      leaveStartMin = 13 * 60; leaveEndMin = 24 * 60; // 13:00 onwards
+    }
+
+    const docApps = appointments?.filter(a => a.dentist_id === dId) || [];
+
+    // Generate 30 min slots
+    for (let min = shiftStartMin; min <= shiftEndMin - 30; min += 30) {
+      if (min >= leaveStartMin && min < leaveEndMin) continue; // Inside leave block
+
+      const slotStart = min;
+      const slotEnd = min + 30;
+      
+      let overlap = false;
+      for (const app of docApps) {
+        if (!app.start_time || !app.end_time_est) continue;
+        const [aSh, aSm] = app.start_time.split(':').map(Number);
+        const [aEh, aEm] = app.end_time_est.split(':').map(Number);
+        const aStartMin = aSh * 60 + aSm;
+        const aEndMin = aEh * 60 + aEm;
+        
+        if (aStartMin < slotEnd && aEndMin > slotStart) {
+          overlap = true;
+          break;
+        }
+      }
+
+      if (!overlap) {
+        const hh = Math.floor(min / 60);
+        const mm = min % 60;
+        availableSlots.add(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
+      }
+    }
+  }
+
+  return Array.from(availableSlots).sort();
+}
+
+export async function deleteServiceCategory(id: number) {
+  const { error } = await supabase.from('service_category').delete().eq('category_id', id);
+  if (error) throw error;
 }

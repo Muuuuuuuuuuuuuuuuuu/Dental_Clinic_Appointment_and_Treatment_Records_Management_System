@@ -61,7 +61,7 @@ export default function PatientManagement() {
         firstName: "", lastName: "", citizenId: "", email: "", phone: "", gender: "", dob: "", address: "", allergyHistory: "ไม่มี", underlyingDisease: "ไม่มี", emergencyContactName: "", emergencyContactPhone: ""
       });
       // แจ้งรหัสผ่านเริ่มต้นให้ทราบ
-      alert("เพิ่มคนไข้สำเร็จ!\nรหัสผ่านเริ่มต้นสำหรับเข้าสู่ระบบคือ: demo1234");
+      alert("เพิ่มคนไข้สำเร็จ!\nรหัสผ่านเริ่มต้นสำหรับเข้าสู่ระบบคือ: patient123");
       fetchPatients();
     } catch (err: any) {
       alert(err.message || "เกิดข้อผิดพลาดในการเพิ่มข้อมูล");

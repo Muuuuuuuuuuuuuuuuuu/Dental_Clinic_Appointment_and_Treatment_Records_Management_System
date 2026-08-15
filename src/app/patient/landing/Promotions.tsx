@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Percent, Tag } from "lucide-react";
 import { Promotion } from "../../shared/data";
-import { getPromotions } from "../../shared/supabaseApi";
+import { getPublicPromotions } from "../../shared/supabaseApi";
 import ClinicStatusBadge from "./ClinicStatus";
 
 export default function Promotions({ onCTA }: { onCTA: () => void }) {
@@ -10,7 +10,7 @@ export default function Promotions({ onCTA }: { onCTA: () => void }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getPromotions()
+    getPublicPromotions()
       .then(setPromotions)
       .catch(console.error)
       .finally(() => setLoading(false));

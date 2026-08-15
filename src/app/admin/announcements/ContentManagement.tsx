@@ -56,6 +56,8 @@ function AnnouncementSection() {
         target: formData.target,
         link: formData.link || undefined,
         mediaUrl: formData.mediaUrl || undefined,
+        isActive: true,
+        expiresAt: null
       });
       setAnnouncements([newAnnouncement, ...announcements]);
       setShowForm(false);

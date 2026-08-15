@@ -70,7 +70,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
       const dStr = getLocalDateStr(d);
       const dayLabel = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
       const dayAppts = appointments.filter(a => a.date === dStr);
-      const dayRev = dayAppts.filter(a => ["ชำระเงินแล้ว", "เสร็จสิ้น"].includes(a.status)).reduce((s, a) => s + (a.cost ?? 0), 0);
+      const dayRev = dayAppts.filter(a => ["เสร็จสิ้น"].includes(a.status)).reduce((s, a) => s + (a.cost ?? 0), 0);
       return { day: dayLabel, appts: dayAppts.length, revenue: dayRev, fullDate: dStr };
     });
   })()
@@ -96,7 +96,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
 
   // Status Breakdown
   const completedCnt = filteredAppts.filter(a => a.status === "เสร็จสิ้น").length;
-  const scheduledCnt = filteredAppts.filter(a => ["ยืนยันการจอง", "เช็คอินเรียบร้อย", "กำลังรักษา", "รอชำระเงิน"].includes(a.status)).length;
+  const scheduledCnt = filteredAppts.filter(a => ["รอการยืนยัน", "ยืนยันการจอง", "เช็คอินเรียบร้อย", "กำลังรักษา", "รอชำระเงิน"].includes(a.status)).length;
   const cancelledCnt = filteredAppts.filter(a => a.status === "ยกเลิก").length;
   const postponedCnt = filteredAppts.filter(a => a.status === "ไม่มาตามนัด").length;
   const totalCnt = filteredAppts.length || 1;

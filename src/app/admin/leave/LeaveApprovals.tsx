@@ -35,9 +35,9 @@ export default function LeaveApprovals() {
     try {
       const updated = await updateLeaveStatus(id, s);
       setLeaves(ls => ls.map(l => l.id === id ? updated : l));
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to update status");
+      alert(err.message || "Failed to update status");
     }
   };
 

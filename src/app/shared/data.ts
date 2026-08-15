@@ -80,12 +80,19 @@ export interface AdminInfo {
   active: boolean;
 }
 
+export interface ServiceCategory {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+}
+
 export interface ServiceInfo {
   id: number;
   name: string;
   description: string;
   basePrice: number;
-  categoryId?: number;
+  categoryId: number;
   category: string;
   newCategoryIcon?: string;
   newCategoryColor?: string;
@@ -123,6 +130,8 @@ export interface Announcement {
   link?: string;
   mediaUrl?: string; // e.g. Image or video URL
   target: "public" | "all_internal" | "dentist" | "staff";
+  isActive: boolean;
+  expiresAt: string | null;
   createdAt: string;
 }
 
@@ -137,14 +146,18 @@ export interface Promotion {
   validUntil: string;
   icon: string;
   highlight: string;
+  isActive?: boolean;
+  expiresAt?: string | null;
 }
 
 // ─── Clinic status ────────────────────────────────────────────────────────────
 
 export interface SpecialClosure {
-  id?: number;
+  id: number;
   date: string;   // YYYY-MM-DD
   reason: string;
+  isRecurring?: boolean;
+  linkedAnnouncementId?: number; // Soft link to announcement
 }
 
 export interface Shift {
@@ -249,6 +262,7 @@ export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: stri
   "กำลังรักษา": { bg: "#F3E8FF", text: "#6B21A8", dot: "#9333EA" },
   "รอชำระเงิน": { bg: "#FEF2F2", text: "#B91C1C", dot: "#EF4444" },
   "เสร็จสิ้น": { bg: "#E8FFF0", text: "#1B7A3E", dot: "#22C55E" },
+  "ยกเลิก": { bg: "#FEE2E2", text: "#991B1B", dot: "#DC2626" },
   "ไม่มาตามนัด":      { bg: "#F3F4F6", text: "#4B5563", dot: "#6B7280" },
 };
 
