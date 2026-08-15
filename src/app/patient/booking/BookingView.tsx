@@ -8,7 +8,7 @@ import { View, PatientUser } from "../types";
 import {
   addAppointment, getClinicClosures,
   getLandingServices, getLandingDoctors, getDentistsByService,
-  getPaymentPlans, getWeeklyOffDays, getAvailableTimeSlots,
+  getPaymentPlans, getWeeklyOffDays, getAvailableTimeSlots, getDoctorSchedules
 } from "../../shared/supabaseApi";
 import { SpecialClosure } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";
@@ -97,12 +97,14 @@ export default function BookingView({
   initialDoctor = null,
   isFollowUp = false,
   user,
+  onAddAppt,
 }: {
   setView: (v: View) => void;
   initialService?: number | null;
   initialDoctor?: number | null;
   isFollowUp?: boolean;
   user: PatientUser | null;
+  onAddAppt?: (appt: any) => void;
 }) {
   const [step, setStep] = useState(isFollowUp ? 1 : 0);
   const [selService, setSelService] = useState<number | null>(initialService);
@@ -127,16 +129,18 @@ export default function BookingView({
   const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([0]);
   const [backendSlots, setBackendSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
 
   useEffect(() => {
     Promise.all([
       getClinicClosures(),
-      getLandingServices(), getLandingDoctors(), getWeeklyOffDays()
-    ]).then(([cData, sData, ldData, offData]) => {
+      getLandingServices(), getLandingDoctors(), getWeeklyOffDays(), getDoctorSchedules()
+    ]).then(([cData, sData, ldData, offData, dsData]) => {
       setClosures(cData);
       setServicesData(sData);
       setLandingDoctors(ldData);
       setWeeklyOffDays(offData);
+      setDoctorSchedules(dsData);
     });
   }, []);
 
@@ -165,14 +169,34 @@ export default function BookingView({
   const todayN = today.getDate();
   const isCurrentMonth = monthOffset === 0;
 
+  // ─── dayStatus: เช็คระดับปฏิทิน (past / weeklyOff / closure / doctor working) ──────────
   const dayStatus = (d: number) => {
     if (isCurrentMonth && d < todayN) return { status: "past" as const };
     if (monthOffset < 0) return { status: "past" as const };
     const dateObj = new Date(year, month, d);
-    if (weeklyOffDays.includes(dateObj.getDay())) return { status: "past" as const, reason: "วันหยุดประจำสัปดาห์" };
+    const dayOfWk = dateObj.getDay();
+    if (weeklyOffDays.includes(dayOfWk)) return { status: "past" as const, reason: "วันหยุดประจำสัปดาห์" };
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const closure = closures.find((c) => c.date === dateStr);
     if (closure) return { status: "past" as const, reason: closure.reason };
+    
+    // Check doctor schedule
+    if (step >= 1 && filteredDoctors.length > 0) {
+      let isWorking = false;
+      if (selDoctor === "any") {
+        // Any doctor in filteredDoctors must be working on this dayOfWk and not off
+        isWorking = filteredDoctors.some(fd => {
+          const shift = doctorSchedules.find(s => s.dentistId === fd.id && s.dayOfWeek === dayOfWk);
+          return shift && !shift.isOff && shift.start && shift.end;
+        });
+      } else {
+        // Selected doctor must be working
+        const shift = doctorSchedules.find(s => s.dentistId === selDoctor && s.dayOfWeek === dayOfWk);
+        isWorking = !!(shift && !shift.isOff && shift.start && shift.end);
+      }
+      if (!isWorking) return { status: "past" as const, reason: "แพทย์ไม่เข้าตรวจ" };
+    }
+
     return { status: "available" as const };
   };
 
@@ -274,6 +298,24 @@ export default function BookingView({
       });
       if (res && (res as any).assignedDoctorId) {
         setMatchedDoctor((res as any).assignedDoctorId);
+      }
+      if (onAddAppt && res) {
+        // Map the Supabase response to the frontend Appointment type roughly so UI updates instantly
+        onAddAppt({
+          id: (res as any).appointment_id || Date.now(),
+          patientId: user?.patientId,
+          hn: user?.idCard?.slice(-6) || "W-000",
+          patientName: user ? `${user.firstName} ${user.lastName}` : "ผู้ป่วยทั่วไป",
+          patientPhone: user?.phone || "080-000-0000",
+          service: serviceTitle,
+          serviceId: servicesData[selService!]?.serviceId,
+          doctorName: finalDoctorName !== "ไม่ระบุแพทย์" ? finalDoctorName : (res as any).assignedDoctorId ? "ระบบสุ่มเลือกให้" : "รอระบุแพทย์",
+          doctorId: finalDoctorId || (res as any).assignedDoctorId || 0,
+          date: `${year}-${String(month + 1).padStart(2, "0")}-${selDay?.toString().padStart(2, "0")}`,
+          time: selTime || "",
+          status: initialStatus,
+          endTime: "00:00"
+        });
       }
       setDone(true);
     } catch (err: any) {
@@ -378,7 +420,7 @@ export default function BookingView({
 
       {/* ══ STEP 1: Combined (2 columns) ══ */}
       {step === 1 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.25fr", gap: 20, alignItems: "start" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.25fr] gap-5 items-start">
 
           {/* LEFT: all detail cards, always visible */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -592,7 +634,7 @@ export default function BookingView({
                       <p style={{ fontSize: 12, color: "#94A3B8" }}>กำลังโหลดเวลาว่าง...</p>
                     </div>
                   ) : availableTimes.length > 0 ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {availableTimes.map(({ t, canBook }) => {
                         const isSelected = selTime && t >= selTime && t < endTimeStr;
                         return (

@@ -34,7 +34,7 @@ export default function LeaveApprovals() {
   const update = async (id: number, s: string) => {
     try {
       const updated = await updateLeaveStatus(id, s);
-      setLeaves(ls => ls.map(l => l.id === id ? updated : l));
+      setLeaves(ls => ls.map(l => l.id === id ? { ...l, status: updated.status } : l));
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to update status");
@@ -102,7 +102,7 @@ export default function LeaveApprovals() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ backgroundColor: "#FF8C9A" }}>
-                    {l.doctorName[4] ?? "พ"}
+                    {l.doctorName.replace(/ทพญ\.|ทพ\./g, '').trim()[0] || "พ"}
                   </div>
                   <div>
                     <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>{l.doctorName}</p>
@@ -148,7 +148,7 @@ export default function LeaveApprovals() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ backgroundColor: "#FF8C9A" }}>
-                      {l.doctorName[4] ?? "พ"}
+                      {l.doctorName.replace(/ทพญ\.|ทพ\./g, '').trim()[0] || "พ"}
                     </div>
                     <div>
                       <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>{l.doctorName}</p>

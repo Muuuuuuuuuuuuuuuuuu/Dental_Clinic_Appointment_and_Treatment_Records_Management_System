@@ -119,7 +119,11 @@ export default function AppointmentManagementView({
   
   const displayAppointments = useMemo(() => {
     let list = appointments;
-    if (activeTab === "reschedule" || activeTab === "transfer") list = activeAppointments;
+    if (activeTab === "confirm") {
+      list = activeAppointments.filter(a => a.status === "รอการยืนยัน" || a.status === "ยืนยันการจอง");
+    } else if (activeTab === "reschedule" || activeTab === "transfer") {
+      list = activeAppointments;
+    }
     
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -132,6 +136,7 @@ export default function AppointmentManagementView({
 
 
   const TABS = [
+    { key: "confirm" as TabView, label: "รอยืนยันคิว", icon: CheckCircle },
     { key: "transfer" as TabView, label: "ย้ายเคส", icon: ArrowRightLeft },
     { key: "reschedule" as TabView, label: "เลื่อน/ยกเลิกนัด", icon: Clock },
     { key: "all" as TabView, label: "นัดหมายทั้งหมด", icon: CalendarDays }

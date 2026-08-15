@@ -503,7 +503,7 @@ export async function getLandingDoctors() {
 export async function getDentistsByService(serviceId: number) {
   const { data, error } = await supabase
     .from('dentist_service')
-    .select('dentist_id, dentist(dentist_id, title_name, specialization, image_url, years_of_experience, users(profile(first_name, last_name)))')
+    .select('dentist_id, dentist(dentist_id, title_name, specialization, image_url, users(profile(first_name, last_name)))')
     .eq('service_id', serviceId);
   if (error || !data) return [];
 
@@ -514,8 +514,7 @@ export async function getDentistsByService(serviceId: number) {
       id: d.dentist_id,
       name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
       specialty: d.specialization || 'ทันตแพทย์',
-      img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format',
-      years: d.years_of_experience || 'ประสบการณ์ 5 ปี+'
+      img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format'
     };
   }).filter(Boolean);
 }
@@ -795,7 +794,8 @@ export async function getAppointments(date?: string) {
       users ( profile (first_name, last_name, phone_number) )
     ),
     appointment_detail ( service (service_name) ),
-    treatment_record ( attending_dentist_id, doctor_note, odontogram_data, payment (total_amount, payment_status), attending_dentist:dentist ( users ( profile (first_name, last_name) ) ) )
+    dentist ( users ( profile (first_name, last_name) ) ),
+    treatment_record ( attending_dentist_id, doctor_note, odontogram_data, payment (total_amount, payment_status) )
   `);
   
   if (date) query = query.eq('appointment_date', date);
@@ -811,7 +811,12 @@ export async function getAppointments(date?: string) {
     const services = d.appointment_detail?.map((ad: any) => ad.service?.service_name).join(', ') || 'ไม่ได้ระบุบริการ';
     
     let doctorName = 'รอระบุแพทย์';
-    let doctorId = 0;
+    let doctorId = d.dentist_id || 0;
+    
+    if (d.dentist?.users?.profile) {
+      doctorName = `${d.dentist.users.profile.first_name} ${d.dentist.users.profile.last_name}`;
+    }
+    
     let cost = 0;
     let paid = false;
     let treatmentNotes = '';
@@ -819,11 +824,6 @@ export async function getAppointments(date?: string) {
     
     if (d.treatment_record && d.treatment_record.length > 0) {
       const tr = d.treatment_record[0];
-      const docProf = tr.dentist?.users?.profile;
-      if (docProf) {
-        doctorName = `${docProf.first_name} ${docProf.last_name}`;
-        doctorId = tr.dentist_id;
-      }
       if (tr.doctor_note) {
         const parts = tr.doctor_note.split('\\nคำแนะนำ: ');
         treatmentNotes = parts[0];
@@ -1128,10 +1128,78 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
     }
   }
   
-  if (appointment.doctorId) {
-    // We already have doctorId, but we need to ensure the appointment schema maps it if needed. 
-    // In normalized schema, appointment doesn't have doctor_id, it is in treatment_record.
-    // We can just proceed.
+  let finalDoctorId = appointment.doctorId;
+  if (!finalDoctorId) {
+    // 1. Get dentists who provide this service
+    const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', finalServiceId);
+    if (dsData && dsData.length > 0) {
+      const capableDentists = dsData.map((d: any) => d.dentist_id);
+      
+      // 2. Check who is working on this day of week
+      const dateObj = new Date(appointment.date!);
+      const dayOfWeekInt = dateObj.getDay();
+      
+      // Get all dentists for these IDs
+      const { data: dentists } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', capableDentists);
+      const userIds = dentists?.map(d => d.user_id) || [];
+      
+      const { data: schedules } = await supabase.from('schedule').select('user_id, start_shift, end_shift')
+        .in('user_id', userIds)
+        .eq('day_of_week', dayOfWeekInt)
+        .eq('is_off', false);
+        
+      if (schedules && schedules.length > 0) {
+        // Map user_id to dentist_id
+        const workingDentists = schedules.map(s => {
+          const d = dentists?.find(x => x.user_id === s.user_id);
+          return d?.dentist_id;
+        }).filter(Boolean);
+
+        // 3. Filter out busy dentists (check appointments and leaves)
+        let availableDentists = [...workingDentists];
+        const [hh, mm] = (appointment.time || "00:00").split(':').map(Number);
+        const startMins = (hh * 60) + mm;
+        const endMins = startMins + (appointment.durationMins || 30);
+
+        for (const dId of workingDentists) {
+          // Check appointments
+          const { data: overlapping } = await supabase.from('appointment')
+            .select('start_time, end_time_est, appointment_status')
+            .eq('dentist_id', dId)
+            .eq('appointment_date', appointment.date);
+            
+          let isBusy = false;
+          if (overlapping) {
+            for (const appt of overlapping) {
+              if (appt.appointment_status === 'ยกเลิก' || appt.appointment_status === 'ไม่มาตามนัด') continue;
+              const [eH, eM] = (appt.start_time || "00:00").split(':').map(Number);
+              const eStart = (eH * 60) + eM;
+              const [eeH, eeM] = (appt.end_time_est || "00:00").split(':').map(Number);
+              const eEnd = (eeH * 60) + eeM;
+              if (startMins < eEnd && endMins > eStart) {
+                isBusy = true;
+                break;
+              }
+            }
+          }
+          
+          if (isBusy) {
+            availableDentists = availableDentists.filter(id => id !== dId);
+          }
+        }
+        
+        // Assign a random available dentist
+        if (availableDentists.length > 0) {
+          finalDoctorId = availableDentists[Math.floor(Math.random() * availableDentists.length)];
+        } else {
+          // Fallback to random capable dentist if no one is perfectly free (or logic failed)
+          finalDoctorId = capableDentists[Math.floor(Math.random() * capableDentists.length)];
+        }
+      } else {
+        // Fallback
+        finalDoctorId = capableDentists[Math.floor(Math.random() * capableDentists.length)];
+      }
+    }
   }
 
   // Calculate end_time_est based on durationMins (default to 30 if not provided)
@@ -1147,13 +1215,13 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
     .from('appointment')
     .insert({
       patient_id: finalPatientId,
+      dentist_id: finalDoctorId || null,
       appointment_date: appointment.date || null,
       start_time: appointment.time ? appointment.time + ':00' : null,
       end_time_est: appointment.time ? endTimeStr : null,
       appointment_status: appointment.status,
       channel: appointment.source === 'doctor' ? 'Walk-in' : 'ออนไลน์',
-      plan_id: appointment.paymentPlanId || null,
-      note: appointment.note || null
+      plan_id: appointment.paymentPlanId || null
     })
     .select()
     .single();
@@ -1170,10 +1238,10 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   }
 
   // 6. Insert Treatment Record to map Doctor (if selected)
-  if (appointment.doctorId) {
+  if (finalDoctorId) {
     const { error: trErr } = await supabase.from('treatment_record').insert({
       appointment_id: newAppt.appointment_id,
-      dentist_id: appointment.doctorId,
+      dentist_id: finalDoctorId,
       patient_id: finalPatientId,
       treatment_date: appointment.date,
       doctor_note: ''
@@ -1185,7 +1253,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   }
 
   notifyAppointmentsUpdated();
-  return newAppt;
+  return { ...newAppt, assignedDoctorId: finalDoctorId };
 }
 export async function updateAppointmentStatus(id: number, status: string) {
   const { data, error } = await supabase.from('appointment').update({ appointment_status: status }).eq('appointment_id', id).select().single();
@@ -2082,7 +2150,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
   const dayOfWeek = dateObj.getDay();
 
   // 0. Check if clinic is closed
-  const { data: holiday } = await supabase.from('clinic_holiday').select('holiday_id').eq('holiday_date', date).single();
+  const { data: holiday } = await supabase.from('clinic_holiday').select('holiday_id').eq('holiday_date', date).maybeSingle();
   if (holiday) return []; // Clinic is closed, no slots available
 
   // 1. Get target doctors
@@ -2192,4 +2260,23 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
 export async function deleteServiceCategory(id: number) {
   const { error } = await supabase.from('service_category').delete().eq('category_id', id);
   if (error) throw error;
+}
+
+export async function getDoctorSchedules() {
+  const { data, error } = await supabase.from('schedule').select('user_id, day_of_week, start_shift, end_shift, is_off');
+  if (error || !data) return [];
+  
+  const { data: dentists } = await supabase.from('dentist').select('dentist_id, user_id');
+  if (!dentists) return [];
+  
+  return data.map((s: any) => {
+    const d = dentists.find((d: any) => d.user_id === s.user_id);
+    return {
+      dentistId: d?.dentist_id,
+      dayOfWeek: s.day_of_week,
+      isOff: s.is_off,
+      start: s.start_shift,
+      end: s.end_shift
+    };
+  }).filter((s: any) => s.dentistId !== undefined);
 }

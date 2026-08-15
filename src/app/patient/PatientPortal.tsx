@@ -198,6 +198,7 @@ export default function PatientPortal() {
             initialDoctor={followUpProps?.doctor}
             isFollowUp={followUpProps !== null}
             user={user}
+            onAddAppt={addAppt}
           />
         )}
         {view === "appointments" && (
