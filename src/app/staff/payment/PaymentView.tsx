@@ -69,7 +69,7 @@ export default function PaymentView({
       setDiscount("0");
       setPaymentMethod("เงินสด");
     }
-  }, [selectedApptId]);
+  }, [selectedApptId, selectedAppt?.cost]);
 
   const netTotal = useMemo(() => {
     const base = parseInt(baseCost || "0", 10);
@@ -221,19 +221,38 @@ export default function PaymentView({
 
             {/* Treatment Summary */}
             <div className="mb-4">
-              <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>รายการรักษา</h3>
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                <p className="font-semibold text-sm mb-1" style={{ color: "#1A365D" }}>{selectedAppt.service}</p>
+              <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>ใบสรุปการรักษาจากแพทย์</h3>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
+                <div>
+                  <p className="font-semibold text-sm mb-1" style={{ color: "#1A365D" }}>หัตถการ / บริการที่ทำ</p>
+                  {(selectedAppt.treatmentServices && selectedAppt.treatmentServices.length > 0) ? (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {selectedAppt.treatmentServices.map(s => (
+                        <span key={s} className="text-[11px] px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: "white", color: "#1D6FA4", border: "1px solid #E8F4FF" }}>
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs" style={{ color: "#4A6080" }}>{selectedAppt.service}</p>
+                  )}
+                </div>
+                
                 {selectedAppt.treatmentNotes && (
-                  <p className="text-xs mb-2" style={{ color: "#4A6080" }}>Note: {selectedAppt.treatmentNotes}</p>
+                  <div>
+                    <p className="font-semibold text-xs mb-1" style={{ color: "#1A365D" }}>บันทึกหัตถการ:</p>
+                    <div className="text-xs p-2.5 bg-white rounded-lg border border-gray-100" style={{ color: "#4A6080" }}>
+                      {selectedAppt.treatmentNotes}
+                    </div>
+                  </div>
                 )}
-                {selectedAppt.treatmentServices && selectedAppt.treatmentServices.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {selectedAppt.treatmentServices.map(s => (
-                      <span key={s} className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "white", color: "#1D6FA4", border: "1px solid #E8F4FF" }}>
-                        {s}
-                      </span>
-                    ))}
+                
+                {selectedAppt.recommendations && (
+                  <div>
+                    <p className="font-semibold text-xs mb-1 text-orange-600">คำแนะนำสำหรับคนไข้:</p>
+                    <div className="text-xs p-2.5 bg-orange-50 rounded-lg border border-orange-100 text-orange-800">
+                      {selectedAppt.recommendations}
+                    </div>
                   </div>
                 )}
               </div>

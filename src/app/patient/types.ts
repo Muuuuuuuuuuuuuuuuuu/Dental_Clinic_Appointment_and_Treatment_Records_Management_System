@@ -154,7 +154,7 @@ export const NAV_ITEMS = [
   { key: "booking",      label: "จองนัดหมาย",        icon: Calendar },
   { key: "appointments", label: "รายการนัดหมาย",     icon: Bell },
   { key: "history",      label: "ประวัติการรักษา",   icon: FileText },
-  { key: "record",       label: "สุขภาพฟันของคุณ",   icon: Activity },
+  { key: "record",       label: "สุขภาพฟันของฉัน",   icon: Activity },
   { key: "profile",      label: "ข้อมูลส่วนตัว",     icon: User },
 ];
 

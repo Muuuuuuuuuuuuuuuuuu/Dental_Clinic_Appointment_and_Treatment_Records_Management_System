@@ -103,7 +103,7 @@ export default function TreatmentQueue({
       if (updates.status) {
         let updatedStatus = updates.status;
         if (updates.status === "รอชำระเงิน" && updates.treatmentNotes !== undefined) {
-          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData);
+          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id);
         } else {
           const res = await updateAppointmentStatus(id, updates.status);
           updatedStatus = res.status;
@@ -128,14 +128,9 @@ export default function TreatmentQueue({
     setRecording(a.id);
     if (a.patientId) {
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
-      setToothData(historyOdontogram);
-      // Check if history was whole mouth
-      if (historyOdontogram.wholeMouth) {
-        setIsWholeMouth(true);
-        setToothData({});
-      } else {
-        setIsWholeMouth(false);
-      }
+      const { wholeMouth, ...rest } = historyOdontogram;
+      setToothData(rest as any);
+      setIsWholeMouth(!!wholeMouth);
     } else {
       setToothData({});
       setIsWholeMouth(false);
@@ -149,7 +144,7 @@ export default function TreatmentQueue({
       treatmentServices: form.services,
       recommendations: form.recommendations,
       cost: Number(form.actualCost) || 0,
-      odontogramData: isWholeMouth ? { wholeMouth: true } as any : toothData
+      odontogramData: { ...toothData, wholeMouth: isWholeMouth } as any
     });
     setRecording(null);
     setForm({ notes: "", recommendations: "", services: [], actualCost: "" });

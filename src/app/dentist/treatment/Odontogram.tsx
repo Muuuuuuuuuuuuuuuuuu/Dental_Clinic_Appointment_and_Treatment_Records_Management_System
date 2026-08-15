@@ -21,7 +21,7 @@ export default function Odontogram({ toothData, onToothClick, isChild, setIsChil
 
   const conditions = [
     {
-      label: "ต้องรักษา (แดง)",
+      label: "พบปัญหา / ต้องรักษา (แดง)",
       teeth: cariesTeeth,
       fillColor: "#FFE8EC",
       outlineColor: "#FF6B7E",

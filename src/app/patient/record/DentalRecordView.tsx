@@ -52,12 +52,13 @@ export default function DentalRecordView({
   const [localToothData, setLocalToothData] = useState<Record<number, string>>(toothData || {});
   const [localLastUpdated, setLocalLastUpdated] = useState<string>(lastUpdated || "-");
   const [localAdvice, setLocalAdvice] = useState<string>(advice || "ยังไม่มีคำแนะนำ");
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user?.patientId) return;
     getPatientTreatmentRecords(user.patientId).then(records => {
-      // Find the most recent record with odontogramData
-      const withTeeth = records.filter(r => r.odontogramData && Object.keys(r.odontogramData).length > 0);
+      setHistoryRecords(records);
+      const withTeeth = records.filter((r: any) => r.odontogramData && Object.keys(r.odontogramData).length > 0);
       if (withTeeth.length > 0) {
         // Assume sorted by date desc or sort them manually just in case
         const sorted = withTeeth.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -76,7 +77,7 @@ export default function DentalRecordView({
 
   const conditions = [
     {
-      label: "ต้องรักษา (ผุ)",
+      label: "พบปัญหา / ต้องรักษา",
       teeth: cariesTeeth,
       fillColor: "#FFE8EC",
       outlineColor: "#FF6B7E",
@@ -107,7 +108,7 @@ export default function DentalRecordView({
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
           <div>
-            <h1 className="font-semibold text-gray-900 text-lg">สุขภาพฟันของคุณ</h1>
+            <h1 className="font-semibold text-gray-900 text-lg">สุขภาพฟันของฉัน</h1>
             <p className="text-sm font-medium" style={{ color: "#4A6080" }}>อัปเดตล่าสุด: {localLastUpdated}</p>
           </div>
         </div>
@@ -171,7 +172,7 @@ export default function DentalRecordView({
                 <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                    <span className="text-sm font-medium text-red-900">ต้องรักษา (ผุ)</span>
+                    <span className="text-sm font-medium text-red-900">พบปัญหา / ต้องรักษา</span>
                   </div>
                   <span className="font-bold text-red-600">{cariesTeeth.length} ซี่</span>
                 </div>
@@ -221,6 +222,74 @@ export default function DentalRecordView({
             </div>
           </div>
         </div>
+
+        {/* Treatment History Timeline */}
+        {historyRecords.length > 0 && (
+          <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+              ประวัติการรักษา (Treatment History)
+            </h3>
+            <div className="space-y-6 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+              {historyRecords.map((record, index) => (
+                <div key={record.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                  {/* Timeline Dot */}
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full border-4 border-white bg-[#FF8C9A] text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                  </div>
+                  
+                  {/* Card */}
+                  <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-slate-100 bg-slate-50 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-bold text-[#1A365D]">{new Date(record.date).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" })}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">ทพ. {record.doctor}</span>
+                    </div>
+                    
+                    <div className="mb-3">
+                      {(record.treatmentServices && record.treatmentServices.length > 0) ? (
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {record.treatmentServices.map((s: string) => (
+                            <span key={s} className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-white text-[#1D6FA4] border border-[#E8F4FF]">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm font-semibold text-slate-700">{record.service}</p>
+                      )}
+                    </div>
+                    
+                    {record.notes && (
+                      <div className="mb-2">
+                        <span className="text-xs font-semibold text-slate-500 block mb-0.5">บันทึกหัตถการ:</span>
+                        <p className="text-xs text-slate-700 bg-white p-2 rounded-lg border border-slate-100">{record.notes}</p>
+                      </div>
+                    )}
+                    
+                    {record.recommendations && (
+                      <div className="mb-3">
+                        <span className="text-xs font-semibold text-orange-500 block mb-0.5">คำแนะนำ:</span>
+                        <p className="text-xs text-orange-700 bg-orange-50 p-2 rounded-lg border border-orange-100">{record.recommendations}</p>
+                      </div>
+                    )}
+
+                    {record.odontogramData && Object.keys(record.odontogramData).length > 0 && (
+                      <button 
+                        onClick={() => {
+                          setLocalToothData(record.odontogramData);
+                          setLocalLastUpdated(new Date(record.date).toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" }));
+                          setLocalAdvice(record.recommendations || "ยังไม่มีคำแนะนำ");
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="w-full mt-2 py-1.5 text-xs font-semibold text-[#FF8C9A] bg-[#FFE8EC] rounded-lg hover:bg-[#ff7a8a] hover:text-white transition-colors"
+                      >
+                        ดูแผนผังฟันของวันนี้
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
