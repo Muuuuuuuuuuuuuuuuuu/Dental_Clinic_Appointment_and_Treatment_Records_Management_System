@@ -13,11 +13,13 @@ export default function AppointmentsView({
   user, 
   setView,
   appointments: globalAppointments,
+  onUpdateAppt,
   onBookFollowUp
 }: { 
   user: PatientUser; 
   setView: (v: View) => void;
   appointments?: Appointment[];
+  onUpdateAppt?: (id: number, updates: Partial<Appointment>) => void;
   onBookFollowUp?: (serviceId: number, doctorId: number) => void;
 }) {
   const [appts, setAppts] = useState<Appointment[]>(globalAppointments?.filter(a => a.patientId === user.patientId) || []);
@@ -42,14 +44,26 @@ export default function AppointmentsView({
   }, [user, globalAppointments]);
 
   const doCancel = async (id: number) => {
-    try {
+    // 1. ซ่อนจากหน้าจอทันที (Optimistic Update) เพื่อให้หายไปเลยโดยไม่ต้องรอโหลด
+    const previousAppts = [...appts];
+    setAppts(apps => apps.map(a => a.id === id ? { ...a, status: "ยกเลิก" } : a));
+    if (onUpdateAppt) {
+      onUpdateAppt(id, { status: "ยกเลิก" });
+    }
+    setCancelId(null);
 
-      const updated = await updateAppointmentStatus(id, "ยกเลิก");
-      setAppts(apps => apps.map(a => a.id === id ? { ...a, status: updated.status } : a));
-      setCancelId(null);
+    try {
+      // 2. อัปเดตฐานข้อมูลเบื้องหลัง
+      await updateAppointmentStatus(id, "ยกเลิก");
     } catch (err) {
       console.error(err);
-      alert("Failed to cancel appointment");
+      // ถ้ายกเลิกไม่สำเร็จจริงๆ ค่อยดึงข้อมูลเดิมกลับมาแสดง
+      setAppts(previousAppts);
+      if (onUpdateAppt) {
+        const prevAppt = previousAppts.find(a => a.id === id);
+        if (prevAppt) onUpdateAppt(id, { status: prevAppt.status });
+      }
+      alert("ไม่สามารถยกเลิกนัดหมายได้ กรุณาลองใหม่อีกครั้ง");
     }
   };
 

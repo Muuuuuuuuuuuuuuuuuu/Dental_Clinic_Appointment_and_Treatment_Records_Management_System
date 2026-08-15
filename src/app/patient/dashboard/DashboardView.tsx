@@ -48,8 +48,8 @@ export default function DashboardView({
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {([
-          { label: "นัดหมายทั้งหมด",  val: appointments.length,                                                  icon: Calendar, bg: "#FFE8EC", ic: "#FF8C9A", nav: "appointments" as View },
-          { label: "รอรับบริการ",      val: appointments.filter(a => a.status !== "เสร็จสิ้น" && a.status !== "ยกเลิก" && a.status !== "ไม่มาตามนัด").length, icon: Clock,    bg: "#FFF3E0", ic: "#E65100", nav: "appointments" as View },
+          { label: "นัดหมายทั้งหมด",  val: appointments.filter(a => a.status !== "เสร็จสิ้น" && a.status !== "ยกเลิก" && a.status !== "ไม่มาตามนัด").length,                                                  icon: Calendar, bg: "#FFE8EC", ic: "#FF8C9A", nav: "appointments" as View },
+          { label: "รอรับบริการ",      val: appointments.filter(a => a.status === "เช็คอินเรียบร้อย" || a.status === "กำลังรักษา" || a.status === "รอชำระเงิน").length, icon: Clock,    bg: "#FFF3E0", ic: "#E65100", nav: "appointments" as View },
           { label: "ประวัติการรักษา", val: history.length,                                                        icon: FileText, bg: "#E8F4FF", ic: "#1D6FA4", nav: "history"      as View },
           { label: "ค่าใช้จ่ายรวม",   val: `฿${history.reduce((s,h)=>s+parseInt(h.cost.replace(/,/g,"")||"0",10),0).toLocaleString()}`, icon: Shield, bg: "#E8FFF0", ic: "#1B7A3E", nav: "history" as View },
         ] as const).map(s => (

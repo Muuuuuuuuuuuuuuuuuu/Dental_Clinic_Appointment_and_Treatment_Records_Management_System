@@ -31,8 +31,9 @@ export default function DoctorDashboard({
   }, []);
 
   const today = new Date();
-  const todayString = today.toLocaleDateString('en-CA'); // Gets local YYYY-MM-DD
-  const formattedDate = today.toLocaleDateString("th-TH", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  // คำนวณวันที่ใน timezone ไทย (UTC+7) อย่างถูกต้อง
+  const todayString = today.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' }); // sv-SE ให้ YYYY-MM-DD format
+  const formattedDate = today.toLocaleDateString("th-TH", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok' });
 
   const myAppts = appointments.filter(a => a.doctorId === doctor?.id && a.date === todayString);
   const waiting  = myAppts.filter(a => a.status === "เช็คอินเรียบร้อย" || a.status === "กำลังรักษา").length;

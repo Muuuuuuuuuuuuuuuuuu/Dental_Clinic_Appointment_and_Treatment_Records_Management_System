@@ -1316,7 +1316,10 @@ export async function updateAppointmentStatus(id: number, status: string, reason
     .single();
 
   const { data, error } = await supabase.from('appointment').update({ appointment_status: status }).eq('appointment_id', id).select().single();
-  if (error) throw error;
+  if (error) {
+    console.error("Failed to update appointment status:", error);
+    throw error;
+  }
   
   // Log if cancelled or no show
   if (status === 'ยกเลิก' || status === 'ไม่มาตามนัด') {
@@ -2536,12 +2539,17 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
       if (docLeave && docLeave.leave_period === 'เต็มวัน') continue;
 
       const shift = shifts?.find((s: any) => s.users?.dentist?.[0]?.dentist_id === dId);
-      if (!shift || shift.is_off || !shift.start_shift || !shift.end_shift) continue;
+      if (shift && shift.is_off) continue;
 
-      const [startH, startM] = shift.start_shift.split(':').map(Number);
-      const [endH, endM] = shift.end_shift.split(':').map(Number);
-      const shiftStartMin = startH * 60 + startM;
-      const shiftEndMin = endH * 60 + endM;
+      let shiftStartMin = clinicOpenMin;
+      let shiftEndMin = clinicCloseMin;
+
+      if (shift && shift.start_shift && shift.end_shift) {
+        const [startH, startM] = shift.start_shift.split(':').map(Number);
+        const [endH, endM] = shift.end_shift.split(':').map(Number);
+        shiftStartMin = startH * 60 + startM;
+        shiftEndMin = endH * 60 + endM;
+      }
 
       if (slotStart < shiftStartMin || slotEnd > shiftEndMin) continue;
 

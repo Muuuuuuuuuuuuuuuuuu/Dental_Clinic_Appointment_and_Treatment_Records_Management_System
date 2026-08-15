@@ -377,6 +377,16 @@ export default function StaffPortal({
             
             <div className="space-y-4">
               <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">รหัสผ่านเดิม</label>
+                <input 
+                  type="password" 
+                  value={oldPassword}
+                  onChange={e => setOldPassword(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="กรอกรหัสผ่านปัจจุบัน"
+                />
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">รหัสผ่านใหม่</label>
                 <input 
                   type="password" 

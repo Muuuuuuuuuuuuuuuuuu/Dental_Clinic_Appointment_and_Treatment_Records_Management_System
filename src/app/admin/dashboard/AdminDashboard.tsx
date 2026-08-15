@@ -30,7 +30,8 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   }, []);
 
   const getLocalDateStr = (d: Date) => {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    // ใช้ sv-SE locale เพื่อรับ YYYY-MM-DD format ใน timezone ไทย แทนการคำนวณ UTC
+    return d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
   };
   
   const targetDateStr = getLocalDateStr(selectedDate);

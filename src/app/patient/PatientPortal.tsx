@@ -206,6 +206,7 @@ export default function PatientPortal() {
             user={user}
             setView={v => { setPortalView(v); setView(v); }}
             appointments={sharedAppointments}
+            onUpdateAppt={updateAppt}
             onBookFollowUp={(serviceId, doctorId) => {
               setFollowUpProps({ service: serviceId, doctor: doctorId });
               setPortalView("booking");

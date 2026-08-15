@@ -130,6 +130,7 @@ export default function BookingView({
   const [backendSlots, setBackendSlots] = useState<TimeSlotStatus[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
+  const [fullyBookedDates, setFullyBookedDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     Promise.all([
@@ -139,7 +140,8 @@ export default function BookingView({
       setClosures(cData);
       setServicesData(sData);
       setLandingDoctors(ldData);
-      setWeeklyOffDays(offData);
+      // คลินิกหยุดเฉพาะวันอาทิตย์ (0) เพียงวันเดียว แม้โค้ดใน DB จะบันทึกวันอื่นไว้ด้วย
+      setWeeklyOffDays([0]);
       setDoctorSchedules(dsData);
     });
   }, []);
@@ -187,12 +189,13 @@ export default function BookingView({
         // Any doctor in filteredDoctors must be working on this dayOfWk and not off
         isWorking = filteredDoctors.some(fd => {
           const shift = doctorSchedules.find(s => s.dentistId === fd.id && s.dayOfWeek === dayOfWk);
-          return shift && !shift.isOff && shift.start && shift.end;
+          if (shift && shift.isOff) return false;
+          return true; // Assume working unless explicitly off
         });
       } else {
         // Selected doctor must be working
         const shift = doctorSchedules.find(s => s.dentistId === selDoctor && s.dayOfWeek === dayOfWk);
-        isWorking = !!(shift && !shift.isOff && shift.start && shift.end);
+        isWorking = shift ? !shift.isOff : true; // Assume working unless explicitly off
       }
       if (!isWorking) return { status: "past" as const, reason: "แพทย์ไม่เข้าตรวจ" };
     }
@@ -221,7 +224,16 @@ export default function BookingView({
     setLoadingSlots(true);
     setSelTime(null);
     getClinicTimeSlots(dateStr, serviceId, doctorIdParam, user?.patientId)
-      .then((slots) => setBackendSlots(slots))
+      .then((slots) => {
+        setBackendSlots(slots);
+        // ตรวจสอบว่าวันนี้คิวเต็มทุกช่วงเวลาหรือไม่
+        const hasAvailable = slots.some(s => s.status === 'available');
+        if (!hasAvailable && slots.length > 0) {
+          setFullyBookedDates(prev => new Set(prev).add(dateStr));
+        } else {
+          setFullyBookedDates(prev => { const next = new Set(prev); next.delete(dateStr); return next; });
+        }
+      })
       .catch(() => setBackendSlots([]))
       .finally(() => setLoadingSlots(false));
   }, [selDay, selDoctor, selService, monthOffset, year, month, servicesData]);
@@ -573,9 +585,10 @@ export default function BookingView({
               <div style={{ backgroundColor: "white", padding: "8px 10px 10px" }}>
                 {/* Day labels */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
-                  {["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((d, i) => (
-                    <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: i === 0 ? "#FDA4AF" : i === 6 ? "#93C5FD" : "#94A3B8", paddingBottom: 2 }}>{d}</div>
-                  ))}
+                  {["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((d, i) => {
+                    const dayColors = ["#EF4444", "#FBBF24", "#F472B6", "#34D399", "#F97316", "#3B82F6", "#A855F7"];
+                    return <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: dayColors[i], paddingBottom: 2 }}>{d}</div>;
+                  })}
                 </div>
                 {/* Date cells */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
@@ -586,12 +599,13 @@ export default function BookingView({
                     const st = ds.status;
                     const reason = ds.reason;
                     const sel = selDay === d;
-                    const isWeekend = (firstDow + i) % 7 === 0 || (firstDow + i) % 7 === 6;
                     const isPast = st === "past";
                     const isAvailable = st === "available";
+                    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                    const isFullyBooked = isAvailable && fullyBookedDates.has(dateStr);
                     return (
                       <button key={d} disabled={!isAvailable} onClick={() => { setSelDay(d); setSelTime(null); }}
-                        title={reason}
+                        title={isFullyBooked ? "คิวเต็มทุกช่วงเวลา" : reason}
                         style={{
                           height: 30, borderRadius: 6, border: "none", width: "100%",
                           fontSize: 10, fontWeight: sel ? 700 : 500,
@@ -599,13 +613,13 @@ export default function BookingView({
                           transition: "all 0.15s",
                           background: sel
                             ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)"
-                            : "transparent",
-                          color: sel ? "white" : isPast ? "#D1D5DB" : isWeekend ? "#F87171" : "#1A365D",
+                            : isFullyBooked ? "rgba(239,68,68,0.08)" : "transparent",
+                          color: sel ? "white" : isPast ? "#D1D5DB" : isFullyBooked ? "#EF4444" : "#1A365D",
                           boxShadow: sel ? "0 2px 6px rgba(255,140,154,0.5)" : "none",
                           position: "relative",
                         }}
-                        onMouseEnter={e => { if (isAvailable && !sel) e.currentTarget.style.backgroundColor = "#FFF0F2"; }}
-                        onMouseLeave={e => { if (isAvailable && !sel) e.currentTarget.style.backgroundColor = "transparent"; }}>
+                        onMouseEnter={e => { if (isAvailable && !sel) e.currentTarget.style.backgroundColor = isFullyBooked ? "rgba(239,68,68,0.15)" : "#FFF0F2"; }}
+                        onMouseLeave={e => { if (isAvailable && !sel) e.currentTarget.style.backgroundColor = isFullyBooked ? "rgba(239,68,68,0.08)" : "transparent"; }}>
                         {d}
                       </button>
                     );
@@ -615,6 +629,9 @@ export default function BookingView({
                 <div style={{ display: "flex", gap: 10, marginTop: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 8, color: "#94A3B8" }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }} />เลือก
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 8, color: "#94A3B8" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#EF4444" }} />คิวเต็ม
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 8, color: "#94A3B8" }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#D1D5DB" }} />ไม่ว่าง
