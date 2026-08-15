@@ -165,15 +165,14 @@ export default function BookingView({
   const todayN = today.getDate();
   const isCurrentMonth = monthOffset === 0;
 
-  // ─── dayStatus: เช็คแค่ระดับปฏิทิน (past / weeklyOff / closure) ──────────
   const dayStatus = (d: number) => {
     if (isCurrentMonth && d < todayN) return { status: "past" as const };
     if (monthOffset < 0) return { status: "past" as const };
     const dateObj = new Date(year, month, d);
-    if (weeklyOffDays.includes(dateObj.getDay())) return { status: "past" as const };
+    if (weeklyOffDays.includes(dateObj.getDay())) return { status: "past" as const, reason: "วันหยุดประจำสัปดาห์" };
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const closure = closures.find((c) => c.date === dateStr);
-    if (closure) return { status: "past" as const };
+    if (closure) return { status: "past" as const, reason: closure.reason };
     return { status: "available" as const };
   };
 
@@ -540,13 +539,16 @@ export default function BookingView({
                   {[...Array(firstDow)].map((_, i) => <div key={`e${i}`} />)}
                   {[...Array(daysInMonth)].map((_, i) => {
                     const d = i + 1;
-                    const st = dayStatus(d).status;
+                    const ds = dayStatus(d);
+                    const st = ds.status;
+                    const reason = ds.reason;
                     const sel = selDay === d;
                     const isWeekend = (firstDow + i) % 7 === 0 || (firstDow + i) % 7 === 6;
                     const isPast = st === "past";
                     const isAvailable = st === "available";
                     return (
                       <button key={d} disabled={!isAvailable} onClick={() => { setSelDay(d); setSelTime(null); }}
+                        title={reason}
                         style={{
                           height: 30, borderRadius: 6, border: "none", width: "100%",
                           fontSize: 10, fontWeight: sel ? 700 : 500,
