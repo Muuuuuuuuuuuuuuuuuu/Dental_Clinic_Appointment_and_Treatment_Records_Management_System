@@ -1024,10 +1024,10 @@ export async function getPatientLatestOdontogram(patientId: number) {
 export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   // 1. Conflict Check (Backend Level)
   if (appointment.doctorId) {
-    const { data: overlapping } = await supabase.from('treatment_record')
-      .select('appointment_id, appointment!inner(appointment_date, start_time, end_time_est, appointment_status)')
+    const { data: overlapping } = await supabase.from('appointment')
+      .select('appointment_date, start_time, end_time_est, appointment_status')
       .eq('dentist_id', appointment.doctorId)
-      .eq('appointment.appointment_date', appointment.date);
+      .eq('appointment_date', appointment.date);
     
     if (overlapping && overlapping.length > 0) {
       const duration = appointment.durationMins || 30;
@@ -1035,9 +1035,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
       const newStartMins = (newH * 60) + newM;
       const newEndMins = newStartMins + duration;
 
-      for (const rec of overlapping) {
-        if (!rec.appointment) continue;
-        const apptData = Array.isArray(rec.appointment) ? rec.appointment[0] : rec.appointment;
+      for (const apptData of overlapping) {
         if (apptData.appointment_status === 'ยกเลิก' || apptData.appointment_status === 'ไม่มาตามนัด') continue;
         
         const [existH, existM] = (apptData.start_time || "00:00").split(':').map(Number);
@@ -1149,36 +1147,55 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
         .eq('is_off', false);
         
       if (schedules && schedules.length > 0) {
-        // Map user_id to dentist_id
+        // Map user_id to dentist_id and keep shift times
         const workingDentists = schedules.map(s => {
           const d = dentists?.find(x => x.user_id === s.user_id);
-          return d?.dentist_id;
-        }).filter(Boolean);
+          return {
+            dentist_id: d?.dentist_id,
+            start_shift: s.start_shift,
+            end_shift: s.end_shift
+          };
+        }).filter(x => x.dentist_id);
 
-        // 3. Filter out busy dentists (check appointments and leaves)
-        let availableDentists = [...workingDentists];
+        // 3. Filter out busy dentists (check shift times, appointments, and leaves)
+        let availableDentists = workingDentists.map(d => d.dentist_id as number);
         const [hh, mm] = (appointment.time || "00:00").split(':').map(Number);
         const startMins = (hh * 60) + mm;
         const endMins = startMins + (appointment.durationMins || 30);
 
-        for (const dId of workingDentists) {
-          // Check appointments
-          const { data: overlapping } = await supabase.from('appointment')
-            .select('start_time, end_time_est, appointment_status')
-            .eq('dentist_id', dId)
-            .eq('appointment_date', appointment.date);
-            
+        for (const doc of workingDentists) {
+          const dId = doc.dentist_id as number;
           let isBusy = false;
-          if (overlapping) {
-            for (const appt of overlapping) {
-              if (appt.appointment_status === 'ยกเลิก' || appt.appointment_status === 'ไม่มาตามนัด') continue;
-              const [eH, eM] = (appt.start_time || "00:00").split(':').map(Number);
-              const eStart = (eH * 60) + eM;
-              const [eeH, eeM] = (appt.end_time_est || "00:00").split(':').map(Number);
-              const eEnd = (eeH * 60) + eeM;
-              if (startMins < eEnd && endMins > eStart) {
-                isBusy = true;
-                break;
+
+          // Check if outside shift
+          if (doc.start_shift && doc.end_shift) {
+            const [sH, sM] = doc.start_shift.split(':').map(Number);
+            const shiftStart = sH * 60 + sM;
+            const [eH, eM] = doc.end_shift.split(':').map(Number);
+            const shiftEnd = eH * 60 + eM;
+            if (startMins < shiftStart || endMins > shiftEnd) {
+              isBusy = true;
+            }
+          }
+
+          if (!isBusy) {
+            // Check appointments
+            const { data: overlapping } = await supabase.from('appointment')
+              .select('start_time, end_time_est, appointment_status')
+              .eq('dentist_id', dId)
+              .eq('appointment_date', appointment.date);
+              
+            if (overlapping) {
+              for (const appt of overlapping) {
+                if (appt.appointment_status === 'ยกเลิก' || appt.appointment_status === 'ไม่มาตามนัด') continue;
+                const [eH, eM] = (appt.start_time || "00:00").split(':').map(Number);
+                const eStart = (eH * 60) + eM;
+                const [eeH, eeM] = (appt.end_time_est || "00:00").split(':').map(Number);
+                const eEnd = (eeH * 60) + eeM;
+                if (startMins < eEnd && endMins > eStart) {
+                  isBusy = true;
+                  break;
+                }
               }
             }
           }
@@ -2145,7 +2162,7 @@ export async function updateAppointmentDetails(id: number, updates: any) {
   return true;
 }
 
-export async function getAvailableTimeSlots(date: string, serviceId?: number, doctorId?: number) {
+export async function getAvailableTimeSlots(date: string, serviceId?: number, doctorId?: number, patientId?: number) {
   const dateObj = new Date(date);
   const dayOfWeek = dateObj.getDay();
 
@@ -2191,7 +2208,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
 
   // Fetch appointments for the date
   const { data: appointments } = await supabase.from('appointment')
-    .select('dentist_id, start_time, end_time_est')
+    .select('dentist_id, patient_id, start_time, end_time_est')
     .eq('appointment_date', date)
     .in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']);
 
@@ -2224,15 +2241,26 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
     }
 
     const docApps = appointments?.filter(a => a.dentist_id === dId) || [];
+    const patApps = patientId ? (appointments?.filter(a => a.patient_id === patientId) || []) : [];
+
+    // Check if date is today and calculate current minutes
+    const isToday = new Date().toISOString().split('T')[0] === date;
+    const now = new Date();
+    const currentMin = now.getHours() * 60 + now.getMinutes();
 
     // Generate 30 min slots
     for (let min = shiftStartMin; min <= shiftEndMin - 30; min += 30) {
       if (min >= leaveStartMin && min < leaveEndMin) continue; // Inside leave block
+      
+      // Prevent booking past times for today
+      if (isToday && min <= currentMin) continue;
 
       const slotStart = min;
       const slotEnd = min + 30;
       
       let overlap = false;
+      
+      // Check doctor overlap
       for (const app of docApps) {
         if (!app.start_time || !app.end_time_est) continue;
         const [aSh, aSm] = app.start_time.split(':').map(Number);
@@ -2243,6 +2271,22 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
         if (aStartMin < slotEnd && aEndMin > slotStart) {
           overlap = true;
           break;
+        }
+      }
+
+      // Check patient overlap (if patient is selected)
+      if (!overlap && patApps.length > 0) {
+        for (const app of patApps) {
+          if (!app.start_time || !app.end_time_est) continue;
+          const [aSh, aSm] = app.start_time.split(':').map(Number);
+          const [aEh, aEm] = app.end_time_est.split(':').map(Number);
+          const aStartMin = aSh * 60 + aSm;
+          const aEndMin = aEh * 60 + aEm;
+          
+          if (aStartMin < slotEnd && aEndMin > slotStart) {
+            overlap = true;
+            break;
+          }
         }
       }
 
@@ -2279,4 +2323,178 @@ export async function getDoctorSchedules() {
       end: s.end_shift
     };
   }).filter((s: any) => s.dentistId !== undefined);
+}
+
+export interface TimeSlotStatus {
+  time: string;
+  status: 'available' | 'booked' | 'past' | 'outside_shift';
+}
+
+export async function getClinicTimeSlots(date: string, serviceId?: number, doctorId?: number, patientId?: number): Promise<TimeSlotStatus[]> {
+  const dateObj = new Date(date);
+  const dayOfWeek = dateObj.getDay();
+
+  // 1. Get daily hours
+  const dailyHours = await getDailyHours();
+  const dayHours = dailyHours[dayOfWeek.toString()];
+  if (!dayHours) return [];
+  
+  const [openH, openM] = dayHours.open.split(':').map(Number);
+  const [closeH, closeM] = dayHours.close.split(':').map(Number);
+  const clinicOpenMin = openH * 60 + openM;
+  const clinicCloseMin = closeH * 60 + closeM;
+
+  // 0. Check if clinic is closed
+  const { data: holiday } = await supabase.from('clinic_holiday').select('holiday_id').eq('holiday_date', date).maybeSingle();
+  
+  let targetDoctorIds: number[] = [];
+  if (doctorId) {
+    targetDoctorIds = [doctorId];
+  } else {
+    let query = supabase.from('dentist').select('dentist_id');
+    if (serviceId) {
+       const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
+       if (dsData) {
+         targetDoctorIds = dsData.map(d => d.dentist_id);
+       }
+    } else {
+       const { data: dData } = await query;
+       if (dData) targetDoctorIds = dData.map(d => d.dentist_id);
+    }
+  }
+
+  // Fetch all users to map dentist_id to user_id
+  const { data: dentistUsers } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', targetDoctorIds);
+  const userIds = dentistUsers ? dentistUsers.map(d => d.user_id) : [];
+
+  // Fetch approved leaves
+  const { data: leaves } = await supabase.from('leave_record')
+    .select('user_id, leave_period')
+    .in('user_id', userIds)
+    .eq('leave_date', date)
+    .eq('is_approved', true);
+
+  // Fetch shifts for this day of week
+  const { data: shifts } = await supabase.from('schedule')
+    .select('users!inner(dentist(dentist_id)), start_shift, end_shift, is_off')
+    .eq('day_of_week', dayOfWeek);
+
+  // Fetch appointments for the date
+  const { data: appointments } = await supabase.from('appointment')
+    .select('dentist_id, patient_id, start_time, end_time_est')
+    .eq('appointment_date', date)
+    .in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']);
+
+  const isToday = new Date().toISOString().split('T')[0] === date;
+  const now = new Date();
+  const currentMin = now.getHours() * 60 + now.getMinutes();
+  
+  const patApps = patientId ? (appointments?.filter(a => a.patient_id === patientId) || []) : [];
+
+  const results: TimeSlotStatus[] = [];
+
+  for (let min = clinicOpenMin; min <= clinicCloseMin - 30; min += 30) {
+    const hh = Math.floor(min / 60);
+    const mm = min % 60;
+    const timeStr = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    
+    if (holiday) {
+      results.push({ time: timeStr, status: 'outside_shift' });
+      continue;
+    }
+
+    if (isToday && min <= currentMin) {
+      results.push({ time: timeStr, status: 'past' });
+      continue;
+    }
+
+    const slotStart = min;
+    const slotEnd = min + 30;
+    
+    // Check patient overlap globally
+    let patientOverlap = false;
+    for (const app of patApps) {
+      if (!app.start_time || !app.end_time_est) continue;
+      const [aSh, aSm] = app.start_time.split(':').map(Number);
+      const [aEh, aEm] = app.end_time_est.split(':').map(Number);
+      const aStartMin = aSh * 60 + aSm;
+      const aEndMin = aEh * 60 + aEm;
+      if (aStartMin < slotEnd && aEndMin > slotStart) {
+        patientOverlap = true;
+        break;
+      }
+    }
+    
+    if (patientOverlap) {
+      results.push({ time: timeStr, status: 'booked' });
+      continue;
+    }
+
+    if (targetDoctorIds.length === 0) {
+      results.push({ time: timeStr, status: 'outside_shift' });
+      continue;
+    }
+
+    let anyAvailable = false;
+    let anyBooked = false;
+
+    for (const dId of targetDoctorIds) {
+      const dUser = dentistUsers?.find(du => du.dentist_id === dId);
+      if (!dUser) continue;
+
+      const docLeave = leaves?.find(l => l.user_id === dUser.user_id);
+      if (docLeave && docLeave.leave_period === 'เต็มวัน') continue;
+
+      const shift = shifts?.find((s: any) => s.users?.dentist?.[0]?.dentist_id === dId);
+      if (!shift || shift.is_off || !shift.start_shift || !shift.end_shift) continue;
+
+      const [startH, startM] = shift.start_shift.split(':').map(Number);
+      const [endH, endM] = shift.end_shift.split(':').map(Number);
+      const shiftStartMin = startH * 60 + startM;
+      const shiftEndMin = endH * 60 + endM;
+
+      if (slotStart < shiftStartMin || slotEnd > shiftEndMin) continue;
+
+      let leaveStartMin = -1;
+      let leaveEndMin = -1;
+      if (docLeave?.leave_period === 'ครึ่งวันเช้า') {
+        leaveStartMin = 0; leaveEndMin = 13 * 60;
+      } else if (docLeave?.leave_period === 'ครึ่งวันบ่าย') {
+        leaveStartMin = 13 * 60; leaveEndMin = 24 * 60;
+      }
+      
+      if (min >= leaveStartMin && min < leaveEndMin) continue;
+
+      // Check doctor appointments
+      const docApps = appointments?.filter(a => a.dentist_id === dId) || [];
+      let docOverlap = false;
+      for (const app of docApps) {
+        if (!app.start_time || !app.end_time_est) continue;
+        const [aSh, aSm] = app.start_time.split(':').map(Number);
+        const [aEh, aEm] = app.end_time_est.split(':').map(Number);
+        const aStartMin = aSh * 60 + aSm;
+        const aEndMin = aEh * 60 + aEm;
+        if (aStartMin < slotEnd && aEndMin > slotStart) {
+          docOverlap = true;
+          break;
+        }
+      }
+
+      if (docOverlap) {
+        anyBooked = true;
+      } else {
+        anyAvailable = true;
+      }
+    }
+
+    if (anyAvailable) {
+      results.push({ time: timeStr, status: 'available' });
+    } else if (anyBooked) {
+      results.push({ time: timeStr, status: 'booked' });
+    } else {
+      results.push({ time: timeStr, status: 'outside_shift' });
+    }
+  }
+
+  return results;
 }

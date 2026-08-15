@@ -8,7 +8,7 @@ import { View, PatientUser } from "../types";
 import {
   addAppointment, getClinicClosures,
   getLandingServices, getLandingDoctors, getDentistsByService,
-  getPaymentPlans, getWeeklyOffDays, getAvailableTimeSlots, getDoctorSchedules
+  getPaymentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus
 } from "../../shared/supabaseApi";
 import { SpecialClosure } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";
@@ -127,7 +127,7 @@ export default function BookingView({
   const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
   const [selPaymentPlan, setSelPaymentPlan] = useState<number | null>(null);
   const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([0]);
-  const [backendSlots, setBackendSlots] = useState<string[]>([]);
+  const [backendSlots, setBackendSlots] = useState<TimeSlotStatus[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
 
@@ -220,7 +220,7 @@ export default function BookingView({
 
     setLoadingSlots(true);
     setSelTime(null);
-    getAvailableTimeSlots(dateStr, serviceId, doctorIdParam)
+    getClinicTimeSlots(dateStr, serviceId, doctorIdParam, user?.patientId)
       .then((slots) => setBackendSlots(slots))
       .catch(() => setBackendSlots([]))
       .finally(() => setLoadingSlots(false));
@@ -228,17 +228,18 @@ export default function BookingView({
 
   // ─── Compute canBook from backendSlots (consecutive slot check) ──────────
   const availableTimes = backendSlots.map((slot, i) => {
-    let ok = true;
+    let ok = slot.status === 'available';
     for (let j = 0; j < reqSlots; j++) {
       if (i + j >= backendSlots.length) { ok = false; break; }
+      if (backendSlots[i + j].status !== 'available') { ok = false; break; }
       // Check consecutive: next slot must be exactly 30 min after current
       if (j > 0) {
-        const [prevH, prevM] = backendSlots[i + j - 1].split(":").map(Number);
-        const [curH, curM] = backendSlots[i + j].split(":").map(Number);
+        const [prevH, prevM] = backendSlots[i + j - 1].time.split(":").map(Number);
+        const [curH, curM] = backendSlots[i + j].time.split(":").map(Number);
         if ((curH * 60 + curM) - (prevH * 60 + prevM) !== 30) { ok = false; break; }
       }
     }
-    return { t: slot, canBook: ok };
+    return { t: slot.time, status: slot.status, canBook: ok };
   });
 
   const canNext = () => step === 0 ? selService !== null : selDay !== null && selTime !== null;
@@ -635,21 +636,29 @@ export default function BookingView({
                     </div>
                   ) : availableTimes.length > 0 ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {availableTimes.map(({ t, canBook }) => {
+                      {availableTimes.map(({ t, status, canBook }) => {
                         const isSelected = selTime && t >= selTime && t < endTimeStr;
+                        const isBooked = status === 'booked';
+                        const isOutside = status === 'outside_shift';
+                        const isPast = status === 'past';
+                        const isDisabled = !canBook || isBooked || isOutside || isPast;
+                        
                         return (
-                          <button key={t} disabled={!canBook} onClick={() => setSelTime(t)}
+                          <button key={t} disabled={isDisabled} onClick={() => setSelTime(t)}
                             style={{
                               padding: "8px 4px", borderRadius: 10, fontSize: 12, fontWeight: 600,
-                              border: canBook && !isSelected ? "1.5px solid rgba(255,140,154,0.2)" : "none",
-                              cursor: canBook ? "pointer" : "not-allowed",
+                              border: !isDisabled && !isSelected ? "1.5px solid rgba(255,140,154,0.3)" : isDisabled ? "1px solid #E5E7EB" : "none",
+                              cursor: !isDisabled ? "pointer" : "not-allowed",
                               transition: "all 0.15s",
-                              backgroundColor: isSelected ? "#FF8C9A" : !canBook ? "#F9FAFB" : "white",
-                              color: isSelected ? "white" : !canBook ? "#D1D5DB" : "#1A365D",
-                              boxShadow: canBook && !isSelected ? "0 1px 4px rgba(26,54,93,0.1)" : "none",
+                              backgroundColor: isSelected ? "#FF8C9A" : isDisabled ? "#F3F4F6" : "white",
+                              color: isSelected ? "white" : isDisabled ? "#9CA3AF" : "#1A365D",
+                              boxShadow: !isDisabled && !isSelected ? "0 1px 4px rgba(26,54,93,0.1)" : "none",
                             }}>
                             {t}
-                            {!canBook && <span style={{ display: "block", fontSize: 9, color: "#D1D5DB" }}>เวลาไม่พอ</span>}
+                            {isPast && <span style={{ display: "block", fontSize: 9, color: "#9CA3AF", marginTop: 2 }}>หมดเวลา</span>}
+                            {isOutside && <span style={{ display: "block", fontSize: 9, color: "#9CA3AF", marginTop: 2 }}>ไม่ออกตรวจ</span>}
+                            {isBooked && <span style={{ display: "block", fontSize: 9, color: "#F87171", marginTop: 2 }}>คิวไม่ว่าง</span>}
+                            {(!isBooked && !isOutside && !isPast && !canBook) && <span style={{ display: "block", fontSize: 9, color: "#FBBF24", marginTop: 2 }}>เวลาไม่พอ</span>}
                           </button>
                         );
                       })}
