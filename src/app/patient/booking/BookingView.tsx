@@ -140,8 +140,7 @@ export default function BookingView({
       setClosures(cData);
       setServicesData(sData);
       setLandingDoctors(ldData);
-      // คลินิกหยุดเฉพาะวันอาทิตย์ (0) เพียงวันเดียว แม้โค้ดใน DB จะบันทึกวันอื่นไว้ด้วย
-      setWeeklyOffDays([0]);
+      setWeeklyOffDays(offData); // ดึงข้อมูลวันหยุดจาก Database ตามที่ Admin ตั้งค่า
       setDoctorSchedules(dsData);
     });
   }, []);

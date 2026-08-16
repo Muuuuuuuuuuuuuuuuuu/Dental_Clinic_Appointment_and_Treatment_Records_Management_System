@@ -5,7 +5,7 @@ import { FileText, Shield, ChevronRight, Bell, Phone, MapPin } from "lucide-reac
 import { View, PatientUser, patientStatusColor as statusColor } from "../types";
 import { ClinicStatusCard } from "../landing/ClinicStatus";
 import { Appointment } from "../../shared/data";
-import { getPatientAppointments, getPatientTreatmentRecords } from "../../shared/supabaseApi";
+import { getPatientAppointments, getPatientTreatmentRecords, getDailyHours, getWeeklyOffDays, DayHours } from "../../shared/supabaseApi";
 
 export default function DashboardView({ 
   user, 
@@ -19,6 +19,8 @@ export default function DashboardView({
   const [appointments, setAppointments] = useState<Appointment[]>(globalAppointments?.filter(a => a.patientId === user.patientId) || []);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dailyHours, setDailyHours] = useState<Record<string, DayHours>>({});
+  const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([]);
 
   useEffect(() => {
     if (globalAppointments) {
@@ -30,7 +32,9 @@ export default function DashboardView({
     if (!user.patientId) return;
     Promise.all([
       !globalAppointments ? getPatientAppointments(user.patientId).then(data => setAppointments(data)) : Promise.resolve(),
-      getPatientTreatmentRecords(user.patientId).then(data => setHistory(data))
+      getPatientTreatmentRecords(user.patientId).then(data => setHistory(data)),
+      getDailyHours().then(data => setDailyHours(data)),
+      getWeeklyOffDays().then(data => setWeeklyOffDays(data))
     ]).catch(console.error).finally(() => setLoading(false));
   }, [user, globalAppointments]);
 
@@ -117,15 +121,19 @@ export default function DashboardView({
           <div className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <h2 className="text-base font-semibold mb-3" style={{ color: "#1A365D" }}>เวลาทำการ</h2>
             {[
-              { day: "จันทร์ – ศุกร์", t: "09:00 – 20:00 น." },
-              { day: "เสาร์",           t: "09:00 – 17:00 น." },
-              { day: "อาทิตย์",         t: "ปิดทำการ" },
-            ].map(h => (
-              <div key={h.day} className="flex justify-between py-2 text-sm" style={{ borderBottom: "1px solid rgba(26,54,93,0.06)" }}>
-                <span style={{ color: "#4A6080" }}>{h.day}</span>
-                <span style={{ color: h.t === "ปิดทำการ" ? "#999" : "#FF8C9A", fontWeight: 500 }}>{h.t}</span>
-              </div>
-            ))}
+              { day: "จันทร์", idx: 1 }, { day: "อังคาร", idx: 2 }, { day: "พุธ", idx: 3 },
+              { day: "พฤหัสบดี", idx: 4 }, { day: "ศุกร์", idx: 5 }, { day: "เสาร์", idx: 6 }, { day: "อาทิตย์", idx: 0 }
+            ].map(h => {
+              const isOff = weeklyOffDays.includes(h.idx);
+              const hrs = dailyHours[h.idx.toString()];
+              const t = isOff || !hrs ? "ปิดทำการ" : `${hrs.open} – ${hrs.close} น.`;
+              return (
+                <div key={h.day} className="flex justify-between py-2 text-sm" style={{ borderBottom: "1px solid rgba(26,54,93,0.06)" }}>
+                  <span style={{ color: "#4A6080" }}>{h.day}</span>
+                  <span style={{ color: t === "ปิดทำการ" ? "#999" : "#FF8C9A", fontWeight: 500 }}>{t}</span>
+                </div>
+              );
+            })}
           </div>
 
           <div className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>

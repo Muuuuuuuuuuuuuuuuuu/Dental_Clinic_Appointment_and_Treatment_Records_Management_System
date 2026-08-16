@@ -1,6 +1,18 @@
+import React, { useState, useEffect } from "react";
 import { MapPin, Phone } from "lucide-react";
+import { getDailyHours, getWeeklyOffDays, DayHours } from "../../shared/supabaseApi";
 
 export default function Contact({ onCTA }: { onCTA: () => void }) {
+  const [dailyHours, setDailyHours] = useState<Record<string, DayHours>>({});
+  const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      getDailyHours().then(data => setDailyHours(data)),
+      getWeeklyOffDays().then(data => setWeeklyOffDays(data))
+    ]).catch(console.error);
+  }, []);
+
   return (
     <section id="contact" style={{ backgroundColor: "#FFFFFF" }}>
       <div className="max-w-7xl mx-auto px-6 py-20">
@@ -18,12 +30,20 @@ export default function Contact({ onCTA }: { onCTA: () => void }) {
           <div>
             <div className="rounded-2xl p-8 mb-6" style={{ backgroundColor: "#F8F9FA", border: "1px solid rgba(26,54,93,0.08)" }}>
               <h3 className="text-xl font-semibold mb-5" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>เวลาทำการ</h3>
-              {[["จันทร์ – ศุกร์", "09:00 – 20:00 น."], ["เสาร์", "09:00 – 17:00 น."], ["อาทิตย์", "ปิดทำการ"]].map(([d, t]) => (
-                <div key={d} className="flex items-center justify-between py-2" style={{ borderBottom: "1px solid rgba(26,54,93,0.08)" }}>
-                  <span className="text-sm" style={{ color: "#1A365D" }}>{d}</span>
-                  <span className="text-sm font-medium" style={{ color: t === "ปิดทำการ" ? "#4A6080" : "#FF8C9A" }}>{t}</span>
-                </div>
-              ))}
+              {[
+                { day: "จันทร์", idx: 1 }, { day: "อังคาร", idx: 2 }, { day: "พุธ", idx: 3 },
+                { day: "พฤหัสบดี", idx: 4 }, { day: "ศุกร์", idx: 5 }, { day: "เสาร์", idx: 6 }, { day: "อาทิตย์", idx: 0 }
+              ].map(h => {
+                const isOff = weeklyOffDays.includes(h.idx);
+                const hrs = dailyHours[h.idx.toString()];
+                const t = isOff || !hrs ? "ปิดทำการ" : `${hrs.open} – ${hrs.close} น.`;
+                return (
+                  <div key={h.day} className="flex items-center justify-between py-2" style={{ borderBottom: "1px solid rgba(26,54,93,0.08)" }}>
+                    <span className="text-sm" style={{ color: "#1A365D" }}>{h.day}</span>
+                    <span className="text-sm font-medium" style={{ color: t === "ปิดทำการ" ? "#4A6080" : "#FF8C9A" }}>{t}</span>
+                  </div>
+                );
+              })}
             </div>
             <div className="rounded-2xl p-8" style={{ background: "linear-gradient(135deg,#1A365D 0%,#2A507A 100%)", boxShadow: "0 12px 40px rgba(26,54,93,0.25)" }}>
               <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: "Playfair Display, serif" }}>พร้อมดูแลคุณแล้ว</h3>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Users, FileText, Calendar, Clock, CheckCircle, AlertTriangle, ClipboardList, CreditCard } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, DocView, DentistInfo } from "../../shared/data";
-import { getAppointments } from "../../shared/supabaseApi";
+import { getAppointments, getDailyHours, getWeeklyOffDays, DayHours } from "../../shared/supabaseApi";
 
 export default function DoctorDashboard({ 
   setView, 
@@ -15,6 +15,8 @@ export default function DoctorDashboard({
 }) {
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
   const [loading, setLoading] = useState(true);
+  const [dailyHours, setDailyHours] = useState<Record<string, DayHours>>({});
+  const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([]);
 
   useEffect(() => {
     if (initialAppointments) {
@@ -28,6 +30,10 @@ export default function DoctorDashboard({
     } else {
       setLoading(false);
     }
+    Promise.all([
+      getDailyHours().then(setDailyHours),
+      getWeeklyOffDays().then(setWeeklyOffDays)
+    ]).catch(console.error);
   }, []);
 
   const today = new Date();
@@ -40,6 +46,10 @@ export default function DoctorDashboard({
   const pending  = myAppts.filter(a => a.status === "รอชำระเงิน").length;
   const done     = myAppts.filter(a => a.status === "เสร็จสิ้น").length;
 
+  const todayDayIdx = today.getDay();
+  const isOffToday = weeklyOffDays.includes(todayDayIdx);
+  const todayHrs = dailyHours[todayDayIdx.toString()];
+  const todayText = isOffToday || !todayHrs ? "คลินิกปิดทำการ" : `เวลาทำการ ${todayHrs.open}–${todayHrs.close} น.`;
 
   return (
     <div>
@@ -47,7 +57,7 @@ export default function DoctorDashboard({
         <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
           สวัสดีตอนเช้า {doctor ? `คุณหมอ${doctor.name}` : ''} 👩‍⚕️
         </h1>
-        <p className="text-sm" style={{ color: "#4A6080" }}>{formattedDate} • เวลาทำการ 09:00–17:00 น.</p>
+        <p className="text-sm" style={{ color: "#4A6080" }}>{formattedDate} • {todayText}</p>
       </div>
 
       {/* KPI */}
