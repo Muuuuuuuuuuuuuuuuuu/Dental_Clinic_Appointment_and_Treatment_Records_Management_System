@@ -75,74 +75,81 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
   const inputStyle = "w-full px-4 py-3 rounded-xl border text-base outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/40 bg-[#F0F4F8] border-transparent text-[#1A365D]";
 
-  if (isReturning && formData.hasChanges === null) {
-    return (
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E2E8F0] space-y-6 animate-fade-in">
-        <div className="flex items-center gap-3 text-[#1A365D] mb-2">
-          <div className="w-10 h-10 rounded-full bg-[#E8F4FF] flex items-center justify-center text-[#2B6CB0]">
-            <ShieldAlert size={20} />
-          </div>
+  const renderReturningUserOptions = () => (
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E2E8F0] space-y-6 animate-fade-in mb-6">
+      <div className="flex items-center gap-3 text-[#1A365D] mb-2">
+        <div className="w-10 h-10 rounded-full bg-[#E8F4FF] flex items-center justify-center text-[#2B6CB0]">
+          <ShieldAlert size={20} />
+        </div>
+        <div>
+          <h3 className="font-bold text-lg">ยืนยันข้อมูลสุขภาพ (1-Click Verification)</h3>
+          <p className="text-sm text-[#4A6080]">ประวัติสุขภาพล่าสุดของคุณระบุว่า:</p>
+        </div>
+      </div>
+
+      <div className="bg-[#F8FAFC] rounded-xl p-4 border border-[#E2E8F0] space-y-2">
+        <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">โรคประจำตัว:</span> {user?.conditions}</p>
+        <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">ประวัติแพ้ยา:</span> {user?.allergies}</p>
+      </div>
+
+      <div className="space-y-3 pt-2">
+        <p className="font-semibold text-[#1A365D]">ข้อมูลสุขภาพของคุณมีการเปลี่ยนแปลงหรือไม่?</p>
+        
+        <button 
+          type="button"
+          onClick={() => setFormData({ ...formData, hasChanges: false, consent: true })}
+          className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${formData.hasChanges === false ? 'border-[#1B7A3E] bg-[#E8FFF0]' : 'border-transparent bg-[#F8FAFC] hover:bg-[#E8FFF0]'}`}
+        >
           <div>
-            <h3 className="font-bold text-lg">ยืนยันข้อมูลสุขภาพ (1-Click Verification)</h3>
-            <p className="text-sm text-[#4A6080]">ประวัติสุขภาพล่าสุดของคุณระบุว่า:</p>
+            <p className={`font-bold ${formData.hasChanges === false ? 'text-[#1B7A3E]' : 'text-[#1A365D]'}`}>ไม่มีอะไรเปลี่ยนแปลง</p>
+            <p className={`text-sm ${formData.hasChanges === false ? 'text-[#1B7A3E]/80' : 'text-[#4A6080]'}`}>ใช้ข้อมูลสุขภาพเดิมในการประเมิน</p>
           </div>
-        </div>
+          {formData.hasChanges === false && <CheckCircle2 size={24} className="text-[#1B7A3E]" />}
+        </button>
 
-        <div className="bg-[#F8FAFC] rounded-xl p-4 border border-[#E2E8F0] space-y-2">
-          <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">โรคประจำตัว:</span> {user?.conditions}</p>
-          <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">ประวัติแพ้ยา:</span> {user?.allergies}</p>
-        </div>
-
-        <div className="space-y-3 pt-2">
-          <p className="font-semibold text-[#1A365D]">ข้อมูลสุขภาพของคุณมีการเปลี่ยนแปลงหรือไม่?</p>
-          
-          <button 
-            type="button"
-            onClick={() => setFormData({ ...formData, hasChanges: false, consent: true })}
-            className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-[#E8FFF0] hover:bg-[#D1FADF] transition-all text-left"
-          >
-            <div>
-              <p className="font-bold text-[#1B7A3E]">ไม่มีอะไรเปลี่ยนแปลง</p>
-              <p className="text-sm text-[#1B7A3E]/80">ใช้ข้อมูลสุขภาพเดิมในการประเมิน</p>
-            </div>
-            <CheckCircle2 size={24} className="text-[#1B7A3E]" />
-          </button>
-
-          <button 
-            type="button"
-            onClick={() => {
+        <button 
+          type="button"
+          onClick={() => {
+            if (formData.hasChanges !== true) {
               setFormData({ 
                 ...formData, 
                 hasChanges: true,
                 emergencyName: user?.emergencyName || '',
                 emergencyPhone: user?.emergencyPhone || '',
                 hasAllergy: null, allergies: [], allergyOther: '',
-                hasCondition: null, conditions: [], conditionOther: ''
+                hasCondition: null, conditions: [], conditionOther: '',
+                hasMedications: null, medicationNote: '', consent: false
               });
-            }}
-            className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-[#E2E8F0] hover:border-[#FF8C9A] hover:bg-[#FFF0F2] transition-all text-left"
-          >
-            <div>
-              <p className="font-bold text-[#1A365D]">มีข้อมูลเพิ่มเติม / ป่วยเป็นโรคใหม่</p>
-              <p className="text-sm text-[#4A6080]">อัปเดตประวัติแพ้ยา หรือโรคประจำตัว</p>
-            </div>
-          </button>
-        </div>
+            }
+          }}
+          className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${formData.hasChanges === true ? 'border-[#FF8C9A] bg-[#FFF0F2]' : 'border-[#E2E8F0] hover:border-[#FF8C9A] hover:bg-[#FFF0F2]'}`}
+        >
+          <div>
+            <p className={`font-bold ${formData.hasChanges === true ? 'text-[#E0314C]' : 'text-[#1A365D]'}`}>มีข้อมูลเพิ่มเติม / ป่วยเป็นโรคใหม่</p>
+            <p className={`text-sm ${formData.hasChanges === true ? 'text-[#E0314C]/80' : 'text-[#4A6080]'}`}>อัปเดตประวัติแพ้ยา หรือโรคประจำตัว</p>
+          </div>
+          {formData.hasChanges === true && <CheckCircle2 size={24} className="text-[#E0314C]" />}
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
 
-  // Full Form
+  const showFullForm = !isReturning || formData.hasChanges === true;
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] overflow-hidden animate-fade-in">
-      <div className="bg-gradient-to-r from-[#FF8C9A] to-[#FFB3BA] p-4 text-white text-center">
-        <h3 className="font-bold text-lg flex items-center justify-center gap-2">
-          <ShieldAlert size={20} /> แบบฟอร์มประวัติสุขภาพและใบยินยอม
-        </h3>
-        <p className="text-sm opacity-90 mt-1">เพื่อความปลอดภัยสูงสุด กรุณาให้ข้อมูลตามความเป็นจริง (ข้อมูลถูกจัดเก็บเป็นความลับ)</p>
-      </div>
+    <div className="space-y-6">
+      {isReturning && renderReturningUserOptions()}
 
-      <div className="p-6 space-y-8">
+      {showFullForm && (
+        <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] overflow-hidden animate-fade-in">
+          <div className="bg-gradient-to-r from-[#FF8C9A] to-[#FFB3BA] p-4 text-white text-center">
+            <h3 className="font-bold text-lg flex items-center justify-center gap-2">
+              <ShieldAlert size={20} /> แบบฟอร์มประวัติสุขภาพและใบยินยอม
+            </h3>
+            <p className="text-sm opacity-90 mt-1">เพื่อความปลอดภัยสูงสุด กรุณาให้ข้อมูลตามความเป็นจริง (ข้อมูลถูกจัดเก็บเป็นความลับ)</p>
+          </div>
+
+          <div className="p-6 space-y-8">
         
         {/* Section 1 */}
         <section className="space-y-4">
@@ -304,6 +311,8 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
         </section>
 
       </div>
+    </div>
+    )}
     </div>
   );
 }
