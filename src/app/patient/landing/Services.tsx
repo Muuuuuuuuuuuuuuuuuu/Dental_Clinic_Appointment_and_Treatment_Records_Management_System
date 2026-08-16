@@ -36,6 +36,10 @@ export default function Services({ onCTA }: { onCTA: () => void }) {
               </div>
               <h3 className="text-lg font-semibold mb-2" style={{ color: "#1A365D" }}>{s.title}</h3>
               <p className="text-sm leading-relaxed mb-4" style={{ color: "#4A6080", fontWeight: 300 }}>{s.desc}</p>
+              <div className="flex items-center gap-1.5 mb-4 text-xs font-medium" style={{ color: "#4A6080" }}>
+                <Clock size={14} style={{ color: "#FF8C9A" }} />
+                <span>ใช้เวลาประมาณ {s.baseTimeMins} นาที</span>
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold" style={{ color: "#FF8C9A" }}>{s.price}</span>
                 <button onClick={onCTA} className="flex items-center gap-1 text-sm font-medium transition-all" style={{ color: hovered === i ? "#FF8C9A" : "#4A6080" }}>

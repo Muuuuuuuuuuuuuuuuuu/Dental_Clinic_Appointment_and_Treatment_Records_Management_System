@@ -220,11 +220,21 @@ export default function BookingView({
   };
 
   const estTime = selService !== null && servicesData[selService] ? servicesData[selService].baseTimeMins : 30;
-  const reqSlots = Math.ceil((estTime + 15) / 30);
-  const endTimeStr = selTime ? (() => {
+  const totalDuration = estTime; // Service time directly dictates the blocked time
+  const reqSlots = Math.ceil(totalDuration / 30);
+  
+  // Patient sees only treatment time
+  const patientEndTimeStr = selTime ? (() => {
     const [h, m] = selTime.split(":").map(Number);
     const tot = h * 60 + m + estTime;
-    return `${String(Math.floor(tot / 60)).padStart(2, "0")}:${String(tot % 60).padStart(2, "0")}`;
+    return `${Math.floor(tot / 60).toString().padStart(2, "0")}:${(tot % 60).toString().padStart(2, "0")}`;
+  })() : "";
+
+  // Full duration (Treatment + buffer)
+  const endTimeStr = selTime ? (() => {
+    const [h, m] = selTime.split(":").map(Number);
+    const tot = h * 60 + m + totalDuration;
+    return `${Math.floor(tot / 60).toString().padStart(2, "0")}:${(tot % 60).toString().padStart(2, "0")}`;
   })() : "";
 
   // ─── Backend-driven time slots ────────────────────────────────────────────
@@ -337,7 +347,7 @@ export default function BookingView({
         doctorId: finalDoctorId,
         date: `${year}-${String(month + 1).padStart(2, "0")}-${selDay?.toString().padStart(2, "0")}`,
         time: selTime || "",
-        durationMins: estTime,
+        durationMins: totalDuration,
         status: initialStatus,
         source: "patient", cost: 0, paid: false,
         treatmentNotes: "", treatmentServices: [], recommendations: "",
@@ -476,7 +486,11 @@ export default function BookingView({
                   <Icon size={18} style={{ color: "#1A365D" }} />
                 </div>
                 <p className="font-semibold text-sm mb-1" style={{ color: "#1A365D" }}>{s.title}</p>
-                <p className="text-xs" style={{ color: "#4A6080" }}>{s.price}</p>
+                <div className="flex items-center gap-1.5 mb-2 text-xs" style={{ color: "#4A6080" }}>
+                  <Clock size={12} style={{ color: "#FF8C9A" }} />
+                  <span>ใช้เวลาประมาณ {s.baseTimeMins} นาที</span>
+                </div>
+                <p className="text-xs font-semibold" style={{ color: "#FF8C9A" }}>{s.price}</p>
               </button>
             );
           })}
@@ -501,7 +515,11 @@ export default function BookingView({
               })()}
               <div>
                 <p style={{ fontWeight: 700, fontSize: 14, color: "#1A365D", marginBottom: 2 }}>{serviceTitle}</p>
-                <p style={{ fontSize: 12, color: "#FF8C9A" }}>{servicesData[selService!]?.price}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#4A6080", marginBottom: 2 }}>
+                  <Clock size={12} style={{ color: "#FF8C9A" }} />
+                  <span>ใช้เวลาประมาณ {estTime} นาที</span>
+                </div>
+                <p style={{ fontSize: 12, color: "#FF8C9A", fontWeight: 600 }}>{servicesData[selService!]?.price}</p>
               </div>
             </div>
 
@@ -705,40 +723,34 @@ export default function BookingView({
                     </div>
                   ) : availableTimes.length > 0 ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {availableTimes.map(({ t, status, canBook }) => {
-                        const [eH, eM] = (endTimeStr || "00:00").split(':').map(Number);
-                        const endTimeMins = eH * 60 + eM;
-                        const [tH, tM] = t.split(':').map(Number);
-                        const tMins = tH * 60 + tM;
-
+                      {availableTimes.map(({ t, status, canBook }, idx) => {
                         const isSelected = t === selTime;
-                        const isIncluded = selTime && t > selTime && t < endTimeStr;
+                        const selIndex = selTime ? availableTimes.findIndex(a => a.t === selTime) : -1;
+                        const isActive = selIndex !== -1 && idx >= selIndex && idx < selIndex + reqSlots;
 
                         const isBooked = status === 'booked';
                         const isOutside = status === 'outside_shift';
                         const isPast = status === 'past';
-                        const isDisabled = !canBook || isBooked || isOutside || isPast;
-
-                        // Calculate slot end time string for display
-                        const slotEndMins = Math.min(tMins + 30, endTimeMins);
-                        const slotEndH = Math.floor(slotEndMins / 60).toString().padStart(2, '0');
-                        const slotEndM = (slotEndMins % 60).toString().padStart(2, '0');
-                        const slotEndStr = `${slotEndH}:${slotEndM}`;
+                        const isDisabled = (!canBook && !isActive) || isBooked || isOutside || isPast;
                         
-                        const isActive = isSelected || isIncluded;
+                        const slotEndTime = (() => {
+                          const [h, m] = t.split(":").map(Number);
+                          const tot = h * 60 + m + 30;
+                          return `${Math.floor(tot / 60).toString().padStart(2, "0")}:${(tot % 60).toString().padStart(2, "0")}`;
+                        })();
 
                         return (
-                          <button key={t} disabled={isDisabled || isIncluded} onClick={() => setSelTime(t)}
+                          <button key={t} disabled={isDisabled} onClick={() => { if(canBook) setSelTime(t) }}
                             style={{
                               padding: "8px 2px", borderRadius: 10, fontSize: 11, fontWeight: 600,
-                              border: (!isDisabled && !isActive) ? "1.5px solid rgba(255,140,154,0.3)" : isDisabled ? "1px solid #E5E7EB" : "none",
-                              cursor: (!isDisabled && !isIncluded) ? "pointer" : "not-allowed",
+                              border: (!isDisabled && !isActive) ? "1.5px solid rgba(255,140,154,0.3)" : (isDisabled && !isActive) ? "1px solid #E5E7EB" : "none",
+                              cursor: (canBook && !isSelected) ? "pointer" : "default",
                               transition: "all 0.15s",
                               backgroundColor: isActive ? "#FF8C9A" : isDisabled ? "#F3F4F6" : "white",
                               color: isActive ? "white" : isDisabled ? "#9CA3AF" : "#1A365D",
                               boxShadow: (!isDisabled && !isActive) ? "0 1px 4px rgba(26,54,93,0.1)" : "none",
                             }}>
-                            {isActive ? `${t}-${slotEndStr}` : t}
+                            {isActive ? `${t} – ${slotEndTime}` : t}
                             {isPast && !isActive && <span style={{ display: "block", fontSize: 9, color: "#9CA3AF", marginTop: 2 }}>หมดเวลา</span>}
                             {isOutside && !isActive && <span style={{ display: "block", fontSize: 9, color: "#9CA3AF", marginTop: 2 }}>ไม่ออกตรวจ</span>}
                             {isBooked && !isActive && <span style={{ display: "block", fontSize: 9, color: "#F87171", marginTop: 2 }}>คิวไม่ว่าง</span>}
@@ -757,7 +769,7 @@ export default function BookingView({
                       <Clock size={14} style={{ color: "#E0314C", flexShrink: 0, marginTop: 2 }} />
                       <div>
                         <p style={{ fontSize: 13, fontWeight: 700, color: "#E0314C" }}>{selTime} – {endTimeStr} น.</p>
-                        <p style={{ fontSize: 10, color: "#E0314C", opacity: 0.8, marginTop: 2 }}>ประมาณ {estTime} นาที (รวมเตรียมตัว 15 นาที)</p>
+                        <p style={{ fontSize: 10, color: "#E0314C", opacity: 0.8, marginTop: 2 }}>ใช้เวลาทำฟันประมาณ {estTime} นาที</p>
                       </div>
                     </div>
                   )}
