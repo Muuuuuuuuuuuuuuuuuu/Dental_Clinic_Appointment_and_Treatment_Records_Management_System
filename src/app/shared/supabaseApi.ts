@@ -13,9 +13,9 @@ let globalUpdateChannel: any = null;
 export function notifyAppointmentsUpdated() {
   if (!globalUpdateChannel) {
     globalUpdateChannel = supabase.channel('icemu-updates', { config: { broadcast: { self: true } } });
-    globalUpdateChannel.subscribe();
+    //globalUpdateChannel.subscribe();
   }
-  
+
   if (globalUpdateChannel.state === 'joined') {
     globalUpdateChannel.send({
       type: 'broadcast',
@@ -57,7 +57,7 @@ export async function getDentists() {
     console.error("getDentists error:", error);
     return [];
   }
-  
+
   return data.map((d: any) => {
     const p = d.users?.profile;
     return {
@@ -65,7 +65,7 @@ export async function getDentists() {
       name: p ? `${d.title_name || ''} ${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       specialty: d.specialization || 'ทันตกรรมทั่วไป',
       license: d.license_number,
-      university: 'N/A', 
+      university: 'N/A',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
       active: d.users?.account_status === 'active',
@@ -121,7 +121,7 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
   const realUserId = authData.user.id;
   const mockCitizenId = '9' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
   const names = dentist.name.split(' ');
-  
+
   await supabase.from('profile').insert({
     citizen_id: mockCitizenId,
     first_name: names[0] || '',
@@ -143,14 +143,14 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
     specialization: dentist.specialty,
     license_number: dentist.license
   }).select().single();
-  
+
   if (error) throw error;
-  
+
   if (dentist.serviceIds && dentist.serviceIds.length > 0) {
     const dsInserts = dentist.serviceIds.map(sid => ({ dentist_id: data.dentist_id, service_id: sid }));
     await supabase.from('dentist_service').insert(dsInserts);
   }
-  
+
   return { ...dentist, id: data.dentist_id, userId: realUserId };
 }
 export async function updateDentist(id: number, updates: Partial<DentistInfo>): Promise<DentistInfo> {
@@ -167,7 +167,7 @@ export async function updateDentist(id: number, updates: Partial<DentistInfo>): 
       await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', data.user_id);
     }
   }
-  
+
   if (updates.serviceIds !== undefined) {
     await supabase.from('dentist_service').delete().eq('dentist_id', id);
     if (updates.serviceIds.length > 0) {
@@ -175,7 +175,7 @@ export async function updateDentist(id: number, updates: Partial<DentistInfo>): 
       await supabase.from('dentist_service').insert(dsInserts);
     }
   }
-  
+
   return { id, ...updates } as DentistInfo;
 }
 export async function deleteDentist(id: number): Promise<void> {
@@ -190,12 +190,12 @@ export async function getAdmins() {
     account_status,
     profile (first_name, last_name, phone_number)
   `).eq('role', 'admin');
-  
+
   if (error) {
     console.error("getAdmins error:", error);
     return [];
   }
-  
+
   return data.map((d: any) => {
     const p = d.profile;
     return {
@@ -226,10 +226,10 @@ export async function addAdmin(admin: any) {
   }
 
   const realUserId = authData.user.id;
-  const citizenIdToUse = admin.citizenId && admin.citizenId.trim() !== '' 
-    ? admin.citizenId 
+  const citizenIdToUse = admin.citizenId && admin.citizenId.trim() !== ''
+    ? admin.citizenId
     : '9' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
-    
+
   const names = admin.name.split(' ');
   await supabase.from('profile').insert({
     citizen_id: citizenIdToUse,
@@ -275,7 +275,7 @@ export async function getStaff() {
     console.error("getStaff error:", error);
     return [];
   }
-  
+
   return data.map((d: any) => {
     const p = d.users?.profile;
     return {
@@ -331,7 +331,7 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
     employment_status: staff.active ? 'ปฏิบัติงานปกติ' : 'พักงาน',
     hire_date: staff.startDate
   }).select().single();
-  
+
   if (error) throw error;
   return { ...staff, id: data.staff_id };
 }
@@ -339,7 +339,7 @@ export async function updateStaff(id: number, updates: Partial<StaffInfo>): Prom
   const staffUpdates: any = {};
   if (updates.role !== undefined) staffUpdates.position = updates.role;
   if (updates.active !== undefined) staffUpdates.employment_status = updates.active ? 'ปฏิบัติงานปกติ' : 'พักงาน';
-  
+
   if (Object.keys(staffUpdates).length > 0) {
     const { error } = await supabase.from('staff').update(staffUpdates).eq('staff_id', id);
     if (error) throw error;
@@ -377,7 +377,7 @@ export async function updateServiceCategory(id: number, updates: Partial<Service
   if (updates.name !== undefined) dbUpdates.category_name = updates.name;
   if (updates.icon !== undefined) dbUpdates.icon_name = updates.icon;
   if (updates.color !== undefined) dbUpdates.color_code = updates.color;
-  
+
   const { data, error } = await supabase.from('service_category').update(dbUpdates).eq('category_id', id).select().single();
   if (error) throw error;
   return { id: data.category_id, name: data.category_name, icon: data.icon_name, color: data.color_code };
@@ -429,7 +429,7 @@ export async function updateService(id: number, updates: Partial<ServiceInfo>): 
   if (updates.estimatedTime !== undefined) serviceUpdates.estimated_time = updates.estimatedTime;
   if (updates.requiresConfirmation !== undefined) serviceUpdates.requires_confirmation = updates.requiresConfirmation;
   if (updates.active !== undefined) serviceUpdates.is_active = updates.active;
-  
+
   const { error } = await supabase.from('service').update(serviceUpdates).eq('service_id', id);
   if (error) throw error;
   return { id, ...updates } as ServiceInfo;
@@ -442,20 +442,20 @@ export async function updateServiceActiveStatus(id: number, active: boolean) {
   const { data } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
   let disabledIds: number[] = [];
   if (data && data.setting_value) {
-    try { disabledIds = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value; } catch(e) {}
+    try { disabledIds = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value; } catch (e) { }
   }
-  
+
   if (active) {
     disabledIds = disabledIds.filter(x => x !== id);
   } else {
     if (!disabledIds.includes(id)) disabledIds.push(id);
   }
-  
+
   const { error } = await supabase.from('clinic_settings').upsert({
     setting_key: 'disabled_services',
     setting_value: JSON.stringify(disabledIds)
   }, { onConflict: 'setting_key' });
-  
+
   if (error) throw error;
 }
 
@@ -463,26 +463,26 @@ export async function updateServiceActiveStatus(id: number, active: boolean) {
 export async function getLandingServices() {
   const { data, error } = await supabase.from('service').select('*, service_category:category_id (icon_name, color_code)');
   if (error) return [];
-  
+
   const { data: settingsData } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
   let disabledIds: number[] = [];
   if (settingsData && settingsData.setting_value) {
-    try { disabledIds = typeof settingsData.setting_value === 'string' ? JSON.parse(settingsData.setting_value) : settingsData.setting_value; } catch(e) {}
+    try { disabledIds = typeof settingsData.setting_value === 'string' ? JSON.parse(settingsData.setting_value) : settingsData.setting_value; } catch (e) { }
   }
-  
+
   return data
     .filter((d: any) => !disabledIds.includes(d.service_id))
     .map((d: any) => ({
-    serviceId: d.service_id,
-    iconName: d.service_category?.icon_name || 'Smile',
-    title: d.service_name,
-    desc: d.description || `บริการระดับมืออาชีพ ใช้เวลาประมาณ ${d.estimated_time} นาที`,
-    price: `เริ่มต้น ${d.base_price.toLocaleString()} บาท`,
-    color: d.service_category?.color_code || '#FFE8EC',
-    type: d.service_type || 'general',
-    baseTimeMins: d.estimated_time || 30,
-    requiresConfirmation: d.requires_confirmation || false
-  }));
+      serviceId: d.service_id,
+      iconName: d.service_category?.icon_name || 'Smile',
+      title: d.service_name,
+      desc: d.description || `บริการระดับมืออาชีพ ใช้เวลาประมาณ ${d.estimated_time} นาที`,
+      price: `เริ่มต้น ${d.base_price.toLocaleString()} บาท`,
+      color: d.service_category?.color_code || '#FFE8EC',
+      type: d.service_type || 'general',
+      baseTimeMins: d.estimated_time || 30,
+      requiresConfirmation: d.requires_confirmation || false
+    }));
 }
 
 export async function getPaymentPlans(serviceId: number) {
@@ -491,7 +491,7 @@ export async function getPaymentPlans(serviceId: number) {
     .select('*')
     .eq('service_id', serviceId)
     .order('plan_id', { ascending: true });
-    
+
   if (error) {
     console.error("getPaymentPlans error:", error);
     return [];
@@ -502,7 +502,7 @@ export async function getPaymentPlans(serviceId: number) {
 export async function getLandingDoctors() {
   const { data, error } = await supabase.from('dentist').select('*, users(profile(first_name, last_name))');
   if (error) return [];
-  
+
   return data.map((d: any) => ({
     id: d.dentist_id,
     userId: d.user_id,
@@ -553,7 +553,7 @@ export async function getReviews() {
     appointment ( appointment_detail ( service (service_name) ) )
   `);
   if (error) return [];
-  
+
   return data.map((d: any) => {
     const prof = d.patient?.users?.profile;
     const name = prof ? `${prof.first_name} ${prof.last_name}` : 'ไม่ระบุชื่อ';
@@ -571,7 +571,7 @@ export async function getReviews() {
 export async function getClinicSettings() {
   const { data, error } = await supabase.from('clinic_settings').select('*');
   if (error) return {};
-  
+
   const settings: Record<string, string> = {};
   data.forEach((s: any) => {
     settings[s.setting_key] = s.setting_value;
@@ -653,7 +653,7 @@ export async function getPatients() {
     console.error("getPatients error:", error);
     return [];
   }
-  
+
   return data.map((d: any) => {
     const p = d.users?.profile;
     return {
@@ -768,7 +768,7 @@ export async function loginPatient(email: string, pass: string) {
     email,
     password: pass
   });
-  
+
   if (authError || !authData.user) {
     throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
   }
@@ -790,12 +790,12 @@ export async function getPatientProfileByUserId(userId: string) {
     *,
     profile (*)
   `).eq('user_id', userId).single();
-  
+
   if (error || !data || !data.profile) return null;
-  
+
   const p = data.profile;
   const { data: patientData } = await supabase.from('patient').select('*').eq('user_id', userId).maybeSingle();
-  
+
   return {
     patientId: patientData?.patient_id,
     firstName: p.first_name,
@@ -824,40 +824,40 @@ export async function getAppointments(date?: string) {
     dentist ( users ( profile (first_name, last_name) ) ),
     treatment_record ( attending_dentist_id, doctor_note, odontogram_data, payment (total_amount, payment_status) )
   `);
-  
+
   if (date) query = query.eq('appointment_date', date);
   const { data, error } = await query;
   if (error) {
     console.error("getAppointments error:", error);
     return [];
   }
-  
+
   return data.map((d: any) => {
     const p = d.patient?.users?.profile;
     // นำบริการทั้งหมดมารวมเป็น string เดียว
     const services = d.appointment_detail?.map((ad: any) => ad.service?.service_name).join(', ') || 'ไม่ได้ระบุบริการ';
-    
+
     let doctorName = 'รอระบุแพทย์';
     let doctorId = d.dentist_id || 0;
-    
+
     if (d.dentist?.users?.profile) {
       doctorName = `${d.dentist.users.profile.first_name} ${d.dentist.users.profile.last_name}`;
     }
-    
+
     let cost = d.appointment_detail?.[0]?.service?.base_price || 0;
     let paid = false;
     let treatmentNotes = '';
     let recommendations = '';
     let treatmentServices: string[] = [];
-    
+
     if (d.treatment_record) {
       const tr = Array.isArray(d.treatment_record) ? d.treatment_record[0] : d.treatment_record;
       if (tr && tr.doctor_note) {
         let rawNote = tr.doctor_note;
         if (rawNote.includes("|||")) {
-           const parts = rawNote.split("|||");
-           try { treatmentServices = JSON.parse(parts[0]); } catch(e){}
-           rawNote = parts.slice(1).join("|||");
+          const parts = rawNote.split("|||");
+          try { treatmentServices = JSON.parse(parts[0]); } catch (e) { }
+          rawNote = parts.slice(1).join("|||");
         }
         const noteParts = rawNote.split('\\nคำแนะนำ: ');
         treatmentNotes = noteParts[0];
@@ -883,8 +883,8 @@ export async function getAppointments(date?: string) {
       doctorName,
       doctorId,
       date: d.appointment_date,
-      time: d.start_time?.slice(0,5) || '00:00',
-      endTime: d.end_time_est?.slice(0,5) || d.start_time?.slice(0,5) || '00:00',
+      time: d.start_time?.slice(0, 5) || '00:00',
+      endTime: d.end_time_est?.slice(0, 5) || d.start_time?.slice(0, 5) || '00:00',
       status: d.appointment_status || 'รอการยืนยัน',
       conditions: d.patient?.underlying_disease || '',
       allergies: d.patient?.allergy_history || '',
@@ -937,14 +937,14 @@ export async function getPatientAppointments(patientId?: number) {
   return data.map((d: any) => {
     const p = d.patient?.users?.profile;
     const services = d.appointment_detail?.map((ad: any) => ad.service?.service_name).join(', ') || 'ไม่ได้ระบุบริการ';
-    
+
     let doctorName = 'รอระบุแพทย์';
     let doctorId = 0;
     let cost = 0;
     let paid = false;
     let treatmentNotes = '';
     let recommendations = '';
-    
+
     if (d.treatment_record) {
       const tr = Array.isArray(d.treatment_record) ? d.treatment_record[0] : d.treatment_record;
       if (tr) {
@@ -979,8 +979,8 @@ export async function getPatientAppointments(patientId?: number) {
       doctorName,
       doctorId,
       date: d.appointment_date,
-      time: d.start_time?.slice(0,5) || '00:00',
-      endTime: d.end_time_est?.slice(0,5) || d.start_time?.slice(0,5) || '00:00',
+      time: d.start_time?.slice(0, 5) || '00:00',
+      endTime: d.end_time_est?.slice(0, 5) || d.start_time?.slice(0, 5) || '00:00',
       status: d.appointment_status || 'รอการยืนยัน',
       conditions: d.patient?.underlying_disease || '',
       allergies: d.patient?.allergy_history || '',
@@ -1029,20 +1029,20 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     const appt = d.appointment ? (Array.isArray(d.appointment) ? d.appointment[0] : d.appointment) : undefined;
     const apptDetail = appt?.appointment_detail ? (Array.isArray(appt.appointment_detail) ? appt.appointment_detail[0] : appt.appointment_detail) : undefined;
     const pay = d.payment ? (Array.isArray(d.payment) ? d.payment[0] : d.payment) : undefined;
-    
+
     const srvName = detail?.service?.service_name || apptDetail?.service?.service_name || 'ไม่ระบุบริการ';
     const costAmt = pay?.total_amount || detail?.actual_price || 0;
-    
+
     let treatmentNotes = d.doctor_note || '';
     let recommendations = detail?.diagnosis || '';
     let treatmentServices: string[] = [];
-    
+
     if (d.doctor_note) {
       let rawNote = d.doctor_note;
       if (rawNote.includes("|||")) {
-         const parts = rawNote.split("|||");
-         try { treatmentServices = JSON.parse(parts[0]); } catch(e){}
-         rawNote = parts.slice(1).join("|||");
+        const parts = rawNote.split("|||");
+        try { treatmentServices = JSON.parse(parts[0]); } catch (e) { }
+        rawNote = parts.slice(1).join("|||");
       }
       const noteParts = rawNote.split('\\nคำแนะนำ: ');
       treatmentNotes = noteParts[0];
@@ -1055,7 +1055,7 @@ export async function getPatientTreatmentRecords(patientId?: number) {
       treatmentServices,
       doctor: dr ? `${dr.first_name} ${dr.last_name}` : 'ไม่ระบุแพทย์',
       date: d.treatment_date,
-      time: d.appointment?.start_time?.slice(0,5) || '00:00',
+      time: d.appointment?.start_time?.slice(0, 5) || '00:00',
       cost: costAmt.toLocaleString(),
       notes: treatmentNotes,
       teeth: detail?.tooth_number || '',
@@ -1083,7 +1083,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
       .select('appointment_date, start_time, end_time_est, appointment_status')
       .eq('dentist_id', appointment.doctorId)
       .eq('appointment_date', appointment.date);
-    
+
     if (overlapping && overlapping.length > 0) {
       const duration = appointment.durationMins || 30;
       const [newH, newM] = (appointment.time || "00:00").split(':').map(Number);
@@ -1092,14 +1092,14 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
 
       for (const apptData of overlapping) {
         if (apptData.appointment_status === 'ยกเลิก' || apptData.appointment_status === 'ไม่มาตามนัด') continue;
-        
+
         const [existH, existM] = (apptData.start_time || "00:00").split(':').map(Number);
         const existStartMins = (existH * 60) + existM;
         const [existEH, existEM] = (apptData.end_time_est || "00:00").split(':').map(Number);
         const existEndMins = (existEH * 60) + existEM;
 
         if (newStartMins < existEndMins && newEndMins > existStartMins) {
-          throw new Error(`คิวทับซ้อน: ทันตแพทย์ติดคิวเวลา ${apptData.start_time.substring(0,5)} - ${apptData.end_time_est.substring(0,5)} แล้ว`);
+          throw new Error(`คิวทับซ้อน: ทันตแพทย์ติดคิวเวลา ${apptData.start_time.substring(0, 5)} - ${apptData.end_time_est.substring(0, 5)} แล้ว`);
         }
       }
     }
@@ -1110,31 +1110,31 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   if (!finalPatientId) {
     const { data: patData } = await supabase.from('patient').select('patient_id, users!inner(profile!inner(first_name, last_name, phone_number))');
     if (patData && patData.length > 0) {
-      const matched = patData.find((p: any) => 
+      const matched = patData.find((p: any) =>
         (appointment.patientPhone && p.users?.profile?.phone_number === appointment.patientPhone) ||
         (appointment.patientName && (p.users?.profile?.first_name + ' ' + p.users?.profile?.last_name).includes(appointment.patientName))
       );
       if (matched) finalPatientId = matched.patient_id;
     }
-    
+
     if (!finalPatientId) {
-       const mockUserId = crypto.randomUUID();
-       const mockCitizenId = '99' + Math.floor(Math.random() * 100000000000).toString().padStart(11, '0');
-       const names = appointment.patientName.split(' ');
-       await supabase.from('profile').insert({
-         citizen_id: mockCitizenId, 
-         first_name: names[0] || 'Unknown',
-         last_name: names.slice(1).join(' ') || '',
-         phone_number: appointment.patientPhone || ''
-       });
-       await supabase.from('users').insert({
-         user_id: mockUserId,
-         citizen_id: mockCitizenId,
-         role: 'คนไข้',
-         account_status: 'active'
-       });
-       const { data: newPat } = await supabase.from('patient').insert({ user_id: mockUserId }).select().single();
-       finalPatientId = newPat.patient_id;
+      const mockUserId = crypto.randomUUID();
+      const mockCitizenId = '99' + Math.floor(Math.random() * 100000000000).toString().padStart(11, '0');
+      const names = appointment.patientName.split(' ');
+      await supabase.from('profile').insert({
+        citizen_id: mockCitizenId,
+        first_name: names[0] || 'Unknown',
+        last_name: names.slice(1).join(' ') || '',
+        phone_number: appointment.patientPhone || ''
+      });
+      await supabase.from('users').insert({
+        user_id: mockUserId,
+        citizen_id: mockCitizenId,
+        role: 'คนไข้',
+        account_status: 'active'
+      });
+      const { data: newPat } = await supabase.from('patient').insert({ user_id: mockUserId }).select().single();
+      finalPatientId = newPat.patient_id;
     }
   }
 
@@ -1143,7 +1143,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
     const updateData: any = {};
     if (appointment.allergies) updateData.allergy_history = appointment.allergies;
     if (appointment.conditions) updateData.underlying_disease = appointment.conditions;
-    
+
     await supabase.from('patient').update(updateData).eq('patient_id', finalPatientId);
   }
 
@@ -1153,7 +1153,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
       .select('appointment_date, start_time, end_time_est, appointment_status')
       .eq('patient_id', finalPatientId)
       .eq('appointment_date', appointment.date);
-    
+
     if (overlappingPat && overlappingPat.length > 0) {
       const duration = appointment.durationMins || 30;
       const [newH, newM] = (appointment.time || "00:00").split(':').map(Number);
@@ -1162,14 +1162,14 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
 
       for (const apptData of overlappingPat) {
         if (apptData.appointment_status === 'ยกเลิก' || apptData.appointment_status === 'ไม่มาตามนัด') continue;
-        
+
         const [existH, existM] = (apptData.start_time || "00:00").split(':').map(Number);
         const existStartMins = (existH * 60) + existM;
         const [existEH, existEM] = (apptData.end_time_est || "00:00").split(':').map(Number);
         const existEndMins = (existEH * 60) + existEM;
 
         if (newStartMins < existEndMins && newEndMins > existStartMins) {
-          throw new Error(`คิวทับซ้อน: คุณมีนัดหมายในช่วงเวลา ${apptData.start_time.substring(0,5)} - ${apptData.end_time_est.substring(0,5)} อยู่แล้ว`);
+          throw new Error(`คิวทับซ้อน: คุณมีนัดหมายในช่วงเวลา ${apptData.start_time.substring(0, 5)} - ${apptData.end_time_est.substring(0, 5)} อยู่แล้ว`);
         }
       }
     }
@@ -1189,27 +1189,27 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
       }
     }
   }
-  
+
   let finalDoctorId = appointment.doctorId;
   if (!finalDoctorId) {
     // 1. Get dentists who provide this service
     const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', finalServiceId);
     if (dsData && dsData.length > 0) {
       const capableDentists = dsData.map((d: any) => d.dentist_id);
-      
+
       // 2. Check who is working on this day of week
       const dateObj = new Date(appointment.date!);
       const dayOfWeekInt = dateObj.getDay();
-      
+
       // Get all dentists for these IDs
       const { data: dentists } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', capableDentists);
       const userIds = dentists?.map(d => d.user_id) || [];
-      
+
       const { data: schedules } = await supabase.from('schedule').select('user_id, start_shift, end_shift')
         .in('user_id', userIds)
         .eq('day_of_week', dayOfWeekInt)
         .eq('is_off', false);
-        
+
       if (schedules && schedules.length > 0) {
         // Map user_id to dentist_id and keep shift times
         const workingDentists = schedules.map(s => {
@@ -1248,7 +1248,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
               .select('start_time, end_time_est, appointment_status')
               .eq('dentist_id', dId)
               .eq('appointment_date', appointment.date);
-              
+
             if (overlapping) {
               for (const appt of overlapping) {
                 if (appt.appointment_status === 'ยกเลิก' || appt.appointment_status === 'ไม่มาตามนัด') continue;
@@ -1263,12 +1263,12 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
               }
             }
           }
-          
+
           if (isBusy) {
             availableDentists = availableDentists.filter(id => id !== dId);
           }
         }
-        
+
         // Assign a random available dentist
         if (availableDentists.length > 0) {
           finalDoctorId = availableDentists[Math.floor(Math.random() * availableDentists.length)];
@@ -1343,7 +1343,7 @@ export async function updateAppointmentStatus(id: number, status: string, reason
     console.error("Failed to update appointment status:", error);
     throw error;
   }
-  
+
   // Log if cancelled or no show
   if (status === 'ยกเลิก' || status === 'ไม่มาตามนัด') {
     const { data: userData } = await supabase.auth.getUser();
@@ -1364,11 +1364,11 @@ export async function updateAppointmentStatus(id: number, status: string, reason
 export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>, doctorId?: number) {
   // 1. Update appointment status
   await supabase.from('appointment').update({ appointment_status: 'รอชำระเงิน' }).eq('appointment_id', apptId);
-  
+
   // 2. Fetch treatment_record
   const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).maybeSingle();
   let treatmentId = trData?.treatment_id;
-  
+
   // Update or insert treatment record
   const fullNote = JSON.stringify(services || []) + "|||" + notes + (recommendations ? "\\nคำแนะนำ: " + recommendations : "");
   if (treatmentId) {
@@ -1377,24 +1377,24 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
       odontogram_data: toothData || null
     };
     if (doctorId) updatePayload.attending_dentist_id = doctorId;
-    
+
     const { error: updateErr } = await supabase.from('treatment_record').update(updatePayload).eq('treatment_id', treatmentId);
     if (updateErr) console.error("Error updating treatment_record:", updateErr);
   } else {
     const { data: apptData } = await supabase.from('appointment').select('patient_id, dentist_id, treatment_record(attending_dentist_id)').eq('appointment_id', apptId).single();
     if (apptData) {
-       const { data: newTr, error: insertErr } = await supabase.from('treatment_record').insert({
-         appointment_id: apptId,
-         attending_dentist_id: doctorId || apptData.treatment_record?.[0]?.attending_dentist_id || apptData.dentist_id || null,
-         treatment_date: new Date().toISOString().split('T')[0],
-         doctor_note: fullNote,
-         odontogram_data: toothData || null
-       }).select().single();
-       if (insertErr) console.error("Error inserting treatment_record:", insertErr);
-       if (newTr) treatmentId = newTr.treatment_id;
+      const { data: newTr, error: insertErr } = await supabase.from('treatment_record').insert({
+        appointment_id: apptId,
+        attending_dentist_id: doctorId || apptData.treatment_record?.[0]?.attending_dentist_id || apptData.dentist_id || null,
+        treatment_date: new Date().toISOString().split('T')[0],
+        doctor_note: fullNote,
+        odontogram_data: toothData || null
+      }).select().single();
+      if (insertErr) console.error("Error inserting treatment_record:", insertErr);
+      if (newTr) treatmentId = newTr.treatment_id;
     }
   }
-  
+
   // 3. Update or Insert payment record
   if (treatmentId) {
     const { data: payData } = await supabase.from('payment').select('payment_id').eq('treatment_id', treatmentId).maybeSingle();
@@ -1416,7 +1416,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
   // 1. Update appointment status to เสร็จสิ้น
   const { error: apptError } = await supabase.from('appointment').update({ appointment_status: 'เสร็จสิ้น' }).eq('appointment_id', apptId);
   if (apptError) throw apptError;
-  
+
   // 2. Fetch treatment_record
   const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).maybeSingle();
   let treatmentId = trData?.treatment_id;
@@ -1424,7 +1424,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
   if (treatmentId) {
     const { data: payData } = await supabase.from('payment').select('payment_id').eq('treatment_id', treatmentId).maybeSingle();
     if (payData) {
-      await supabase.from('payment').update({ 
+      await supabase.from('payment').update({
         total_amount: finalCost,
         payment_method: method,
         payment_status: 'ชำระแล้ว',
@@ -1440,7 +1440,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
       });
     }
   }
-  
+
   notifyAppointmentsUpdated();
   return { status: 'เสร็จสิ้น' };
 }
@@ -1454,14 +1454,14 @@ export async function getPatientHistory(patientId: number) {
     dentist ( title_name, users ( profile (first_name, last_name) ) ),
     treatment_detail ( tooth_number, diagnosis, actual_price, service (service_name) )
   `).eq('patient_id', patientId);
-  
+
   if (error) return [];
-  
+
   return data.map((d: any) => {
     const td = d.treatment_detail?.[0] || {};
     const dp = d.dentist?.users?.profile;
     const doctorName = dp ? `${d.dentist?.title_name || ''} ${dp.first_name} ${dp.last_name}` : 'ไม่ระบุ';
-    
+
     return {
       id: d.treatment_id,
       service: td.service?.service_name || 'ไม่ระบุ',
@@ -1483,7 +1483,7 @@ export async function getLeaveRequests() {
     users ( profile (first_name, last_name) )
   `);
   if (error) return [];
-  
+
   return data.map((d: any) => {
     const p = d.users?.profile;
     return {
@@ -1507,38 +1507,38 @@ export async function addLeaveRequest(req: Omit<LeaveRequest, 'id' | 'createdAt'
     leave_type: req.reason,
     is_approved: null // null means pending
   }).select().single();
-  
+
   if (error) throw error;
   return data;
 }
 export async function checkAppointmentConflicts(userId: string, date: string, startTime?: string, endTime?: string) {
   // First, find the dentist_id for the given userId
   const { data: dentistData } = await supabase.from('dentist').select('dentist_id').eq('user_id', userId).single();
-  
+
   if (!dentistData) {
     // Not a dentist (likely staff), no direct patient appointments
     return { hasConflict: false, count: 0 };
   }
-  
+
   const dentistId = dentistData.dentist_id;
-  
+
   let query = supabase.from('appointment')
     .select('appointment_id', { count: 'exact' })
     .eq('dentist_id', dentistId)
     .eq('appointment_date', date)
     .in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']); // Active statuses
-    
+
   if (startTime && endTime) {
     // Overlap condition: (existing_start < new_end) AND (existing_end > new_start)
     query = query.lt('start_time', endTime).gt('end_time_est', startTime);
   }
-  
+
   const { count, error } = await query;
   if (error) {
     console.error("checkAppointmentConflicts error:", error);
     throw error;
   }
-  
+
   return { hasConflict: count! > 0, count: count! };
 }
 
@@ -1554,11 +1554,11 @@ export async function updateLeaveStatus(id: number, status: string) {
       let start = '00:00';
       let end = '23:59';
       if (leaveRecord.leave_period === 'ครึ่งวันเช้า') {
-        end = '13:00'; 
+        end = '13:00';
       } else if (leaveRecord.leave_period === 'ครึ่งวันบ่าย') {
         start = '13:00';
       }
-      
+
       const conflict = await checkAppointmentConflicts(leaveRecord.user_id, leaveRecord.leave_date, start, end);
       if (conflict.hasConflict) {
         throw new Error(`ไม่สามารถอนุมัติได้ เนื่องจากมีคิวคนไข้จองไว้แล้ว ${conflict.count} คิว กรุณาเลื่อนหรือยกเลิกคิวก่อน`);
@@ -1586,7 +1586,7 @@ export async function updateLeaveStatus(id: number, status: string) {
 export async function getAnnouncements() {
   const { data, error } = await supabase.from('announcement').select('*').order('created_at', { ascending: false });
   if (error || !data) return [];
-  
+
   return data.map((d: any) => ({
     id: d.id,
     title: d.title,
@@ -1610,9 +1610,9 @@ export async function getPublicAnnouncements() {
     .eq('target', 'public')
     .or(`expires_at.is.null,expires_at.gte.${today}`)
     .order('created_at', { ascending: false });
-    
+
   if (error || !data) return [];
-  
+
   return data.map((d: any) => ({
     id: d.id,
     title: d.title,
@@ -1636,10 +1636,10 @@ export async function addAnnouncement(announcement: Omit<Announcement, 'id' | 'c
     is_active: announcement.isActive,
     expires_at: announcement.expiresAt || null
   };
-  
+
   const { data, error } = await supabase.from('announcement').insert(payload).select().single();
   if (error) throw error;
-  
+
   return {
     id: data.id,
     title: data.title,
@@ -1674,12 +1674,12 @@ export async function deleteAnnouncement(id: number): Promise<void> {
 
 export async function getClinicClosures() {
   const { data, error } = await supabase.from('clinic_holiday').select('*');
-  
+
   if (error) {
     console.error('Error fetching clinic holidays:', error);
     return [];
   }
-  
+
   return data.map(d => ({
     id: d.holiday_id,
     date: d.holiday_date,
@@ -1733,11 +1733,11 @@ export async function getShifts() {
     console.error("getShifts error:", error);
     return [];
   }
-  
+
   return data.map((d: any) => {
     const isDentist = d.users?.dentist && d.users.dentist.length > 0;
     const isStaff = d.users?.staff && d.users.staff.length > 0;
-    
+
     return {
       id: d.schedule_id,
       person_id: isDentist ? d.users.dentist[0].dentist_id : (isStaff ? d.users.staff[0].staff_id : 0),
@@ -1755,17 +1755,17 @@ export async function updateShift(id: number, updates: Partial<Shift>) {
   if (updates.start_time !== undefined) payload.start_shift = updates.start_time;
   if (updates.end_time !== undefined) payload.end_shift = updates.end_time;
   if (updates.is_off !== undefined) payload.is_off = updates.is_off;
-  
+
   const { data, error } = await supabase.from('schedule').update(payload).eq('schedule_id', id).select(`
     *,
     users ( dentist (dentist_id), staff (staff_id) )
   `).single();
-  
+
   if (error) throw error;
-  
+
   const isDentist = data.users?.dentist && data.users.dentist.length > 0;
   const isStaff = data.users?.staff && data.users.staff.length > 0;
-  
+
   return {
     id: data.schedule_id,
     person_id: isDentist ? data.users.dentist[0].dentist_id : (isStaff ? data.users.staff[0].staff_id : 0),
@@ -1780,7 +1780,7 @@ export async function updateShift(id: number, updates: Partial<Shift>) {
 export async function getPromotions() {
   const { data, error } = await supabase.from('promotion').select('*').order('created_at', { ascending: false });
   if (error || !data) return [];
-  
+
   return data.map((d: any) => ({
     id: d.id,
     tag: d.tag,
@@ -1805,9 +1805,9 @@ export async function getPublicPromotions() {
     .eq('is_active', true)
     .gte('valid_until', today)
     .order('created_at', { ascending: false });
-    
+
   if (error || !data) return [];
-  
+
   return data.map((d: any) => ({
     id: d.id,
     tag: d.tag,
@@ -1838,10 +1838,10 @@ export async function addPromotion(promo: Omit<Promotion, 'id'>) {
     is_active: promo.isActive !== false,
     expires_at: promo.expiresAt || null
   };
-  
+
   const { data, error } = await supabase.from('promotion').insert(payload).select().single();
   if (error) throw error;
-  
+
   return {
     ...promo,
     id: data.id,
@@ -1866,7 +1866,7 @@ export async function updatePromotion(id: number, promo: Partial<Promotion>) {
 
   const { data, error } = await supabase.from('promotion').update(payload).eq('id', id).select().single();
   if (error) throw error;
-  
+
   return {
     id: data.id,
     tag: data.tag,
@@ -1894,20 +1894,20 @@ export async function getTreatmentPlans(hn?: string) {
     installment (*),
     patient (users (profile (first_name, last_name)))
   `);
-  
+
   if (hn) {
     const patientId = parseInt(hn.replace('HN', ''), 10);
     if (!isNaN(patientId)) {
-        query = query.eq('patient_id', patientId);
+      query = query.eq('patient_id', patientId);
     }
   }
-  
+
   const { data, error } = await query;
   if (error) {
     console.error("getTreatmentPlans error:", error);
     return [];
   }
-  
+
   return data.map((d: any) => {
     const prof = d.patient?.users?.profile;
     return {
@@ -1961,13 +1961,13 @@ export async function getTreatmentRecords(patientName?: string) {
     const detail = d.treatment_detail?.[0]; // Assume 1 detail per treatment for simplicity
     const srvName = detail?.service?.service_name || 'ไม่ระบุบริการ';
     const costAmt = d.payment?.[0]?.total_amount || detail?.actual_price || 0;
-    
+
     return {
       id: d.treatment_id,
       service: srvName,
       doctor: dr ? `${dr.first_name} ${dr.last_name}` : 'ไม่ระบุแพทย์',
       date: d.treatment_date,
-      time: d.appointment?.start_time?.slice(0,5) || '00:00',
+      time: d.appointment?.start_time?.slice(0, 5) || '00:00',
       cost: costAmt.toLocaleString(),
       notes: d.doctor_note || '',
       teeth: detail?.tooth_number || '',
@@ -1989,13 +1989,13 @@ export async function requestRegistrationOTP(form: RegForm) {
     password: form.password,
   });
   if (error) throw error;
-  
+
   // Supabase returns an empty identities array if the user already exists
   // to prevent email enumeration, but in this case we want to tell the user
   if (data?.user?.identities && data.user.identities.length === 0) {
     throw new Error("อีเมลนี้ได้ลงทะเบียนไว้แล้ว โปรดเข้าสู่ระบบ หรือใช้อีเมลอื่น (หากกำลังทดสอบ โปรดลบยูสเซอร์เก่าใน Supabase ก่อน)");
   }
-  
+
   return true;
 }
 export async function resendOTP(email: string) {
@@ -2062,7 +2062,7 @@ export async function savePatientData(form: RegForm) {
       emergency_contact_name: form.emergencyName || '-',
       emergency_contact_phone: form.emergencyPhone || '-'
     }).select('patient_id').single();
-    
+
     if (patErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลคนไข้: ${patErr.message}`);
     returnedPatientId = patData.patient_id;
   } else {
@@ -2073,7 +2073,7 @@ export async function savePatientData(form: RegForm) {
       emergency_contact_name: form.emergencyName || '-',
       emergency_contact_phone: form.emergencyPhone || '-'
     }).eq('user_id', userId);
-    
+
     if (patUpdErr) throw new Error(`ข้อผิดพลาดอัปเดตข้อมูลคนไข้: ${patUpdErr.message}`);
     returnedPatientId = existingPatient.patient_id;
   }
@@ -2114,7 +2114,7 @@ export async function getDentistTreatmentHistory(dentistId: number) {
   // Format data for easier display in UI
   const history: any[] = [];
   data.forEach((record: any) => {
-    const patientName = record.patient?.users?.profile 
+    const patientName = record.patient?.users?.profile
       ? `${record.patient.users.profile.first_name} ${record.patient.users.profile.last_name}`
       : 'Unknown Patient';
 
@@ -2178,8 +2178,8 @@ export async function sendPasswordResetOTP(email: string): Promise<void> {
     console.error("signInWithOtp error:", error);
     // Supabase จะ return error ถ้าอีเมลนี้ไม่มีใน auth.users
     if (error.message?.toLowerCase().includes("user not found") ||
-        error.message?.toLowerCase().includes("email not confirmed") ||
-        error.status === 422 || error.status === 400) {
+      error.message?.toLowerCase().includes("email not confirmed") ||
+      error.status === 422 || error.status === 400) {
       throw new Error("ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีเมลอีกครั้ง");
     }
     throw new Error("ไม่สามารถส่ง OTP ได้ กรุณาตรวจสอบอีเมลและลองใหม่อีกครั้ง");
@@ -2251,13 +2251,13 @@ export async function updateAppointmentDetails(id: number, updates: any) {
     const endMm = totalMins % 60;
     payload.end_time_est = `${String(endHh).padStart(2, '0')}:${String(endMm).padStart(2, '0')}:00`;
   }
-  
+
   if (updates.doctorId && (!updates.date && !updates.time)) {
     actionType = 'TRANSFER';
   } else if (updates.doctorId && (updates.date || updates.time)) {
     actionType = 'RESCHEDULE_AND_TRANSFER';
   }
-  
+
   const { error } = await supabase.from('appointment').update(payload).eq('appointment_id', id);
   if (error) throw error;
 
@@ -2273,7 +2273,7 @@ export async function updateAppointmentDetails(id: number, updates: any) {
       action_by: userData?.user?.id || null
     });
   }
-  
+
   notifyAppointmentsUpdated();
   return true;
 }
@@ -2293,14 +2293,14 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
   } else {
     let query = supabase.from('dentist').select('dentist_id');
     if (serviceId) {
-       // Only doctors providing this service
-       const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
-       if (dsData) {
-         targetDoctorIds = dsData.map(d => d.dentist_id);
-       }
+      // Only doctors providing this service
+      const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
+      if (dsData) {
+        targetDoctorIds = dsData.map(d => d.dentist_id);
+      }
     } else {
-       const { data: dData } = await query;
-       if (dData) targetDoctorIds = dData.map(d => d.dentist_id);
+      const { data: dData } = await query;
+      if (dData) targetDoctorIds = dData.map(d => d.dentist_id);
     }
   }
 
@@ -2346,7 +2346,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
     const [endH, endM] = shift.end_shift.split(':').map(Number);
     const shiftStartMin = startH * 60 + startM;
     const shiftEndMin = endH * 60 + endM;
-    
+
     // Determine leave block if partial leave
     let leaveStartMin = -1;
     let leaveEndMin = -1;
@@ -2367,15 +2367,15 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
     // Generate 30 min slots
     for (let min = shiftStartMin; min <= shiftEndMin - 30; min += 30) {
       if (min >= leaveStartMin && min < leaveEndMin) continue; // Inside leave block
-      
+
       // Prevent booking past times for today
       if (isToday && min <= currentMin) continue;
 
       const slotStart = min;
       const slotEnd = min + 30;
-      
+
       let overlap = false;
-      
+
       // Check doctor overlap
       for (const app of docApps) {
         if (!app.start_time || !app.end_time_est) continue;
@@ -2383,7 +2383,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
         const [aEh, aEm] = app.end_time_est.split(':').map(Number);
         const aStartMin = aSh * 60 + aSm;
         const aEndMin = aEh * 60 + aEm;
-        
+
         if (aStartMin < slotEnd && aEndMin > slotStart) {
           overlap = true;
           break;
@@ -2398,7 +2398,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
           const [aEh, aEm] = app.end_time_est.split(':').map(Number);
           const aStartMin = aSh * 60 + aSm;
           const aEndMin = aEh * 60 + aEm;
-          
+
           if (aStartMin < slotEnd && aEndMin > slotStart) {
             overlap = true;
             break;
@@ -2425,10 +2425,10 @@ export async function deleteServiceCategory(id: number) {
 export async function getDoctorSchedules() {
   const { data, error } = await supabase.from('schedule').select('user_id, day_of_week, start_shift, end_shift, is_off');
   if (error || !data) return [];
-  
+
   const { data: dentists } = await supabase.from('dentist').select('dentist_id, user_id');
   if (!dentists) return [];
-  
+
   return data.map((s: any) => {
     const d = dentists.find((d: any) => d.user_id === s.user_id);
     return {
@@ -2454,7 +2454,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
   const dailyHours = await getDailyHours();
   const dayHours = dailyHours[dayOfWeek.toString()];
   if (!dayHours) return [];
-  
+
   const [openH, openM] = dayHours.open.split(':').map(Number);
   const [closeH, closeM] = dayHours.close.split(':').map(Number);
   const clinicOpenMin = openH * 60 + openM;
@@ -2462,20 +2462,20 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
 
   // 0. Check if clinic is closed
   const { data: holiday } = await supabase.from('clinic_holiday').select('holiday_id').eq('holiday_date', date).maybeSingle();
-  
+
   let targetDoctorIds: number[] = [];
   if (doctorId) {
     targetDoctorIds = [doctorId];
   } else {
     let query = supabase.from('dentist').select('dentist_id');
     if (serviceId) {
-       const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
-       if (dsData) {
-         targetDoctorIds = dsData.map(d => d.dentist_id);
-       }
+      const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
+      if (dsData) {
+        targetDoctorIds = dsData.map(d => d.dentist_id);
+      }
     } else {
-       const { data: dData } = await query;
-       if (dData) targetDoctorIds = dData.map(d => d.dentist_id);
+      const { data: dData } = await query;
+      if (dData) targetDoctorIds = dData.map(d => d.dentist_id);
     }
   }
 
@@ -2504,7 +2504,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
   const isToday = new Date().toISOString().split('T')[0] === date;
   const now = new Date();
   const currentMin = now.getHours() * 60 + now.getMinutes();
-  
+
   const patApps = patientId ? (appointments?.filter(a => a.patient_id === patientId) || []) : [];
 
   const results: TimeSlotStatus[] = [];
@@ -2513,7 +2513,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
     const hh = Math.floor(min / 60);
     const mm = min % 60;
     const timeStr = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-    
+
     if (holiday) {
       results.push({ time: timeStr, status: 'outside_shift' });
       continue;
@@ -2526,7 +2526,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
 
     const slotStart = min;
     const slotEnd = min + 30;
-    
+
     // Check patient overlap globally
     let patientOverlap = false;
     for (const app of patApps) {
@@ -2540,7 +2540,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
         break;
       }
     }
-    
+
     if (patientOverlap) {
       results.push({ time: timeStr, status: 'booked' });
       continue;
@@ -2583,7 +2583,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
       } else if (docLeave?.leave_period === 'ครึ่งวันบ่าย') {
         leaveStartMin = 13 * 60; leaveEndMin = 24 * 60;
       }
-      
+
       if (min >= leaveStartMin && min < leaveEndMin) continue;
 
       // Check doctor appointments
