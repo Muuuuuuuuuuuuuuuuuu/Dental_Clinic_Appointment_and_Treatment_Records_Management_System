@@ -8,7 +8,7 @@ import { View, PatientUser } from "../types";
 import {
   addAppointment, getClinicClosures,
   getLandingServices, getLandingDoctors, getDentistsByService,
-  getPaymentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus
+  getPaymentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves
 } from "../../shared/supabaseApi";
 import { SpecialClosure } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";
@@ -147,18 +147,20 @@ export default function BookingView({
   const [backendSlots, setBackendSlots] = useState<TimeSlotStatus[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
+  const [upcomingLeaves, setUpcomingLeaves] = useState<any[]>([]);
   const [fullyBookedDates, setFullyBookedDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     Promise.all([
       getClinicClosures(),
-      getLandingServices(), getLandingDoctors(), getWeeklyOffDays(), getDoctorSchedules()
-    ]).then(([cData, sData, ldData, offData, dsData]) => {
+      getLandingServices(), getLandingDoctors(), getWeeklyOffDays(), getDoctorSchedules(), getUpcomingLeaves()
+    ]).then(([cData, sData, ldData, offData, dsData, leavesData]) => {
       setClosures(cData);
       setServicesData(sData);
       setLandingDoctors(ldData);
       setWeeklyOffDays(offData); // ดึงข้อมูลวันหยุดจาก Database ตามที่ Admin ตั้งค่า
       setDoctorSchedules(dsData);
+      setUpcomingLeaves(leavesData);
     });
   }, []);
 
@@ -202,18 +204,29 @@ export default function BookingView({
     if (step >= 1 && filteredDoctors.length > 0) {
       let isWorking = false;
       if (selDoctor === "any") {
-        // Any doctor in filteredDoctors must be working on this dayOfWk and not off
+        // Any doctor in filteredDoctors must be working on this dayOfWk and not on full leave
         isWorking = filteredDoctors.some(fd => {
           const shift = doctorSchedules.find(s => s.dentistId === fd.id && s.dayOfWeek === dayOfWk);
           if (shift && shift.isOff) return false;
-          return true; // Assume working unless explicitly off
+          const isFullLeave = upcomingLeaves.some(l => l.user_id === fd.userId && l.leave_date === dateStr && l.leave_period === 'เต็มวัน');
+          if (isFullLeave) return false;
+          return true; // Assume working unless explicitly off or full leave
         });
       } else {
-        // Selected doctor must be working
+        // Selected doctor must be working and not on full leave
         const shift = doctorSchedules.find(s => s.dentistId === selDoctor && s.dayOfWeek === dayOfWk);
-        isWorking = shift ? !shift.isOff : true; // Assume working unless explicitly off
+        const selDocData = filteredDoctors.find(fd => fd.id === selDoctor) || landingDoctors.find(d => d.id === selDoctor);
+        const isFullLeave = selDocData ? upcomingLeaves.some(l => l.user_id === selDocData.userId && l.leave_date === dateStr && l.leave_period === 'เต็มวัน') : false;
+        
+        if (shift && shift.isOff) {
+          isWorking = false;
+        } else if (isFullLeave) {
+          isWorking = false;
+        } else {
+          isWorking = true; // Assume working
+        }
       }
-      if (!isWorking) return { status: "past" as const, reason: "แพทย์ไม่เข้าตรวจ" };
+      if (!isWorking) return { status: "past" as const, reason: "แพทย์ไม่เข้าตรวจ/ลา" };
     }
 
     return { status: "available" as const };
@@ -248,21 +261,70 @@ export default function BookingView({
     const doctorIdParam = selDoctor !== "any" && selDoctor !== null ? (selDoctor as number) : undefined;
 
     setLoadingSlots(true);
-    setSelTime(null);
     getClinicTimeSlots(dateStr, serviceId, doctorIdParam, user?.patientId)
       .then((slots) => {
         setBackendSlots(slots);
-        // ตรวจสอบว่าวันนี้คิวเต็มทุกช่วงเวลาหรือไม่
-        const hasAvailable = slots.some(s => s.status === 'available');
-        if (!hasAvailable && slots.length > 0) {
+        // ตรวจสอบว่าวันนี้คิวเต็มทุกช่วงเวลาหรือไม่ (พิจารณา duration ด้วย)
+        const currentReqSlots = Math.ceil((servicesData[selService]?.baseTimeMins || 30) / 30);
+        let hasAnyCanBook = false;
+        for (let i = 0; i < slots.length; i++) {
+          let ok = slots[i].status === 'available';
+          for (let j = 0; j < currentReqSlots; j++) {
+            if (i + j >= slots.length) { ok = false; break; }
+            if (slots[i + j].status !== 'available') { ok = false; break; }
+            if (j > 0) {
+              const [prevH, prevM] = slots[i + j - 1].time.split(":").map(Number);
+              const [curH, curM] = slots[i + j].time.split(":").map(Number);
+              if ((curH * 60 + curM) - (prevH * 60 + prevM) !== 30) { ok = false; break; }
+            }
+          }
+          if (ok) { hasAnyCanBook = true; break; }
+        }
+        
+        if (!hasAnyCanBook && slots.length > 0) {
           setFullyBookedDates(prev => new Set(prev).add(dateStr));
         } else {
           setFullyBookedDates(prev => { const next = new Set(prev); next.delete(dateStr); return next; });
         }
+        
+        // Retain the selected time if it's still available in the new slots
+        setSelTime((prevTime) => {
+          if (!prevTime) return null;
+          const timeIndex = slots.findIndex(s => s.time === prevTime);
+          if (timeIndex === -1) return null;
+          let ok = true;
+          for (let j = 0; j < currentReqSlots; j++) {
+            if (timeIndex + j >= slots.length) { ok = false; break; }
+            if (slots[timeIndex + j].status !== 'available') { ok = false; break; }
+            if (j > 0) {
+              const [prevH, prevM] = slots[timeIndex + j - 1].time.split(":").map(Number);
+              const [curH, curM] = slots[timeIndex + j].time.split(":").map(Number);
+              if ((curH * 60 + curM) - (prevH * 60 + prevM) !== 30) { ok = false; break; }
+            }
+          }
+          return ok ? prevTime : null;
+        });
       })
       .catch(() => setBackendSlots([]))
       .finally(() => setLoadingSlots(false));
   }, [selDay, selDoctor, selService, monthOffset, year, month, servicesData]);
+
+  // Handle doctor or service changes to invalidate selected day and clear fully booked cache
+  useEffect(() => {
+    setFullyBookedDates(new Set());
+    if (selDay !== null) {
+      if (dayStatus(selDay).status !== "available") {
+        setSelDay(null);
+        setSelTime(null);
+      }
+    }
+  }, [selDoctor, selService]);
+
+  // Handle month change separately to always clear selected day
+  useEffect(() => {
+    setSelDay(null);
+    setSelTime(null);
+  }, [monthOffset]);
 
   // ─── Compute canBook from backendSlots (consecutive slot check) ──────────
   const availableTimes = backendSlots.map((slot, i) => {

@@ -505,6 +505,7 @@ export async function getLandingDoctors() {
   
   return data.map((d: any) => ({
     id: d.dentist_id,
+    userId: d.user_id,
     name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
     specialty: d.specialization || 'ทันตแพทย์',
     img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format',
@@ -516,7 +517,7 @@ export async function getLandingDoctors() {
 export async function getDentistsByService(serviceId: number) {
   const { data, error } = await supabase
     .from('dentist_service')
-    .select('dentist_id, dentist(dentist_id, title_name, specialization, image_url, users(profile(first_name, last_name)))')
+    .select('dentist_id, dentist(dentist_id, user_id, title_name, specialization, image_url, users(profile(first_name, last_name)))')
     .eq('service_id', serviceId);
   if (error || !data) return [];
 
@@ -525,11 +526,24 @@ export async function getDentistsByService(serviceId: number) {
     if (!d) return null;
     return {
       id: d.dentist_id,
+      userId: d.user_id,
       name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
       specialty: d.specialization || 'ทันตแพทย์',
       img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format'
     };
   }).filter(Boolean);
+}
+
+export async function getUpcomingLeaves() {
+  const today = new Date();
+  today.setDate(1);
+  const dateStr = today.toISOString().split('T')[0];
+  const { data, error } = await supabase.from('leave_record')
+    .select('user_id, leave_date, leave_period')
+    .eq('is_approved', true)
+    .gte('leave_date', dateStr);
+  if (error) return [];
+  return data;
 }
 
 export async function getReviews() {
