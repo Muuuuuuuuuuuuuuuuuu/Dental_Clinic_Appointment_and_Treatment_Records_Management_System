@@ -48,9 +48,12 @@ export default function ConfirmationsView() {
           {pendingAppointments.map(a => (
             <div key={a.id} className="rounded-2xl bg-white p-5 flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)", borderLeft: "4px solid #F57F17" }}>
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-sm font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF8E1", color: "#F57F17" }}>รอการยืนยัน</span>
                   <span className="font-bold" style={{ color: "#1A365D" }}>{a.date} | {a.time} น.</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
+                    {((a.conditions && a.conditions !== "ไม่มี" && !a.conditions.includes("ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ")) || (a.allergies && a.allergies !== "ไม่มี" && !a.allergies.includes("ไม่มีประวัติแพ้ยา"))) ? "ผู้ป่วยมีความเสี่ยงสุขภาพ" : "บริการต้องให้แพทย์ประเมิน"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="text-base font-semibold" style={{ color: "#1A365D" }}>{a.patientName}</p>
@@ -60,6 +63,18 @@ export default function ConfirmationsView() {
                   <strong>บริการ:</strong> {a.service} <br/>
                   <strong>ทันตแพทย์:</strong> {a.doctorName}
                 </p>
+                {(a.conditions && a.conditions !== "ไม่มี" && !a.conditions.includes("ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ")) && (
+                  <div className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-lg flex gap-1.5 items-start bg-red-50 text-red-700 border border-red-100">
+                    <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                    <span>เสี่ยงสุขภาพ: {a.conditions}</span>
+                  </div>
+                )}
+                {(a.allergies && a.allergies !== "ไม่มี" && !a.allergies.includes("ไม่มีประวัติแพ้ยา")) && (
+                  <div className="mt-1 text-xs font-semibold px-3 py-1.5 rounded-lg flex gap-1.5 items-start bg-orange-50 text-orange-700 border border-orange-100">
+                    <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                    <span>แพ้ยา: {a.allergies}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 mt-2">
                   <PhoneCall size={14} style={{ color: "#4A6080" }} />
                   <span className="text-sm font-medium" style={{ color: "#1D6FA4" }}>{a.patientPhone}</span>

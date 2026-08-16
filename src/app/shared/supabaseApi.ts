@@ -1124,6 +1124,15 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
     }
   }
 
+  // Update patient's health data if provided in the appointment booking
+  if (finalPatientId && (appointment.allergies || appointment.conditions)) {
+    const updateData: any = {};
+    if (appointment.allergies) updateData.allergy_history = appointment.allergies;
+    if (appointment.conditions) updateData.underlying_disease = appointment.conditions;
+    
+    await supabase.from('patient').update(updateData).eq('patient_id', finalPatientId);
+  }
+
   // 2.5 Conflict Check (Patient Level)
   if (finalPatientId) {
     const { data: overlappingPat } = await supabase.from('appointment')

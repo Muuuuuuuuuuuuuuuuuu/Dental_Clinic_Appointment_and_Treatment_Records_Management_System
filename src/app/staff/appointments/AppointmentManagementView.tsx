@@ -226,10 +226,27 @@ export default function AppointmentManagementView({
                         {a.status}
                       </span>
                     )}
+                    {activeTab === "confirm" && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
+                        {((a.conditions && a.conditions !== "ไม่มี" && !a.conditions.includes("ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ")) || (a.allergies && a.allergies !== "ไม่มี" && !a.allergies.includes("ไม่มีประวัติแพ้ยา"))) ? "ผู้ป่วยมีความเสี่ยงสุขภาพ" : "บริการต้องให้แพทย์ประเมิน"}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm mb-2" style={{ color: "#4A6080" }}>
                     <span className="font-semibold text-gray-700">บริการ:</span> {a.service}
                   </p>
+                  {(a.conditions && a.conditions !== "ไม่มี" && !a.conditions.includes("ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ")) && (
+                    <div className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-lg flex gap-1.5 items-start bg-red-50 text-red-700 border border-red-100 w-fit">
+                      <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                      <span>เสี่ยงสุขภาพ: {a.conditions}</span>
+                    </div>
+                  )}
+                  {(a.allergies && a.allergies !== "ไม่มี" && !a.allergies.includes("ไม่มีประวัติแพ้ยา")) && (
+                    <div className="mt-1 text-xs font-semibold px-3 py-1.5 rounded-lg flex gap-1.5 items-start bg-orange-50 text-orange-700 border border-orange-100 w-fit">
+                      <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                      <span>แพ้ยา: {a.allergies}</span>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-4 mt-2">
                     <div className="flex items-center gap-1.5 text-sm">
                       <User size={14} style={{ color: "#1D6FA4" }} />

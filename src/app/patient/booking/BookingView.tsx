@@ -12,6 +12,7 @@ import {
 } from "../../shared/supabaseApi";
 import { SpecialClosure } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";
+import HealthChecklistForm, { HealthChecklistData } from "./HealthChecklistForm";
 
 const iconMap: Record<string, any> = { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity, Clock };
 
@@ -118,6 +119,22 @@ export default function BookingView({
   const [isPending, setIsPending] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [healthData, setHealthData] = useState<HealthChecklistData>({
+    emergencyName: user?.emergencyName || "",
+    emergencyPhone: user?.emergencyPhone || "",
+    hasAllergy: null,
+    allergies: [],
+    allergyOther: "",
+    hasCondition: null,
+    conditions: [],
+    conditionOther: "",
+    hasMedications: null,
+    medicationNote: "",
+    consent: false,
+    hasChanges: null
+  });
+  const [healthValid, setHealthValid] = useState(false);
 
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
   const [servicesData, setServicesData] = useState<any[]>([]);
@@ -253,16 +270,23 @@ export default function BookingView({
     return { t: slot.time, status: slot.status, canBook: ok };
   });
 
-  const canNext = () => step === 0 ? selService !== null : selDay !== null && selTime !== null;
+  const canNext = () => {
+    if (step === 0) return selService !== null;
+    if (step === 1) return selDay !== null && selTime !== null;
+    if (step === 2) return healthValid;
+    return false;
+  };
 
   const handleNext = () => {
     if (!canNext()) return;
     if (step === 0) setStep(1);
-    else if (step === 1) setStep(4);
+    else if (step === 1) setStep(2);
+    else if (step === 2) setStep(4);
   };
 
   const handleBack = () => {
-    if (step === 4) setStep(1);
+    if (step === 4) setStep(2);
+    else if (step === 2) setStep(1);
     else if (step === 1) setStep(0);
   };
 
@@ -287,7 +311,19 @@ export default function BookingView({
     
     const serviceData = servicesData[selService!];
     const isComplex = serviceData?.requiresConfirmation || false;
-    const initialStatus = isComplex ? "รอการยืนยัน" : "ยืนยันการจอง";
+    
+    // Check health risk for routing
+    const isReturning = Boolean(user && (
+      (user.conditions && user.conditions !== 'ไม่มี' && user.conditions.trim() !== '') || 
+      (user.allergies && user.allergies !== 'ไม่มี' && user.allergies.trim() !== '') || 
+      (user.emergencyName && user.emergencyName.trim() !== '')
+    ));
+    const hasExistingCondition = user && user.conditions && user.conditions !== 'ไม่มี' && user.conditions !== 'ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ';
+    const newRiskSelected = healthData.hasCondition === true && healthData.conditions.length > 0;
+    
+    const finalHealthRisk = (isReturning && healthData.hasChanges === false) ? hasExistingCondition : newRiskSelected;
+    
+    const initialStatus = (isComplex || finalHealthRisk) ? "รอการยืนยัน" : "ยืนยันการจอง";
 
     try {
       const res = await addAppointment({
@@ -305,11 +341,25 @@ export default function BookingView({
         status: initialStatus,
         source: "patient", cost: 0, paid: false,
         treatmentNotes: "", treatmentServices: [], recommendations: "",
-        allergies: "ไม่มี", conditions: notes || "ไม่มี",
+        allergies: healthData.hasChanges === false ? (user?.allergies || "ไม่มี") : (healthData.hasAllergy === false ? "ไม่มี" : [
+          ...healthData.allergies.filter(a => a !== 'แพ้อื่นๆ'),
+          ...(healthData.allergies.includes('แพ้อื่นๆ') && healthData.allergyOther ? [`อื่นๆ: ${healthData.allergyOther}`] : [])
+        ].join(", ") || "ไม่มี"), 
+        conditions: healthData.hasChanges === false ? (user?.conditions || "ไม่มี") : (healthData.hasCondition === false ? "ไม่มี" : [
+          ...healthData.conditions.filter(c => c !== 'โรคอื่นๆ'),
+          ...(healthData.conditions.includes('โรคอื่นๆ') && healthData.conditionOther ? [`อื่นๆ: ${healthData.conditionOther}`] : [])
+        ].join(", ") || "ไม่มี"),
         paymentPlanId: selPaymentPlan || undefined,
       });
-      if (res && (res as any).assignedDoctorId) {
+      let finalAssignedDoctorName = finalDoctorName;
+      let finalAssignedDoctorId = finalDoctorId || (res as any).assignedDoctorId || 0;
+      
+      if (finalDoctorName === "ไม่ระบุแพทย์" && (res as any).assignedDoctorId) {
         setMatchedDoctor((res as any).assignedDoctorId);
+        const assignedDoc = landingDoctors.find(d => d.doctorId === (res as any).assignedDoctorId || d.id === (res as any).assignedDoctorId);
+        if (assignedDoc) {
+          finalAssignedDoctorName = assignedDoc.name;
+        }
       }
       if (onAddAppt && res) {
         // Map the Supabase response to the frontend Appointment type roughly so UI updates instantly
@@ -321,8 +371,8 @@ export default function BookingView({
           patientPhone: user?.phone || "080-000-0000",
           service: serviceTitle,
           serviceId: servicesData[selService!]?.serviceId,
-          doctorName: finalDoctorName !== "ไม่ระบุแพทย์" ? finalDoctorName : (res as any).assignedDoctorId ? "ระบบสุ่มเลือกให้" : "รอระบุแพทย์",
-          doctorId: finalDoctorId || (res as any).assignedDoctorId || 0,
+          doctorName: finalAssignedDoctorName !== "ไม่ระบุแพทย์" ? finalAssignedDoctorName : "รอระบุแพทย์",
+          doctorId: finalAssignedDoctorId,
           date: `${year}-${String(month + 1).padStart(2, "0")}-${selDay?.toString().padStart(2, "0")}`,
           time: selTime || "",
           status: initialStatus,
@@ -370,8 +420,8 @@ export default function BookingView({
 
   }
 
-  const steps = [{ id: 0, label: "บริการ" }, { id: 1, label: "รายละเอียดและนัดหมาย" }, { id: 4, label: "ยืนยัน" }];
-  const currentStepIndex = step === 4 ? 2 : step === 1 ? 1 : 0;
+  const steps = [{ id: 0, label: "บริการ" }, { id: 1, label: "รายละเอียดและนัดหมาย" }, { id: 2, label: "ข้อมูลสุขภาพ" }, { id: 4, label: "ยืนยัน" }];
+  const currentStepIndex = step === 4 ? 3 : step === 2 ? 2 : step === 1 ? 1 : 0;
   const serviceTitle = selService !== null ? (servicesData[selService]?.title || "") : "";
   const detail: ServiceDetail = SERVICE_DETAILS[serviceTitle] || DEFAULT_SERVICE_DETAIL;
 
@@ -386,7 +436,10 @@ export default function BookingView({
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จองนัดหมาย</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>
-            {step === 0 && "เลือกบริการ"}{step === 1 && "รายละเอียดและเลือกเวลา"}{step === 4 && "ยืนยันการจอง"}
+            {step === 0 && "เลือกบริการ"}
+            {step === 1 && "รายละเอียดและเลือกเวลา"}
+            {step === 2 && "ตรวจสอบประวัติสุขภาพ"}
+            {step === 4 && "ยืนยันการจอง"}
           </p>
         </div>
       </div>
@@ -653,28 +706,43 @@ export default function BookingView({
                   ) : availableTimes.length > 0 ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {availableTimes.map(({ t, status, canBook }) => {
-                        const isSelected = selTime && t >= selTime && t < endTimeStr;
+                        const [eH, eM] = (endTimeStr || "00:00").split(':').map(Number);
+                        const endTimeMins = eH * 60 + eM;
+                        const [tH, tM] = t.split(':').map(Number);
+                        const tMins = tH * 60 + tM;
+
+                        const isSelected = t === selTime;
+                        const isIncluded = selTime && t > selTime && t < endTimeStr;
+
                         const isBooked = status === 'booked';
                         const isOutside = status === 'outside_shift';
                         const isPast = status === 'past';
                         const isDisabled = !canBook || isBooked || isOutside || isPast;
+
+                        // Calculate slot end time string for display
+                        const slotEndMins = Math.min(tMins + 30, endTimeMins);
+                        const slotEndH = Math.floor(slotEndMins / 60).toString().padStart(2, '0');
+                        const slotEndM = (slotEndMins % 60).toString().padStart(2, '0');
+                        const slotEndStr = `${slotEndH}:${slotEndM}`;
                         
+                        const isActive = isSelected || isIncluded;
+
                         return (
-                          <button key={t} disabled={isDisabled} onClick={() => setSelTime(t)}
+                          <button key={t} disabled={isDisabled || isIncluded} onClick={() => setSelTime(t)}
                             style={{
-                              padding: "8px 4px", borderRadius: 10, fontSize: 12, fontWeight: 600,
-                              border: !isDisabled && !isSelected ? "1.5px solid rgba(255,140,154,0.3)" : isDisabled ? "1px solid #E5E7EB" : "none",
-                              cursor: !isDisabled ? "pointer" : "not-allowed",
+                              padding: "8px 2px", borderRadius: 10, fontSize: 11, fontWeight: 600,
+                              border: (!isDisabled && !isActive) ? "1.5px solid rgba(255,140,154,0.3)" : isDisabled ? "1px solid #E5E7EB" : "none",
+                              cursor: (!isDisabled && !isIncluded) ? "pointer" : "not-allowed",
                               transition: "all 0.15s",
-                              backgroundColor: isSelected ? "#FF8C9A" : isDisabled ? "#F3F4F6" : "white",
-                              color: isSelected ? "white" : isDisabled ? "#9CA3AF" : "#1A365D",
-                              boxShadow: !isDisabled && !isSelected ? "0 1px 4px rgba(26,54,93,0.1)" : "none",
+                              backgroundColor: isActive ? "#FF8C9A" : isDisabled ? "#F3F4F6" : "white",
+                              color: isActive ? "white" : isDisabled ? "#9CA3AF" : "#1A365D",
+                              boxShadow: (!isDisabled && !isActive) ? "0 1px 4px rgba(26,54,93,0.1)" : "none",
                             }}>
-                            {t}
-                            {isPast && <span style={{ display: "block", fontSize: 9, color: "#9CA3AF", marginTop: 2 }}>หมดเวลา</span>}
-                            {isOutside && <span style={{ display: "block", fontSize: 9, color: "#9CA3AF", marginTop: 2 }}>ไม่ออกตรวจ</span>}
-                            {isBooked && <span style={{ display: "block", fontSize: 9, color: "#F87171", marginTop: 2 }}>คิวไม่ว่าง</span>}
-                            {(!isBooked && !isOutside && !isPast && !canBook) && <span style={{ display: "block", fontSize: 9, color: "#FBBF24", marginTop: 2 }}>เวลาไม่พอ</span>}
+                            {isActive ? `${t}-${slotEndStr}` : t}
+                            {isPast && !isActive && <span style={{ display: "block", fontSize: 9, color: "#9CA3AF", marginTop: 2 }}>หมดเวลา</span>}
+                            {isOutside && !isActive && <span style={{ display: "block", fontSize: 9, color: "#9CA3AF", marginTop: 2 }}>ไม่ออกตรวจ</span>}
+                            {isBooked && !isActive && <span style={{ display: "block", fontSize: 9, color: "#F87171", marginTop: 2 }}>คิวไม่ว่าง</span>}
+                            {(!isBooked && !isOutside && !isPast && !canBook) && !isActive && <span style={{ display: "block", fontSize: 9, color: "#FBBF24", marginTop: 2 }}>เวลาไม่พอ</span>}
                           </button>
                         );
                       })}
@@ -707,6 +775,24 @@ export default function BookingView({
               {canNext() ? <><span>ดำเนินการต่อ</span><ArrowRight size={16} /></> : "เลือกวันและเวลาก่อน"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ══ STEP 2: Health Checklist ══ */}
+      {step === 2 && (
+        <div className="animate-fade-in space-y-6">
+          <HealthChecklistForm 
+            user={user} 
+            data={healthData} 
+            onChange={(data, valid) => {
+              setHealthData(data);
+              setHealthValid(valid);
+            }} 
+          />
+          <button onClick={handleNext} disabled={!canNext()}
+            style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: canNext() ? "pointer" : "not-allowed", background: canNext() ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)" : "rgba(26,54,93,0.08)", color: canNext() ? "white" : "#94A3B8", boxShadow: canNext() ? "0 4px 20px rgba(255,140,154,0.35)" : "none", transition: "all 0.2s" }}>
+            {canNext() ? <><span>ไปหน้ายืนยันการจอง</span><ArrowRight size={16} /></> : "กรุณากรอกข้อมูลและกดยินยอมให้ครบถ้วน"}
+          </button>
         </div>
       )}
 
