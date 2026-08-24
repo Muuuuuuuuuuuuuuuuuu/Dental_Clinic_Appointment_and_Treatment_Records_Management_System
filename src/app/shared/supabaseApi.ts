@@ -109,7 +109,7 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
   // 1. สร้างบัญชีผู้ใช้ใน Supabase Auth จริงๆ
   const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
     email: dentist.email,
-    password: 'password123', // รหัสผ่านตั้งต้น
+    password: dentist.password || 'password123',
     email_confirm: true
   });
 
@@ -188,7 +188,8 @@ export async function getAdmins() {
     user_id,
     email,
     account_status,
-    profile (first_name, last_name, phone_number)
+    profile (first_name, last_name, phone_number),
+    staff (salary)
   `).eq('role', 'admin');
 
   if (error) {
@@ -245,6 +246,14 @@ export async function addAdmin(admin: any) {
     account_status: admin.active ? 'active' : 'inactive'
   });
 
+  await supabase.from('staff').insert({
+    user_id: realUserId,
+    position: 'ผู้ดูแลระบบ',
+    employment_status: admin.active ? 'ปฏิบัติงานปกติ' : 'พักงาน',
+    hire_date: new Date().toISOString().split('T')[0],
+    salary: admin.salary ? parseFloat(admin.salary) : null
+  });
+
   return {
     id: realUserId,
     name: admin.name,
@@ -258,7 +267,9 @@ export async function updateAdmin(id: string, updates: any) {
   if (updates.active !== undefined) {
     await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', id);
   }
-  // Other updates if necessary
+  if (updates.salary !== undefined) {
+    await supabase.from('staff').update({ salary: updates.salary ? parseFloat(updates.salary) : null }).eq('user_id', id);
+  }
   return { id, ...updates };
 }
 
@@ -285,7 +296,8 @@ export async function getStaff() {
       email: d.users?.email || '',
       phone: p?.phone_number || '',
       startDate: d.hire_date,
-      active: d.employment_status === 'ปฏิบัติงานปกติ'
+      active: d.employment_status === 'ปฏิบัติงานปกติ',
+      salary: d.salary?.toString() || ''
     };
   }) as StaffInfo[];
 }
@@ -300,7 +312,7 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
   // 1. สร้างบัญชีผู้ใช้ใน Supabase Auth จริงๆ
   const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
     email: staff.email,
-    password: 'password123', // รหัสผ่านตั้งต้น
+    password: staff.password || 'password123',
     email_confirm: true
   });
 
@@ -329,7 +341,8 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
     user_id: realUserId,
     position: staff.role,
     employment_status: staff.active ? 'ปฏิบัติงานปกติ' : 'พักงาน',
-    hire_date: staff.startDate
+    hire_date: staff.startDate,
+    salary: staff.salary ? parseFloat(staff.salary) : null
   }).select().single();
 
   if (error) throw error;
@@ -339,6 +352,7 @@ export async function updateStaff(id: number, updates: Partial<StaffInfo>): Prom
   const staffUpdates: any = {};
   if (updates.role !== undefined) staffUpdates.position = updates.role;
   if (updates.active !== undefined) staffUpdates.employment_status = updates.active ? 'ปฏิบัติงานปกติ' : 'พักงาน';
+  if (updates.salary !== undefined) staffUpdates.salary = updates.salary ? parseFloat(updates.salary) : null;
 
   if (Object.keys(staffUpdates).length > 0) {
     const { error } = await supabase.from('staff').update(staffUpdates).eq('staff_id', id);
@@ -647,7 +661,10 @@ export async function getPatients() {
     users (
       email,
       profile (first_name, last_name, phone_number)
-    )
+    ),
+    emergency_contact (contact_name, contact_phone, relationship),
+    patient_allergy (allergy_name),
+    patient_disease (disease_name)
   `);
   if (error) {
     console.error("getPatients error:", error);
@@ -656,14 +673,25 @@ export async function getPatients() {
 
   return data.map((d: any) => {
     const p = d.users?.profile;
+    const ec = d.emergency_contact?.[0] || d.emergency_contact;
+    const allergies = d.patient_allergy && d.patient_allergy.length > 0 
+      ? d.patient_allergy.map((a: any) => a.allergy_name).join(', ') 
+      : 'ไม่มีประวัติ';
+    const diseases = d.patient_disease && d.patient_disease.length > 0
+      ? d.patient_disease.map((a: any) => a.disease_name).join(', ')
+      : 'ไม่มี';
+    
     return {
       id: d.patient_id,
       hn: `HN${String(d.patient_id).padStart(3, '0')}`,
       name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
-      allergyHistory: d.allergy_history || 'ไม่มีประวัติ',
-      underlyingDisease: d.underlying_disease || 'ไม่มี'
+      allergyHistory: allergies,
+      underlyingDisease: diseases,
+      emergencyContactName: ec?.contact_name || '',
+      emergencyContactPhone: ec?.contact_phone || '',
+      emergencyContactRelationship: ec?.relationship || ''
     };
   }) as PatientInfo[];
 }
@@ -729,13 +757,35 @@ export async function addPatient(patient: {
 
   // 4. สร้าง Patient
   const { data: patData, error: patErr } = await supabase.from('patient').insert({
-    user_id: realUserId,
-    allergy_history: patient.allergyHistory || 'ไม่มี',
-    underlying_disease: patient.underlyingDisease || 'ไม่มี',
-    emergency_contact_name: patient.emergencyContactName || '-',
-    emergency_contact_phone: patient.emergencyContactPhone || '-'
+    user_id: realUserId
   }).select().single();
   if (patErr) { console.error("Patient insert error:", patErr); throw patErr; }
+
+  // 5. สร้าง Emergency Contact
+  if (patient.emergencyContactName || patient.emergencyContactPhone) {
+    const { error: ecErr } = await supabase.from('emergency_contact').insert({
+      patient_id: patData.patient_id,
+      contact_name: patient.emergencyContactName || '-',
+      contact_phone: patient.emergencyContactPhone || '-',
+      relationship: (patient as any).emergencyContactRelationship || 'ไม่ได้ระบุ'
+    });
+    if (ecErr) { console.error("Emergency Contact insert error:", ecErr); }
+  }
+
+  // 6. สร้าง Allergy & Disease
+  if (patient.allergyHistory && patient.allergyHistory !== 'ไม่มี' && patient.allergyHistory !== 'ไม่มีประวัติ' && patient.allergyHistory !== '-') {
+    const allergies = patient.allergyHistory.split(',').map(s => s.trim()).filter(s => s);
+    for (const a of allergies) {
+      await supabase.from('patient_allergy').insert({ patient_id: patData.patient_id, allergy_name: a });
+    }
+  }
+  
+  if (patient.underlyingDisease && patient.underlyingDisease !== 'ไม่มี' && patient.underlyingDisease !== 'ไม่มีประวัติ' && patient.underlyingDisease !== '-') {
+    const diseases = patient.underlyingDisease.split(',').map(s => s.trim()).filter(s => s);
+    for (const d of diseases) {
+      await supabase.from('patient_disease').insert({ patient_id: patData.patient_id, disease_name: d });
+    }
+  }
 
   return { id: patData.patient_id, userId: realUserId };
 }
@@ -795,6 +845,23 @@ export async function getPatientProfileByUserId(userId: string) {
 
   const p = data.profile;
   const { data: patientData } = await supabase.from('patient').select('*').eq('user_id', userId).maybeSingle();
+  let ecData = null;
+  let allergies = '';
+  let conditions = '';
+  if (patientData?.patient_id) {
+    const { data: ec } = await supabase.from('emergency_contact').select('*').eq('patient_id', patientData.patient_id).maybeSingle();
+    ecData = ec;
+    
+    const { data: alData } = await supabase.from('patient_allergy').select('allergy_name').eq('patient_id', patientData.patient_id);
+    if (alData && alData.length > 0) {
+      allergies = alData.map((a: any) => a.allergy_name).join(', ');
+    }
+    
+    const { data: disData } = await supabase.from('patient_disease').select('disease_name').eq('patient_id', patientData.patient_id);
+    if (disData && disData.length > 0) {
+      conditions = disData.map((d: any) => d.disease_name).join(', ');
+    }
+  }
 
   return {
     patientId: patientData?.patient_id,
@@ -805,10 +872,11 @@ export async function getPatientProfileByUserId(userId: string) {
     gender: p.gender,
     phone: p.phone_number,
     email: data.email,
-    emergencyName: patientData?.emergency_contact_name || '',
-    emergencyPhone: patientData?.emergency_contact_phone || '',
-    conditions: patientData?.underlying_disease || '',
-    allergies: patientData?.allergy_history || ''
+    emergencyName: ecData?.contact_name || '',
+    emergencyPhone: ecData?.contact_phone || '',
+    emergencyRelationship: ecData?.relationship || '',
+    conditions: conditions || 'ไม่มี',
+    allergies: allergies || 'ไม่มีประวัติ'
   };
 }
 
@@ -818,7 +886,9 @@ export async function getAppointments(date?: string) {
     *,
     patient (
       *,
-      users ( profile (first_name, last_name, phone_number) )
+      users ( profile (first_name, last_name, phone_number) ),
+      patient_allergy (allergy_name),
+      patient_disease (disease_name)
     ),
     appointment_detail ( service (service_name) ),
     dentist ( users ( profile (first_name, last_name) ) ),
@@ -886,8 +956,12 @@ export async function getAppointments(date?: string) {
       time: d.start_time?.slice(0, 5) || '00:00',
       endTime: d.end_time_est?.slice(0, 5) || d.start_time?.slice(0, 5) || '00:00',
       status: d.appointment_status || 'รอการยืนยัน',
-      conditions: d.patient?.underlying_disease || '',
-      allergies: d.patient?.allergy_history || '',
+      conditions: d.patient?.patient_disease && d.patient.patient_disease.length > 0 
+        ? d.patient.patient_disease.map((a: any) => a.disease_name).join(', ') 
+        : 'ไม่มี',
+      allergies: d.patient?.patient_allergy && d.patient.patient_allergy.length > 0 
+        ? d.patient.patient_allergy.map((a: any) => a.allergy_name).join(', ') 
+        : 'ไม่มีประวัติ',
       treatmentNotes,
       recommendations,
       treatmentServices,
@@ -923,7 +997,9 @@ export async function getPatientAppointments(patientId?: number) {
     *,
     patient (
       *,
-      users ( profile (first_name, last_name, phone_number) )
+      users ( profile (first_name, last_name, phone_number) ),
+      patient_allergy (allergy_name),
+      patient_disease (disease_name)
     ),
     appointment_detail ( service (service_name) ),
     treatment_record ( attending_dentist_id, doctor_note, payment (total_amount, payment_status), attending_dentist:dentist ( users ( profile (first_name, last_name) ) ) )
@@ -982,8 +1058,12 @@ export async function getPatientAppointments(patientId?: number) {
       time: d.start_time?.slice(0, 5) || '00:00',
       endTime: d.end_time_est?.slice(0, 5) || d.start_time?.slice(0, 5) || '00:00',
       status: d.appointment_status || 'รอการยืนยัน',
-      conditions: d.patient?.underlying_disease || '',
-      allergies: d.patient?.allergy_history || '',
+      conditions: d.patient?.patient_disease && d.patient.patient_disease.length > 0 
+        ? d.patient.patient_disease.map((a: any) => a.disease_name).join(', ') 
+        : 'ไม่มี',
+      allergies: d.patient?.patient_allergy && d.patient.patient_allergy.length > 0 
+        ? d.patient.patient_allergy.map((a: any) => a.allergy_name).join(', ') 
+        : 'ไม่มีประวัติ',
       treatmentNotes,
       recommendations,
       cost,
@@ -1110,9 +1190,10 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   if (!finalPatientId) {
     const { data: patData } = await supabase.from('patient').select('patient_id, users!inner(profile!inner(first_name, last_name, phone_number))');
     if (patData && patData.length > 0) {
+      // 🐛 BUG FIX: Use strict phone number matching only. 
+      // Do not use fuzzy name matching (.includes) to prevent merging wrong patient records.
       const matched = patData.find((p: any) =>
-        (appointment.patientPhone && p.users?.profile?.phone_number === appointment.patientPhone) ||
-        (appointment.patientName && (p.users?.profile?.first_name + ' ' + p.users?.profile?.last_name).includes(appointment.patientName))
+        appointment.patientPhone && p.users?.profile?.phone_number === appointment.patientPhone
       );
       if (matched) finalPatientId = matched.patient_id;
     }
@@ -1140,11 +1221,20 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
 
   // Update patient's health data if provided in the appointment booking
   if (finalPatientId && (appointment.allergies || appointment.conditions)) {
-    const updateData: any = {};
-    if (appointment.allergies) updateData.allergy_history = appointment.allergies;
-    if (appointment.conditions) updateData.underlying_disease = appointment.conditions;
-
-    await supabase.from('patient').update(updateData).eq('patient_id', finalPatientId);
+    if (appointment.allergies && appointment.allergies !== 'ไม่มี' && appointment.allergies !== 'ไม่มีประวัติ') {
+      await supabase.from('patient_allergy').delete().eq('patient_id', finalPatientId);
+      const allergies = appointment.allergies.split(',').map(s => s.trim()).filter(s => s);
+      for (const a of allergies) {
+        await supabase.from('patient_allergy').insert({ patient_id: finalPatientId, allergy_name: a });
+      }
+    }
+    if (appointment.conditions && appointment.conditions !== 'ไม่มี' && appointment.conditions !== 'ไม่มีประวัติ') {
+      await supabase.from('patient_disease').delete().eq('patient_id', finalPatientId);
+      const diseases = appointment.conditions.split(',').map(s => s.trim()).filter(s => s);
+      for (const d of diseases) {
+        await supabase.from('patient_disease').insert({ patient_id: finalPatientId, disease_name: d });
+      }
+    }
   }
 
   // 2.5 Conflict Check (Patient Level)
@@ -2056,27 +2146,44 @@ export async function savePatientData(form: RegForm) {
   if (!existingPatient) {
     // Insert into Patient only if it doesn't exist yet
     const { data: patData, error: patErr } = await supabase.from('patient').insert({
-      user_id: userId,
-      allergy_history: form.allergies || 'ไม่มี',
-      underlying_disease: form.conditions || 'ไม่มี',
-      emergency_contact_name: form.emergencyName || '-',
-      emergency_contact_phone: form.emergencyPhone || '-'
+      user_id: userId
     }).select('patient_id').single();
 
     if (patErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลคนไข้: ${patErr.message}`);
     returnedPatientId = patData.patient_id;
   } else {
-    // Update existing patient record with the new health info
-    const { error: patUpdErr } = await supabase.from('patient').update({
-      allergy_history: form.allergies || 'ไม่มี',
-      underlying_disease: form.conditions || 'ไม่มี',
-      emergency_contact_name: form.emergencyName || '-',
-      emergency_contact_phone: form.emergencyPhone || '-'
-    }).eq('user_id', userId);
-
-    if (patUpdErr) throw new Error(`ข้อผิดพลาดอัปเดตข้อมูลคนไข้: ${patUpdErr.message}`);
+    // Patient already exists, we use its ID
     returnedPatientId = existingPatient.patient_id;
   }
+
+  // Update Emergency Contact
+  if (form.emergencyName || form.emergencyPhone) {
+    await supabase.from('emergency_contact').delete().eq('patient_id', returnedPatientId);
+    await supabase.from('emergency_contact').insert({
+      patient_id: returnedPatientId,
+      contact_name: form.emergencyName || '-',
+      contact_phone: form.emergencyPhone || '-',
+      relationship: 'ไม่ได้ระบุ'
+    });
+  }
+
+  // Update Allergy & Disease
+  if (form.allergies && form.allergies !== 'ไม่มี' && form.allergies !== 'ไม่มีประวัติ' && form.allergies !== '-') {
+    await supabase.from('patient_allergy').delete().eq('patient_id', returnedPatientId);
+    const allergies = form.allergies.split(',').map(s => s.trim()).filter(s => s);
+    for (const a of allergies) {
+      await supabase.from('patient_allergy').insert({ patient_id: returnedPatientId, allergy_name: a });
+    }
+  }
+
+  if (form.conditions && form.conditions !== 'ไม่มี' && form.conditions !== 'ไม่มีประวัติ' && form.conditions !== '-') {
+    await supabase.from('patient_disease').delete().eq('patient_id', returnedPatientId);
+    const diseases = form.conditions.split(',').map(s => s.trim()).filter(s => s);
+    for (const d of diseases) {
+      await supabase.from('patient_disease').insert({ patient_id: returnedPatientId, disease_name: d });
+    }
+  }
+
 
   return returnedPatientId;
 }

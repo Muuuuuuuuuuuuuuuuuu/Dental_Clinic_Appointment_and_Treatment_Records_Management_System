@@ -12,11 +12,11 @@ export default function DentistManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<DentistInfo | null>(null);
-  const [form, setForm] = useState({ name: "", specialty: "", license: "", university: "", email: "", phone: "", serviceIds: [] as number[] });
+  const [form, setForm] = useState({ name: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", serviceIds: [] as number[] });
 
   const open = (d?: DentistInfo) => {
     setEditing(d ?? null);
-    setForm(d ? { name: d.name, specialty: d.specialty, license: d.license, university: d.university, email: d.email, phone: d.phone, serviceIds: d.serviceIds || [] } : { name: "", specialty: "", license: "", university: "", email: "", phone: "", serviceIds: [] });
+    setForm(d ? { name: d.name, specialty: d.specialty, license: d.license, university: d.university, email: d.email, password: "", phone: d.phone, serviceIds: d.serviceIds || [] } : { name: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", serviceIds: [] });
     setShowModal(true);
   };
 
@@ -43,9 +43,10 @@ export default function DentistManagement() {
         const updated = await updateDentist(editing.id, form);
         setDentists(ds => ds.map(d => d.id === updated.id ? updated : d));
       } else {
-        const added = await addDentist({ ...form, active: true });
+        const passwordToUse = form.password || "password123";
+        const added = await addDentist({ ...form, active: true, password: passwordToUse });
         setDentists(ds => [...ds, added]);
-        alert("เพิ่มทันตแพทย์สำเร็จ!\nรหัสผ่านเริ่มต้นสำหรับเข้าสู่ระบบคือ: password123");
+        alert(`เพิ่มทันตแพทย์สำเร็จ!\nรหัสผ่านสำหรับเข้าสู่ระบบคือ: ${passwordToUse}`);
       }
       setShowModal(false);
     } catch (err) {
@@ -70,7 +71,7 @@ export default function DentistManagement() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการทันตแพทย์</h1>
-          <p className="text-sm" style={{ color: "#4A6080" }}>บัญชีทันตแพทย์ทั้งหมด {dentists.length} คน</p>
+          <p className="text-sm" style={{ color: "#4A6080" }}>ทันตแพทย์ทั้งหมด {dentists.length} ท่าน</p>
         </div>
         <button onClick={() => open()} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white"
           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
@@ -78,75 +79,85 @@ export default function DentistManagement() {
         </button>
       </div>
 
-      <div className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
-        <table className="w-full text-sm">
-          <thead style={{ backgroundColor: "#F8F9FA" }}>
-            <tr>
-              {["ชื่อ-นามสกุล", "ความเชี่ยวชาญ", "ใบอนุญาต", "อีเมล", "สถานะ", ""].map(h => (
-                <th key={h} className="text-left px-5 py-3 text-xs font-semibold" style={{ color: "#4A6080" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {dentists.map(d => (
-              <tr key={d.id} style={{ borderBottom: "1px solid rgba(26,54,93,0.05)" }}>
-                <td className="px-5 py-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: "#FF8C9A" }}>
-                      {d.name[4] ?? "ท"}
-                    </div>
-                    <span className="font-medium" style={{ color: "#1A365D" }}>{d.name}</span>
-                  </div>
-                </td>
-                <td className="px-5 py-3.5 text-xs" style={{ color: "#4A6080" }}>{d.specialty}</td>
-                <td className="px-5 py-3.5 text-xs" style={{ color: "#4A6080" }}>{d.license}</td>
-                <td className="px-5 py-3.5 text-xs" style={{ color: "#4A6080" }}>{d.email}</td>
-                <td className="px-5 py-3.5"><StatusBadge label="" active={d.active} /></td>
-                <td className="px-5 py-3.5">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => open(d)} className="p-1.5 rounded-lg hover:bg-gray-100" style={{ color: "#4A6080" }}><Edit3 size={14} /></button>
-                    <button onClick={() => toggleActive(d)}
-                      className="p-1.5 rounded-lg hover:bg-gray-100" style={{ color: d.active ? "#E65100" : "#1B7A3E" }}>
-                      {d.active ? <Trash2 size={14} /> : <CheckCircle size={14} />}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {dentists.map(d => (
+          <div key={d.id} className="bg-white rounded-2xl p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold"
+                  style={{ background: "linear-gradient(135deg,#1A365D,#2D5482)" }}>
+                  {d.name.replace('ทพ. ', '').replace('ทญ. ', '')[0] ?? "ด"}
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg" style={{ color: "#1A365D" }}>{d.name}</h3>
+                  <p className="text-sm font-medium" style={{ color: "#4A6080" }}>{d.specialty}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={() => open(d)} className="p-2 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-blue-600 transition-colors">
+                  <Edit3 size={16} />
+                </button>
+                <button onClick={() => toggleActive(d)} className="p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                  style={{ color: d.active ? "#E65100" : "#1B7A3E" }}>
+                  {d.active ? <Trash2 size={16} /> : <CheckCircle size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center justify-between text-sm">
+                <span style={{ color: "#4A6080" }}>เลขที่ใบอนุญาต</span>
+                <span className="font-medium" style={{ color: "#1A365D" }}>{d.license}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span style={{ color: "#4A6080" }}>สถาบัน</span>
+                <span className="font-medium" style={{ color: "#1A365D" }}>{d.university}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span style={{ color: "#4A6080" }}>อีเมล</span>
+                <span className="font-medium truncate max-w-[150px]" style={{ color: "#1A365D" }}>{d.email}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span style={{ color: "#4A6080" }}>เบอร์โทร</span>
+                <span className="font-medium" style={{ color: "#1A365D" }}>{d.phone}</span>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+              <StatusBadge label="" active={d.active} />
+              {d.serviceIds && d.serviceIds.length > 0 && (
+                <span className="text-xs font-medium px-2 py-1 bg-blue-50 text-blue-600 rounded-md">
+                  รับ {d.serviceIds.length} บริการ
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(26,54,93,0.4)", backdropFilter: "blur(4px)" }}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 p-8 overflow-y-auto max-h-[90vh]">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 p-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
                 {editing ? "แก้ไขข้อมูลทันตแพทย์" : "เพิ่มทันตแพทย์ใหม่"}
               </h2>
-              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100" style={{ color: "#4A6080" }}><X size={18} /></button>
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                <X size={18} style={{ color: "#4A6080" }} />
+              </button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ชื่อ-นามสกุล (พร้อมคำนำหน้า)</label>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ชื่อ-นามสกุล (ไม่ต้องใส่คำนำหน้า)</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
               </div>
               
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ความเชี่ยวชาญ</label>
-                <select value={form.specialty} onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none appearance-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}>
-                  <option value="">เลือกความเชี่ยวชาญ</option>
-                  <option value="ทันตกรรมทั่วไป">ทันตกรรมทั่วไป</option>
-                  <option value="ทันตกรรมจัดฟัน">ทันตกรรมจัดฟัน</option>
-                  <option value="ศัลยกรรมช่องปาก">ศัลยกรรมช่องปาก</option>
-                  <option value="รักษารากฟัน">รักษารากฟัน</option>
-                  <option value="ทันตกรรมเด็กและป้องกัน">ทันตกรรมเด็กและป้องกัน</option>
-                  <option value="ทันตกรรมประดิษฐ์และความสวยงาม">ทันตกรรมประดิษฐ์และความสวยงาม</option>
-                  <option value="รากฟันเทียมและศัลยกรรม">รากฟันเทียมและศัลยกรรม</option>
-                </select>
+                <input value={form.specialty} onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
               </div>
 
               <div>
@@ -172,6 +183,14 @@ export default function DentistManagement() {
                 <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
               </div>
+
+              {!editing && (
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตั้งรหัสผ่าน (ปล่อยว่างไว้หากต้องการใช้ password123)</label>
+                  <input type="text" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} placeholder="password123" />
+                </div>
+              )}
             </div>
 
             <div className="mt-6">

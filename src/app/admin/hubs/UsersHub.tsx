@@ -36,15 +36,6 @@ const CARD_DEFS = [
     bgLight: "#FEF5E7",
     countLabel: "คน"
   },
-  {
-    key: "patients" as const,
-    icon: Smile,
-    title: "คนไข้",
-    desc: "จัดการข้อมูลคนไข้และประวัติการรักษา",
-    gradient: "linear-gradient(135deg, #87559A 0%, #5D356A 100%)",
-    bgLight: "#EBF5FB",
-    countLabel: "คน",
-  },
 ];
 
 export default function UsersHub() {
@@ -63,7 +54,7 @@ export default function UsersHub() {
   if (subView === "admins") return <SubViewWrapper title="ผู้ดูแลระบบ" onBack={() => setSubView(null)}><AdminManagement /></SubViewWrapper>;
   if (subView === "dentists") return <SubViewWrapper title="ทันตแพทย์" onBack={() => setSubView(null)}><DentistManagement /></SubViewWrapper>;
   if (subView === "staff") return <SubViewWrapper title="พนักงาน" onBack={() => setSubView(null)}><StaffManagement /></SubViewWrapper>;
-  if (subView === "patients") return <SubViewWrapper title="คนไข้" onBack={() => setSubView(null)}><PatientManagement /></SubViewWrapper>;
+
 
   // Hub card selector
   return (

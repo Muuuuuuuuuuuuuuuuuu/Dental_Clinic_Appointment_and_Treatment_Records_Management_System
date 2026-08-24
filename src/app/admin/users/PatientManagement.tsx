@@ -22,7 +22,9 @@ export default function PatientManagement() {
     allergyHistory: "ไม่มี",
     underlyingDisease: "ไม่มี",
     emergencyContactName: "",
-    emergencyContactPhone: ""
+    emergencyContactPhone: "",
+    emergencyContactRelationship: "",
+    password: ""
   });
 
   useEffect(() => {
@@ -53,15 +55,17 @@ export default function PatientManagement() {
     
     setSaving(true);
     try {
+      const passwordToUse = form.password || "patient123";
       await addPatient({
-        ...form
+        ...form,
+        password: passwordToUse
       });
       setShowModal(false);
       setForm({
-        firstName: "", lastName: "", citizenId: "", email: "", phone: "", gender: "", dob: "", address: "", allergyHistory: "ไม่มี", underlyingDisease: "ไม่มี", emergencyContactName: "", emergencyContactPhone: ""
+        firstName: "", lastName: "", citizenId: "", email: "", phone: "", gender: "", dob: "", address: "", allergyHistory: "ไม่มี", underlyingDisease: "ไม่มี", emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelationship: "", password: ""
       });
       // แจ้งรหัสผ่านเริ่มต้นให้ทราบ
-      alert("เพิ่มคนไข้สำเร็จ!\nรหัสผ่านเริ่มต้นสำหรับเข้าสู่ระบบคือ: patient123");
+      alert(`เพิ่มคนไข้สำเร็จ!\nรหัสผ่านสำหรับเข้าสู่ระบบคือ: ${passwordToUse}`);
       fetchPatients();
     } catch (err: any) {
       alert(err.message || "เกิดข้อผิดพลาดในการเพิ่มข้อมูล");
@@ -136,7 +140,6 @@ export default function PatientManagement() {
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2">
-                      <button className="p-1.5 rounded-lg hover:bg-gray-100" style={{ color: "#4A6080" }} title="แก้ไขข้อมูล"><Edit3 size={14} /></button>
                       <button className="p-1.5 rounded-lg hover:bg-gray-100" style={{ color: "#E65100" }} title="ลบข้อมูล"><Trash2 size={14} /></button>
                     </div>
                   </td>
@@ -197,6 +200,23 @@ export default function PatientManagement() {
                 <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} />
               </div>
+
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เพศ</label>
+                <select value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }}>
+                  <option value="">เลือกเพศ</option>
+                  <option value="ชาย">ชาย</option>
+                  <option value="หญิง">หญิง</option>
+                  <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+              </div>
+
+              <div className="col-span-1 md:col-span-2">
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ที่อยู่</label>
+                <textarea rows={2} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border resize-none" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} />
+              </div>
               
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>โรคประจำตัว</label>
@@ -208,6 +228,29 @@ export default function PatientManagement() {
                 <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ประวัติแพ้ยา</label>
                 <input value={form.allergyHistory} onChange={e => setForm(f => ({ ...f, allergyHistory: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ชื่อผู้ติดต่อฉุกเฉิน</label>
+                <input value={form.emergencyContactName} onChange={e => setForm(f => ({ ...f, emergencyContactName: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เบอร์ผู้ติดต่อฉุกเฉิน</label>
+                <input value={form.emergencyContactPhone} onChange={e => setForm(f => ({ ...f, emergencyContactPhone: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ความสัมพันธ์กับคนไข้</label>
+                <input value={form.emergencyContactRelationship} onChange={e => setForm(f => ({ ...f, emergencyContactRelationship: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} placeholder="เช่น บิดา, มารดา, สามี" />
+              </div>
+              
+              <div className="md:col-span-2">
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตั้งรหัสผ่าน (ปล่อยว่างไว้หากต้องการใช้ patient123)</label>
+                <input type="text" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} placeholder="patient123" />
               </div>
             </div>
 

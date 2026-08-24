@@ -15,7 +15,7 @@ export default function Contact({ onCTA }: { onCTA: () => void }) {
 
   return (
     <section id="contact" style={{ backgroundColor: "#FFFFFF" }}>
-      <div className="max-w-7xl mx-auto px-6 py-20">
+      <div className="mx-auto px-6 lg:px-25 w-full py-12 justify-between">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
           <div>
             <h2 className="text-4xl font-bold mb-6" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>มาเยี่ยมชมคลินิก<br />ของเราได้เลย</h2>

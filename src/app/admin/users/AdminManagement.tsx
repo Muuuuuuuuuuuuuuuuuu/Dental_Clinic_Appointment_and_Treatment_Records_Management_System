@@ -10,11 +10,11 @@ export default function AdminManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminInfo | null>(null);
-  const [form, setForm] = useState({ name: "", citizenId: "", email: "", phone: "", password: "" });
+  const [form, setForm] = useState({ name: "", citizenId: "", email: "", phone: "", password: "", salary: "" });
 
   const open = (a?: AdminInfo) => {
     setEditing(a ?? null);
-    setForm(a ? { name: a.name, citizenId: "", email: a.email, phone: a.phone, password: "" } : { name: "", citizenId: "", email: "", phone: "", password: "" });
+    setForm(a ? { name: a.name, citizenId: "", email: a.email, phone: a.phone, password: "", salary: a.salary || "" } : { name: "", citizenId: "", email: "", phone: "", password: "", salary: "" });
     setShowModal(true);
   };
 
@@ -121,10 +121,10 @@ export default function AdminManagement() {
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} style={{ color: "#4A6080" }} /></button>
             </div>
             <div className="space-y-3">
-              {[{ k: "name", l: "ชื่อ-นามสกุล" }, { k: "citizenId", l: "เลขบัตรประชาชน (13 หลัก)" }, { k: "email", l: "อีเมล" }, { k: "phone", l: "เบอร์โทร" }].map(({ k, l }) => (
+              {[{ k: "name", l: "ชื่อ-นามสกุล" }, { k: "citizenId", l: "เลขบัตรประชาชน (13 หลัก)" }, { k: "email", l: "อีเมล" }, { k: "phone", l: "เบอร์โทร" }, { k: "salary", l: "เงินเดือน", type: "number" }].map(({ k, l, type }) => (
                 <div key={k}>
                   <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>{l}</label>
-                  <input type="text" value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
+                  <input type={type ?? "text"} value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
                     className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} 
                     placeholder={k === 'citizenId' && editing ? 'เว้นว่างไว้หากไม่ต้องการเปลี่ยน' : ''} />
                 </div>

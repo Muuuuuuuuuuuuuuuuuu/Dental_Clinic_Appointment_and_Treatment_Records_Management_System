@@ -4,13 +4,13 @@ import { getReviews } from "../../shared/supabaseApi";
 
 export default function Reviews() {
   const [reviews, setReviews] = useState<any[]>([]);
-  
+
   useEffect(() => {
     getReviews().then(setReviews);
   }, []);
   return (
     <section style={{ backgroundColor: "#1A365D" }}>
-      <div className="max-w-7xl mx-auto px-6 py-20">
+      <div className="mx-auto px-6 lg:px-25 w-full py-12 justify-between">
         <div className="text-center mb-14">
           <h2 className="text-4xl font-bold text-white" style={{ fontFamily: "Playfair Display, serif" }}>เสียงจากคนไข้ของเรา</h2>
         </div>

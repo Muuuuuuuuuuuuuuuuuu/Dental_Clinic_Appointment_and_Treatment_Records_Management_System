@@ -3,7 +3,7 @@ import { Shield, Award, Calendar, Heart } from "lucide-react";
 export default function WhyUs() {
   return (
     <section id="about" style={{ backgroundColor: "#FFFFFF" }}>
-      <div className="max-w-7xl mx-auto px-6 py-20">
+      <div className="mx-auto px-6 lg:px-25 w-full py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="relative">
             <div className="rounded-3xl overflow-hidden" style={{ aspectRatio: "5/4", boxShadow: "0 20px 60px rgba(26,54,93,0.15)" }}>
@@ -21,7 +21,7 @@ export default function WhyUs() {
             <div className="space-y-5">
               {[
                 { icon: Shield, title: "อุปกรณ์ปลอดเชื้อมาตรฐาน", desc: "ผ่านการฆ่าเชื้อด้วยระบบ Autoclave ทุกชิ้น มั่นใจได้ 100%" },
-                { icon: Award,  title: "ทันตแพทย์เฉพาะทางครบทุกสาขา", desc: "ทีมแพทย์จบจากสถาบันชั้นนำ มีใบรับรองความเชี่ยวชาญเฉพาะด้าน" },
+                { icon: Award, title: "ทันตแพทย์เฉพาะทางครบทุกสาขา", desc: "ทีมแพทย์จบจากสถาบันชั้นนำ มีใบรับรองความเชี่ยวชาญเฉพาะด้าน" },
                 { icon: Calendar, title: "จองออนไลน์ได้ตลอด 24 ชั่วโมง", desc: "ระบบจองอัจฉริยะ เลือกเวลา เลือกแพทย์ได้ตามต้องการ" },
                 { icon: Heart, title: "ดูแลต่อเนื่องหลังการรักษา", desc: "ติดตามผลการรักษา ส่ง reminder นัดถัดไปอัตโนมัติ" },
               ].map(p => (

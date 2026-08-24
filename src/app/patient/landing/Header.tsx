@@ -19,7 +19,7 @@ export default function Header({ onLoginClick, isLoggedIn, onPortal }: { onLogin
         boxShadow: scrolled ? "0 2px 24px rgba(26,54,93,0.1)" : "0 1px 0 rgba(26,54,93,0.06)",
         backdropFilter: "blur(12px)",
       }}>
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between" style={{ height: 72 }}>
+      <div className="w-full mx-auto px-6 flex items-center justify-between" style={{ height: 72 }}>
         <a href="#" className="flex items-center gap-3 flex-shrink-0">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
             <Smile size={20} color="white" />
@@ -30,9 +30,9 @@ export default function Header({ onLoginClick, isLoggedIn, onPortal }: { onLogin
           </div>
         </a>
 
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-15">
           {[["บริการของเรา", "#services"], ["โปรโมชั่น", "#promotions"], ["ทีมทันตแพทย์", "#doctors"], ["ติดต่อเรา", "#contact"]].map(([l, h]) => (
-            <a key={l} href={h} className="text-sm font-medium transition-opacity hover:opacity-60" style={{ color: l === "โปรโมชั่น" ? "#FF8C9A" : "#1A365D" }}>{l}</a>
+            <a key={l} href={h} className="text-base font-medium transition-opacity hover:opacity-60" style={{ color: l === "โปรโมชั่น" ? "#FF8C9A" : "#1A365D" }}>{l}</a>
           ))}
           <ClinicStatusBadge compact />
         </nav>

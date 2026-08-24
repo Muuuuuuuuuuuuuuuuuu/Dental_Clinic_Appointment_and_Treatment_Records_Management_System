@@ -21,7 +21,7 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-white mb-4 text-sm">ติดต่อเรา</h4>
             <div className="space-y-3">
-              {[{Icon: MapPin, t: "123/45 ถนนสุขุมวิท ซอย 15 กรุงเทพฯ"}, {Icon: Phone, t: "02-555-1234"}, {Icon: Clock, t: "จ–ศ 09:00–20:00 น."}].map(({Icon, t}) => (
+              {[{ Icon: MapPin, t: "123/45 ถนนสุขุมวิท ซอย 15 กรุงเทพฯ" }, { Icon: Phone, t: "02-555-1234" }, { Icon: Clock, t: "จ–ศ 09:00–20:00 น." }].map(({ Icon, t }) => (
                 <div key={t} className="flex items-start gap-2">
                   <Icon size={14} className="mt-0.5 flex-shrink-0" style={{ color: "#FF8C9A" }} />
                   <span className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>{t}</span>

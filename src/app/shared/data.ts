@@ -45,6 +45,7 @@ export interface DentistInfo {
   license: string;
   university: string;
   email: string;
+  password?: string;
   phone: string;
   active: boolean;
   userId?: string;
@@ -58,8 +59,14 @@ export interface PatientInfo {
   name: string;
   phone: string;
   email: string;
+  gender?: string;
+  dob?: string;
+  address?: string;
   allergyHistory: string;
   underlyingDisease: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
 }
 
 export interface StaffInfo {
@@ -67,9 +74,11 @@ export interface StaffInfo {
   name: string;
   role: string;
   email: string;
+  password?: string;
   phone: string;
   startDate: string;
   active: boolean;
+  salary?: string;
 }
 
 export interface AdminInfo {
@@ -78,6 +87,7 @@ export interface AdminInfo {
   email: string;
   phone: string;
   active: boolean;
+  salary?: string;
 }
 
 export interface ServiceCategory {

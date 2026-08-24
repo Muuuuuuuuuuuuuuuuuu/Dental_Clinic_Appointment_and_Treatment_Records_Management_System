@@ -4,13 +4,13 @@ import { getLandingDoctors } from "../../shared/supabaseApi";
 
 export default function Doctors({ onCTA }: { onCTA: () => void }) {
   const [doctors, setDoctors] = useState<any[]>([]);
-  
+
   useEffect(() => {
     getLandingDoctors().then(setDoctors);
   }, []);
   return (
     <section id="doctors" style={{ backgroundColor: "#F8F9FA" }}>
-      <div className="max-w-7xl mx-auto px-6 py-20">
+      <div className="mx-auto px-6 lg:px-25 w-full py-12 justify-between">
         <div className="text-center mb-14">
           <div className="inline-block text-sm font-medium px-4 py-1.5 rounded-full mb-4" style={{ backgroundColor: "#FFE8EC", color: "#FF6B7E" }}>ทีมแพทย์</div>
           <h2 className="text-4xl font-bold mb-4" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ทีมทันตแพทย์ผู้เชี่ยวชาญ</h2>
