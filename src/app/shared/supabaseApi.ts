@@ -676,7 +676,7 @@ export async function getPatients() {
     const ec = d.emergency_contact?.[0] || d.emergency_contact;
     const allergies = d.patient_allergy && d.patient_allergy.length > 0 
       ? d.patient_allergy.map((a: any) => a.allergy_name).join(', ') 
-      : 'ไม่มีประวัติ';
+      : 'ไม่มี';
     const diseases = d.patient_disease && d.patient_disease.length > 0
       ? d.patient_disease.map((a: any) => a.disease_name).join(', ')
       : 'ไม่มี';
@@ -879,7 +879,7 @@ export async function getPatientProfileByUserId(userId: string) {
     emergencyPhone: ecData?.contact_phone || '',
     emergencyRelationship: ecData?.relationship || '',
     conditions: conditions || 'ไม่มี',
-    allergies: allergies || 'ไม่มีประวัติ'
+    allergies: allergies || 'ไม่มี'
   };
 }
 
@@ -2110,6 +2110,18 @@ export async function verifyOTP(email: string, otp: string) {
 }
 
 export async function cancelRegistration() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    try {
+      const adminAuthClient = createClient(
+        import.meta.env.VITE_SUPABASE_URL || '',
+        import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+      );
+      await adminAuthClient.auth.admin.deleteUser(user.id);
+    } catch (e) {
+      console.error("Failed to delete user on cancel", e);
+    }
+  }
   await supabase.auth.signOut();
 }
 

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTriangle, ChevronRight, Check, Send, ClipboardList } from "lucide-react";
 
-import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo } from "../../shared/data";
+import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo, hasHealthAlert } from "../../shared/data";
 import { getAppointments, getServices, updateAppointmentStatus, saveTreatment, getPatientLatestOdontogram, supabase } from "../../shared/supabaseApi";
 import Odontogram, { ToothStatus } from "./Odontogram";
 
@@ -200,7 +200,7 @@ export default function TreatmentQueue({
           const act = statusActions[a.status];
           const isExp = expanded === a.id;
           const isRec = recording === a.id;
-          const hasAlert = a.allergies !== "ไม่มี" || a.conditions !== "ไม่มี";
+          const hasAlert = hasHealthAlert(a.allergies, a.conditions);
 
           return (
             <div key={a.id} className="rounded-2xl bg-white overflow-hidden transition-all" style={{ boxShadow: "0 2px 16px rgba(26,54,93,0.08)" }}>
@@ -226,8 +226,8 @@ export default function TreatmentQueue({
                     )}
                   </div>
                   <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{a.service}</p>
-                  {a.conditions !== "ไม่มี" && <p className="text-xs mt-1" style={{ color: "#E65100" }}>⚠ {a.conditions}</p>}
-                  {a.allergies  !== "ไม่มี" && <p className="text-xs"    style={{ color: "#E65100" }}>💊 แพ้: {a.allergies}</p>}
+                  {hasHealthAlert(undefined, a.conditions) && <p className="text-xs mt-1" style={{ color: "#E65100" }}>⚠ {a.conditions}</p>}
+                  {hasHealthAlert(a.allergies) && <p className="text-xs"    style={{ color: "#E65100" }}>💊 แพ้: {a.allergies}</p>}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>{a.status}</span>

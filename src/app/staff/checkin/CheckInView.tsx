@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserCheck, Clock, Users, CreditCard, AlertTriangle, ArrowRight } from "lucide-react";
-import { Appointment, STATUS_COLORS } from "../../shared/data";
+import { Appointment, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
 import { getAppointments, updateAppointmentStatus } from "../../shared/supabaseApi";
 
 const fmtDate = (d: Date) =>
@@ -71,13 +71,13 @@ export default function CheckInView() {
                 <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
                 <p className="text-xs mb-3" style={{ color: "#4A6080" }}>{a.service} • ทพ. {a.doctorName}</p>
 
-                {(a.conditions !== "ไม่มี" || a.allergies !== "ไม่มี") && (
+                {hasHealthAlert(a.allergies, a.conditions) && (
                   <div className="flex items-center gap-1 mb-3 bg-orange-50 p-1.5 rounded-lg">
                     <AlertTriangle size={11} style={{ color: "#E65100" }} />
                     <span className="text-[10px] font-medium" style={{ color: "#E65100" }}>
-                      {a.conditions !== "ไม่มี" && a.conditions}
-                      {a.conditions !== "ไม่มี" && a.allergies !== "ไม่มี" && " • "}
-                      {a.allergies !== "ไม่มี" && `แพ้: ${a.allergies}`}
+                      {hasHealthAlert(undefined, a.conditions) && a.conditions}
+                      {hasHealthAlert(undefined, a.conditions) && hasHealthAlert(a.allergies) && " • "}
+                      {hasHealthAlert(a.allergies) && `แพ้: ${a.allergies}`}
                     </span>
                   </div>
                 )}

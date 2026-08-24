@@ -3,7 +3,7 @@ import { UserPlus, Save, AlertCircle, CheckCircle } from "lucide-react";
 
 type RegForm = {
   firstName: string; lastName: string; idCard: string; dob: string; gender: string;
-  phone: string; emergencyName: string; emergencyPhone: string;
+  phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string;
   conditions: string; allergies: string;
   email: string;
 };
@@ -24,7 +24,7 @@ const calcAge = (dob: string) => {
 export default function StaffRegisterPatient() {
   const [form, setForm] = useState<RegForm>({
     firstName: "", lastName: "", idCard: "", dob: "", gender: "",
-    phone: "", emergencyName: "", emergencyPhone: "",
+    phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
     conditions: "", allergies: "", email: ""
   });
   const [err, setErr] = useState("");
@@ -70,7 +70,7 @@ export default function StaffRegisterPatient() {
           setSuccess(false);
           setForm({
             firstName: "", lastName: "", idCard: "", dob: "", gender: "",
-            phone: "", emergencyName: "", emergencyPhone: "",
+            phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
             conditions: "", allergies: "", email: ""
           });
         }} className="px-6 py-3 rounded-xl font-medium text-white transition-opacity hover:opacity-90"
@@ -155,6 +155,10 @@ export default function StaffRegisterPatient() {
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>เบอร์ติดต่อฉุกเฉิน</label>
               <input type="tel" className={inputCls} style={inputStyle(form.emergencyPhone)} value={form.emergencyPhone} onChange={e => set("emergencyPhone", e.target.value)} placeholder="08x-xxx-xxxx" />
             </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>ความสัมพันธ์</label>
+              <input type="text" className={inputCls} style={inputStyle(form.emergencyRelationship)} value={form.emergencyRelationship} onChange={e => set("emergencyRelationship", e.target.value)} placeholder="เช่น บิดา, มารดา, พี่น้อง" />
+            </div>
           </div>
         </div>
 
@@ -178,7 +182,7 @@ export default function StaffRegisterPatient() {
         <button onClick={() => {
             setForm({
               firstName: "", lastName: "", idCard: "", dob: "", gender: "",
-              phone: "", emergencyName: "", emergencyPhone: "",
+              phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
               conditions: "", allergies: "", email: ""
             });
             setErr("");

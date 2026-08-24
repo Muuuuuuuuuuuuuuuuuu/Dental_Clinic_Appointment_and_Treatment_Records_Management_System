@@ -10,7 +10,7 @@ import {
   getLandingServices, getLandingDoctors, getDentistsByService,
   getPaymentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves
 } from "../../shared/supabaseApi";
-import { SpecialClosure } from "../../shared/data";
+import { SpecialClosure, hasHealthAlert } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";
 import HealthChecklistForm, { HealthChecklistData } from "./HealthChecklistForm";
 
@@ -386,11 +386,10 @@ export default function BookingView({
     
     // Check health risk for routing
     const isReturning = Boolean(user && (
-      (user.conditions && user.conditions !== 'ไม่มี' && user.conditions.trim() !== '') || 
-      (user.allergies && user.allergies !== 'ไม่มี' && user.allergies.trim() !== '') || 
+      hasHealthAlert(user.allergies, user.conditions) || 
       (user.emergencyName && user.emergencyName.trim() !== '')
     ));
-    const hasExistingCondition = user && user.conditions && user.conditions !== 'ไม่มี' && user.conditions !== 'ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ';
+    const hasExistingCondition = user && hasHealthAlert(user.allergies, user.conditions);
     const newRiskSelected = healthData.hasCondition === true && healthData.conditions.length > 0;
     
     const finalHealthRisk = (isReturning && healthData.hasChanges === false) ? hasExistingCondition : newRiskSelected;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Users, FileText, Calendar, Clock, CheckCircle, AlertTriangle, ClipboardList, CreditCard } from "lucide-react";
 
-import { Appointment, STATUS_COLORS, DocView, DentistInfo } from "../../shared/data";
+import { Appointment, STATUS_COLORS, DocView, DentistInfo, hasHealthAlert } from "../../shared/data";
 import { getAppointments, getDailyHours, getWeeklyOffDays, DayHours } from "../../shared/supabaseApi";
 
 export default function DoctorDashboard({ 
@@ -101,7 +101,7 @@ export default function DoctorDashboard({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {(a.allergies !== "ไม่มี" || a.conditions !== "ไม่มี") && (
+                    {hasHealthAlert(a.allergies, a.conditions) && (
                       <AlertTriangle size={13} style={{ color: "#E65100" }} />
                     )}
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>{a.status}</span>
@@ -126,7 +126,7 @@ export default function DoctorDashboard({
           <div className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <h3 className="font-semibold text-sm mb-3" style={{ color: "#1A365D" }}>แจ้งเตือนสำคัญ</h3>
             <div className="space-y-2.5">
-              {myAppts.filter(a => a.allergies !== "ไม่มี" || a.conditions !== "ไม่มี").map(a => (
+              {myAppts.filter(a => hasHealthAlert(a.allergies, a.conditions)).map(a => (
                 <div key={a.id} className="flex items-start gap-2 p-2.5 rounded-lg" style={{ backgroundColor: "#FFF3E0" }}>
                   <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" style={{ color: "#E65100" }} />
                   <div>

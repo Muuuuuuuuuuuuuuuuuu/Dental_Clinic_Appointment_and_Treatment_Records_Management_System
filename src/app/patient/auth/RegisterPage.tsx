@@ -22,17 +22,43 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendMsg, setResendMsg] = useState("");
 
-  // Check if user is already authenticated (e.g. they logged in but have incomplete profile)
+  // Check if user is already authenticated
   useEffect(() => {
-    import("../../shared/supabaseApi").then(({ supabase }) => {
-      supabase.auth.getUser().then(({ data: { user } }) => {
+    import("../../shared/supabaseApi").then(({ supabase, getPatientProfileByUserId }) => {
+      supabase.auth.getUser().then(async ({ data: { user } }) => {
         if (user && user.email) {
-          setForm(f => ({ ...f, email: user.email! }));
-          setStep(2); // Skip OTP and go straight to Personal Info
+          try {
+            const profile = await getPatientProfileByUserId(user.id);
+            if (profile && profile.firstName) {
+              // User already has a complete profile. Prevent them from registering and overwriting it.
+              await supabase.auth.signOut();
+              window.location.reload();
+            } else {
+              // Logged in but incomplete profile
+              setForm(f => ({ ...f, email: user.email! }));
+              setStep(2); // Skip OTP and go straight to Personal Info
+            }
+          } catch (e) {
+            setForm(f => ({ ...f, email: user.email! }));
+            setStep(2);
+          }
         }
       });
     });
   }, []);
+
+  // Timeout for incomplete registration
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (step >= 2 && step <= 4) {
+      timeout = setTimeout(async () => {
+        alert("หมดเวลาทำรายการ (5 นาที) กรุณาทำรายการใหม่");
+        await cancelRegistration();
+        window.location.reload();
+      }, 5 * 60 * 1000);
+    }
+    return () => clearTimeout(timeout);
+  }, [step]);
 
   const set = (k: keyof RegForm, v: string) => setForm(f => ({ ...f, [k]: v }));
 
