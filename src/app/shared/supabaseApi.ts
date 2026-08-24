@@ -710,6 +710,7 @@ export async function addPatient(patient: {
   underlyingDisease?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
 }): Promise<any> {
   // สร้าง Admin Client สำหรับจัดการ Auth โดยเฉพาะ
   const adminAuthClient = createClient(
@@ -734,14 +735,16 @@ export async function addPatient(patient: {
   const realUserId = authData.user.id;
 
   // 2. สร้าง Profile
+  // gender ต้องเป็น 'ชาย' หรือ 'หญิง' เท่านั้น (DB CHECK constraint)
+  const validGender = (patient.gender === 'ชาย' || patient.gender === 'หญิง') ? patient.gender : null;
   const { error: pErr } = await supabase.from('profile').insert({
     citizen_id: patient.citizenId,
     first_name: patient.firstName,
     last_name: patient.lastName,
-    phone_number: patient.phone,
-    gender: patient.gender || '',
+    phone_number: patient.phone || null,
+    gender: validGender,
     birth_date: patient.dob || null,
-    address: patient.address || ''
+    current_address: patient.address || null  // ชื่อคอลัมน์จริงใน DB คือ current_address
   });
   if (pErr) { console.error("Profile insert error:", pErr); throw pErr; }
 
@@ -767,7 +770,7 @@ export async function addPatient(patient: {
       patient_id: patData.patient_id,
       contact_name: patient.emergencyContactName || '-',
       contact_phone: patient.emergencyContactPhone || '-',
-      relationship: (patient as any).emergencyContactRelationship || 'ไม่ได้ระบุ'
+      relationship: patient.emergencyContactRelationship || 'ไม่ได้ระบุ'
     });
     if (ecErr) { console.error("Emergency Contact insert error:", ecErr); }
   }
@@ -2105,6 +2108,11 @@ export async function verifyOTP(email: string, otp: string) {
   if (error) throw error;
   return true;
 }
+
+export async function cancelRegistration() {
+  await supabase.auth.signOut();
+}
+
 export async function savePatientData(form: RegForm) {
   // Get the authenticated user (since they just verified OTP)
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
@@ -2113,14 +2121,16 @@ export async function savePatientData(form: RegForm) {
   const userId = user.id;
   const cleanIdCard = form.idCard.replace(/-/g, "");
 
+  // gender ต้องเป็น 'ชาย' หรือ 'หญิง' เท่านั้น (ตาม CHECK constraint)
+  const validGender = (form.gender === 'ชาย' || form.gender === 'หญิง') ? form.gender : null;
   // Upsert into Profile (handles case where trigger may have already created a record)
   const { error: pErr } = await supabase.from('profile').upsert({
     citizen_id: cleanIdCard,
     first_name: form.firstName,
     last_name: form.lastName,
-    phone_number: form.phone,
-    gender: form.gender,
-    birth_date: form.dob
+    phone_number: form.phone || null,
+    gender: validGender,
+    birth_date: form.dob || null
   }, { onConflict: 'citizen_id' });
   if (pErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลส่วนตัว: ${pErr.message}`);
 
@@ -2163,7 +2173,7 @@ export async function savePatientData(form: RegForm) {
       patient_id: returnedPatientId,
       contact_name: form.emergencyName || '-',
       contact_phone: form.emergencyPhone || '-',
-      relationship: 'ไม่ได้ระบุ'
+      relationship: form.emergencyRelationship || 'ไม่ได้ระบุ'
     });
   }
 

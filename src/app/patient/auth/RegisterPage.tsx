@@ -2,13 +2,13 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Check, AlertCircle, ChevronLeft, ArrowRight, Mail, Lock, Eye, EyeOff, RefreshCw } from "lucide-react";
 import AuthShell, { Field } from "./AuthShell";
 import { RegForm, REG_STEPS, calcAge, inputCls, inputStyle } from "../types";
-import { requestRegistrationOTP, resendOTP, verifyOTP, savePatientData } from "../../shared/supabaseApi";
+import { requestRegistrationOTP, resendOTP, verifyOTP, savePatientData, cancelRegistration } from "../../shared/supabaseApi";
 
 export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess: (email: string, formData?: RegForm) => void; onLogin: () => void; onBack: () => void }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<RegForm>({
     firstName: "", lastName: "", idCard: "", dob: "", gender: "",
-    phone: "", emergencyName: "", emergencyPhone: "",
+    phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
     conditions: "", allergies: "",
     email: "", password: "", confirmPassword: "",
   });
@@ -21,6 +21,18 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendMsg, setResendMsg] = useState("");
+
+  // Check if user is already authenticated (e.g. they logged in but have incomplete profile)
+  useEffect(() => {
+    import("../../shared/supabaseApi").then(({ supabase }) => {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user && user.email) {
+          setForm(f => ({ ...f, email: user.email! }));
+          setStep(2); // Skip OTP and go straight to Personal Info
+        }
+      });
+    });
+  }, []);
 
   const set = (k: keyof RegForm, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -47,7 +59,7 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
     }
     // Step 3: ข้อมูลการติดต่อ
     if (step === 3) {
-      if (!form.phone || !form.emergencyName || !form.emergencyPhone) {
+      if (!form.phone || !form.emergencyName || !form.emergencyPhone || !form.emergencyRelationship) {
         setErr("กรุณากรอกข้อมูลให้ครบทุกช่อง");
         return false;
       }
@@ -95,6 +107,18 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
     const timer = setTimeout(() => setResendCooldown(c => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [resendCooldown]);
+
+  // 5-Minute Inactivity Timeout (after OTP is verified)
+  useEffect(() => {
+    if (step >= 2 && step <= 4) {
+      const timeout = setTimeout(async () => {
+        await cancelRegistration();
+        alert("หมดเวลาทำรายการ 5 นาที กรุณาเข้าสู่ระบบอีกครั้งเพื่อกรอกข้อมูลส่วนตัวต่อ");
+        onLogin(); // Redirect to login page
+      }, 5 * 60 * 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [step, onLogin]);
 
   const handleResendOTP = useCallback(async () => {
     if (resendCooldown > 0) return;
@@ -301,6 +325,9 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
                 </Field>
                 <Field label="เบอร์โทรศัพท์ *">
                   <input type="tel" name="emergencyPhone" autoComplete="off" value={form.emergencyPhone} onChange={e => set("emergencyPhone", e.target.value)} placeholder="0XX-XXX-XXXX" className={inputCls} style={inputStyle} />
+                </Field>
+                <Field label="ความสัมพันธ์ *">
+                  <input name="emergencyRelationship" autoComplete="off" value={form.emergencyRelationship} onChange={e => set("emergencyRelationship", e.target.value)} placeholder="เช่น พ่อ, แม่, ลูก, เพื่อน" className={inputCls} style={inputStyle} />
                 </Field>
               </div>
             </div>

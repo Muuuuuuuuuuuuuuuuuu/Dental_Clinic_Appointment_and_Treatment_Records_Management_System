@@ -66,6 +66,11 @@ export default function LoginPage({
         // Fetch profile using the already-authenticated user ID
         const { getPatientProfileByUserId } = await import("../../shared/supabaseApi");
         const profile = await getPatientProfileByUserId(authData.user.id) as any;
+        
+        if (!profile) {
+          throw new Error("INCOMPLETE_PROFILE");
+        }
+
         onLogin({
           patientId: profile?.patientId || null,
           idCard: profile?.idCard || "",
@@ -89,7 +94,15 @@ export default function LoginPage({
         onLoginRole(mappedRole, email);
       }
     } catch (err: any) {
-      setError(err.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      if (err.message === "INCOMPLETE_PROFILE") {
+        setError("คุณยังกรอกข้อมูลส่วนตัวไม่ครบถ้วน กรุณาสมัครสมาชิกใหม่อีกครั้ง");
+        // We will call onRegister so the user goes back to the registration screen
+        setTimeout(() => {
+          onRegister();
+        }, 2000);
+      } else {
+        setError(err.message || "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
+      }
     } finally {
       setLoading(false);
     }

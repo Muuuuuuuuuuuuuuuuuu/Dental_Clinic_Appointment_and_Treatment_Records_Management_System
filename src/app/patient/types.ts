@@ -140,7 +140,7 @@ export const REG_STEPS = ["ข้อมูลบัญชี", "ยืนยั�
 
 export interface RegForm {
   firstName: string; lastName: string; idCard: string; dob: string; gender: string;
-  phone: string; emergencyName: string; emergencyPhone: string;
+  phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string;
   conditions: string; allergies: string;
   email: string; password: string; confirmPassword: string;
 }
