@@ -1,0 +1,147 @@
+﻿diff --git a/src/app/patient/booking/HealthChecklistForm.tsx b/src/app/patient/booking/HealthChecklistForm.tsx
+index da08ea8..c771a86 100644
+--- a/src/app/patient/booking/HealthChecklistForm.tsx
++++ b/src/app/patient/booking/HealthChecklistForm.tsx
+@@ -75,74 +75,81 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
+ 
+   const inputStyle = "w-full px-4 py-3 rounded-xl border text-base outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/40 bg-[#F0F4F8] border-transparent text-[#1A365D]";
+ 
+-  if (isReturning && formData.hasChanges === null) {
+-    return (
+-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E2E8F0] space-y-6 animate-fade-in">
+-        <div className="flex items-center gap-3 text-[#1A365D] mb-2">
+-          <div className="w-10 h-10 rounded-full bg-[#E8F4FF] flex items-center justify-center text-[#2B6CB0]">
+-            <ShieldAlert size={20} />
+-          </div>
+-          <div>
+-            <h3 className="font-bold text-lg">เธขเธทเธเธขเธฑเธเธเนเธญเธกเธนเธฅเธชเธธเธเธ เธฒเธ (1-Click Verification)</h3>
+-            <p className="text-sm text-[#4A6080]">เธเธฃเธฐเธงเธฑเธ•เธดเธชเธธเธเธ เธฒเธเธฅเนเธฒเธชเธธเธ”เธเธญเธเธเธธเธ“เธฃเธฐเธเธธเธงเนเธฒ:</p>
+-          </div>
++  const renderReturningUserOptions = () => (
++    <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E2E8F0] space-y-6 animate-fade-in mb-6">
++      <div className="flex items-center gap-3 text-[#1A365D] mb-2">
++        <div className="w-10 h-10 rounded-full bg-[#E8F4FF] flex items-center justify-center text-[#2B6CB0]">
++          <ShieldAlert size={20} />
+         </div>
+-
+-        <div className="bg-[#F8FAFC] rounded-xl p-4 border border-[#E2E8F0] space-y-2">
+-          <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">เนเธฃเธเธเธฃเธฐเธเธณเธ•เธฑเธง:</span> {user?.conditions}</p>
+-          <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">เธเธฃเธฐเธงเธฑเธ•เธดเนเธเนเธขเธฒ:</span> {user?.allergies}</p>
++        <div>
++          <h3 className="font-bold text-lg">เธขเธทเธเธขเธฑเธเธเนเธญเธกเธนเธฅเธชเธธเธเธ เธฒเธ (1-Click Verification)</h3>
++          <p className="text-sm text-[#4A6080]">เธเธฃเธฐเธงเธฑเธ•เธดเธชเธธเธเธ เธฒเธเธฅเนเธฒเธชเธธเธ”เธเธญเธเธเธธเธ“เธฃเธฐเธเธธเธงเนเธฒ:</p>
+         </div>
++      </div>
+ 
+-        <div className="space-y-3 pt-2">
+-          <p className="font-semibold text-[#1A365D]">เธเนเธญเธกเธนเธฅเธชเธธเธเธ เธฒเธเธเธญเธเธเธธเธ“เธกเธตเธเธฒเธฃเน€เธเธฅเธตเนเธขเธเนเธเธฅเธเธซเธฃเธทเธญเนเธกเน?</p>
+-          
+-          <button 
+-            type="button"
+-            onClick={() => setFormData({ ...formData, hasChanges: false, consent: true })}
+-            className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-[#E8FFF0] hover:bg-[#D1FADF] transition-all text-left"
+-          >
+-            <div>
+-              <p className="font-bold text-[#1B7A3E]">เนเธกเนเธกเธตเธญเธฐเนเธฃเน€เธเธฅเธตเนเธขเธเนเธเธฅเธ</p>
+-              <p className="text-sm text-[#1B7A3E]/80">เนเธเนเธเนเธญเธกเธนเธฅเธชเธธเธเธ เธฒเธเน€เธ”เธดเธกเนเธเธเธฒเธฃเธเธฃเธฐเน€เธกเธดเธ</p>
+-            </div>
+-            <CheckCircle2 size={24} className="text-[#1B7A3E]" />
+-          </button>
++      <div className="bg-[#F8FAFC] rounded-xl p-4 border border-[#E2E8F0] space-y-2">
++        <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">เนเธฃเธเธเธฃเธฐเธเธณเธ•เธฑเธง:</span> {user?.conditions}</p>
++        <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">เธเธฃเธฐเธงเธฑเธ•เธดเนเธเนเธขเธฒ:</span> {user?.allergies}</p>
++      </div>
++
++      <div className="space-y-3 pt-2">
++        <p className="font-semibold text-[#1A365D]">เธเนเธญเธกเธนเธฅเธชเธธเธเธ เธฒเธเธเธญเธเธเธธเธ“เธกเธตเธเธฒเธฃเน€เธเธฅเธตเนเธขเธเนเธเธฅเธเธซเธฃเธทเธญเนเธกเน?</p>
++        
++        <button 
++          type="button"
++          onClick={() => setFormData({ ...formData, hasChanges: false, consent: true })}
++          className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${formData.hasChanges === false ? 'border-[#1B7A3E] bg-[#E8FFF0]' : 'border-transparent bg-[#F8FAFC] hover:bg-[#E8FFF0]'}`}
++        >
++          <div>
++            <p className={`font-bold ${formData.hasChanges === false ? 'text-[#1B7A3E]' : 'text-[#1A365D]'}`}>เนเธกเนเธกเธตเธญเธฐเนเธฃเน€เธเธฅเธตเนเธขเธเนเธเธฅเธ</p>
++            <p className={`text-sm ${formData.hasChanges === false ? 'text-[#1B7A3E]/80' : 'text-[#4A6080]'}`}>เนเธเนเธเนเธญเธกเธนเธฅเธชเธธเธเธ เธฒเธเน€เธ”เธดเธกเนเธเธเธฒเธฃเธเธฃเธฐเน€เธกเธดเธ</p>
++          </div>
++          {formData.hasChanges === false && <CheckCircle2 size={24} className="text-[#1B7A3E]" />}
++        </button>
+ 
+-          <button 
+-            type="button"
+-            onClick={() => {
++        <button 
++          type="button"
++          onClick={() => {
++            if (formData.hasChanges !== true) {
+               setFormData({ 
+                 ...formData, 
+                 hasChanges: true,
+                 emergencyName: user?.emergencyName || '',
+                 emergencyPhone: user?.emergencyPhone || '',
+                 hasAllergy: null, allergies: [], allergyOther: '',
+-                hasCondition: null, conditions: [], conditionOther: ''
++                hasCondition: null, conditions: [], conditionOther: '',
++                hasMedications: null, medicationNote: '', consent: false
+               });
+-            }}
+-            className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-[#E2E8F0] hover:border-[#FF8C9A] hover:bg-[#FFF0F2] transition-all text-left"
+-          >
+-            <div>
+-              <p className="font-bold text-[#1A365D]">เธกเธตเธเนเธญเธกเธนเธฅเน€เธเธดเนเธกเน€เธ•เธดเธก / เธเนเธงเธขเน€เธเนเธเนเธฃเธเนเธซเธกเน</p>
+-              <p className="text-sm text-[#4A6080]">เธญเธฑเธเน€เธ”เธ•เธเธฃเธฐเธงเธฑเธ•เธดเนเธเนเธขเธฒ เธซเธฃเธทเธญเนเธฃเธเธเธฃเธฐเธเธณเธ•เธฑเธง</p>
+-            </div>
+-          </button>
+-        </div>
++            }
++          }}
++          className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${formData.hasChanges === true ? 'border-[#FF8C9A] bg-[#FFF0F2]' : 'border-[#E2E8F0] hover:border-[#FF8C9A] hover:bg-[#FFF0F2]'}`}
++        >
++          <div>
++            <p className={`font-bold ${formData.hasChanges === true ? 'text-[#E0314C]' : 'text-[#1A365D]'}`}>เธกเธตเธเนเธญเธกเธนเธฅเน€เธเธดเนเธกเน€เธ•เธดเธก / เธเนเธงเธขเน€เธเนเธเนเธฃเธเนเธซเธกเน</p>
++            <p className={`text-sm ${formData.hasChanges === true ? 'text-[#E0314C]/80' : 'text-[#4A6080]'}`}>เธญเธฑเธเน€เธ”เธ•เธเธฃเธฐเธงเธฑเธ•เธดเนเธเนเธขเธฒ เธซเธฃเธทเธญเนเธฃเธเธเธฃเธฐเธเธณเธ•เธฑเธง</p>
++          </div>
++          {formData.hasChanges === true && <CheckCircle2 size={24} className="text-[#E0314C]" />}
++        </button>
+       </div>
+-    );
+-  }
++    </div>
++  );
++
++  const showFullForm = !isReturning || formData.hasChanges === true;
+ 
+-  // Full Form
+   return (
+-    <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] overflow-hidden animate-fade-in">
+-      <div className="bg-gradient-to-r from-[#FF8C9A] to-[#FFB3BA] p-4 text-white text-center">
+-        <h3 className="font-bold text-lg flex items-center justify-center gap-2">
+-          <ShieldAlert size={20} /> เนเธเธเธเธญเธฃเนเธกเธเธฃเธฐเธงเธฑเธ•เธดเธชเธธเธเธ เธฒเธเนเธฅเธฐเนเธเธขเธดเธเธขเธญเธก
+-        </h3>
+-        <p className="text-sm opacity-90 mt-1">เน€เธเธทเนเธญเธเธงเธฒเธกเธเธฅเธญเธ”เธ เธฑเธขเธชเธนเธเธชเธธเธ” เธเธฃเธธเธ“เธฒเนเธซเนเธเนเธญเธกเธนเธฅเธ•เธฒเธกเธเธงเธฒเธกเน€เธเนเธเธเธฃเธดเธ (เธเนเธญเธกเธนเธฅเธ–เธนเธเธเธฑเธ”เน€เธเนเธเน€เธเนเธเธเธงเธฒเธกเธฅเธฑเธ)</p>
+-      </div>
++    <div className="space-y-6">
++      {isReturning && renderReturningUserOptions()}
+ 
+-      <div className="p-6 space-y-8">
++      {showFullForm && (
++        <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] overflow-hidden animate-fade-in">
++          <div className="bg-gradient-to-r from-[#FF8C9A] to-[#FFB3BA] p-4 text-white text-center">
++            <h3 className="font-bold text-lg flex items-center justify-center gap-2">
++              <ShieldAlert size={20} /> เนเธเธเธเธญเธฃเนเธกเธเธฃเธฐเธงเธฑเธ•เธดเธชเธธเธเธ เธฒเธเนเธฅเธฐเนเธเธขเธดเธเธขเธญเธก
++            </h3>
++            <p className="text-sm opacity-90 mt-1">เน€เธเธทเนเธญเธเธงเธฒเธกเธเธฅเธญเธ”เธ เธฑเธขเธชเธนเธเธชเธธเธ” เธเธฃเธธเธ“เธฒเนเธซเนเธเนเธญเธกเธนเธฅเธ•เธฒเธกเธเธงเธฒเธกเน€เธเนเธเธเธฃเธดเธ (เธเนเธญเธกเธนเธฅเธ–เธนเธเธเธฑเธ”เน€เธเนเธเน€เธเนเธเธเธงเธฒเธกเธฅเธฑเธ)</p>
++          </div>
++
++          <div className="p-6 space-y-8">
+         
+         {/* Section 1 */}
+         <section className="space-y-4">
+@@ -305,5 +312,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
+ 
+       </div>
+     </div>
++    )}
++    </div>
+   );
+ }
