@@ -17,6 +17,7 @@ import {
   LeaveRequest, STATUS_COLORS, getClinicStatus, ClinicStatus,
 } from "../shared/data";
 import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours, getLeaveRequests } from "../shared/supabaseApi";
+import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
 
 function AdminStatusBanner() {
   const [s, setS] = useState<ClinicStatus | null>(null);
@@ -114,15 +115,16 @@ function Badge({ label, active }: { label: string; active: boolean }) {
 // ─── Admin Portal Root ────────────────────────────────────────────────────────
 
 export default function AdminPortal({
-  appointments, onLogout,
+  onLogout,
 }: {
-  appointments: Appointment[];
+  appointments?: Appointment[];
   onLogout: () => void;
   loginEmail?: string;
 }) {
   const [view, setView] = useState<AdminView>("dashboard");
   const [sideOpen, setSideOpen] = useState(false);
   const [pendingLeaves, setPendingLeaves] = useState(0);
+  const { appointments: realAppointments } = useRealtimeAppointments();
 
   // Fetch pending leave count for badge
   useEffect(() => {

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle, Clock, AlertTriangle, PhoneCall, XCircle } from "lucide-react";
 import { Appointment, STATUS_COLORS } from "../../shared/data";
-import { getAppointments, updateAppointmentStatus } from "../../shared/supabaseApi";
+import {  updateAppointmentStatus } from "../../shared/supabaseApi";
+import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function ConfirmationsView() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAppointments().then(setAppointments).catch(console.error).finally(() => setLoading(false));
+    fetchAppointments().catch(console.error).finally(() => setLoading(false));
   }, []);
 
   const onUpdateAppt = async (id: number, updates: Partial<Appointment>) => {

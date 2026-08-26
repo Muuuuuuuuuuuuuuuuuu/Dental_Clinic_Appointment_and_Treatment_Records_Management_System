@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { UserCheck, Clock, Users, CreditCard, AlertTriangle, ArrowRight } from "lucide-react";
 import { Appointment, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
-import { getAppointments, updateAppointmentStatus } from "../../shared/supabaseApi";
+import {  updateAppointmentStatus } from "../../shared/supabaseApi";
+import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 const fmtDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export default function CheckInView() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAppointments().then(setAppointments).catch(console.error).finally(() => setLoading(false));
+    fetchAppointments().catch(console.error).finally(() => setLoading(false));
   }, []);
 
   const onUpdate = async (id: number, s: Partial<Appointment>) => {

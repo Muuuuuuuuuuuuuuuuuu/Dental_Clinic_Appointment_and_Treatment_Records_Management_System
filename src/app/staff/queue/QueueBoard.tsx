@@ -5,7 +5,8 @@ import {
 } from "lucide-react";
 
 import { Appointment, SpecialClosure, STATUS_COLORS, StaffView, LeaveRequest, Shift, hasHealthAlert } from "../../shared/data";
-import { getAppointments, getClinicClosures, updateAppointmentStatus, getDentists, getLeaveRequests, getShifts } from "../../shared/supabaseApi";
+import {  getClinicClosures, updateAppointmentStatus, getDentists, getLeaveRequests, getShifts } from "../../shared/supabaseApi";
+import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 type ViewMode = "daily" | "weekly" | "monthly";
 
@@ -685,7 +686,7 @@ export default function QueueBoard({
   setView: (v: StaffView) => void;
   appointments?: Appointment[];
 }) {
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
+  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
   const [dentists, setDentists] = useState<any[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);

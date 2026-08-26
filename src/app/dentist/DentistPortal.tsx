@@ -21,6 +21,7 @@ import {
 } from "../shared/data";
 
 import { getDentists, getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
+import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
 
 function PortalStatusBanner() {
   const [s, setS] = useState<ClinicStatus | null>(null);
@@ -120,12 +121,14 @@ function DoctorSidebar({ view, setView, onLogout, doctor }: { view: DocView; set
 export default function DoctorPortal({
   onLogout,
   loginEmail,
-  appointments
+  appointments: initialAppointments
 }: {
   onLogout: () => void;
   loginEmail?: string;
   appointments?: Appointment[];
 }) {
+  const { appointments: sharedAppointments } = useRealtimeAppointments();
+  const appointments = sharedAppointments || initialAppointments;
   const [view, setView] = useState<DocView>("dashboard");
   const [sideOpen, setSideOpen] = useState(false);
   const [doctor, setDoctor] = useState<DentistInfo | null>(null);

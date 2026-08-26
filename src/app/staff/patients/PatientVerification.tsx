@@ -2,17 +2,17 @@ import React, { useState, useEffect } from "react";
 import { Search, CheckCircle, FileText , Users, Calendar } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, TreatmentPlan } from "../../shared/data";
-import { getAppointments, getTreatmentPlans } from "../../shared/supabaseApi";
+import {  getTreatmentPlans } from "../../shared/supabaseApi";
+import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function PatientVerification() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
   const [treatmentPlans, setTreatmentPlans] = useState<TreatmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
 
   useEffect(() => {
     Promise.all([
-      getAppointments(),
       getTreatmentPlans()
     ])
     .then(([appts, plans]) => {

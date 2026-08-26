@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, AppointmentStatus } from "../../shared/data";
-import { getAppointments, processPaymentApi, addAppointment } from "../../shared/supabaseApi";
+import {  processPaymentApi, addAppointment } from "../../shared/supabaseApi";
+import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function PaymentView({ 
   appointments: initialAppointments,
@@ -11,7 +12,7 @@ export default function PaymentView({
   appointments?: Appointment[];
   onUpdateAppt?: (id: number, updates: Partial<Appointment>) => void;
 }) {
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
+  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
   const [loading, setLoading] = useState(!initialAppointments);
 
   // Selected patient for payment

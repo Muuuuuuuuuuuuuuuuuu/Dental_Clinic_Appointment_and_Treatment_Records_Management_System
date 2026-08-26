@@ -2,15 +2,15 @@ import { useState, useEffect } from "react";
 import { Info } from "lucide-react";
 import { View, UserRole, PatientUser } from "./types";
 import { Appointment, getClinicStatus, ClinicStatus } from "../shared/data";
-import { getAppointments, getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
+import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours, savePatientData } from "../shared/supabaseApi";
 import { supabase } from "../shared/utils/supabaseClient";
+import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 import LoginPage from "./auth/LoginPage";
 import RegisterPage from "./auth/RegisterPage";
 import ConsentPage from "./auth/ConsentPage";
 import ForgotPasswordPage from "./auth/ForgotPasswordPage";
-import { savePatientData } from "../shared/supabaseApi";
 import type { RegForm } from "./types";
 
 // ─── Portal layout ───────────────────────────────────────────────────────────
@@ -58,28 +58,17 @@ export default function PatientPortal() {
   const [consentLoading, setConsentLoading] = useState(false);
   const [consentError, setConsentError] = useState("");
   const [portalView, setPortalView] = useState<View>("dashboard");
-  const [sharedAppointments, setSharedAppointments] = useState<Appointment[]>([]);
-  const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number} | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [clinicStatus, setClinicStatus] = useState<ClinicStatus | null>(null);
+  const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number} | null>(null);
+  
+  const { appointments: sharedAppointments, setAppointments: setSharedAppointments } = useRealtimeAppointments();
 
   useEffect(() => {
-    getAppointments().then(setSharedAppointments).catch(console.error);
-    
     // Fetch clinic status data
     Promise.all([getWeeklyOffDays(), getClinicClosures(), getClinicSettings(), getDailyHours()]).then(([offDays, closures, settings, dh]) => {
       setClinicStatus(getClinicStatus(new Date(), closures, offDays, settings, dh));
     }).catch(console.error);
-
-    const channel = supabase.channel('icemu-updates')
-      .on('broadcast', { event: 'appointments-updated' }, () => {
-        getAppointments().then(setSharedAppointments).catch(console.error);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
 

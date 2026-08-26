@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { CheckCircle, Clock, AlertTriangle, PhoneCall, XCircle, Search, Filter, Calendar as CalendarIcon, ArrowRightLeft, User, CalendarDays, X, UserX } from "lucide-react";
 import { Appointment, DentistInfo, STATUS_COLORS } from "../../shared/data";
-import { getAppointments, getDentists, updateAppointmentStatus, updateAppointmentDetails } from "../../shared/supabaseApi";
+import {  getDentists, updateAppointmentStatus, updateAppointmentDetails } from "../../shared/supabaseApi";
+import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 import { supabase } from "../../shared/utils/supabaseClient";
 
 type TabView = "confirm" | "reschedule" | "transfer" | "all";
@@ -11,7 +12,7 @@ export default function AppointmentManagementView({
 }: {
   appointments?: Appointment[];
 }) {
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
+  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabView>("confirm");
@@ -33,7 +34,7 @@ export default function AppointmentManagementView({
     const channel = supabase.channel('icemu-updates')
       .on('broadcast', { event: 'appointments-updated' }, () => {
         if (!initialAppointments) {
-          getAppointments().then(setAppointments).catch(console.error);
+          fetchAppointments().catch(console.error);
         }
       })
       .subscribe();
@@ -56,7 +57,7 @@ export default function AppointmentManagementView({
       .then(docs => {
         setDentists(docs);
         if (!initialAppointments) {
-          getAppointments().then(setAppointments).catch(console.error);
+          fetchAppointments().catch(console.error);
         }
       })
       .catch(console.error)
