@@ -12,11 +12,11 @@ export default function DentistManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<DentistInfo | null>(null);
-  const [form, setForm] = useState({ name: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", serviceIds: [] as number[] });
+  const [form, setForm] = useState({ name: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", address: "", serviceIds: [] as number[] });
 
   const open = (d?: DentistInfo) => {
     setEditing(d ?? null);
-    setForm(d ? { name: d.name, specialty: d.specialty, license: d.license, university: d.university, email: d.email, password: "", phone: d.phone, serviceIds: d.serviceIds || [] } : { name: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", serviceIds: [] });
+    setForm(d ? { name: d.name, specialty: d.specialty, license: d.license, university: d.university, email: d.email, password: "", phone: d.phone, address: (d as any).address || "", serviceIds: d.serviceIds || [] } : { name: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", address: "", serviceIds: [] });
     setShowModal(true);
   };
 
@@ -182,6 +182,14 @@ export default function DentistManagement() {
                 <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์</label>
                 <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ที่อยู่ปัจจุบัน (ไม่บังคับ)</label>
+                <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                  rows={2} placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                <p className="text-[10px] mt-1" style={{ color: "#94A3B8" }}>ใช้สำหรับเอกสาร HR / สัญญาจ้าง</p>
               </div>
 
               {!editing && (

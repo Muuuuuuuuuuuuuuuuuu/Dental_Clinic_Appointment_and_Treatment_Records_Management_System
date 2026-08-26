@@ -101,21 +101,21 @@ export default function TreatmentQueue({
   const onUpdateAppt = async (id: number, updates: Partial<Appointment>) => {
     try {
       if (updates.status) {
-        let updatedStatus = updates.status;
         if (updates.status === "รอชำระเงิน" && updates.treatmentNotes !== undefined) {
+          // บันทึก Supabase ก่อน แล้วค่อยอัปเดต UI
           await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id);
         } else {
-          const res = await updateAppointmentStatus(id, updates.status);
-          updatedStatus = res.status;
+          await updateAppointmentStatus(id, updates.status);
         }
-        
-        setAppointments(apps => apps.map(a => a.id === id ? { 
-          ...a, 
-          status: updatedStatus, 
+
+        // อัปเดต local state หลัง Supabase บันทึกสำเร็จ
+        setAppointments(apps => apps.map(a => a.id === id ? {
+          ...a,
+          status: updates.status!,
           treatmentNotes: updates.treatmentNotes || a.treatmentNotes,
           treatmentServices: updates.treatmentServices || a.treatmentServices,
           recommendations: updates.recommendations || a.recommendations,
-          cost: updates.cost || a.cost 
+          cost: updates.cost || a.cost
         } : a));
       }
     } catch (err) {
@@ -137,8 +137,8 @@ export default function TreatmentQueue({
     }
   };
 
-  const submitTreatment = (appt: Appointment) => {
-    onUpdateAppt(appt.id, {
+  const submitTreatment = async (appt: Appointment) => {
+    await onUpdateAppt(appt.id, {
       status: "รอชำระเงิน",
       treatmentNotes: form.notes,
       treatmentServices: form.services,
@@ -294,8 +294,9 @@ export default function TreatmentQueue({
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <div>
-                      <Odontogram 
-                        toothData={toothData} 
+                      <Odontogram
+                        key={`odontogram-${recording}`}
+                        toothData={toothData}
                         onToothClick={handleToothClick}
                         isChild={isChild}
                         setIsChild={setIsChild}

@@ -13,7 +13,7 @@ let globalUpdateChannel: any = null;
 export function notifyAppointmentsUpdated() {
   if (!globalUpdateChannel) {
     globalUpdateChannel = supabase.channel('icemu-updates', { config: { broadcast: { self: true } } });
-    //globalUpdateChannel.subscribe();
+    globalUpdateChannel.subscribe(); // เปิด realtime ให้ฝั่งพนักงานรับ event ได้
   }
 
   if (globalUpdateChannel.state === 'joined') {
@@ -875,12 +875,81 @@ export async function getPatientProfileByUserId(userId: string) {
     gender: p.gender,
     phone: p.phone_number,
     email: data.email,
+    address: p.current_address || '',
     emergencyName: ecData?.contact_name || '',
     emergencyPhone: ecData?.contact_phone || '',
     emergencyRelationship: ecData?.relationship || '',
     conditions: conditions || 'ไม่มี',
     allergies: allergies || 'ไม่มี'
   };
+}
+
+// --- Update Patient Profile ---
+export async function updatePatientProfile(userId: string, updates: {
+  phone?: string;
+  email?: string;
+  address?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+}) {
+  // 1. ดึง citizen_id และ patient_id
+  const { data: userData, error: userErr } = await supabase
+    .from('users')
+    .select('citizen_id')
+    .eq('user_id', userId)
+    .single();
+  if (userErr || !userData) throw new Error('ไม่พบข้อมูลผู้ใช้');
+
+  const { data: patientData } = await supabase
+    .from('patient')
+    .select('patient_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  // 2. อัปเดต profile (phone, address)
+  const profileUpdates: Record<string, any> = {};
+  if (updates.phone !== undefined) profileUpdates.phone_number = updates.phone;
+  if (updates.address !== undefined) profileUpdates.current_address = updates.address;
+
+  if (Object.keys(profileUpdates).length > 0) {
+    const { error: pErr } = await supabase
+      .from('profile')
+      .update(profileUpdates)
+      .eq('citizen_id', userData.citizen_id);
+    if (pErr) throw pErr;
+  }
+
+  // 3. อัปเดต users (email)
+  if (updates.email !== undefined) {
+    const { error: uErr } = await supabase
+      .from('users')
+      .update({ email: updates.email, updated_at: new Date().toISOString() })
+      .eq('user_id', userId);
+    if (uErr) throw uErr;
+  }
+
+  // 4. อัปเดต emergency_contact
+  if (patientData?.patient_id && (updates.emergencyName !== undefined || updates.emergencyPhone !== undefined)) {
+    const ecUpdates: Record<string, any> = {};
+    if (updates.emergencyName !== undefined) ecUpdates.contact_name = updates.emergencyName;
+    if (updates.emergencyPhone !== undefined) ecUpdates.contact_phone = updates.emergencyPhone;
+
+    const { data: existing } = await supabase
+      .from('emergency_contact')
+      .select('emergency_id')
+      .eq('patient_id', patientData.patient_id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('emergency_contact').update(ecUpdates).eq('emergency_id', existing.emergency_id);
+    } else {
+      await supabase.from('emergency_contact').insert({
+        patient_id: patientData.patient_id,
+        contact_name: updates.emergencyName || '-',
+        contact_phone: updates.emergencyPhone || '-',
+      });
+    }
+  }
 }
 
 // --- Appointments ---

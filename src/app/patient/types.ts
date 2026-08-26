@@ -12,6 +12,7 @@ export interface PatientUser {
   patientId?: number;
   firstName: string; lastName: string; idCard: string; dob: string;
   gender: string; phone: string; email: string;
+  address?: string;
   emergencyName: string; emergencyPhone: string;
   conditions: string; allergies: string;
 }
@@ -142,6 +143,7 @@ export interface RegForm {
   firstName: string; lastName: string; idCard: string; dob: string; gender: string;
   phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string;
   conditions: string; allergies: string;
+  address: string;
   email: string; password: string; confirmPassword: string;
 }
 

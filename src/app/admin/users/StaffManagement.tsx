@@ -11,11 +11,11 @@ export default function StaffManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<StaffInfo | null>(null);
-  const [form, setForm] = useState({ name: "", role: "", email: "", phone: "", startDate: "", salary: "", password: "" });
+  const [form, setForm] = useState({ name: "", role: "", email: "", phone: "", startDate: "", salary: "", password: "", address: "" });
 
   const open = (s?: StaffInfo) => {
     setEditing(s ?? null);
-    setForm(s ? { name: s.name, role: s.role, email: s.email, phone: s.phone, startDate: s.startDate, salary: s.salary || "", password: "" } : { name: "", role: "", email: "", phone: "", startDate: "", salary: "", password: "" });
+    setForm(s ? { name: s.name, role: s.role, email: s.email, phone: s.phone, startDate: s.startDate, salary: s.salary || "", password: "", address: (s as any).address || "" } : { name: "", role: "", email: "", phone: "", startDate: "", salary: "", password: "", address: "" });
     setShowModal(true);
   };
 
@@ -132,6 +132,13 @@ export default function StaffManagement() {
                     className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                 </div>
               ))}
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ที่อยู่ปัจจุบัน (ไม่บังคับ)</label>
+                <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                  rows={2} placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                <p className="text-[10px] mt-1" style={{ color: "#94A3B8" }}>ใช้สำหรับเอกสาร HR / สัญญาจ้าง</p>
+              </div>
               {!editing && (
                 <div>
                   <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตั้งรหัสผ่าน (ปล่อยว่างไว้หากต้องการใช้ password123)</label>

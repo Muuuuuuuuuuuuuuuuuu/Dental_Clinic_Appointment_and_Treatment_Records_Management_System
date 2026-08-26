@@ -14,8 +14,10 @@ const thDate = (dateStr: string) => {
 
 export default function ProfileView({ user, setUser }: { user: PatientUser; setUser: (u: PatientUser) => void }) {
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ phone: user.phone, email: user.email, emergencyName: user.emergencyName, emergencyPhone: user.emergencyPhone });
+  const [form, setForm] = useState({ phone: user.phone, email: user.email, address: user.address ?? "", emergencyName: user.emergencyName, emergencyPhone: user.emergencyPhone });
   const [saved, setSaved] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
   const [pwMode, setPwMode] = useState(false);
   const [pw, setPw] = useState({ old: "", newPw: "", confirm: "" });
   const [pwErr, setPwErr] = useState("");
@@ -24,11 +26,23 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfPw, setShowConfPw] = useState(false);
 
-  const saveProfile = () => {
-    setUser({ ...user, ...form });
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  const saveProfile = async () => {
+    setSaveErr("");
+    setSaveLoading(true);
+    try {
+      const { supabase, updatePatientProfile } = await import("../../shared/supabaseApi");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("ไม่พบข้อมูลผู้ใช้");
+      await updatePatientProfile(authUser.id, form);
+      setUser({ ...user, ...form });
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: any) {
+      setSaveErr(err.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const savePw = async () => {
@@ -120,23 +134,34 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
                 </button>
               ) : (
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditing(false); setForm({ phone: user.phone, email: user.email, emergencyName: user.emergencyName, emergencyPhone: user.emergencyPhone }); }}
+                  <button onClick={() => { setEditing(false); setSaveErr(""); setForm({ phone: user.phone, email: user.email, address: user.address ?? "", emergencyName: user.emergencyName, emergencyPhone: user.emergencyPhone }); }}
                     className="text-xs px-3 py-1.5 rounded-lg" style={{ border: "1px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
                     ยกเลิก
                   </button>
-                  <button onClick={saveProfile} className="text-xs px-3 py-1.5 rounded-lg text-white" style={{ backgroundColor: "#FF8C9A" }}>
-                    บันทึก
+                  <button onClick={saveProfile} disabled={saveLoading}
+                    className="text-xs px-3 py-1.5 rounded-lg text-white disabled:opacity-60" style={{ backgroundColor: "#FF8C9A" }}>
+                    {saveLoading ? "กำลังบันทึก..." : "บันทึก"}
                   </button>
                 </div>
               )}
+              {saveErr && (
+                <div className="flex items-center gap-1.5 mt-2 text-xs" style={{ color: "#C0392B" }}>
+                  <AlertCircle size={12} /> {saveErr}
+                </div>
+              )}
             </div>
-            {["phone", "email", "emergencyName", "emergencyPhone"].map(k => {
-              const labels: Record<string, string> = { phone: "เบอร์โทรศัพท์", email: "อีเมล", emergencyName: "ผู้ติดต่อฉุกเฉิน (ชื่อ)", emergencyPhone: "ผู้ติดต่อฉุกเฉิน (เบอร์)" };
+            {["phone", "email", "address", "emergencyName", "emergencyPhone"].map(k => {
+              const labels: Record<string, string> = { phone: "เบอร์โทรศัพท์", email: "อีเมล", address: "ที่อยู่ปัจจุบัน", emergencyName: "ผู้ติดต่อฉุกเฉิน (ชื่อ)", emergencyPhone: "ผู้ติดต่อฉุกเฉิน (เบอร์)" };
               return editing ? (
                 <div key={k} className="py-2" style={{ borderBottom: "1px solid rgba(26,54,93,0.06)" }}>
                   <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>{labels[k]}</label>
-                  <input value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                  {k === "address" ? (
+                    <textarea value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
+                      rows={2} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                  ) : (
+                    <input value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                  )}
                 </div>
               ) : (
                 <InfoRow key={k} label={labels[k]} val={(form as any)[k]} />

@@ -5,7 +5,7 @@ type RegForm = {
   firstName: string; lastName: string; idCard: string; dob: string; gender: string;
   phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string;
   conditions: string; allergies: string;
-  email: string;
+  email: string; address: string;
 };
 
 const inputCls = "w-full px-4 py-3 rounded-xl border-2 transition-all outline-none text-sm";
@@ -25,7 +25,7 @@ export default function StaffRegisterPatient() {
   const [form, setForm] = useState<RegForm>({
     firstName: "", lastName: "", idCard: "", dob: "", gender: "",
     phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
-    conditions: "", allergies: "", email: ""
+    conditions: "", allergies: "", email: "", address: ""
   });
   const [err, setErr] = useState("");
   const [success, setSuccess] = useState(false);
@@ -71,7 +71,7 @@ export default function StaffRegisterPatient() {
           setForm({
             firstName: "", lastName: "", idCard: "", dob: "", gender: "",
             phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
-            conditions: "", allergies: "", email: ""
+            conditions: "", allergies: "", email: "", address: ""
           });
         }} className="px-6 py-3 rounded-xl font-medium text-white transition-opacity hover:opacity-90"
           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
@@ -146,6 +146,12 @@ export default function StaffRegisterPatient() {
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>อีเมล (ถ้ามี)</label>
               <input type="email" className={inputCls} style={inputStyle(form.email)} value={form.email} onChange={e => set("email", e.target.value)} placeholder="example@email.com" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>ที่อยู่ปัจจุบัน (ไม่บังคับ)</label>
+              <textarea className={inputCls} style={{...inputStyle(form.address), minHeight: "72px"}} value={form.address} onChange={e => set("address", e.target.value)}
+                placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" />
+              <p className="text-[10px] mt-1 text-gray-400">ใช้สำหรับออกใบกำกับภาษีและเอกสารทางการแพทย์</p>
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>ชื่อผู้ติดต่อฉุกเฉิน</label>

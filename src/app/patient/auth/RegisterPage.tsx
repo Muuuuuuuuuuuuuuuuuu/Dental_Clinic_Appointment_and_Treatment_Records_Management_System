@@ -10,6 +10,7 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
     firstName: "", lastName: "", idCard: "", dob: "", gender: "",
     phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
     conditions: "", allergies: "",
+    address: "",
     email: "", password: "", confirmPassword: "",
   });
   const [showPass, setShowPass] = useState(false);
@@ -342,6 +343,12 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
           <>
             <Field label="เบอร์โทรศัพท์ *">
               <input type="tel" name="phone" autoComplete="tel" value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="0XX-XXX-XXXX" className={inputCls} style={inputStyle} />
+            </Field>
+            <Field label="ที่อยู่ปัจจุบัน (ไม่บังคับ)">
+              <textarea name="address" autoComplete="street-address" value={form.address} onChange={e => set("address", e.target.value)}
+                placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์"
+                rows={2} className={`${inputCls} resize-none`} style={inputStyle} />
+              <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>ใช้สำหรับออกใบกำกับภาษีและเอกสารทางการแพทย์ — กรอกภายหลังได้ในหน้าโปรไฟล์</p>
             </Field>
             <div className="border-t pt-4" style={{ borderColor: "rgba(26,54,93,0.08)" }}>
               <p className="text-sm font-medium mb-3" style={{ color: "#1A365D" }}>ผู้ติดต่อฉุกเฉิน</p>
