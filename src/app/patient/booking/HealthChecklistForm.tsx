@@ -5,6 +5,7 @@ import { PatientUser } from '../types';
 export interface HealthChecklistData {
   emergencyName: string;
   emergencyPhone: string;
+  emergencyRelationship: string;
   hasAllergy: boolean | null;
   allergies: string[];
   allergyOther: string;
@@ -41,7 +42,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
       valid = true;
     } else {
       // Full form validation
-      const hasEmergency = formData.emergencyName.trim() !== '' && formData.emergencyPhone.trim() !== '';
+      const hasEmergency = formData.emergencyName.trim() !== '' && formData.emergencyPhone.trim() !== '' && formData.emergencyRelationship.trim() !== '';
       const validAllergy = formData.hasAllergy === false || (formData.hasAllergy === true && formData.allergies.length > 0 && (!formData.allergies.includes('แพ้อื่นๆ') || formData.allergyOther.trim() !== ''));
       const validCondition = formData.hasCondition === false || (formData.hasCondition === true && formData.conditions.length > 0 && (!formData.conditions.includes('โรคอื่นๆ') || formData.conditionOther.trim() !== ''));
       const validMedication = formData.hasMedications !== null;
@@ -116,6 +117,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
                 hasChanges: true,
                 emergencyName: user?.emergencyName || '',
                 emergencyPhone: user?.emergencyPhone || '',
+                emergencyRelationship: user?.emergencyRelationship || '',
                 hasAllergy: null, allergies: [], allergyOther: '',
                 hasCondition: null, conditions: [], conditionOther: '',
                 hasMedications: null, medicationNote: '', consent: false
@@ -156,10 +158,14 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
             <User size={18} className="text-[#FF8C9A]" /> ส่วนที่ 1: ข้อมูลผู้ติดต่อฉุกเฉิน
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:pl-7">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:pl-7">
             <div>
               <label className="block text-sm font-medium text-[#4A6080] mb-1">ชื่อ-นามสกุล ผู้ติดต่อฉุกเฉิน</label>
               <input type="text" className={inputStyle} value={formData.emergencyName} onChange={e => setFormData({...formData, emergencyName: e.target.value})} placeholder="ระบุชื่อผู้ติดต่อฉุกเฉิน" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#4A6080] mb-1">ความสัมพันธ์กับคนไข้</label>
+              <input type="text" className={inputStyle} value={formData.emergencyRelationship} onChange={e => setFormData({...formData, emergencyRelationship: e.target.value})} placeholder="เช่น บิดา, มารดา, สามี" />
             </div>
             <div>
               <label className="block text-sm font-medium text-[#4A6080] mb-1">เบอร์โทรศัพท์ผู้ติดต่อฉุกเฉิน</label>

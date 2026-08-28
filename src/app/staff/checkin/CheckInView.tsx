@@ -8,7 +8,7 @@ const fmtDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export default function CheckInView() {
-  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
+  const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

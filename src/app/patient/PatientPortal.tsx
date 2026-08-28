@@ -129,6 +129,7 @@ export default function PatientPortal() {
         email: formData.email,
         emergencyName: formData.emergencyName,
         emergencyPhone: formData.emergencyPhone,
+        emergencyRelationship: formData.emergencyRelationship,
         conditions: formData.conditions,
         allergies: formData.allergies
       });

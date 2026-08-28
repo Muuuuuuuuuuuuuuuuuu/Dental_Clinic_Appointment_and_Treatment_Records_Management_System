@@ -18,6 +18,7 @@ import {
 } from "../shared/data";
 import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours, getLeaveRequests } from "../shared/supabaseApi";
 import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
+import { useIdleTimeout } from "../shared/useIdleTimeout";
 
 function AdminStatusBanner() {
   const [s, setS] = useState<ClinicStatus | null>(null);
@@ -125,6 +126,11 @@ export default function AdminPortal({
   const [sideOpen, setSideOpen] = useState(false);
   const [pendingLeaves, setPendingLeaves] = useState(0);
   const { appointments: realAppointments } = useRealtimeAppointments();
+
+  useIdleTimeout(() => {
+    alert("ระบบได้ทำการออกจากระบบอัตโนมัติเนื่องจากไม่มีการใช้งาน");
+    onLogout();
+  }, 30);
 
   // Fetch pending leave count for badge
   useEffect(() => {

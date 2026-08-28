@@ -20,6 +20,7 @@ import {
   getClinicStatus, StaffView, ClinicStatus
 } from "../shared/data";
 import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
+import { useIdleTimeout } from "../shared/useIdleTimeout";
 
 function StaffStatusBanner() {
   const [s, setS] = useState<ClinicStatus | null>(null);
@@ -259,6 +260,12 @@ export default function StaffPortal({
   
   // Clock-in & Network State
   const [isClockedIn, setIsClockedIn] = useState(false);
+
+  useIdleTimeout(() => {
+    alert("ระบบได้ทำการออกจากระบบอัตโนมัติเนื่องจากไม่มีการใช้งาน");
+    onLogout();
+  }, 30);
+
   const [mockNetwork, setMockNetwork] = useState<"home"|"clinic">("home");
   
   // Password Change

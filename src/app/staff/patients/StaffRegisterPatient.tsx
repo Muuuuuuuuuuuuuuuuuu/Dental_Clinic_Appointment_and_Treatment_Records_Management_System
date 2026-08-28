@@ -189,7 +189,7 @@ export default function StaffRegisterPatient() {
             setForm({
               firstName: "", lastName: "", idCard: "", dob: "", gender: "",
               phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
-              conditions: "", allergies: "", email: ""
+              conditions: "", allergies: "", email: "", address: ""
             });
             setErr("");
           }} 

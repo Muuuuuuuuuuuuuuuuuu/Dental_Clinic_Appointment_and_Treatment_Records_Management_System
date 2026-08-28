@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Search, CheckCircle, FileText , Users, Calendar } from "lucide-react";
 
-import { Appointment, STATUS_COLORS, TreatmentPlan } from "../../shared/data";
+import { Appointment, STATUS_COLORS, TreatmentPlan, hasHealthAlert } from "../../shared/data";
 import {  getTreatmentPlans } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function PatientVerification() {
-  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
+  const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [treatmentPlans, setTreatmentPlans] = useState<TreatmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -73,13 +73,13 @@ export default function PatientVerification() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="p-3 rounded-xl" style={{ backgroundColor: a.conditions !== "ไม่มี" ? "#FFF3E0" : "#F8F9FA" }}>
+                <div className="p-3 rounded-xl" style={{ backgroundColor: hasHealthAlert(a.conditions) ? "#FFF3E0" : "#F8F9FA" }}>
                   <p className="text-xs font-medium mb-1" style={{ color: "#4A6080" }}>โรคประจำตัว</p>
-                  <p className="text-sm" style={{ color: a.conditions !== "ไม่มี" ? "#E65100" : "#1A365D" }}>{a.conditions}</p>
+                  <p className="text-sm" style={{ color: hasHealthAlert(a.conditions) ? "#E65100" : "#1A365D" }}>{a.conditions}</p>
                 </div>
-                <div className="p-3 rounded-xl" style={{ backgroundColor: a.allergies !== "ไม่มี" ? "#FEF2F2" : "#F8F9FA" }}>
+                <div className="p-3 rounded-xl" style={{ backgroundColor: hasHealthAlert(a.allergies) ? "#FEF2F2" : "#F8F9FA" }}>
                   <p className="text-xs font-medium mb-1" style={{ color: "#4A6080" }}>ประวัติแพ้ยา</p>
-                  <p className="text-sm" style={{ color: a.allergies !== "ไม่มี" ? "#B91C1C" : "#1A365D" }}>{a.allergies}</p>
+                  <p className="text-sm" style={{ color: hasHealthAlert(a.allergies) ? "#B91C1C" : "#1A365D" }}>{a.allergies}</p>
                 </div>
               </div>
 

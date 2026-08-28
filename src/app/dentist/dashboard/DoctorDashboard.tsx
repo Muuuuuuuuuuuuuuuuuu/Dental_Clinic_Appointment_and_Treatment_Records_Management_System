@@ -131,8 +131,8 @@ export default function DoctorDashboard({
                   <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" style={{ color: "#E65100" }} />
                   <div>
                     <p className="text-xs font-medium" style={{ color: "#1A365D" }}>{a.patientName} ({a.time})</p>
-                    {a.conditions !== "ไม่มี" && <p className="text-xs" style={{ color: "#E65100" }}>โรคประจำตัว: {a.conditions}</p>}
-                    {a.allergies  !== "ไม่มี" && <p className="text-xs" style={{ color: "#E65100" }}>แพ้ยา: {a.allergies}</p>}
+                    {hasHealthAlert(a.conditions) && <p className="text-xs" style={{ color: "#E65100" }}>โรคประจำตัว: {a.conditions}</p>}
+                    {hasHealthAlert(a.allergies) && <p className="text-xs" style={{ color: "#E65100" }}>แพ้ยา: {a.allergies}</p>}
                   </div>
                 </div>
               ))}

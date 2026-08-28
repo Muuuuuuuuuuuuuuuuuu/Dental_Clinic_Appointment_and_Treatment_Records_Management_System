@@ -686,7 +686,7 @@ export default function QueueBoard({
   setView: (v: StaffView) => void;
   appointments?: Appointment[];
 }) {
-  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
+  const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
   const [dentists, setDentists] = useState<any[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);

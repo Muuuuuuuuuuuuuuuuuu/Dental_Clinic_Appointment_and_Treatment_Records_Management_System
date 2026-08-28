@@ -22,6 +22,7 @@ import {
 
 import { getDentists, getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
 import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
+import { useIdleTimeout } from "../shared/useIdleTimeout";
 
 function PortalStatusBanner() {
   const [s, setS] = useState<ClinicStatus | null>(null);
@@ -131,6 +132,12 @@ export default function DoctorPortal({
   const appointments = sharedAppointments || initialAppointments;
   const [view, setView] = useState<DocView>("dashboard");
   const [sideOpen, setSideOpen] = useState(false);
+
+  useIdleTimeout(() => {
+    alert("ระบบได้ทำการออกจากระบบอัตโนมัติเนื่องจากไม่มีการใช้งาน");
+    onLogout();
+  }, 30);
+
   const [doctor, setDoctor] = useState<DentistInfo | null>(null);
 
   useEffect(() => {

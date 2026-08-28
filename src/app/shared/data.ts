@@ -43,6 +43,9 @@ export interface Appointment {
   cost?: number;
   paid?: boolean;
   source?: "patient" | "doctor";
+  emergencyName?: string;
+  emergencyPhone?: string;
+  emergencyRelationship?: string;
   note?: string;
   odontogramData?: Record<number, string>;
 }

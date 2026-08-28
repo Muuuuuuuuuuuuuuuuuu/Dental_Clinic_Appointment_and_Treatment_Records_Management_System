@@ -514,3 +514,5 @@ CREATE TABLE appointment_log (
     action_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+\ n A L T E R   T A B L E   p u b l i c . t r e a t m e n t _ p l a n   A D D   C O L U M N   p l a n _ d e t a i l s   j s o n b ;  
+ 

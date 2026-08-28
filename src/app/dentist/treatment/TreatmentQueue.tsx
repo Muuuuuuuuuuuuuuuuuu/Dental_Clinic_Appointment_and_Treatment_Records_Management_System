@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTriangle, ChevronRight, Check, Send, ClipboardList } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo, hasHealthAlert } from "../../shared/data";
-import { getAppointments, getServices, updateAppointmentStatus, saveTreatment, getPatientLatestOdontogram, supabase } from "../../shared/supabaseApi";
+import { getAppointments, getServices, updateAppointmentStatus, saveTreatment, getPatientLatestOdontogram, getPatientActiveTreatmentPlan, supabase } from "../../shared/supabaseApi";
 import Odontogram, { ToothStatus } from "./Odontogram";
+import TreatmentPlanBuilder from "./TreatmentPlanBuilder";
 
 export default function TreatmentQueue({ 
   doctor,
@@ -15,6 +16,9 @@ export default function TreatmentQueue({
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPatientIdForPlan, setSelectedPatientIdForPlan] = useState<number | null>(null);
+  const [activePlan, setActivePlan] = useState<any | null>(null);
+  const [selectedPlanMonth, setSelectedPlanMonth] = useState<number | null>(null);
 
   useEffect(() => {
     if (initialAppointments) {
@@ -39,6 +43,7 @@ export default function TreatmentQueue({
   const [isChild, setIsChild] = useState(false);
   const [isWholeMouth, setIsWholeMouth] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
+  const [isEditingPlan, setIsEditingPlan] = useState(false);
 
   const today = new Date();
   const todayString = today.toLocaleDateString('en-CA');
@@ -103,7 +108,7 @@ export default function TreatmentQueue({
       if (updates.status) {
         if (updates.status === "รอชำระเงิน" && updates.treatmentNotes !== undefined) {
           // บันทึก Supabase ก่อน แล้วค่อยอัปเดต UI
-          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id);
+          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id, activePlan?.plan_id, selectedPlanMonth || undefined);
         } else {
           await updateAppointmentStatus(id, updates.status);
         }
@@ -126,11 +131,24 @@ export default function TreatmentQueue({
 
   const handleStartRecording = async (a: Appointment) => {
     setRecording(a.id);
+    setActivePlan(null);
+    setSelectedPlanMonth(null);
     if (a.patientId) {
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
       const { wholeMouth, ...rest } = historyOdontogram;
       setToothData(rest as any);
       setIsWholeMouth(!!wholeMouth);
+      
+      const planData = await getPatientActiveTreatmentPlan(a.patientId);
+      if (planData) {
+        setActivePlan(planData);
+        if (planData.plan_details && planData.plan_details.length > 0) {
+          const nextMonth = planData.plan_details.find((d: any) => d.status !== 'completed');
+          if (nextMonth) {
+            setSelectedPlanMonth(nextMonth.month);
+          }
+        }
+      }
     } else {
       setToothData({});
       setIsWholeMouth(false);
@@ -152,10 +170,17 @@ export default function TreatmentQueue({
     setIsWholeMouth(false);
   };
 
-  const handleToothClick = (tooth: number) => {
+  const handleToothClick = (tooth: number, status?: ToothStatus) => {
     setToothData(prev => {
       const current = prev[tooth] || "normal";
-      const next = current === "normal" ? "red" : current === "red" ? "blue" : current === "blue" ? "cross" : "normal";
+      
+      let next: ToothStatus = "normal";
+      if (status) {
+        next = current === status ? "normal" : status;
+      } else {
+        next = current === "normal" ? "red" : current === "red" ? "blue" : current === "blue" ? "cross" : "normal";
+      }
+      
       return { ...prev, [tooth]: next };
     });
   };
@@ -167,6 +192,32 @@ export default function TreatmentQueue({
 
   return (
     <div>
+      {selectedPatientIdForPlan && (
+        <TreatmentPlanBuilder 
+          patientId={selectedPatientIdForPlan} 
+          existingPlan={isEditingPlan ? activePlan : undefined}
+          onClose={(newPlan) => {
+            setSelectedPatientIdForPlan(null);
+            setIsEditingPlan(false);
+            if (newPlan) {
+              setActivePlan(newPlan);
+              setSelectedPlanMonth(1);
+              
+              // Auto pull month 1 data
+              if (newPlan.plan_details && newPlan.plan_details.length > 0) {
+                const m1 = newPlan.plan_details.find((d: any) => d.month === 1) || newPlan.plan_details[0];
+                if (m1) {
+                  setForm(f => ({
+                    ...f,
+                    notes: m1.notes || f.notes,
+                    services: Array.from(new Set([...f.services, ...(m1.services || []).map((s: any) => s.service_name)]))
+                  }));
+                }
+              }
+            }
+          }} 
+        />
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>คิวการรักษา</h1>
@@ -231,7 +282,16 @@ export default function TreatmentQueue({
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>{a.status}</span>
-                  <button onClick={() => setExpanded(isExp ? null : a.id)} style={{ color: "#4A6080" }}>
+                  <button onClick={async () => {
+                    if (isExp) setExpanded(null);
+                    else {
+                      setExpanded(a.id);
+                      if (a.patientId) {
+                        const planData = await getPatientActiveTreatmentPlan(a.patientId);
+                        setActivePlan(planData || null);
+                      }
+                    }
+                  }} style={{ color: "#4A6080" }}>
                     <ChevronRight size={16} className="transition-transform" style={{ transform: isExp ? "rotate(90deg)" : "none" }} />
                   </button>
                 </div>
@@ -243,11 +303,11 @@ export default function TreatmentQueue({
                   <div className="grid grid-cols-2 gap-4 py-4">
                     <div>
                       <p className="text-xs font-medium mb-1" style={{ color: "#4A6080" }}>โรคประจำตัว</p>
-                      <p className="text-sm" style={{ color: "#1A365D" }}>{a.conditions}</p>
+                      <p className="text-sm" style={{ color: hasHealthAlert(a.conditions) ? "#E65100" : "#1A365D" }}>{a.conditions}</p>
                     </div>
                     <div>
                       <p className="text-xs font-medium mb-1" style={{ color: "#4A6080" }}>ประวัติแพ้ยา</p>
-                      <p className="text-sm" style={{ color: a.allergies !== "ไม่มี" ? "#E65100" : "#1A365D" }}>{a.allergies}</p>
+                      <p className="text-sm" style={{ color: hasHealthAlert(a.allergies) ? "#E65100" : "#1A365D" }}>{a.allergies}</p>
                     </div>
                     <div>
                       <p className="text-xs font-medium mb-1" style={{ color: "#4A6080" }}>บริการที่นัด</p>
@@ -258,7 +318,44 @@ export default function TreatmentQueue({
                       <p className="text-sm" style={{ color: "#1A365D" }}>{a.patientPhone}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  
+                  {activePlan && activePlan.plan_details && (
+                    <div className="mb-4 bg-teal-50/50 rounded-xl p-3 border border-teal-100 mt-2">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-xs font-semibold text-teal-800">
+                          แผนการรักษา: {activePlan.plan_name}
+                        </p>
+                        <button 
+                          onClick={() => {
+                            setIsEditingPlan(true);
+                            setSelectedPatientIdForPlan(a.patientId);
+                          }}
+                          className="bg-white border border-teal-200 text-teal-600 text-[10px] px-2.5 py-1 rounded-md hover:bg-teal-50 transition-colors flex items-center gap-1 shadow-sm"
+                        >
+                          ✏️ แก้ไขแผน
+                        </button>
+                      </div>
+                      <div className="flex gap-2 flex-wrap pb-2">
+                        {activePlan.plan_details.map((plan: any) => {
+                          const isCompleted = plan.status === 'completed';
+                          return (
+                            <div
+                              key={plan.month}
+                              className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${
+                                isCompleted ? "bg-teal-600 border-teal-600 text-white" :
+                                "bg-white border-slate-200 text-slate-600"
+                              }`}
+                            >
+                              <span className="text-sm font-bold">{plan.month}</span>
+                              {!isCompleted && plan.services?.length > 0 && <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5"></div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 mt-4">
                     {act && (
                       <button
                         onClick={() => act.next === "รอชำระเงิน"
@@ -280,7 +377,15 @@ export default function TreatmentQueue({
                     <p className="text-sm font-semibold" style={{ color: "#1A365D" }}>บันทึกการรักษา — {a.patientName}</p>
                     
                     {/* Toggle whole mouth */}
-                    <div className="flex bg-gray-100 rounded-xl p-1">
+                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+                      {!activePlan && (
+                        <button 
+                          onClick={() => setSelectedPatientIdForPlan(a.patientId)}
+                          className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-teal-700 bg-teal-50 hover:bg-teal-100 mr-2"
+                        >
+                          + สร้างแผนการรักษา
+                        </button>
+                      )}
                       <button onClick={() => setIsWholeMouth(false)}
                         className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${!isWholeMouth ? 'bg-white shadow text-blue-900' : 'text-gray-500'}`}>
                         ระบุซี่ฟัน
@@ -292,6 +397,67 @@ export default function TreatmentQueue({
                     </div>
                   </div>
                   
+                  {activePlan && activePlan.plan_details && (
+                    <div className="mb-4 bg-teal-50/50 rounded-xl p-3 border border-teal-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-xs font-semibold text-teal-800">
+                          แผนการรักษา: {activePlan.plan_name}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              setIsEditingPlan(true);
+                              setSelectedPatientIdForPlan(a.patientId);
+                            }}
+                            className="bg-white border border-teal-200 text-teal-600 text-[10px] px-2.5 py-1 rounded-md hover:bg-teal-50 transition-colors flex items-center gap-1 shadow-sm"
+                          >
+                            ✏️ แก้ไขแผน
+                          </button>
+                          {selectedPlanMonth && (
+                          <button 
+                            onClick={() => {
+                              const monthData = activePlan.plan_details.find((d: any) => d.month === selectedPlanMonth);
+                              if (monthData) {
+                                setForm(f => ({
+                                  ...f,
+                                  notes: monthData.notes || f.notes,
+                                  services: Array.from(new Set([...f.services, ...(monthData.services || []).map((s: any) => s.service_name)]))
+                                }));
+                                if (monthData.odontogram_data) {
+                                  setToothData(prev => ({ ...prev, ...monthData.odontogram_data }));
+                                }
+                              }
+                            }}
+                            className="bg-teal-600 text-white text-[10px] px-2.5 py-1 rounded-md hover:bg-teal-700 transition-colors flex items-center gap-1 shadow-sm"
+                          >
+                            <CheckCircle size={12} /> ดึงข้อมูลเดือนนี้
+                          </button>
+                        )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-wrap pb-2">
+                        {activePlan.plan_details.map((plan: any) => {
+                          const isSelected = selectedPlanMonth === plan.month;
+                          const isCompleted = plan.status === 'completed';
+                          return (
+                            <button
+                              key={plan.month}
+                              onClick={() => setSelectedPlanMonth(plan.month)}
+                              className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${
+                                isCompleted ? "bg-teal-600 border-teal-600 text-white" :
+                                isSelected ? "bg-teal-100 border-teal-500 text-teal-800 shadow-sm ring-1 ring-teal-500" : 
+                                "bg-white border-slate-200 text-slate-600 hover:border-teal-300"
+                              }`}
+                            >
+                              <span className="text-sm font-bold">{plan.month}</span>
+                              {!isCompleted && plan.services?.length > 0 && <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5"></div>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <div>
                       <Odontogram
@@ -346,6 +512,17 @@ export default function TreatmentQueue({
                             className="w-full pl-8 pr-3 py-1.5 rounded-xl text-sm outline-none font-bold"
                             style={{ backgroundColor: "#F0F4F8", color: "#1A365D", border: "1px solid #E2E8F0" }} />
                         </div>
+                        {form.services.length > 0 && (
+                          <div className="mt-1.5 text-[10px] text-gray-500 leading-tight">
+                            ค่าบริการเริ่มต้น: ฿{form.services.map(s => services.find(x => x.name === s)?.basePrice || 0).reduce((a, b) => a + b, 0).toLocaleString()}
+                            <div className="text-[9px] text-gray-400 mt-0.5">
+                              ({form.services.map(s => {
+                                const svc = services.find(x => x.name === s);
+                                return `${s} ฿${svc?.basePrice || 0}`;
+                              }).join(', ')})
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => submitTreatment(a)}

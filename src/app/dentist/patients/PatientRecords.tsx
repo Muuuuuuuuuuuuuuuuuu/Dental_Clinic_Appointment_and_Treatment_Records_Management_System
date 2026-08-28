@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Search, Filter, History, FileText , Users } from "lucide-react";
 
-import { Appointment, STATUS_COLORS } from "../../shared/data";
-import { getAppointments } from "../../shared/supabaseApi";
+import { Appointment, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
+import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
+import TreatmentPlanBuilder from "../treatment/TreatmentPlanBuilder";
 
 export default function PatientRecords() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { appointments, loading } = useRealtimeAppointments();
   const [q, setQ] = useState("");
-
-  useEffect(() => {
-    getAppointments().then(setAppointments).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
 
   const results = appointments.filter(a =>
     a.patientName.includes(q) || a.hn.includes(q)
@@ -20,6 +17,9 @@ export default function PatientRecords() {
 
   return (
     <div>
+      {selectedPatientId && (
+        <TreatmentPlanBuilder patientId={selectedPatientId} onClose={() => setSelectedPatientId(null)} />
+      )}
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>เวชระเบียนคนไข้</h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>ค้นหาข้อมูลและประวัติสุขภาพคนไข้</p>
@@ -44,20 +44,26 @@ export default function PatientRecords() {
                   <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>{a.patientName}</p>
                   <p className="text-xs" style={{ color: "#4A6080" }}>{a.hn} • {a.patientPhone}</p>
                 </div>
+                <button 
+                  onClick={() => setSelectedPatientId(a.patientId)}
+                  className="ml-auto bg-teal-50 text-teal-700 hover:bg-teal-100 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border border-teal-200"
+                >
+                  + สร้างแผนการรักษา
+                </button>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex gap-2 flex-wrap">
-                  {a.conditions !== "ไม่มี" && (
+                  {hasHealthAlert(a.conditions) && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E0", color: "#E65100" }}>
                       โรคประจำตัว: {a.conditions}
                     </span>
                   )}
-                  {a.allergies !== "ไม่มี" && (
+                  {hasHealthAlert(a.allergies) && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FEF2F2", color: "#B91C1C" }}>
                       แพ้: {a.allergies}
                     </span>
                   )}
-                  {a.conditions === "ไม่มี" && a.allergies === "ไม่มี" && (
+                  {!hasHealthAlert(a.conditions) && !hasHealthAlert(a.allergies) && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E8FFF0", color: "#1B7A3E" }}>ปกติ</span>
                   )}
                 </div>

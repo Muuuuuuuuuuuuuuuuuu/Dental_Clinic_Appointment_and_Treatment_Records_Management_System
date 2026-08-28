@@ -82,6 +82,7 @@ export default function LoginPage({
           email: email,
           emergencyName: profile?.emergencyName || "",
           emergencyPhone: profile?.emergencyPhone || "",
+          emergencyRelationship: profile?.emergencyRelationship || "",
           conditions: profile?.conditions || "",
           allergies: profile?.allergies || ""
         });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { CheckCircle, Clock, AlertTriangle, PhoneCall, XCircle, Search, Filter, Calendar as CalendarIcon, ArrowRightLeft, User, CalendarDays, X, UserX } from "lucide-react";
-import { Appointment, DentistInfo, STATUS_COLORS } from "../../shared/data";
+import { Appointment, DentistInfo, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
 import {  getDentists, updateAppointmentStatus, updateAppointmentDetails } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 import { supabase } from "../../shared/utils/supabaseClient";
@@ -12,7 +12,7 @@ export default function AppointmentManagementView({
 }: {
   appointments?: Appointment[];
 }) {
-  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
+  const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabView>("confirm");
@@ -229,20 +229,20 @@ export default function AppointmentManagementView({
                     )}
                     {activeTab === "confirm" && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
-                        {((a.conditions && a.conditions !== "ไม่มี" && !a.conditions.includes("ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ")) || (a.allergies && a.allergies !== "ไม่มี" && !a.allergies.includes("ไม่มีประวัติแพ้ยา"))) ? "ผู้ป่วยมีความเสี่ยงสุขภาพ" : "บริการต้องให้แพทย์ประเมิน"}
+                        {(hasHealthAlert(a.conditions) || hasHealthAlert(a.allergies)) ? "ผู้ป่วยมีความเสี่ยงสุขภาพ" : "บริการต้องให้แพทย์ประเมิน"}
                       </span>
                     )}
                   </div>
                   <p className="text-sm mb-2" style={{ color: "#4A6080" }}>
                     <span className="font-semibold text-gray-700">บริการ:</span> {a.service}
                   </p>
-                  {(a.conditions && a.conditions !== "ไม่มี" && !a.conditions.includes("ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ")) && (
+                  {hasHealthAlert(a.conditions) && (
                     <div className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-lg flex gap-1.5 items-start bg-red-50 text-red-700 border border-red-100 w-fit">
                       <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
                       <span>เสี่ยงสุขภาพ: {a.conditions}</span>
                     </div>
                   )}
-                  {(a.allergies && a.allergies !== "ไม่มี" && !a.allergies.includes("ไม่มีประวัติแพ้ยา")) && (
+                  {hasHealthAlert(a.allergies) && (
                     <div className="mt-1 text-xs font-semibold px-3 py-1.5 rounded-lg flex gap-1.5 items-start bg-orange-50 text-orange-700 border border-orange-100 w-fit">
                       <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
                       <span>แพ้ยา: {a.allergies}</span>

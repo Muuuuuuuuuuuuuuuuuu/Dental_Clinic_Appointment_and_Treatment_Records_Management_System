@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle, Clock, AlertTriangle, PhoneCall, XCircle } from "lucide-react";
-import { Appointment, STATUS_COLORS } from "../../shared/data";
+import { Appointment, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
 import {  updateAppointmentStatus } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function ConfirmationsView() {
-  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
+  const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function ConfirmationsView() {
                   <span className="text-sm font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF8E1", color: "#F57F17" }}>รอการยืนยัน</span>
                   <span className="font-bold" style={{ color: "#1A365D" }}>{a.date} | {a.time} น.</span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
-                    {((a.conditions && a.conditions !== "ไม่มี" && !a.conditions.includes("ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ")) || (a.allergies && a.allergies !== "ไม่มี" && !a.allergies.includes("ไม่มีประวัติแพ้ยา"))) ? "ผู้ป่วยมีความเสี่ยงสุขภาพ" : "บริการต้องให้แพทย์ประเมิน"}
+                    {(hasHealthAlert(a.conditions) || hasHealthAlert(a.allergies)) ? "ผู้ป่วยมีความเสี่ยงสุขภาพ" : "บริการต้องให้แพทย์ประเมิน"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -64,13 +64,13 @@ export default function ConfirmationsView() {
                   <strong>บริการ:</strong> {a.service} <br/>
                   <strong>ทันตแพทย์:</strong> {a.doctorName}
                 </p>
-                {(a.conditions && a.conditions !== "ไม่มี" && !a.conditions.includes("ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ")) && (
+                {hasHealthAlert(a.conditions) && (
                   <div className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-lg flex gap-1.5 items-start bg-red-50 text-red-700 border border-red-100">
                     <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
                     <span>เสี่ยงสุขภาพ: {a.conditions}</span>
                   </div>
                 )}
-                {(a.allergies && a.allergies !== "ไม่มี" && !a.allergies.includes("ไม่มีประวัติแพ้ยา")) && (
+                {hasHealthAlert(a.allergies) && (
                   <div className="mt-1 text-xs font-semibold px-3 py-1.5 rounded-lg flex gap-1.5 items-start bg-orange-50 text-orange-700 border border-orange-100">
                     <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
                     <span>แพ้ยา: {a.allergies}</span>

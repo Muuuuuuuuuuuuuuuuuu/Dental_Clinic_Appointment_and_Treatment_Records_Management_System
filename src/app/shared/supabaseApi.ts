@@ -891,6 +891,7 @@ export async function updatePatientProfile(userId: string, updates: {
   address?: string;
   emergencyName?: string;
   emergencyPhone?: string;
+  emergencyRelationship?: string;
 }) {
   // 1. ดึง citizen_id และ patient_id
   const { data: userData, error: userErr } = await supabase
@@ -929,10 +930,11 @@ export async function updatePatientProfile(userId: string, updates: {
   }
 
   // 4. อัปเดต emergency_contact
-  if (patientData?.patient_id && (updates.emergencyName !== undefined || updates.emergencyPhone !== undefined)) {
+  if (patientData?.patient_id && (updates.emergencyName !== undefined || updates.emergencyPhone !== undefined || updates.emergencyRelationship !== undefined)) {
     const ecUpdates: Record<string, any> = {};
     if (updates.emergencyName !== undefined) ecUpdates.contact_name = updates.emergencyName;
     if (updates.emergencyPhone !== undefined) ecUpdates.contact_phone = updates.emergencyPhone;
+    if (updates.emergencyRelationship !== undefined) ecUpdates.relationship = updates.emergencyRelationship;
 
     const { data: existing } = await supabase
       .from('emergency_contact')
@@ -947,6 +949,7 @@ export async function updatePatientProfile(userId: string, updates: {
         patient_id: patientData.patient_id,
         contact_name: updates.emergencyName || '-',
         contact_phone: updates.emergencyPhone || '-',
+        relationship: updates.emergencyRelationship || 'ไม่ได้ระบุ',
       });
     }
   }
@@ -1168,25 +1171,26 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     *,
     odontogram_data,
     appointment!inner(start_time, appointment_status, dentist ( users ( profile (first_name, last_name) ) ), appointment_detail ( service (service_name) )),
-    dentist ( users ( profile (first_name, last_name) ) ),
-    treatment_detail ( actual_price, diagnosis, tooth_number, service (service_name) ),
+    attending_dentist:dentist ( users ( profile (first_name, last_name) ) ),
     payment (total_amount)
-  `).eq('appointment.patient_id', targetPatientId).eq('appointment.appointment_status', 'เสร็จสิ้น');
+  `).eq('appointment.patient_id', targetPatientId).in('appointment.appointment_status', ['เสร็จสิ้น', 'รอชำระเงิน', 'ชำระเงินแล้ว']);
 
-  if (error) return [];
+  if (error) {
+    console.error("getPatientTreatmentRecords error:", error);
+    return [];
+  }
 
   return data.map((d: any) => {
-    const dr = d.dentist?.users?.profile || (d.appointment && !Array.isArray(d.appointment) ? d.appointment.dentist?.users?.profile : undefined);
-    const detail = d.treatment_detail ? (Array.isArray(d.treatment_detail) ? d.treatment_detail[0] : d.treatment_detail) : undefined;
+    const dr = d.attending_dentist?.users?.profile || (d.appointment && !Array.isArray(d.appointment) ? d.appointment.dentist?.users?.profile : undefined);
     const appt = d.appointment ? (Array.isArray(d.appointment) ? d.appointment[0] : d.appointment) : undefined;
     const apptDetail = appt?.appointment_detail ? (Array.isArray(appt.appointment_detail) ? appt.appointment_detail[0] : appt.appointment_detail) : undefined;
     const pay = d.payment ? (Array.isArray(d.payment) ? d.payment[0] : d.payment) : undefined;
 
-    const srvName = detail?.service?.service_name || apptDetail?.service?.service_name || 'ไม่ระบุบริการ';
-    const costAmt = pay?.total_amount || detail?.actual_price || 0;
+    const srvName = apptDetail?.service?.service_name || 'ไม่ระบุบริการ';
+    const costAmt = pay?.total_amount || 0;
 
     let treatmentNotes = d.doctor_note || '';
-    let recommendations = detail?.diagnosis || '';
+    let recommendations = '';
     let treatmentServices: string[] = [];
 
     if (d.doctor_note) {
@@ -1210,11 +1214,21 @@ export async function getPatientTreatmentRecords(patientId?: number) {
       time: d.appointment?.start_time?.slice(0, 5) || '00:00',
       cost: costAmt.toLocaleString(),
       notes: treatmentNotes,
-      teeth: detail?.tooth_number || '',
+      teeth: '',
       recommendations: recommendations,
       odontogramData: d.odontogram_data
     };
   });
+}
+
+export async function getPatientActiveTreatmentPlan(patientId: number) {
+  const { data } = await supabase.from('treatment_plan')
+    .select('*')
+    .eq('patient_id', patientId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
 }
 
 export async function getPatientLatestOdontogram(patientId: number) {
@@ -1308,6 +1322,32 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
       }
     }
   }
+
+  // Update emergency contact if provided
+  if (finalPatientId && (appointment.emergencyName || appointment.emergencyPhone || appointment.emergencyRelationship)) {
+    const ecUpdates: Record<string, any> = {};
+    if (appointment.emergencyName) ecUpdates.contact_name = appointment.emergencyName;
+    if (appointment.emergencyPhone) ecUpdates.contact_phone = appointment.emergencyPhone;
+    if (appointment.emergencyRelationship) ecUpdates.relationship = appointment.emergencyRelationship;
+
+    const { data: existing } = await supabase
+      .from('emergency_contact')
+      .select('emergency_id')
+      .eq('patient_id', finalPatientId)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('emergency_contact').update(ecUpdates).eq('emergency_id', existing.emergency_id);
+    } else {
+      await supabase.from('emergency_contact').insert({
+        patient_id: finalPatientId,
+        contact_name: appointment.emergencyName || '-',
+        contact_phone: appointment.emergencyPhone || '-',
+        relationship: appointment.emergencyRelationship || 'ไม่ได้ระบุ',
+      });
+    }
+  }
+
 
   // 2.5 Conflict Check (Patient Level)
   if (finalPatientId) {
@@ -1523,7 +1563,7 @@ export async function updateAppointmentStatus(id: number, status: string, reason
   return { id: data.appointment_id, status: data.appointment_status } as any;
 }
 
-export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>, doctorId?: number) {
+export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>, doctorId?: number, planId?: number, planMonth?: number) {
   // 1. Update appointment status
   await supabase.from('appointment').update({ appointment_status: 'รอชำระเงิน' }).eq('appointment_id', apptId);
 
@@ -1568,6 +1608,21 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
         total_amount: cost,
         payment_status: 'ค้างชำระ'
       });
+    }
+  }
+
+  // 4. Update Treatment Plan Progress if provided
+  if (planId && planMonth) {
+    const { data: planData } = await supabase.from('treatment_plan').select('plan_details').eq('plan_id', planId).single();
+    if (planData && planData.plan_details) {
+      const details = planData.plan_details as any[];
+      const updatedDetails = details.map((d: any) => {
+        if (d.month === planMonth) {
+          return { ...d, status: 'completed', completed_at: new Date().toISOString() };
+        }
+        return d;
+      });
+      await supabase.from('treatment_plan').update({ plan_details: updatedDetails }).eq('plan_id', planId);
     }
   }
 
@@ -2287,21 +2342,14 @@ export async function getDentistTreatmentHistory(dentistId: number) {
       treatment_id,
       treatment_date,
       doctor_note,
-      patient:patient_id (
-        patient_id,
-        users:user_id (
-          profile:citizen_id ( first_name, last_name )
-        )
-      ),
-      treatment_detail (
-        td_id,
-        tooth_number,
-        diagnosis,
-        actual_price,
-        service:service_id ( service_name )
+      appointment!inner (
+        patient (
+          users ( profile ( first_name, last_name ) )
+        ),
+        appointment_detail ( service (service_name) )
       )
     `)
-    .eq('dentist_id', dentistId)
+    .eq('attending_dentist_id', dentistId)
     .order('treatment_date', { ascending: false });
 
   if (error) {
@@ -2312,36 +2360,39 @@ export async function getDentistTreatmentHistory(dentistId: number) {
   // Format data for easier display in UI
   const history: any[] = [];
   data.forEach((record: any) => {
-    const patientName = record.patient?.users?.profile
-      ? `${record.patient.users.profile.first_name} ${record.patient.users.profile.last_name}`
+    const patientProfile = record.appointment?.patient?.users?.profile || (Array.isArray(record.appointment) ? record.appointment[0]?.patient?.users?.profile : null);
+    const patientName = patientProfile
+      ? `${patientProfile.first_name} ${patientProfile.last_name}`
       : 'Unknown Patient';
+    const apptDetails = Array.isArray(record.appointment) ? record.appointment[0]?.appointment_detail : record.appointment?.appointment_detail;
+    const serviceName = Array.isArray(apptDetails) ? apptDetails[0]?.service?.service_name : apptDetails?.service?.service_name;
 
-    if (record.treatment_detail && record.treatment_detail.length > 0) {
-      record.treatment_detail.forEach((detail: any) => {
-        history.push({
-          id: detail.td_id,
-          date: record.treatment_date,
-          patientName,
-          toothNumber: detail.tooth_number,
-          diagnosis: detail.diagnosis,
-          serviceName: detail.service?.service_name || '-',
-          actualPrice: detail.actual_price,
-          note: record.doctor_note
-        });
-      });
-    } else {
-      history.push({
-        id: `rec-${record.treatment_id}`,
-        date: record.treatment_date,
-        patientName,
-        toothNumber: '-',
-        diagnosis: '-',
-        serviceName: '-',
-        actualPrice: 0,
-        note: record.doctor_note
-      });
+    let parsedNote = record.doctor_note || '';
+    let parsedDiagnosis = '-';
+    
+    if (parsedNote.includes("|||")) {
+      const parts = parsedNote.split("|||");
+      parsedNote = parts.slice(1).join("|||");
     }
+    
+    if (parsedNote.includes('\\nคำแนะนำ: ')) {
+      const noteParts = parsedNote.split('\\nคำแนะนำ: ');
+      parsedNote = noteParts[0];
+      if (noteParts.length > 1) parsedDiagnosis = noteParts[1];
+    }
+
+    history.push({
+      id: `rec-${record.treatment_id}`,
+      date: record.treatment_date,
+      patientName,
+      toothNumber: '-',
+      diagnosis: parsedDiagnosis,
+      serviceName: serviceName || '-',
+      actualPrice: 0,
+      note: parsedNote
+    });
   });
+
 
   return history;
 }

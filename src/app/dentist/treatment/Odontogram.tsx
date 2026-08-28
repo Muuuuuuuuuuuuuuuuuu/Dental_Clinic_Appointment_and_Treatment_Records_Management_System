@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Odontogram as ReactOdontogram } from "react-odontogram";
 import "react-odontogram/style.css";
 
@@ -6,7 +6,7 @@ export type ToothStatus = "normal" | "red" | "blue" | "cross";
 
 export interface OdontogramProps {
   toothData: Record<number, ToothStatus>;
-  onToothClick?: (tooth: number) => void;
+  onToothClick?: (tooth: number, status?: ToothStatus) => void;
   isChild: boolean;
   setIsChild?: (val: boolean) => void;
   readonly?: boolean;
@@ -14,7 +14,7 @@ export interface OdontogramProps {
 }
 
 export default function Odontogram({ toothData, onToothClick, isChild, setIsChild, readonly, isWholeMouth }: OdontogramProps) {
-  
+  const [activeBrush, setActiveBrush] = useState<ToothStatus | "cycle">("cycle");
   const cariesTeeth = Object.entries(toothData).filter(([_, s]) => s === 'red').map(([n]) => `teeth-${n}`);
   const filledTeeth = Object.entries(toothData).filter(([_, s]) => s === 'blue').map(([n]) => `teeth-${n}`);
   const missingTeeth = Object.entries(toothData).filter(([_, s]) => s === 'cross').map(([n]) => `teeth-${n}`);
@@ -43,7 +43,7 @@ export default function Odontogram({ toothData, onToothClick, isChild, setIsChil
   const handleChange = (selectedTeeth: any[]) => {
     if (selectedTeeth.length > 0 && !readonly && onToothClick) {
       const toothNum = parseInt(selectedTeeth[0].notations.fdi, 10);
-      onToothClick(toothNum);
+      onToothClick(toothNum, activeBrush === "cycle" ? undefined : activeBrush);
     }
   };
 
@@ -66,6 +66,20 @@ export default function Odontogram({ toothData, onToothClick, isChild, setIsChil
           </div>
         )}
       </div>
+
+      {!readonly && (
+        <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center">
+          <p className="text-[11px] text-slate-500 font-medium mb-2 flex items-center gap-1">
+            <span className="text-lg">👆</span> กรุณาคลิกเลือกสถานะที่ต้องการ แล้วนำไปคลิกที่ซี่ฟันบนแผนผัง
+          </p>
+          <div className="flex gap-2 flex-wrap justify-center">
+            <button onClick={() => setActiveBrush("red")} className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${activeBrush === 'red' ? 'bg-[#FF6B7E] text-white border-[#FF6B7E] shadow-md transform scale-105' : 'bg-white text-[#FF6B7E] border-red-200 hover:bg-red-50'}`}>🔴 พบปัญหา (คลิกแล้วแดง)</button>
+            <button onClick={() => setActiveBrush("blue")} className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${activeBrush === 'blue' ? 'bg-[#1D6FA4] text-white border-[#1D6FA4] shadow-md transform scale-105' : 'bg-white text-[#1D6FA4] border-blue-200 hover:bg-blue-50'}`}>🔵 รักษาแล้ว (คลิกแล้วน้ำเงิน)</button>
+            <button onClick={() => setActiveBrush("cross")} className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${activeBrush === 'cross' ? 'bg-gray-500 text-white border-gray-500 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>❌ ถอน/สูญเสีย</button>
+            <button onClick={() => setActiveBrush("normal")} className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${activeBrush === 'normal' ? 'bg-slate-700 text-white border-slate-700 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>⚪ ปกติ/ยกเลิก</button>
+          </div>
+        </div>
+      )}
 
       <div className="pb-4 flex justify-center relative">
         {isWholeMouth && (

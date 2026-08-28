@@ -13,7 +13,7 @@ export interface PatientUser {
   firstName: string; lastName: string; idCard: string; dob: string;
   gender: string; phone: string; email: string;
   address?: string;
-  emergencyName: string; emergencyPhone: string;
+  emergencyName: string; emergencyPhone: string; emergencyRelationship: string;
   conditions: string; allergies: string;
 }
 

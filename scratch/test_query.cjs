@@ -1,13 +1,23 @@
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient('https://jggwuyqpcouziysxhaws.supabase.co', 'sb_publishable_Q5sT7uhyo5aro4mMVSk1Qw_MoeNSzWK');
+const fs = require('fs');
 
-async function test() {
-  const { data, error } = await supabase.from('appointment').select(`
-    appointment_id,
-    dentist_id,
-    dentist ( users ( profile (first_name, last_name) ) )
-  `).limit(1);
-  console.log("Appointment with dentist:", JSON.stringify(data, null, 2));
-  console.log("Error:", error);
+const envFile = fs.readFileSync('.env.local', 'utf8');
+let url = '';
+let key = '';
+envFile.split('\n').forEach(line => {
+  if(line.startsWith('VITE_SUPABASE_URL=')) url = line.split('=')[1].trim().replace(/"/g, '').replace(/'/g, '');
+  if(line.startsWith('VITE_SUPABASE_ANON_KEY=')) key = line.split('=')[1].trim().replace(/"/g, '').replace(/'/g, '');
+});
+
+async function run() {
+  const query = 'select=*&limit=1';
+  const res = await fetch(`${url}/rest/v1/treatment_plan?${query}`, {
+    headers: {
+      'apikey': key,
+      'Authorization': `Bearer ${key}`
+    }
+  });
+  const data = await res.json();
+  console.log(JSON.stringify(data, null, 2));
 }
-test();
+
+run();

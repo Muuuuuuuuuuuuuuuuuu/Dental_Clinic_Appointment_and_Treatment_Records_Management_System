@@ -123,6 +123,7 @@ export default function BookingView({
   const [healthData, setHealthData] = useState<HealthChecklistData>({
     emergencyName: user?.emergencyName || "",
     emergencyPhone: user?.emergencyPhone || "",
+    emergencyRelationship: user?.emergencyRelationship || "",
     hasAllergy: null,
     allergies: [],
     allergyOther: "",
@@ -412,6 +413,9 @@ export default function BookingView({
         status: initialStatus,
         source: "patient", cost: 0, paid: false,
         treatmentNotes: "", treatmentServices: [], recommendations: "",
+        emergencyName: healthData.hasChanges === false ? (user?.emergencyName || "") : healthData.emergencyName,
+        emergencyPhone: healthData.hasChanges === false ? (user?.emergencyPhone || "") : healthData.emergencyPhone,
+        emergencyRelationship: healthData.hasChanges === false ? (user?.emergencyRelationship || "") : healthData.emergencyRelationship,
         allergies: healthData.hasChanges === false ? (user?.allergies || "ไม่มี") : (healthData.hasAllergy === false ? "ไม่มี" : [
           ...healthData.allergies.filter(a => a !== 'แพ้อื่นๆ'),
           ...(healthData.allergies.includes('แพ้อื่นๆ') && healthData.allergyOther ? [`อื่นๆ: ${healthData.allergyOther}`] : [])
