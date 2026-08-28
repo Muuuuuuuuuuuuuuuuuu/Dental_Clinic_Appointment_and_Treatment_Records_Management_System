@@ -12,7 +12,7 @@ export default function PaymentView({
   appointments?: Appointment[];
   onUpdateAppt?: (id: number, updates: Partial<Appointment>) => void;
 }) {
-  const { appointments, refetch: fetchAppointments } = useRealtimeAppointments();
+  const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [loading, setLoading] = useState(!initialAppointments);
 
   // Selected patient for payment
@@ -40,15 +40,7 @@ export default function PaymentView({
     } else {
       fetchAppointments();
     }
-  }, [initialAppointments]);
-
-  const fetchAppointments = () => {
-    setLoading(true);
-    getAppointments().then(data => {
-      setAppointments(data);
-      setLoading(false);
-    }).catch(console.error);
-  };
+  }, [initialAppointments, fetchAppointments, setAppointments]);
 
   const todayStr = useMemo(() => {
     const d = new Date();
