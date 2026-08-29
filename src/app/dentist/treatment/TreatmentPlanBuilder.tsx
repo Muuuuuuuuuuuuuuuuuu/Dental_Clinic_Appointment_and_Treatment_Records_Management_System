@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../shared/supabaseApi';
+import { supabase, getDentists } from '../../shared/supabaseApi';
 import { X, Calendar, Plus, Trash2, CheckCircle, Clock } from 'lucide-react';
 import Odontogram, { ToothStatus } from './Odontogram';
+import ToothActionModal from './ToothActionModal';
 
 interface ServiceOption {
   service_id: number;
@@ -20,19 +21,27 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
   const [planDetails, setPlanDetails] = useState<PlanDetail[]>([]);
   const [availableServices, setAvailableServices] = useState<ServiceOption[]>([]);
   
+  // Primary Dentist
+  const [dentists, setDentists] = useState<any[]>([]);
+  const [primaryDentist, setPrimaryDentist] = useState<number | "">("");
+  
   // Bulk add state
   const [bulkService, setBulkService] = useState<number | null>(null);
   
   // Odontogram state
   const [editingOdontogramMonth, setEditingOdontogramMonth] = useState<number | null>(null);
+  const [selectedToothForAction, setSelectedToothForAction] = useState<number | null>(null);
   const [isChild, setIsChild] = useState(false);
   const [isWholeMouth, setIsWholeMouth] = useState(false);
   
   useEffect(() => {
     fetchServices();
+    getDentists().then(data => setDentists(data));
+    
     if (existingPlan && existingPlan.plan_details) {
       setPlanDetails(existingPlan.plan_details);
       setMonths(existingPlan.plan_details.length);
+      if (existingPlan.dentist_id) setPrimaryDentist(existingPlan.dentist_id);
     } else {
       generatePlan(24);
     }
@@ -105,52 +114,69 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
     });
   };
 
-  const handleToothClick = (monthIndex: number, tooth: number, status?: ToothStatus) => {
-    setPlanDetails(prev => {
-      const next = [...prev];
-      const currentToothData = next[monthIndex].odontogram_data || {};
-      const currentStatus = currentToothData[tooth] || "normal";
-      
-      let nextStatus: ToothStatus = "normal";
-      if (status) {
-        nextStatus = currentStatus === status ? "normal" : status;
-      } else {
-        nextStatus = currentStatus === "normal" ? "red" : currentStatus === "red" ? "blue" : currentStatus === "blue" ? "cross" : "normal";
-      }
-      
-      next[monthIndex] = {
-        ...next[monthIndex],
-        odontogram_data: { ...currentToothData, [tooth]: nextStatus }
-      };
-      return next;
-    });
+  const handleToothClick = (monthIndex: number, tooth: number) => {
+    // Rely on editingOdontogramMonth which is already set
+    setSelectedToothForAction(tooth);
+  };
+
+  const handleToothAction = (status: ToothStatus, serviceName?: string, notes?: string) => {
+    if (editingOdontogramMonth !== null && selectedToothForAction !== null) {
+      setPlanDetails(prev => {
+        const next = [...prev];
+        const currentMonth = { ...next[editingOdontogramMonth] };
+        
+        currentMonth.odontogram_data = { 
+          ...(currentMonth.odontogram_data || {}), 
+          [selectedToothForAction]: status 
+        };
+        
+        if (serviceName) {
+           const svc = availableServices.find(s => s.service_name === serviceName);
+           if (svc && !currentMonth.services.some(s => s.service_name === serviceName)) {
+             currentMonth.services = [...currentMonth.services, svc];
+           }
+        }
+        if (notes) {
+           currentMonth.notes = currentMonth.notes ? `${currentMonth.notes}\n(${notes})` : `(${notes})`;
+        }
+        
+        next[editingOdontogramMonth] = currentMonth;
+        return next;
+      });
+      setSelectedToothForAction(null);
+    }
   };
 
   const handleSave = async () => {
     try {
       let resultData;
       
+      const dentistIdVal = primaryDentist ? Number(primaryDentist) : null;
+      
       if (existingPlan?.plan_id) {
         // Update existing plan
         const { data, error } = await supabase.from('treatment_plan').update({
           plan_name: `แผนการรักษาจัดฟัน (${months} เดือน)`,
-          plan_details: planDetails
+          plan_details: planDetails,
+          dentist_id: dentistIdVal
         }).eq('plan_id', existingPlan.plan_id).select();
         
         if (error) throw error;
         resultData = data;
+        
         alert("อัปเดตแผนการรักษาเรียบร้อยแล้ว");
       } else {
         // Create treatment plan
         const { data, error } = await supabase.from('treatment_plan').insert({
           patient_id: patientId,
           plan_name: `แผนการรักษาจัดฟัน (${months} เดือน)`,
-          total_cost: 0,
+          dentist_id: dentistIdVal,
           plan_details: planDetails // Ensure DB is updated to accept this column
         }).select();
 
         if (error) throw error;
         resultData = data;
+        
         alert("บันทึกแผนการรักษาเรียบร้อยแล้ว");
       }
       
@@ -167,6 +193,13 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
+      {selectedToothForAction && (
+        <ToothActionModal 
+          tooth={selectedToothForAction}
+          onClose={() => setSelectedToothForAction(null)}
+          onAction={handleToothAction}
+        />
+      )}
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         
         {/* Header */}
@@ -186,6 +219,26 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+          
+          <div className="bg-white p-4 rounded-lg border border-slate-200 mb-6 shadow-sm space-y-4">
+            <h3 className="font-semibold text-slate-800 border-b pb-2">การตั้งค่าแผนการรักษา (Settings)</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">หมอประจำเคส (Primary Doctor)</label>
+                <select 
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  value={primaryDentist}
+                  onChange={(e) => setPrimaryDentist(e.target.value === "" ? "" : Number(e.target.value))}
+                >
+                  <option value="">-- ไม่ระบุ (No specific doctor) --</option>
+                  {dentists.map(d => (
+                    <option key={d.dentist_id} value={d.dentist_id}>{d.first_name} {d.last_name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
           
           <div className="bg-white p-4 rounded-lg border border-slate-200 mb-6 flex flex-wrap gap-4 items-end shadow-sm">
             <div>
@@ -320,10 +373,9 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-center">
                       <Odontogram
                         toothData={plan.odontogram_data || {}}
-                        onToothClick={(tooth, status) => handleToothClick(index, tooth, status)}
+                        onToothClick={(tooth) => handleToothClick(index, tooth)}
                         isChild={isChild}
                         setIsChild={setIsChild}
-                        isWholeMouth={isWholeMouth}
                       />
                     </div>
                   </div>

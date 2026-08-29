@@ -50,7 +50,7 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
 
   // Timeout for incomplete registration
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout>;
     if (step >= 2 && step <= 4) {
       timeout = setTimeout(async () => {
         alert("หมดเวลาทำรายการ (5 นาที) กรุณาทำรายการใหม่");

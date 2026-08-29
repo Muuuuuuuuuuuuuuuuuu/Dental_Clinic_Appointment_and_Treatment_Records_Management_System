@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Settings, Megaphone, Percent, ArrowLeft, ChevronRight, Clock } from "lucide-react";
+import { Settings, Megaphone, Percent, ArrowLeft, ChevronRight, Clock, Banknote } from "lucide-react";
 import { getServices, getAnnouncements, getPromotions } from "../../shared/supabaseApi";
 import ServiceManagement from "../settings/ServiceManagement";
 import AnnouncementManagement from "../announcements/AnnouncementManagement";
 import PromotionManagement from "../announcements/PromotionManagement";
 import ClinicSettingsManagement from "../settings/ClinicSettingsManagement";
+import PackageManagement from "../settings/PackageManagement";
 
-type ClinicSubView = null | "services" | "announcements" | "promotions" | "settings";
+type ClinicSubView = null | "services" | "announcements" | "promotions" | "packages" | "settings";
 
 const CARD_DEFS = [
   {
@@ -37,6 +38,15 @@ const CARD_DEFS = [
     countLabel: "รายการ",
   },
   {
+    key: "packages" as const,
+    icon: Banknote,
+    title: "แพ็กเกจผ่อนชำระ",
+    desc: "จัดการแพ็กเกจและโปรโมชั่นผ่อนชำระจัดฟัน",
+    gradient: "linear-gradient(135deg, #10B981 0%, #047857 100%)",
+    bgLight: "#ECFDF5",
+    countLabel: "แพ็กเกจ",
+  },
+  {
     key: "settings" as const,
     icon: Clock,
     title: "ตั้งค่าเวลาและวันหยุด",
@@ -63,6 +73,7 @@ export default function ClinicHub() {
   if (subView === "services") return <SubViewWrapper title="บริการ" onBack={() => setSubView(null)}><ServiceManagement /></SubViewWrapper>;
   if (subView === "announcements") return <SubViewWrapper title="ประกาศ" onBack={() => setSubView(null)}><AnnouncementManagement /></SubViewWrapper>;
   if (subView === "promotions") return <SubViewWrapper title="โปรโมชั่น" onBack={() => setSubView(null)}><PromotionManagement /></SubViewWrapper>;
+  if (subView === "packages") return <SubViewWrapper title="แพ็กเกจผ่อนชำระ" onBack={() => setSubView(null)}><PackageManagement /></SubViewWrapper>;
   if (subView === "settings") return <SubViewWrapper title="ตั้งค่าเวลาและวันหยุด" onBack={() => setSubView(null)}><ClinicSettingsManagement /></SubViewWrapper>;
 
   // Hub card selector

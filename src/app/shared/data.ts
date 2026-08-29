@@ -122,6 +122,7 @@ export interface ServiceInfo {
   active: boolean;
   isFixedPrice?: boolean;
   requiresConfirmation?: boolean;
+  applyTo?: string;
 }
 
 export interface LeaveRequest {
@@ -140,10 +141,14 @@ export interface TreatmentPlan {
   id: number;
   hn: string;
   name: string;
+  planName?: string;
   totalCost: number;
   paidAmount: number;
-  installments: { dueDate: string; amount: number; paid: boolean; }[];
+  packageId?: number | null;
+  planDetails?: any[];
+  installments: { id?: number; dueDate: string; amount: number; paid: boolean; }[];
 }
+
 
 export interface Announcement {
   id: number;

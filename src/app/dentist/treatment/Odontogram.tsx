@@ -10,10 +10,9 @@ export interface OdontogramProps {
   isChild: boolean;
   setIsChild?: (val: boolean) => void;
   readonly?: boolean;
-  isWholeMouth?: boolean;
 }
 
-export default function Odontogram({ toothData, onToothClick, isChild, setIsChild, readonly, isWholeMouth }: OdontogramProps) {
+export default function Odontogram({ toothData, isChild, setIsChild, readonly = false, onToothClick }: OdontogramProps) {
   const [activeBrush, setActiveBrush] = useState<ToothStatus | "cycle">("cycle");
   const cariesTeeth = Object.entries(toothData).filter(([_, s]) => s === 'red').map(([n]) => `teeth-${n}`);
   const filledTeeth = Object.entries(toothData).filter(([_, s]) => s === 'blue').map(([n]) => `teeth-${n}`);
@@ -23,34 +22,34 @@ export default function Odontogram({ toothData, onToothClick, isChild, setIsChil
     {
       label: "พบปัญหา / ต้องรักษา (แดง)",
       teeth: cariesTeeth,
-      fillColor: "#FFE8EC",
-      outlineColor: "#FF6B7E",
+      fillColor: "#FFB3C1",
+      outlineColor: "#E63946",
     },
     {
       label: "รักษาแล้ว (น้ำเงิน)",
       teeth: filledTeeth,
-      fillColor: "#E8F4FF",
-      outlineColor: "#1D6FA4",
+      fillColor: "#BDE0FE",
+      outlineColor: "#023E8A",
     },
     {
       label: "ถอน/สูญเสีย",
       teeth: missingTeeth,
-      fillColor: "#F1F5F9",
-      outlineColor: "#94A3B8",
+      fillColor: "#E2E8F0",
+      outlineColor: "#64748B",
     }
   ];
 
   const handleChange = (selectedTeeth: any[]) => {
     if (selectedTeeth.length > 0 && !readonly && onToothClick) {
       const toothNum = parseInt(selectedTeeth[0].notations.fdi, 10);
-      onToothClick(toothNum, activeBrush === "cycle" ? undefined : activeBrush);
+      onToothClick(toothNum, undefined);
     }
   };
 
   return (
     <div className="bg-white p-4 rounded-2xl" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-lg" style={{ color: "#1A365D" }}>Odontogram (บันทึกสถานะฟัน)</h3>
+        <h3 className="font-semibold text-lg" style={{ color: "#1A365D" }}>Odontogram (แผนผังฟัน)</h3>
         {!readonly && setIsChild && (
           <div className="flex items-center bg-gray-100 rounded-xl p-1">
             <button onClick={() => setIsChild(false)}
@@ -68,28 +67,15 @@ export default function Odontogram({ toothData, onToothClick, isChild, setIsChil
       </div>
 
       {!readonly && (
-        <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center">
-          <p className="text-[11px] text-slate-500 font-medium mb-2 flex items-center gap-1">
-            <span className="text-lg">👆</span> กรุณาคลิกเลือกสถานะที่ต้องการ แล้วนำไปคลิกที่ซี่ฟันบนแผนผัง
+        <div className="mb-4 bg-blue-50/50 p-3 rounded-xl border border-blue-100/50 text-center">
+          <p className="text-xs text-blue-800 font-medium flex items-center justify-center gap-1.5">
+            <span>👆</span> กรุณาคลิกเลือกซี่ฟันบนแผนผัง เพื่อระบุหัตถการ
           </p>
-          <div className="flex gap-2 flex-wrap justify-center">
-            <button onClick={() => setActiveBrush("red")} className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${activeBrush === 'red' ? 'bg-[#FF6B7E] text-white border-[#FF6B7E] shadow-md transform scale-105' : 'bg-white text-[#FF6B7E] border-red-200 hover:bg-red-50'}`}>🔴 พบปัญหา (คลิกแล้วแดง)</button>
-            <button onClick={() => setActiveBrush("blue")} className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${activeBrush === 'blue' ? 'bg-[#1D6FA4] text-white border-[#1D6FA4] shadow-md transform scale-105' : 'bg-white text-[#1D6FA4] border-blue-200 hover:bg-blue-50'}`}>🔵 รักษาแล้ว (คลิกแล้วน้ำเงิน)</button>
-            <button onClick={() => setActiveBrush("cross")} className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${activeBrush === 'cross' ? 'bg-gray-500 text-white border-gray-500 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>❌ ถอน/สูญเสีย</button>
-            <button onClick={() => setActiveBrush("normal")} className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${activeBrush === 'normal' ? 'bg-slate-700 text-white border-slate-700 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>⚪ ปกติ/ยกเลิก</button>
-          </div>
         </div>
       )}
 
       <div className="pb-4 flex justify-center relative">
-        {isWholeMouth && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-            <span className="bg-white/80 px-4 py-2 rounded-xl text-lg font-bold text-blue-900 border border-blue-100 shadow-sm">
-              ทำหัตถการทั้งปาก
-            </span>
-          </div>
-        )}
-        <div className={`w-full max-w-lg origin-top pb-10 relative transition-opacity duration-300 ${isWholeMouth ? "opacity-30 pointer-events-none" : ""}`} style={{ transform: "scale(0.45)", marginBottom: "-45%" }}>
+        <div className={`w-full max-w-lg origin-top pb-10 relative transition-opacity duration-300`} style={{ transform: "scale(0.45)", marginBottom: "-45%" }}>
           
           {/* Separator Line & Labels */}
           <div className="absolute w-[140%] left-[-20%] top-[49%] border-t-2 border-dashed border-blue-200/70 z-0 pointer-events-none">

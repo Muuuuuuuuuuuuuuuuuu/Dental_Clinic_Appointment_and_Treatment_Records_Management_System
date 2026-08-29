@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from "react";
-import { Search, CheckCircle, FileText , Users, Calendar } from "lucide-react";
+import { Search, CheckCircle, FileText , Users, Calendar, Banknote } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, TreatmentPlan, hasHealthAlert } from "../../shared/data";
-import {  getTreatmentPlans } from "../../shared/supabaseApi";
+import { getTreatmentPlans } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
+import BindPackageModal from "./BindPackageModal";
 
 export default function PatientVerification() {
   const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [treatmentPlans, setTreatmentPlans] = useState<TreatmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [bindingPlan, setBindingPlan] = useState<{ planId: number; planMonths: number } | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      getTreatmentPlans()
-    ])
-    .then(([appts, plans]) => {
-      setAppointments(appts);
-      setTreatmentPlans(plans);
-    })
-    .catch(console.error)
-    .finally(() => setLoading(false));
+    getTreatmentPlans()
+      .then((plans) => {
+        setTreatmentPlans(plans);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
+
 
   const results = q
     ? Array.from(new Map(
@@ -33,6 +33,14 @@ export default function PatientVerification() {
 
   return (
     <div>
+      {bindingPlan && (
+        <BindPackageModal
+          planId={bindingPlan.planId}
+          planMonths={bindingPlan.planMonths}
+          onClose={() => setBindingPlan(null)}
+          onSuccess={() => { setBindingPlan(null); getTreatmentPlans().then(setTreatmentPlans); }}
+        />
+      )}
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ตรวจสอบข้อมูลคนไข้</h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>ค้นหาและยืนยันตัวตนก่อนเข้ารับบริการ</p>
@@ -114,8 +122,16 @@ export default function PatientVerification() {
                         return (
                           <div key={plan.id} className="p-3 rounded-xl border" style={{ borderColor: "rgba(26,54,93,0.08)", backgroundColor: "#FAFAFA" }}>
                             <div className="flex justify-between items-center mb-2">
-                              <p className="text-sm font-medium" style={{ color: "#1A365D" }}>{plan.name}</p>
-                              <p className="text-xs font-semibold" style={{ color: "#1B7A3E" }}>ชำระแล้ว {progress.toFixed(0)}%</p>
+                              <p className="text-sm font-medium" style={{ color: "#1A365D" }}>{plan.planName || plan.name}</p>
+                              {plan.totalCost > 0
+                                ? <p className="text-xs font-semibold" style={{ color: "#1B7A3E" }}>ชำระแล้ว {progress.toFixed(0)}%</p>
+                                : <button
+                                    onClick={() => setBindingPlan({ planId: plan.id, planMonths: plan.planDetails?.length || 24 })}
+                                    className="text-[11px] flex items-center gap-1 bg-teal-50 text-teal-700 px-2.5 py-1 rounded-full font-medium hover:bg-teal-100 transition-colors"
+                                  >
+                                    <Banknote size={12} /> ผูกโปรแพ็กเกจ
+                                  </button>
+                              }
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-1.5 mb-3">
                               <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${progress}%` }}></div>

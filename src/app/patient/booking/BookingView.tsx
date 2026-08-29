@@ -398,12 +398,18 @@ export default function BookingView({
     const initialStatus = (isComplex || finalHealthRisk) ? "รอการยืนยัน" : "ยืนยันการจอง";
 
     try {
+      let finalServiceTitle = serviceTitle;
+      if (selPaymentPlan && paymentPlans.length > 0) {
+        const planName = paymentPlans.find(p => p.plan_id === selPaymentPlan)?.plan_name;
+        if (planName) finalServiceTitle += ` (สนใจโปร: ${planName})`;
+      }
+
       const res = await addAppointment({
         patientId: user?.patientId,
         patientName: user ? `${user.firstName} ${user.lastName}` : "ผู้ป่วยทั่วไป",
         hn: user?.idCard?.slice(-6) || "W-000",
         patientPhone: user?.phone || "080-000-0000",
-        service: serviceTitle,
+        service: finalServiceTitle,
         serviceId: servicesData[selService!]?.serviceId,
         doctorName: finalDoctorName,
         doctorId: finalDoctorId,
@@ -444,7 +450,7 @@ export default function BookingView({
           hn: user?.idCard?.slice(-6) || "W-000",
           patientName: user ? `${user.firstName} ${user.lastName}` : "ผู้ป่วยทั่วไป",
           patientPhone: user?.phone || "080-000-0000",
-          service: serviceTitle,
+          service: finalServiceTitle,
           serviceId: servicesData[selService!]?.serviceId,
           doctorName: finalAssignedDoctorName !== "ไม่ระบุแพทย์" ? finalAssignedDoctorName : "รอระบุแพทย์",
           doctorId: finalAssignedDoctorId,

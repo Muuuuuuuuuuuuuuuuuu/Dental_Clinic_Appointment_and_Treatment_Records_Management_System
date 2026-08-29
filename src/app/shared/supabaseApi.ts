@@ -416,7 +416,8 @@ export async function getServices() {
     estimatedTime: d.estimated_time,
     requiresConfirmation: d.requires_confirmation,
     isFixedPrice: d.is_fixed_price,
-    active: d.is_active
+    active: d.is_active,
+    applyTo: d.apply_to
   })) as ServiceInfo[];
 }
 
@@ -501,16 +502,22 @@ export async function getLandingServices() {
 
 export async function getPaymentPlans(serviceId: number) {
   const { data, error } = await supabase
-    .from('payment_plan')
+    .from('treatment_package')
     .select('*')
-    .eq('service_id', serviceId)
-    .order('plan_id', { ascending: true });
+    .or(`service_id.eq.${serviceId},service_id.is.null`)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error("getPaymentPlans error:", error);
     return [];
   }
-  return data;
+  
+  return data.map(d => ({
+    plan_id: d.package_id,
+    plan_name: d.package_name,
+    total_amount: d.total_cost
+  }));
 }
 
 export async function getLandingDoctors() {
@@ -1634,9 +1641,10 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
   const { error: apptError } = await supabase.from('appointment').update({ appointment_status: 'เสร็จสิ้น' }).eq('appointment_id', apptId);
   if (apptError) throw apptError;
 
-  // 2. Fetch treatment_record
-  const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).maybeSingle();
-  let treatmentId = trData?.treatment_id;
+  // 2. Fetch treatment_record and patient_id
+  const { data: apptData } = await supabase.from('appointment').select('patient_id, treatment_record(treatment_id)').eq('appointment_id', apptId).maybeSingle();
+  let treatmentId = apptData?.treatment_record?.[0]?.treatment_id;
+  let patientId = apptData?.patient_id;
 
   if (treatmentId) {
     const { data: payData } = await supabase.from('payment').select('payment_id').eq('treatment_id', treatmentId).maybeSingle();
@@ -1658,9 +1666,25 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
     }
   }
 
+  // 4. Handle Installment payment (Auto-mark next unpaid installment as paid)
+  if (patientId) {
+    const { data: plans } = await supabase.from('treatment_plan').select('plan_id').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(1);
+    if (plans && plans.length > 0) {
+      const planId = plans[0].plan_id;
+      const { data: insts } = await supabase.from('installment').select('installment_id').eq('plan_id', planId).eq('paid', false).order('installment_number').limit(1);
+      if (insts && insts.length > 0) {
+        await supabase.from('installment').update({ 
+          paid: true, 
+          paid_at: new Date().toISOString() 
+        }).eq('installment_id', insts[0].installment_id);
+      }
+    }
+  }
+
   notifyAppointmentsUpdated();
   return { status: 'เสร็จสิ้น' };
 }
+
 
 
 
@@ -2107,8 +2131,8 @@ export async function deletePromotion(id: number) {
 
 export async function getTreatmentPlans(hn?: string) {
   let query = supabase.from('treatment_plan').select(`
-    *,
-    installment (*),
+    plan_id, patient_id, plan_name, total_cost, paid_amount, dentist_id, package_id, plan_details,
+    installment (installment_id, installment_number, amount, due_date, paid),
     patient (users (profile (first_name, last_name)))
   `);
 
@@ -2127,20 +2151,27 @@ export async function getTreatmentPlans(hn?: string) {
 
   return data.map((d: any) => {
     const prof = d.patient?.users?.profile;
+    const installments = (d.installment || []).map((inst: any) => ({
+      id: inst.installment_id,
+      dueDate: inst.due_date,
+      amount: inst.amount,
+      paid: inst.paid
+    })).sort((a: any, b: any) => a.id - b.id);
+
     return {
       id: d.plan_id,
       hn: `HN${String(d.patient_id).padStart(3, '0')}`,
       name: prof ? `${prof.first_name} ${prof.last_name}` : 'ไม่ระบุชื่อ',
-      totalCost: d.total_cost,
-      paidAmount: d.paid_amount,
-      installments: d.installment.map((inst: any) => ({
-        dueDate: inst.due_date,
-        amount: inst.amount,
-        paid: inst.paid
-      })).sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      planName: d.plan_name || 'แผนการรักษา',
+      totalCost: d.total_cost || 0,
+      paidAmount: d.paid_amount || 0,
+      packageId: d.package_id,
+      planDetails: d.plan_details || [],
+      installments
     };
   });
 }
+
 export async function updateInstallmentPaid(installmentId: number, paid: boolean) {
   const { error } = await supabase.from('installment').update({
     paid,

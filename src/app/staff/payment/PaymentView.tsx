@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, AppointmentStatus } from "../../shared/data";
-import {  processPaymentApi, addAppointment } from "../../shared/supabaseApi";
+import { supabase, processPaymentApi, addAppointment } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function PaymentView({ 
@@ -22,6 +22,9 @@ export default function PaymentView({
   const [baseCost, setBaseCost] = useState<string>("");
   const [discount, setDiscount] = useState<string>("0");
   const [paymentMethod, setPaymentMethod] = useState<string>("เงินสด");
+
+  // Installment info
+  const [installmentInfo, setInstallmentInfo] = useState<{ id: number; amount: number; installment_number: number } | null>(null);
 
   // Modals
   const [receiptData, setReceiptData] = useState<any | null>(null);
@@ -57,12 +60,59 @@ export default function PaymentView({
 
   // Reset dashboard when selecting new patient
   useEffect(() => {
-    if (selectedAppt) {
-      setBaseCost(String(selectedAppt.cost || ""));
-      setDiscount("0");
-      setPaymentMethod("เงินสด");
-    }
-  }, [selectedApptId, selectedAppt?.cost]);
+    if (!selectedAppt) return;
+    setDiscount("0");
+    setPaymentMethod("เงินสด");
+    setInstallmentInfo(null);
+
+    // Try to get installment amount for this patient's plan
+    const fetchInstallment = async () => {
+      try {
+        const { data: apptData } = await supabase
+          .from('appointment')
+          .select('patient_id')
+          .eq('appointment_id', selectedAppt.id)
+          .maybeSingle();
+
+        if (!apptData?.patient_id) {
+          setBaseCost(String(selectedAppt.cost || ""));
+          return;
+        }
+
+        const { data: plans } = await supabase
+          .from('treatment_plan')
+          .select('plan_id')
+          .eq('patient_id', apptData.patient_id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (!plans || plans.length === 0) {
+          setBaseCost(String(selectedAppt.cost || ""));
+          return;
+        }
+
+        const { data: insts } = await supabase
+          .from('installment')
+          .select('installment_id, installment_number, amount')
+          .eq('plan_id', plans[0].plan_id)
+          .eq('paid', false)
+          .order('installment_number')
+          .limit(1);
+
+        if (insts && insts.length > 0) {
+          setInstallmentInfo({ id: insts[0].installment_id, amount: Number(insts[0].amount), installment_number: insts[0].installment_number });
+          setBaseCost(String(insts[0].amount));
+        } else {
+          setBaseCost(String(selectedAppt.cost || "0"));
+        }
+      } catch (err) {
+        console.error('fetchInstallment error:', err);
+        setBaseCost(String(selectedAppt.cost || ""));
+      }
+    };
+
+    fetchInstallment();
+  }, [selectedApptId]);
 
   const netTotal = useMemo(() => {
     const base = parseInt(baseCost || "0", 10);
@@ -254,6 +304,14 @@ export default function PaymentView({
             {/* Billing Calculator */}
             <div className="mb-4 space-y-2">
               <h3 className="text-xs font-bold mb-1" style={{ color: "#4A6080" }}>สรุปยอดค่าใช้จ่าย</h3>
+              
+              {/* Installment Badge */}
+              {installmentInfo && (
+                <div className="flex items-center justify-between text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mb-1">
+                  <span className="font-semibold text-blue-800">งวดที่ {installmentInfo.installment_number} (ค่างวดจัดฟัน)</span>
+                  <span className="font-bold text-blue-700">฿{installmentInfo.amount.toLocaleString()}</span>
+                </div>
+              )}
               
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium" style={{ color: "#1A365D" }}>ค่ารักษา (Base Cost)</span>

@@ -6,6 +6,9 @@ import { getAppointments, getServices, updateAppointmentStatus, saveTreatment, g
 import Odontogram, { ToothStatus } from "./Odontogram";
 import TreatmentPlanBuilder from "./TreatmentPlanBuilder";
 
+import ToothActionModal from "./ToothActionModal";
+
+
 export default function TreatmentQueue({ 
   doctor,
   appointments: initialAppointments
@@ -19,6 +22,17 @@ export default function TreatmentQueue({
   const [selectedPatientIdForPlan, setSelectedPatientIdForPlan] = useState<number | null>(null);
   const [activePlan, setActivePlan] = useState<any | null>(null);
   const [selectedPlanMonth, setSelectedPlanMonth] = useState<number | null>(null);
+  const [activeInstallments, setActiveInstallments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (activePlan?.plan_id) {
+      supabase.from('installment').select('*').eq('plan_id', activePlan.plan_id).then(({data}) => {
+        if (data) setActiveInstallments(data);
+      });
+    } else {
+      setActiveInstallments([]);
+    }
+  }, [activePlan]);
 
   useEffect(() => {
     if (initialAppointments) {
@@ -31,19 +45,19 @@ export default function TreatmentQueue({
       if (!initialAppointments) {
         getAppointments().then(apps => setAppointments(apps)).catch(console.error);
       }
-      getServices().then(svcs => setServices(svcs.filter(s => s.active))).catch(console.error).finally(() => setLoading(false));
+      getServices().then(svcs => setServices(svcs)).catch(console.error).finally(() => setLoading(false));
     };
     
     fetchData();
   }, []);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [recording, setRecording] = useState<number | null>(null);
-  const [form, setForm] = useState<{ notes: string; recommendations: string; services: string[]; actualCost: number | "" }>({ notes: "", recommendations: "", services: [], actualCost: "" });
+  const [form, setForm] = useState<{ notes: string; recommendations: string; services: {name: string, qty: number}[]; actualCost: number | "" }>({ notes: "", recommendations: "", services: [], actualCost: "" });
   const [toothData, setToothData] = useState<Record<number, ToothStatus>>({});
   const [isChild, setIsChild] = useState(false);
-  const [isWholeMouth, setIsWholeMouth] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
   const [isEditingPlan, setIsEditingPlan] = useState(false);
+  const [selectedToothForAction, setSelectedToothForAction] = useState<number | null>(null);
 
   const today = new Date();
   const todayString = today.toLocaleDateString('en-CA');
@@ -84,24 +98,78 @@ export default function TreatmentQueue({
       return a.time.localeCompare(b.time);
     });
 
-  const toggleService = (s: string) => {
-    setForm(f => ({
-      ...f,
-      services: f.services.includes(s) ? f.services.filter(x => x !== s) : [...f.services, s],
-    }));
+  const incrementService = (s: string) => {
+    setForm(f => {
+      const existing = f.services.find(x => x.name === s);
+      if (existing) {
+        return { ...f, services: f.services.map(x => x.name === s ? { ...x, qty: x.qty + 1 } : x) };
+      }
+      return { ...f, services: [...f.services, { name: s, qty: 1 }] };
+    });
+  };
+
+  const decrementService = (s: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setForm(f => {
+      const existing = f.services.find(x => x.name === s);
+      if (existing && existing.qty > 1) {
+        return { ...f, services: f.services.map(x => x.name === s ? { ...x, qty: x.qty - 1 } : x) };
+      }
+      return { ...f, services: f.services.filter(x => x.name !== s) };
+    });
+  };
+
+  const generateToothSummary = (data: Record<number, ToothStatus>) => {
+    const red = Object.entries(data).filter(([_, s]) => s === 'red').map(([t]) => t);
+    const blue = Object.entries(data).filter(([_, s]) => s === 'blue').map(([t]) => t);
+    const cross = Object.entries(data).filter(([_, s]) => s === 'cross').map(([t]) => t);
+    
+    const parts = [];
+    if (red.length) parts.push(`พบปัญหา: ซี่ ${red.join(', ')}`);
+    if (blue.length) parts.push(`รักษาแล้ว: ซี่ ${blue.join(', ')}`);
+    if (cross.length) parts.push(`ถอน/สูญเสีย: ซี่ ${cross.join(', ')}`);
+    
+    return parts.join(' | ');
   };
 
   useEffect(() => {
-    const cost = form.services.reduce((sum, s) => {
-      const svc = services.find(ms => ms.name === s);
-      return sum + (svc?.basePrice ?? 0);
+    let baseInstallmentAmount = 0;
+    let extraCost = 0;
+
+    if (selectedPlanMonth && activePlan && activeInstallments.length > 0) {
+      const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
+      if (inst && inst.amount > 0) {
+        baseInstallmentAmount = Number(inst.amount);
+        
+        // Find extra services that are not in the plan for this month
+        const monthData = activePlan.plan_details.find((d: any) => d.month === selectedPlanMonth);
+        const plannedServiceNames = new Set((monthData?.services || []).map((s: any) => s.service_name));
+        
+        extraCost = form.services.reduce((sum, sItem) => {
+          if (!plannedServiceNames.has(sItem.name)) {
+            const svc = services.find(ms => ms.name === sItem.name);
+            return sum + ((svc?.basePrice ?? 0) * sItem.qty);
+          }
+          return sum;
+        }, 0);
+      }
+    }
+    
+    if (baseInstallmentAmount > 0) {
+       setForm(f => ({ ...f, actualCost: baseInstallmentAmount + extraCost }));
+       return;
+    }
+
+    const cost = form.services.reduce((sum, sItem) => {
+      const svc = services.find(ms => ms.name === sItem.name);
+      return sum + ((svc?.basePrice ?? 0) * sItem.qty);
     }, 0);
     
     const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
     const suggestedCost = cost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : cost;
     
     setForm(f => ({ ...f, actualCost: suggestedCost > 0 ? suggestedCost : "" }));
-  }, [form.services, toothData, services]);
+  }, [form.services, toothData, services, selectedPlanMonth, activePlan, activeInstallments]);
 
   const onUpdateAppt = async (id: number, updates: Partial<Appointment>) => {
     try {
@@ -137,7 +205,6 @@ export default function TreatmentQueue({
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
       const { wholeMouth, ...rest } = historyOdontogram;
       setToothData(rest as any);
-      setIsWholeMouth(!!wholeMouth);
       
       const planData = await getPatientActiveTreatmentPlan(a.patientId);
       if (planData) {
@@ -151,38 +218,34 @@ export default function TreatmentQueue({
       }
     } else {
       setToothData({});
-      setIsWholeMouth(false);
     }
   };
 
   const submitTreatment = async (appt: Appointment) => {
+    const formattedServices = form.services.map(s => `${s.name}${s.qty > 1 ? ` x${s.qty}` : ''}`);
     await onUpdateAppt(appt.id, {
       status: "รอชำระเงิน",
       treatmentNotes: form.notes,
-      treatmentServices: form.services,
+      treatmentServices: formattedServices,
       recommendations: form.recommendations,
       cost: Number(form.actualCost) || 0,
-      odontogramData: { ...toothData, wholeMouth: isWholeMouth } as any
+      odontogramData: { ...toothData, wholeMouth: false } as any
     });
     setRecording(null);
     setForm({ notes: "", recommendations: "", services: [], actualCost: "" });
     setToothData({});
-    setIsWholeMouth(false);
   };
 
   const handleToothClick = (tooth: number, status?: ToothStatus) => {
-    setToothData(prev => {
-      const current = prev[tooth] || "normal";
-      
-      let next: ToothStatus = "normal";
-      if (status) {
-        next = current === status ? "normal" : status;
-      } else {
-        next = current === "normal" ? "red" : current === "red" ? "blue" : current === "blue" ? "cross" : "normal";
-      }
-      
-      return { ...prev, [tooth]: next };
-    });
+    if (status) {
+      setToothData(prev => {
+        const current = prev[tooth] || "normal";
+        const next = current === status ? "normal" : status;
+        return { ...prev, [tooth]: next };
+      });
+    } else {
+      setSelectedToothForAction(tooth);
+    }
   };
 
   const statusActions: Record<string, { label: string; next: AppointmentStatus; color: string }> = {
@@ -192,6 +255,21 @@ export default function TreatmentQueue({
 
   return (
     <div>
+      {selectedToothForAction && (
+        <ToothActionModal 
+          tooth={selectedToothForAction}
+          onClose={() => setSelectedToothForAction(null)}
+          onAction={(status, serviceName, notes) => {
+            setToothData(prev => ({ ...prev, [selectedToothForAction]: status }));
+            if (serviceName) incrementService(serviceName);
+            if (notes) {
+              setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n(${notes})` : `(${notes})` }));
+            }
+            setSelectedToothForAction(null);
+          }}
+        />
+      )}
+      
       {selectedPatientIdForPlan && (
         <TreatmentPlanBuilder 
           patientId={selectedPatientIdForPlan} 
@@ -210,7 +288,11 @@ export default function TreatmentQueue({
                   setForm(f => ({
                     ...f,
                     notes: m1.notes || f.notes,
-                    services: Array.from(new Set([...f.services, ...(m1.services || []).map((s: any) => s.service_name)]))
+                    services: (() => {
+                      const existingNames = new Set(f.services.map(s => s.name));
+                      const newS = (m1.services || []).filter((s: any) => !existingNames.has(s.service_name)).map((s: any) => ({ name: s.service_name, qty: 1 }));
+                      return [...f.services, ...newS];
+                    })()
                   }));
                 }
               }
@@ -366,6 +448,14 @@ export default function TreatmentQueue({
                         {act.next === "รอชำระเงิน" ? <><ClipboardList size={14} /> {act.label}</> : <><Clock size={14} /> {act.label}</>}
                       </button>
                     )}
+                    {!activePlan && (
+                      <button 
+                        onClick={() => setSelectedPatientIdForPlan(a.patientId)}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all text-teal-700 bg-teal-50 hover:bg-teal-100"
+                      >
+                        + สร้างแผนการรักษา
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -386,14 +476,6 @@ export default function TreatmentQueue({
                           + สร้างแผนการรักษา
                         </button>
                       )}
-                      <button onClick={() => setIsWholeMouth(false)}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${!isWholeMouth ? 'bg-white shadow text-blue-900' : 'text-gray-500'}`}>
-                        ระบุซี่ฟัน
-                      </button>
-                      <button onClick={() => setIsWholeMouth(true)}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${isWholeMouth ? 'bg-white shadow text-blue-900' : 'text-gray-500'}`}>
-                        ทำทั้งปาก (Whole Mouth)
-                      </button>
                     </div>
                   </div>
                   
@@ -421,7 +503,11 @@ export default function TreatmentQueue({
                                 setForm(f => ({
                                   ...f,
                                   notes: monthData.notes || f.notes,
-                                  services: Array.from(new Set([...f.services, ...(monthData.services || []).map((s: any) => s.service_name)]))
+                                  services: (() => {
+                                    const existingNames = new Set(f.services.map(s => s.name));
+                                    const newS = (monthData.services || []).filter((s: any) => !existingNames.has(s.service_name)).map((s: any) => ({ name: s.service_name, qty: 1 }));
+                                    return [...f.services, ...newS];
+                                  })()
                                 }));
                                 if (monthData.odontogram_data) {
                                   setToothData(prev => ({ ...prev, ...monthData.odontogram_data }));
@@ -466,30 +552,68 @@ export default function TreatmentQueue({
                         onToothClick={handleToothClick}
                         isChild={isChild}
                         setIsChild={setIsChild}
-                        isWholeMouth={isWholeMouth}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                    <div>
-                      <p className="text-[11px] font-medium mb-1" style={{ color: "#4A6080" }}>บริการที่ทำ (เลือกได้หลายรายการ)</p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-                        {services.map(s => (
-                          <button key={s.id} onClick={() => toggleService(s.name)}
-                            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] text-left transition-all leading-tight"
-                            style={{
-                              backgroundColor: form.services.includes(s.name) ? "#FFE8EC" : "#F0F4F8",
-                              color: form.services.includes(s.name) ? "#1A365D" : "#4A6080",
-                              border: form.services.includes(s.name) ? "1.5px solid #FF8C9A" : "1.5px solid transparent",
-                            }}>
-                            {form.services.includes(s.name) && <Check size={11} style={{ color: "#FF8C9A" }} />}
-                            <span>{s.name}</span>
-                          </button>
-                        ))}
+                    <div className="space-y-3">
+                    <details className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
+                      <summary className="text-[12px] font-bold p-3 cursor-pointer hover:bg-slate-100 flex items-center justify-between text-slate-700">
+                        <span>➕ หัตถการอื่นๆ (ไม่ได้ระบุตำแหน่งซี่ฟัน)</span>
+                        <ChevronRight size={16} className="text-slate-400 group-open:rotate-90 transition-transform" />
+                      </summary>
+                      <div className="p-3 pt-0 border-t border-slate-100">
+                        <p className="text-[10px] mb-2 text-slate-500">ตัวเลือกด้านล่างนี้ใช้สำหรับหัตถการที่ไม่ได้ผูกกับซี่ฟันใดซี่ฟันหนึ่งโดยเฉพาะ เช่น ขูดหินปูน จัดฟัน ฟอกสีฟัน ฯลฯ</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                          {services.filter(s => s.active && s.applyTo !== 'TOOTH').map(s => {
+                            const existing = form.services.find(x => x.name === s.name);
+                            const isSelected = !!existing;
+                            return (
+                              <button key={s.id} onClick={() => incrementService(s.name)}
+                                className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] text-left transition-all leading-tight relative"
+                                style={{
+                                  backgroundColor: isSelected ? "#FFE8EC" : "#F0F4F8",
+                                  color: isSelected ? "#1A365D" : "#4A6080",
+                                  border: isSelected ? "1.5px solid #FF8C9A" : "1.5px solid transparent",
+                                }}>
+                                <div className="flex items-center gap-1.5 flex-1">
+                                  {isSelected ? (
+                                    <span className="font-bold text-[#FF6B7E] flex-shrink-0">x{existing.qty}</span>
+                                  ) : (
+                                    <span className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0 flex items-center justify-center">
+                                      <Plus size={8} className="text-gray-400" />
+                                    </span>
+                                  )}
+                                  <span className="leading-[1.2]">{s.name}</span>
+                                </div>
+                                {isSelected && (
+                                  <div 
+                                    onClick={(e) => decrementService(s.name, e)}
+                                    className="w-4 h-4 rounded-full bg-white border border-[#FF8C9A] flex items-center justify-center text-[#FF6B7E] hover:bg-[#FF8C9A] hover:text-white transition-colors"
+                                  >
+                                    <span className="text-[10px] leading-none font-bold mb-[1px]">-</span>
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    </details>
                     <div>
-                      <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>บันทึกหัตถการ / สิ่งที่ทำ</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-medium block" style={{ color: "#4A6080" }}>บันทึกหัตถการ / สิ่งที่ทำ</label>
+                        <button 
+                          onClick={() => {
+                            const summary = generateToothSummary(toothData);
+                            if (summary) {
+                              setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n(${summary})` : `(${summary})` }));
+                            }
+                          }}
+                          className="text-[10px] text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 hover:bg-teal-100 transition-colors"
+                        >
+                          + แทรกซี่ฟันจากกราฟิก
+                        </button>
+                      </div>
                       <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                         rows={2} placeholder="อธิบายขั้นตอนการรักษาที่ดำเนินการ..."
                         className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
@@ -514,11 +638,11 @@ export default function TreatmentQueue({
                         </div>
                         {form.services.length > 0 && (
                           <div className="mt-1.5 text-[10px] text-gray-500 leading-tight">
-                            ค่าบริการเริ่มต้น: ฿{form.services.map(s => services.find(x => x.name === s)?.basePrice || 0).reduce((a, b) => a + b, 0).toLocaleString()}
+                            ค่าบริการเริ่มต้น: ฿{form.services.map(sItem => (services.find(x => x.name === sItem.name)?.basePrice || 0) * sItem.qty).reduce((a, b) => a + b, 0).toLocaleString()}
                             <div className="text-[9px] text-gray-400 mt-0.5">
-                              ({form.services.map(s => {
-                                const svc = services.find(x => x.name === s);
-                                return `${s} ฿${svc?.basePrice || 0}`;
+                              ({form.services.map(sItem => {
+                                const svc = services.find(x => x.name === sItem.name);
+                                return `${sItem.name}${sItem.qty > 1 ? ` (x${sItem.qty})` : ''} ฿${((svc?.basePrice || 0) * sItem.qty).toLocaleString()}`;
                               }).join(', ')})
                             </div>
                           </div>
