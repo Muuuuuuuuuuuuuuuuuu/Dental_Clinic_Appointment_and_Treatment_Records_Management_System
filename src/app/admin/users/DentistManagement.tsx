@@ -12,11 +12,11 @@ export default function DentistManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<DentistInfo | null>(null);
-  const [form, setForm] = useState({ name: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", address: "", serviceIds: [] as number[] });
+  const [form, setForm] = useState({ name: "", citizenId: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", address: "", serviceIds: [] as number[] });
 
   const open = (d?: DentistInfo) => {
     setEditing(d ?? null);
-    setForm(d ? { name: d.name, specialty: d.specialty, license: d.license, university: d.university, email: d.email, password: "", phone: d.phone, address: (d as any).address || "", serviceIds: d.serviceIds || [] } : { name: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", address: "", serviceIds: [] });
+    setForm(d ? { name: d.name, citizenId: d.citizenId || "", specialty: d.specialty, license: d.license, university: d.university, email: d.email, password: "", phone: d.phone, address: (d as any).address || "", serviceIds: d.serviceIds || [] } : { name: "", citizenId: "", specialty: "", license: "", university: "", email: "", password: "", phone: "", address: "", serviceIds: [] });
     setShowModal(true);
   };
 
@@ -152,6 +152,13 @@ export default function DentistManagement() {
                 <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ชื่อ-นามสกุล (ไม่ต้องใส่คำนำหน้า)</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+              </div>
+              
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เลขบัตรประชาชน</label>
+                <input value={form.citizenId} onChange={e => setForm(f => ({ ...f, citizenId: e.target.value }))} maxLength={13}
+                  disabled={!!editing}
+                  className={`w-full px-3 py-2.5 rounded-xl text-sm outline-none ${editing ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
               </div>
               
               <div>

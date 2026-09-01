@@ -56,6 +56,7 @@ export interface DentistInfo {
   specialty: string;
   license: string;
   university: string;
+  citizenId?: string;
   email: string;
   password?: string;
   phone: string;
@@ -88,6 +89,7 @@ export interface StaffInfo {
   email: string;
   password?: string;
   phone: string;
+  citizenId?: string;
   startDate: string;
   active: boolean;
   salary?: string;
@@ -98,6 +100,7 @@ export interface AdminInfo {
   name: string;
   email: string;
   phone: string;
+  citizenId?: string;
   active: boolean;
   salary?: string;
 }

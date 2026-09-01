@@ -11,11 +11,11 @@ export default function StaffManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<StaffInfo | null>(null);
-  const [form, setForm] = useState({ name: "", role: "", email: "", phone: "", startDate: "", salary: "", password: "", address: "" });
+  const [form, setForm] = useState({ name: "", citizenId: "", role: "", email: "", phone: "", startDate: "", salary: "", password: "", address: "" });
 
   const open = (s?: StaffInfo) => {
     setEditing(s ?? null);
-    setForm(s ? { name: s.name, role: s.role, email: s.email, phone: s.phone, startDate: s.startDate, salary: s.salary || "", password: "", address: (s as any).address || "" } : { name: "", role: "", email: "", phone: "", startDate: "", salary: "", password: "", address: "" });
+    setForm(s ? { name: s.name, citizenId: s.citizenId || "", role: s.role, email: s.email, phone: s.phone, startDate: s.startDate, salary: s.salary || "", password: "", address: (s as any).address || "" } : { name: "", citizenId: "", role: "", email: "", phone: "", startDate: "", salary: "", password: "", address: "" });
     setShowModal(true);
   };
 
@@ -125,11 +125,13 @@ export default function StaffManagement() {
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} style={{ color: "#4A6080" }} /></button>
             </div>
             <div className="space-y-3">
-              {[{ k: "name", l: "ชื่อ-นามสกุล" }, { k: "role", l: "ตำแหน่ง" }, { k: "email", l: "อีเมล" }, { k: "phone", l: "เบอร์โทร" }, { k: "startDate", l: "วันที่เริ่มงาน", type: "date" }, { k: "salary", l: "เงินเดือน", type: "number" }].map(({ k, l, type }) => (
+              {[{ k: "citizenId", l: "เลขบัตรประชาชน (13 หลัก)" }, { k: "name", l: "ชื่อ-นามสกุล" }, { k: "role", l: "ตำแหน่ง" }, { k: "email", l: "อีเมล" }, { k: "phone", l: "เบอร์โทร" }, { k: "startDate", l: "วันที่เริ่มงาน", type: "date" }, { k: "salary", l: "เงินเดือน", type: "number" }].map(({ k, l, type }) => (
                 <div key={k}>
                   <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>{l}</label>
                   <input type={type ?? "text"} value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                    maxLength={k === 'citizenId' ? 13 : undefined}
+                    disabled={k === 'citizenId' && !!editing}
+                    className={`w-full px-3 py-2.5 rounded-xl text-sm outline-none ${k === 'citizenId' && editing ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                 </div>
               ))}
               <div>

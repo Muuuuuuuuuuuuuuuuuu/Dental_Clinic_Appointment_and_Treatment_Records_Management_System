@@ -47,7 +47,7 @@ export async function getDentists() {
     users (
       email,
       account_status,
-      profile (first_name, last_name, phone_number)
+      profile (first_name, last_name, phone_number, citizen_id)
     ),
     dentist_service (
       service_id
@@ -68,6 +68,7 @@ export async function getDentists() {
       university: 'N/A',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
+      citizenId: p?.citizen_id || '',
       active: d.users?.account_status === 'active',
       userId: d.user_id,
       serviceIds: d.dentist_service?.map((ds: any) => ds.service_id) || [],
@@ -119,11 +120,14 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
   }
 
   const realUserId = authData.user.id;
-  const mockCitizenId = '9' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+  const citizenIdToUse = dentist.citizenId?.trim();
+  if (!citizenIdToUse || citizenIdToUse.length !== 13) {
+      throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
+  }
   const names = dentist.name.split(' ');
 
   await supabase.from('profile').insert({
-    citizen_id: mockCitizenId,
+    citizen_id: citizenIdToUse,
     first_name: names[0] || '',
     last_name: names.slice(1).join(' ') || '',
     phone_number: dentist.phone
@@ -131,7 +135,7 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
 
   await supabase.from('users').insert({
     user_id: realUserId,
-    citizen_id: mockCitizenId,
+    citizen_id: citizenIdToUse,
     email: dentist.email,
     role: 'ทันตแพทย์',
     account_status: dentist.active ? 'active' : 'inactive'
@@ -188,7 +192,7 @@ export async function getAdmins() {
     user_id,
     email,
     account_status,
-    profile (first_name, last_name, phone_number),
+    profile (first_name, last_name, phone_number, citizen_id),
     staff (salary)
   `).eq('role', 'admin');
 
@@ -204,6 +208,7 @@ export async function getAdmins() {
       name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       email: d.email || '',
       phone: p?.phone_number || '',
+      citizenId: p?.citizen_id || '',
       active: d.account_status === 'active'
     };
   });
@@ -227,9 +232,10 @@ export async function addAdmin(admin: any) {
   }
 
   const realUserId = authData.user.id;
-  const citizenIdToUse = admin.citizenId && admin.citizenId.trim() !== ''
-    ? admin.citizenId
-    : '9' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+  const citizenIdToUse = admin.citizenId?.trim();
+  if (!citizenIdToUse || citizenIdToUse.length !== 13) {
+      throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
+  }
 
   const names = admin.name.split(' ');
   await supabase.from('profile').insert({
@@ -279,7 +285,7 @@ export async function getStaff() {
     *,
     users (
       email,
-      profile (first_name, last_name, phone_number)
+      profile (first_name, last_name, phone_number, citizen_id)
     )
   `);
   if (error) {
@@ -295,6 +301,7 @@ export async function getStaff() {
       role: d.position || 'พนักงาน',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
+      citizenId: p?.citizen_id || '',
       startDate: d.hire_date,
       active: d.employment_status === 'ปฏิบัติงานปกติ',
       salary: d.salary?.toString() || ''
@@ -322,17 +329,20 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
   }
 
   const realUserId = authData.user.id;
-  const mockCitizenId = '8' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+  const citizenIdToUse = staff.citizenId?.trim();
+  if (!citizenIdToUse || citizenIdToUse.length !== 13) {
+      throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
+  }
   const names = staff.name.split(' ');
   await supabase.from('profile').insert({
-    citizen_id: mockCitizenId,
+    citizen_id: citizenIdToUse,
     first_name: names[0] || '',
     last_name: names.slice(1).join(' ') || '',
     phone_number: staff.phone
   });
   await supabase.from('users').insert({
     user_id: realUserId,
-    citizen_id: mockCitizenId,
+    citizen_id: citizenIdToUse,
     email: staff.email,
     role: 'พนักงาน',
     account_status: staff.active ? 'active' : 'inactive'
