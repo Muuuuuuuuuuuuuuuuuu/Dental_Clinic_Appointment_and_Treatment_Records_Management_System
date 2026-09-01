@@ -626,40 +626,17 @@ export default function TreatmentQueue({
                         className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
                         style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                     </div>
-                    <div className="grid grid-cols-2 gap-3 items-end pt-1">
-                      <div>
-                        <label className="text-[11px] font-medium block mb-1" style={{ color: "#4A6080" }}>ประเมินค่ารักษา (บาท) *</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2 text-gray-500 font-medium">฿</span>
-                          <input type="number" required min="0" value={form.actualCost} onChange={e => setForm(f => ({ ...f, actualCost: e.target.value === "" ? "" : Number(e.target.value) }))}
-                            placeholder="0"
-                            className="w-full pl-8 pr-3 py-1.5 rounded-xl text-sm outline-none font-bold"
-                            style={{ backgroundColor: "#F0F4F8", color: "#1A365D", border: "1px solid #E2E8F0" }} />
-                        </div>
-                        {form.services.length > 0 && (
-                          <div className="mt-1.5 text-[10px] text-gray-500 leading-tight">
-                            ค่าบริการเริ่มต้น: ฿{form.services.map(sItem => (services.find(x => x.name === sItem.name)?.basePrice || 0) * sItem.qty).reduce((a, b) => a + b, 0).toLocaleString()}
-                            <div className="text-[9px] text-gray-400 mt-0.5">
-                              ({form.services.map(sItem => {
-                                const svc = services.find(x => x.name === sItem.name);
-                                return `${sItem.name}${sItem.qty > 1 ? ` (x${sItem.qty})` : ''} ฿${((svc?.basePrice || 0) * sItem.qty).toLocaleString()}`;
-                              }).join(', ')})
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => submitTreatment(a)}
-                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                          style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-                          <Send size={14} /> ส่งข้อมูลให้พนักงาน
-                        </button>
-                        <button onClick={() => setRecording(null)}
-                          className="px-5 py-2.5 rounded-xl text-sm font-medium"
-                          style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
-                          ยกเลิก
-                        </button>
-                      </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <button onClick={() => submitTreatment(a)}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                        style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
+                        <Send size={14} /> ส่งข้อมูลให้พนักงาน
+                      </button>
+                      <button onClick={() => setRecording(null)}
+                        className="px-5 py-2.5 rounded-xl text-sm font-medium"
+                        style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
+                        ยกเลิก
+                      </button>
                     </div>
                     </div>
                   </div>
