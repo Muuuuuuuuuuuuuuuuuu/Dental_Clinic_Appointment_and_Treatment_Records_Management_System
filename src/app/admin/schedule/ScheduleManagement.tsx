@@ -41,7 +41,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
   const [endYear, setEndYear] = useState("");
   const [closureError, setClosureError] = useState("");
   const [closureSuccess, setClosureSuccess] = useState("");
-  const [autoAnnounce, setAutoAnnounce] = useState(true);
+
   const [editingClosure, setEditingClosure] = useState<{ id: number; reason: string } | null>(null);
 
   // Calendar State
@@ -150,26 +150,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     }
   };
 
-  const handleCreateMissingAnnouncement = async (c: SpecialClosure) => {
-    if (!confirm(`คุณต้องการสร้างประกาศหน้าเว็บสำหรับ "${c.reason}" ใช่หรือไม่?`)) return;
-    try {
-      const { addAnnouncement, linkAnnouncementToHoliday } = await import('../../shared/supabaseApi');
-      const dateObj = new Date(c.date + 'T00:00:00');
-      const dStr = dateObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-      const newAnn = await addAnnouncement({
-        title: `แจ้งวันหยุดคลินิก: ${c.reason}`,
-        content: `ทางคลินิกขอแจ้งให้ทราบว่า คลินิกจะหยุดทำการในวันที่ ${dStr} เนื่องในโอกาส ${c.reason} และจะเปิดให้บริการตามปกติต่อไป ขออภัยในความไม่สะดวกครับ`,
-        target: 'public',
-        isActive: true,
-        expiresAt: c.date
-      });
-      await linkAnnouncementToHoliday(c.id!, newAnn.id);
-      setClosures(prev => prev.map(cl => cl.id === c.id ? { ...cl, linkedAnnouncementId: newAnn.id } : cl));
-      alert("สร้างประกาศและเชื่อมต่อเรียบร้อยแล้ว!");
-    } catch (err: any) {
-      alert("เกิดข้อผิดพลาด: " + err?.message);
-    }
-  };
+
 
   const handleAddClosure = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,33 +207,12 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     }
 
     try {
-      let linkedAnnouncementId: number | undefined;
-
-      // 1. Auto Create Announcement if checked
-      if (autoAnnounce) {
-        const { addAnnouncement } = await import('../../shared/supabaseApi');
-        const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-        const startStr = `${startD} ${thMonths[startM-1]} ${startY+543}`;
-        const endStr = `${endD} ${thMonths[endM-1]} ${endY+543}`;
-        const dateDesc = datesToClose.length > 1 ? `ตั้งแต่วันที่ ${startStr} ถึงวันที่ ${endStr}` : `ในวันที่ ${startStr}`;
-        const lastDate = datesToClose[datesToClose.length - 1];
-        const newAnn = await addAnnouncement({
-          title: `แจ้งวันหยุดคลินิก: ${newClosure.reason}`,
-          content: `ทางคลินิกขอแจ้งให้ทราบว่า คลินิกจะหยุดทำการ${dateDesc} เนื่องในโอกาส ${newClosure.reason} และจะเปิดให้บริการตามปกติต่อไป ขออภัยในความไม่สะดวกครับ`,
-          target: 'public',
-          isActive: true,
-          expiresAt: lastDate
-        });
-        linkedAnnouncementId = newAnn.id;
-      }
-
       // 2. Create Clinic Closures
       const newClosures: SpecialClosure[] = [];
       for (const iso of datesToClose) {
         const added = await addClinicClosure({ 
           date: iso, 
-          reason: newClosure.reason,
-          linkedAnnouncementId 
+          reason: newClosure.reason
         });
         newClosures.push(added);
       }
@@ -277,19 +237,6 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     if (!confirm("คุณต้องการลบวันหยุดพิเศษนี้?")) return;
     
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const isFuture = closureToDelete.date >= today;
-      
-      // If it's a future holiday and has a linked announcement, offer to delete it
-      if (isFuture && closureToDelete.linkedAnnouncementId) {
-        if (confirm("วันหยุดนี้มีประกาศแจ้งคนไข้บนหน้าเว็บ คุณต้องการลบประกาศที่เกี่ยวข้องทิ้งด้วยเลยหรือไม่?")) {
-          await deleteAnnouncement(closureToDelete.linkedAnnouncementId).catch(err => {
-            console.error("Failed to delete announcement", err);
-            alert("ลบประกาศไม่สำเร็จ แต่ระบบจะดำเนินการลบวันหยุดต่อไป");
-          });
-        }
-      }
-
       await deleteClinicClosure(id);
       setClosures(closures.filter(c => c.id !== id));
     } catch (err) {
@@ -677,26 +624,10 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
             </div>
           </div>
           
-          <div className="mt-3 flex items-center gap-2">
-            <input 
-              type="checkbox" 
-              id="autoAnnounce" 
-              checked={autoAnnounce}
-              onChange={(e) => setAutoAnnounce(e.target.checked)}
-              className="rounded text-[#1A365D] focus:ring-[#1A365D]"
-            />
-            <label htmlFor="autoAnnounce" className="text-sm text-gray-700 cursor-pointer font-medium">สร้างประกาศแจ้งคนไข้หน้าเว็บอัตโนมัติ (แนะนำ)</label>
-          </div>
-          
           {closureSuccess && (
             <div className="mt-4 animate-fade-in">
               <div className="flex items-center justify-between text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">
                 <span>✓ {closureSuccess}</span>
-                {autoAnnounce && (
-                  <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('navigate-admin', { detail: 'clinic-hub' }))} className="text-xs font-bold underline text-green-800 hover:text-green-900 flex-shrink-0">
-                    ไปจัดการประกาศต่อ ➔
-                  </button>
-                )}
               </div>
             </div>
           )}

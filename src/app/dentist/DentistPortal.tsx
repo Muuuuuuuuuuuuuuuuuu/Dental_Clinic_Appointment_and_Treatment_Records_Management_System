@@ -8,7 +8,7 @@ import PatientRecords from "./patients/PatientRecords";
 import TreatmentQueue from "./treatment/TreatmentQueue";
 
 import DoctorDashboard from "./dashboard/DoctorDashboard";
-import AnnouncementView from "../shared/components/AnnouncementView";
+
 import TreatmentHistory from "./treatment/TreatmentHistory";
 
 import {
@@ -52,7 +52,7 @@ const DOC_NAV = [
   { key: "records"   as DocView, label: "เวชระเบียน",         icon: FileText },
   { key: "history"   as DocView, label: "ประวัติการทำงาน",      icon: ClipboardList },
   { key: "calendar"  as DocView, label: "ปฏิทินและการลางาน",   icon: Calendar },
-  { key: "announcements" as DocView, label: "ประกาศ",        icon: Megaphone },
+
   { key: "profile"   as DocView, label: "ข้อมูลส่วนตัว",     icon: User },
 ];
 
@@ -181,7 +181,7 @@ export default function DoctorPortal({
           {view === "records"   && <PatientRecords />}
           {view === "history"   && <TreatmentHistory doctor={doctor} />}
           {view === "calendar"  && <DoctorCalendar doctor={doctor} />}
-          {view === "announcements" && <AnnouncementView role="dentist" />}
+
           {view === "profile"   && <DoctorProfile doctor={doctor} />}
         </main>
       </div>

@@ -7,7 +7,6 @@ import PatientManagementView from "./patients/PatientManagementView";
 
 import QueueBoard from "./queue/QueueBoard";
 import StaffLeaveView from "./leave/StaffLeaveView";
-import AnnouncementView from "../shared/components/AnnouncementView";
 
 import {
   Home, Search, Calendar, Users, FileText, LogOut, Smile,
@@ -49,7 +48,7 @@ const STAFF_NAV = [
   { key: "walkin" as StaffView, label: "จองคิว Walk-in", icon: Plus, isOperational: true },
   { key: "payment" as StaffView, label: "รับชำระเงิน", icon: CreditCard, isOperational: true },
   { key: "leave" as StaffView, label: "ปฏิทินและขอลางาน", icon: CalendarX, isOperational: false },
-  { key: "announcements" as StaffView, label: "ประกาศจากคลินิก", icon: Megaphone, isOperational: false },
+
 ];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -255,7 +254,7 @@ export default function StaffPortal({
   onLogout: () => void;
   loginEmail?: string;
 }) {
-  const [view, setView] = useState<StaffView>("announcements"); // Default to non-operational view
+  const [view, setView] = useState<StaffView>("queue");
   const [sideOpen, setSideOpen] = useState(false);
   
   // Clock-in & Network State
@@ -368,7 +367,7 @@ export default function StaffPortal({
               {view === "walkin" && <WalkInBooking onAddAppt={onAddAppt} />}
               {view === "payment" && <PaymentView appointments={appointments} onUpdateAppt={onUpdateAppt} />}
               {view === "leave" && <StaffLeaveView staff={staffInfo} />}
-              {view === "announcements" && <AnnouncementView role="staff" />}
+
             </>
           )}
         </main>
