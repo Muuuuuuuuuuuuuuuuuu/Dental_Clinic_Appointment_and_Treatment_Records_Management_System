@@ -141,9 +141,9 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
         doctorId: personUserId,
         startDate: dateStr,
         endDate: dateStr,
-        leavePeriod: 'เต็มวัน',
+        leaveType: 'ลากิจ',
         reason: 'แอดมินกำหนดวันหยุดเฉพาะกิจ',
-        status: 'รอการอนุมัติ'
+        status: 'รออนุมัติ'
       });
       // Auto approve
       await updateLeaveStatus(req.leave_id, 'อนุมัติแล้ว');

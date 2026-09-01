@@ -200,7 +200,7 @@ export default function ClinicSettingsManagement() {
       // Save regular form data
       for (const [key, value] of Object.entries(formData)) {
         if (settings[key] !== value) {
-          await updateClinicSetting(key, value);
+          await updateClinicSetting(key, String(value));
         }
       }
       // Save weekly off days and daily hours

@@ -11,9 +11,9 @@ export default function LeaveApprovals() {
   const [activeTab, setActiveTab] = useState<Tab>("pending");
 
   const lsc: Record<string, { bg: string; text: string }> = {
-    "รอการอนุมัติ": { bg: "#FFF3E0", text: "#E65100" },
+    "รออนุมัติ": { bg: "#FFF3E0", text: "#E65100" },
     "อนุมัติแล้ว":  { bg: "#E8FFF0", text: "#1B7A3E" },
-    "ปฏิเสธ":        { bg: "#FEF2F2", text: "#B91C1C" },
+    "ไม่อนุมัติ":   { bg: "#FEF2F2", text: "#B91C1C" },
   };
 
   useEffect(() => {
@@ -41,8 +41,8 @@ export default function LeaveApprovals() {
     }
   };
 
-  const pendingLeaves = leaves.filter(l => l.status === "รอการอนุมัติ");
-  const historyLeaves = leaves.filter(l => l.status !== "รอการอนุมัติ");
+  const pendingLeaves = leaves.filter(l => l.status === "รออนุมัติ");
+  const historyLeaves = leaves.filter(l => l.status !== "รออนุมัติ");
 
   const TabButton = ({ id, label, icon: Icon, count }: { id: Tab, label: string, icon: any, count?: number }) => (
     <button
@@ -91,7 +91,8 @@ export default function LeaveApprovals() {
                     <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>
                       {l.startDate === l.endDate ? l.startDate : `${l.startDate} – ${l.endDate}`}
                     </p>
-                    <p className="text-xs mt-1" style={{ color: "#1A365D" }}>เหตุผล: {l.reason}</p>
+                    <p className="text-xs mt-1" style={{ color: "#1A365D" }}>ประเภท: ลา{l.leaveType}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "#1A365D" }}>เหตุผล: {l.reason}</p>
                     <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>ยื่นเมื่อ: {l.createdAt}</p>
                   </div>
                 </div>
@@ -105,10 +106,10 @@ export default function LeaveApprovals() {
                       style={{ backgroundColor: "#22C55E" }}>
                       <Check size={12} /> อนุมัติ
                     </button>
-                    <button onClick={() => update(l.id, "ปฏิเสธ")}
+                    <button onClick={() => update(l.id, "ไม่อนุมัติ")}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:bg-red-100"
                       style={{ backgroundColor: "#FEF2F2", color: "#B91C1C" }}>
-                      <X size={12} /> ปฏิเสธ
+                      <X size={12} /> ไม่อนุมัติ
                     </button>
                   </div>
                 </div>
@@ -137,7 +138,8 @@ export default function LeaveApprovals() {
                       <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>
                         {l.startDate === l.endDate ? l.startDate : `${l.startDate} – ${l.endDate}`}
                       </p>
-                      <p className="text-xs mt-1" style={{ color: "#1A365D" }}>เหตุผล: {l.reason}</p>
+                      <p className="text-xs mt-1" style={{ color: "#1A365D" }}>ประเภท: ลา{l.leaveType}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#1A365D" }}>เหตุผล: {l.reason}</p>
                       <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>ยื่นเมื่อ: {l.createdAt}</p>
                     </div>
                   </div>

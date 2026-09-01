@@ -54,7 +54,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   });
 
   const revenue = filteredAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
-  const pending = leaves.filter(l => l.status === "รอการอนุมัติ").length;
+  const pending = leaves.filter(l => l.status === "รออนุมัติ").length;
 
   // Chart data
   const chartData = timeframe === "today" ?

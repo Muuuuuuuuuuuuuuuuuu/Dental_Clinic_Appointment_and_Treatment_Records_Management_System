@@ -14,7 +14,7 @@ export default function ScheduleHub() {
 
   useEffect(() => {
     getLeaveRequests()
-      .then(leaves => setPendingCount(leaves.filter(l => l.status === "รอการอนุมัติ").length))
+      .then(leaves => setPendingCount(leaves.filter(l => l.status === "รออนุมัติ").length))
       .catch(console.error);
   }, []);
 

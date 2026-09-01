@@ -3,7 +3,7 @@ import { supabase } from './utils/supabaseClient';
 import { sendOTPEmail } from './utils/emailService';
 export { supabase };
 import { RegForm } from '../patient/types';
-import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan, ServiceCategory } from './data';
+import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan, ServiceCategoryType } from './data';
 
 // ============================================================================
 // REALTIME HELPERS
@@ -1696,9 +1696,9 @@ export async function getLeaveRequests() {
       doctorName: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       startDate: d.leave_date,
       endDate: d.leave_date, // โครงสร้างใหม่มีแค่วันที่เดียว
-      leaveType: d.leave_period as 'ลาป่วย' | 'ลากิจ' | 'ลาพักร้อน' | undefined,
-      reason: d.leave_type,
-      status: d.is_approved === true ? 'อนุมัติแล้ว' : d.is_approved === false ? 'ปฏิเสธ' : 'รอการอนุมัติ',
+      leaveType: d.leave_type as 'ลาป่วย' | 'ลากิจ' | 'ลาพักร้อน' | undefined,
+      reason: d.reason,
+      status: d.is_approved === true ? 'อนุมัติแล้ว' : d.is_approved === false ? 'ไม่อนุมัติ' : 'รออนุมัติ',
       createdAt: d.leave_date
     };
   }) as LeaveRequest[];
@@ -1707,8 +1707,9 @@ export async function addLeaveRequest(req: Omit<LeaveRequest, 'id' | 'createdAt'
   const { data, error } = await supabase.from('leave_record').insert({
     user_id: req.doctorId, // Expecting UUID here
     leave_date: req.startDate,
-    leave_period: req.leaveType, // Repurposing leave_period for leave type
-    leave_type: req.reason, // leave_type stores the reason
+    leave_period: 'เต็มวัน',
+    leave_type: req.leaveType,
+    reason: req.reason,
     is_approved: null // null means pending
   }).select().single();
 
