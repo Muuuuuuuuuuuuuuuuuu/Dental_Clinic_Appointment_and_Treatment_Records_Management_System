@@ -128,12 +128,10 @@ export const ROLE_TABS: { key: UserRole; label: string; icon: any; demos: {label
     { label: "ทพญ. นภาพร", email: "dr.napaporn@clinic.com", pass: "12345678" }
   ]},
   { key: "staff", label: "พนักงาน", icon: Users, demos: [
-    { label: "รัตนา (ต้อนรับ)", email: "rattana@clinic.com", pass: "12345678" },
-    { label: "สมศรี (ผู้ช่วย)", email: "somsri2@clinic.com", pass: "12345678" }
+    { label: "รัตนา (ต้อนรับ)", email: "rattana@clinic.com", pass: "12345678" }
   ]},
   { key: "admin", label: "ผู้ดูแลระบบ", icon: Settings, demos: [
-    { label: "Admin 1 (คลินิกหลัก)", email: "admin@clinic.com", pass: "12345678" },
-    { label: "Admin 2 (สมชาย)", email: "admin2@clinic.com", pass: "12345678" }
+    { label: "Admin 1 (คลินิกหลัก)", email: "admin@clinic.com", pass: "12345678" }
   ]}
 ];
 

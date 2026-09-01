@@ -1,20 +1,10 @@
 import React, { useState } from "react";
 import { Lock, ArrowLeft, ChevronRight, BookOpen } from "lucide-react";
-import AccountSettings from "../profile/AccountSettings";
 import UserManual from "../help/UserManual";
 
-type SettingsSubView = null | "account" | "manual";
+type SettingsSubView = null | "manual";
 
 const CARD_DEFS = [
-
-  {
-    key: "account" as const,
-    icon: Lock,
-    title: "ตั้งค่าบัญชี",
-    desc: "เปลี่ยนรหัสผ่านและจัดการข้อมูลโปรไฟล์ส่วนตัว",
-    gradient: "linear-gradient(135deg, #6B7280 0%, #4B5563 100%)",
-    bgLight: "#F3F4F6",
-  },
   {
     key: "manual" as const,
     icon: BookOpen,
@@ -29,7 +19,6 @@ export default function SettingsHub() {
   const [subView, setSubView] = useState<SettingsSubView>(null);
 
   // Sub-view rendering
-  if (subView === "account") return <SubViewWrapper title="ตั้งค่าบัญชี" onBack={() => setSubView(null)}><AccountSettings /></SubViewWrapper>;
   if (subView === "manual") return <SubViewWrapper title="คู่มือการใช้งาน" onBack={() => setSubView(null)}><UserManual /></SubViewWrapper>;
 
   // Hub card selector

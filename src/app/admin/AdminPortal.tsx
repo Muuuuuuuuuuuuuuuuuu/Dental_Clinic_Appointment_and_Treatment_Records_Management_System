@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import AdminDashboard from "./dashboard/AdminDashboard";
+import UserProfile from "../shared/components/UserProfile";
 import ScheduleHub from "./hubs/ScheduleHub";
 import ClinicHub from "./hubs/ClinicHub";
 import UsersHub from "./hubs/UsersHub";
@@ -13,10 +14,10 @@ import {
   ResponsiveContainer, LineChart, Line,
 } from "recharts";
 import {
-  Appointment, AppointmentStatus, DentistInfo, StaffInfo, ServiceInfo,
+  Appointment, AppointmentStatus, DentistInfo, StaffInfo, ServiceInfo, AdminInfo,
   LeaveRequest, STATUS_COLORS, getClinicStatus, ClinicStatus,
 } from "../shared/data";
-import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours, getLeaveRequests } from "../shared/supabaseApi";
+import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours, getLeaveRequests, getAdmins } from "../shared/supabaseApi";
 import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
 import { useIdleTimeout } from "../shared/useIdleTimeout";
 
@@ -66,11 +67,11 @@ function AdminSidebar({ view, setView, onLogout, pendingLeaves }: {
           <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>ผู้ดูแลระบบ</div>
         </div>
       </div>
-      <div className="flex items-center gap-3 px-3 py-3 rounded-2xl mb-6" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+      <div onClick={() => setView("profile")} className="flex items-center gap-3 px-3 py-3 rounded-2xl mb-6 cursor-pointer hover:bg-white/10 transition-colors" style={{ backgroundColor: view === "profile" ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.06)" }}>
         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: "#FF8C9A" }}>A</div>
-        <div>
-          <p className="text-xs font-semibold text-white">ผู้ดูแลระบบ</p>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>admin@clinic.com</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-white truncate">ผู้ดูแลระบบ</p>
+          <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.5)" }}>admin@clinic.com</p>
         </div>
       </div>
       <nav className="flex-1 space-y-1.5 overflow-y-auto pr-1 pb-4" style={{ scrollbarWidth: "none" }}>
@@ -117,6 +118,7 @@ function Badge({ label, active }: { label: string; active: boolean }) {
 
 export default function AdminPortal({
   onLogout,
+  loginEmail,
 }: {
   appointments?: Appointment[];
   onLogout: () => void;
@@ -125,6 +127,7 @@ export default function AdminPortal({
   const [view, setView] = useState<AdminView>("dashboard");
   const [sideOpen, setSideOpen] = useState(false);
   const [pendingLeaves, setPendingLeaves] = useState(0);
+  const [adminInfo, setAdminInfo] = useState<AdminInfo | null>(null);
   const { appointments: realAppointments } = useRealtimeAppointments();
 
   useIdleTimeout(() => {
@@ -137,7 +140,15 @@ export default function AdminPortal({
     getLeaveRequests()
       .then(leaves => setPendingLeaves(leaves.filter(l => l.status === "รออนุมัติ").length))
       .catch(console.error);
-  }, []);
+      
+    getAdmins().then(admins => {
+      if (loginEmail) {
+        setAdminInfo(admins.find(a => a.email === loginEmail) || admins[0] || null);
+      } else {
+        setAdminInfo(admins[0] || null);
+      }
+    }).catch(console.error);
+  }, [loginEmail]);
 
   useEffect(() => {
     const handleNavigation = (e: any) => {
@@ -175,6 +186,7 @@ export default function AdminPortal({
           {view === "clinic-hub"   && <ClinicHub />}
           {view === "users-hub"    && <UsersHub />}
           {view === "settings-hub" && <SettingsHub />}
+          {view === "profile"      && <UserProfile user={adminInfo} type="admin" />}
         </main>
       </div>
     </div>

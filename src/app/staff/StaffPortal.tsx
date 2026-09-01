@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import PaymentView from "./payment/PaymentView";
+import UserProfile from "../shared/components/UserProfile";
 
 import WalkInBooking from "./booking/WalkInBooking";
 import AppointmentManagementView from "./appointments/AppointmentManagementView";
@@ -60,8 +61,7 @@ function StaffSidebar({
   isClockedIn,
   staffName,
   staffRole,
-  staffInitial,
-  onChangePassword
+  staffInitial
 }: { 
   view: StaffView; 
   setView: (v: StaffView) => void; 
@@ -70,7 +70,6 @@ function StaffSidebar({
   staffName?: string;
   staffRole?: string;
   staffInitial?: string;
-  onChangePassword?: () => void;
 }) {
   return (
     <div className="flex flex-col h-full py-6 px-4" style={{ backgroundColor: "#1A365D" }}>
@@ -83,19 +82,19 @@ function StaffSidebar({
           <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>พนักงานต้อนรับ</div>
         </div>
       </div>
-      <div className="flex items-center gap-3 px-3 py-3 rounded-2xl mb-6 relative overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+      <div onClick={() => setView("profile")} className="flex items-center gap-3 px-3 py-3 rounded-2xl mb-6 relative overflow-hidden cursor-pointer hover:bg-white/10 transition-colors" style={{ backgroundColor: view === "profile" ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.06)" }}>
         {/* Clock In Indicator */}
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${isClockedIn ? 'bg-green-400' : 'bg-gray-400'}`} />
         
         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: "#1D6FA4" }}>
           {staffInitial || "ส"}
         </div>
-        <div className="flex-1">
-          <p className="text-xs font-semibold text-white flex items-center gap-1.5">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-white flex items-center gap-1.5 truncate">
             {staffName || "กำลังโหลด..."}
-            {isClockedIn && <ShieldCheck size={12} className="text-green-400" />}
+            {isClockedIn && <ShieldCheck size={12} className="text-green-400 flex-shrink-0" />}
           </p>
-          <p className="text-[10px]" style={{ color: isClockedIn ? "#4ADE80" : "rgba(255,255,255,0.5)" }}>
+          <p className="text-[10px] truncate" style={{ color: isClockedIn ? "#4ADE80" : "rgba(255,255,255,0.5)" }}>
             {staffRole || "พนักงาน"}
           </p>
         </div>
@@ -123,11 +122,6 @@ function StaffSidebar({
       </nav>
       
       <div className="mt-4 pt-4 space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        {onChangePassword && (
-          <button onClick={onChangePassword} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-white/5 transition-all text-white/70">
-            <Settings size={16} /> เปลี่ยนรหัสผ่าน
-          </button>
-        )}
         <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-red-500/10" style={{ color: "rgba(255,140,154,0.8)" }}>
           <LogOut size={16} /> ออกจากระบบ
         </button>
@@ -259,22 +253,13 @@ export default function StaffPortal({
   
   // Clock-in & Network State
   const [isClockedIn, setIsClockedIn] = useState(true);
+  const [mockNetwork, setMockNetwork] = useState<"clinic" | "home">("clinic");
 
   useIdleTimeout(() => {
     alert("ระบบได้ทำการออกจากระบบอัตโนมัติเนื่องจากไม่มีการใช้งาน");
     onLogout();
   }, 30);
 
-  const [mockNetwork, setMockNetwork] = useState<"home"|"clinic">("home");
-  
-  // Password Change
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isChanging, setIsChanging] = useState(false);
-  const [changeError, setChangeError] = useState("");
-  
   // Staff Data
   const [staffInfo, setStaffInfo] = useState<any | null>(null);
 
@@ -367,72 +352,12 @@ export default function StaffPortal({
               {view === "walkin" && <WalkInBooking onAddAppt={onAddAppt} />}
               {view === "payment" && <PaymentView appointments={appointments} onUpdateAppt={onUpdateAppt} />}
               {view === "leave" && <StaffLeaveView staff={staffInfo} />}
+              {view === "profile" && <UserProfile user={staffInfo} type="staff" />}
 
             </>
           )}
         </main>
       </div>
-      
-      {/* Password Change Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
-            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>เปลี่ยนรหัสผ่านใหม่</h3>
-            
-            {changeError && <p className="text-red-500 text-xs mb-3">{changeError}</p>}
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">รหัสผ่านเดิม</label>
-                <input 
-                  type="password" 
-                  value={oldPassword}
-                  onChange={e => setOldPassword(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="กรอกรหัสผ่านปัจจุบัน"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">รหัสผ่านใหม่</label>
-                <input 
-                  type="password" 
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="อย่างน้อย 6 ตัวอักษร"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">ยืนยันรหัสผ่านใหม่</label>
-                <input 
-                  type="password" 
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="พิมพ์ให้ตรงกันอีกครั้ง"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button 
-                onClick={() => { setShowPasswordModal(false); setChangeError(""); }}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold border text-gray-600 hover:bg-gray-50"
-              >
-                ยกเลิก
-              </button>
-              <button 
-                onClick={handleChangePassword}
-                disabled={isChanging}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-70"
-                style={{ background: "linear-gradient(135deg, #1D6FA4, #1A365D)" }}
-              >
-                {isChanging ? "กำลังบันทึก..." : "บันทึกรหัสผ่าน"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

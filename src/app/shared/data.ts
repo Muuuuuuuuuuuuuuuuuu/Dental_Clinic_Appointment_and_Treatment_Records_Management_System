@@ -54,9 +54,18 @@ export interface DentistInfo {
   id: number;
   userId?: string;
   name: string;
+  titleName?: string;
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  birthDate?: string;
+  address?: string;
   specialty: string;
   license: string;
   university: string;
+  experienceYears?: number;
+  imageUrl?: string;
+  startDate?: string;
   citizenId?: string;
   email: string;
   password?: string;
@@ -84,13 +93,20 @@ export interface PatientInfo {
 
 export interface StaffInfo {
   id: number;
+  userId?: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  birthDate?: string;
+  address?: string;
   role: string;
   email: string;
   password?: string;
   phone: string;
   citizenId?: string;
   startDate: string;
+  employmentStatus?: string;
   active: boolean;
   salary?: string;
 }
@@ -98,7 +114,16 @@ export interface StaffInfo {
 export interface AdminInfo {
   id: string; // auth user id
   name: string;
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  birthDate?: string;
+  address?: string;
+  role?: string;
+  startDate?: string;
+  employmentStatus?: string;
   email: string;
+  password?: string;
   phone: string;
   citizenId?: string;
   active: boolean;
@@ -301,13 +326,11 @@ export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: stri
   "ไม่มาตามนัด":      { bg: "#F3F4F6", text: "#4B5563", dot: "#6B7280" },
 };
 
-export type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub";
+export type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub" | "profile";
 export type DoctorView = "dashboard" | "queue" | "patients" | "schedule" | "leaves" | "announcements";
 export type DocView = "dashboard" | "queue" | "records" | "history" | "calendar" | "profile" | "announcements";
-export type StaffView = "queue" | "appointments" | "patients" | "walkin" | "payment" | "leave" | "announcements";
+export type StaffView = "queue" | "appointments" | "patients" | "walkin" | "payment" | "leave" | "announcements" | "profile";
 
 import React from 'react';
 
 export const DAYS = ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์'];
-
-

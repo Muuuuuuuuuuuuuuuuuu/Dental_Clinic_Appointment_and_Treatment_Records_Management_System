@@ -41,13 +41,12 @@ export function notifyAppointmentsUpdated() {
 
 // --- Dentists ---
 export async function getDentists() {
-  // ดึงข้อมูลจากตาราง dentist และ JOIN กับ users และ profile
   const { data, error } = await supabase.from('dentist').select(`
     *,
     users (
       email,
       account_status,
-      profile (first_name, last_name, phone_number, citizen_id)
+      profile (first_name, last_name, phone_number, citizen_id, gender, birth_date, current_address)
     ),
     dentist_service (
       service_id
@@ -63,9 +62,18 @@ export async function getDentists() {
     return {
       id: d.dentist_id,
       name: p ? `${d.title_name || ''} ${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
+      titleName: d.title_name || 'ทพ.',
+      firstName: p?.first_name || '',
+      lastName: p?.last_name || '',
+      gender: p?.gender || '',
+      birthDate: p?.birth_date || '',
+      address: p?.current_address || '',
       specialty: d.specialization || 'ทันตกรรมทั่วไป',
       license: d.license_number,
-      university: 'N/A',
+      university: d.university || 'N/A',
+      experienceYears: d.experience_years || 0,
+      imageUrl: d.image_url || '',
+      startDate: d.start_date || '',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
       citizenId: p?.citizen_id || '',
@@ -101,13 +109,11 @@ export async function updateClinicRooms(rooms: string[]): Promise<void> {
 }
 
 export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<DentistInfo> {
-  // สร้าง Admin Client สำหรับจัดการ Auth โดยเฉพาะ (ข้อควรระวัง: ในโปรดักชัน ควรทำผ่าน Edge Function / Backend เพื่อความปลอดภัย)
   const adminAuthClient = createClient(
     import.meta.env.VITE_SUPABASE_URL || '',
     import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
   );
 
-  // 1. สร้างบัญชีผู้ใช้ใน Supabase Auth จริงๆ
   const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
     email: dentist.email,
     password: dentist.password || 'password123',
@@ -124,13 +130,15 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
   if (!citizenIdToUse || citizenIdToUse.length !== 13) {
       throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
   }
-  const names = dentist.name.split(' ');
 
   await supabase.from('profile').insert({
     citizen_id: citizenIdToUse,
-    first_name: names[0] || '',
-    last_name: names.slice(1).join(' ') || '',
-    phone_number: dentist.phone
+    first_name: dentist.firstName || '',
+    last_name: dentist.lastName || '',
+    phone_number: dentist.phone || null,
+    gender: (dentist.gender === 'ชาย' || dentist.gender === 'หญิง') ? dentist.gender : null,
+    birth_date: dentist.birthDate || null,
+    current_address: dentist.address || null
   });
 
   await supabase.from('users').insert({
@@ -143,9 +151,13 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
 
   const { data, error } = await supabase.from('dentist').insert({
     user_id: realUserId,
-    title_name: 'ทพ.',
+    title_name: dentist.titleName || 'ทพ.',
     specialization: dentist.specialty,
-    license_number: dentist.license
+    license_number: dentist.license,
+    university: dentist.university || 'N/A',
+    experience_years: dentist.experienceYears || null,
+    image_url: dentist.imageUrl || null,
+    start_date: dentist.startDate || null,
   }).select().single();
 
   if (error) throw error;
@@ -155,20 +167,47 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
     await supabase.from('dentist_service').insert(dsInserts);
   }
 
-  return { ...dentist, id: data.dentist_id, userId: realUserId };
+  return { 
+    ...dentist, 
+    id: data.dentist_id, 
+    userId: realUserId,
+    name: `${dentist.titleName || ''} ${dentist.firstName || ''} ${dentist.lastName || ''}`.trim()
+  };
 }
 export async function updateDentist(id: number, updates: Partial<DentistInfo>): Promise<DentistInfo> {
   const dentistUpdates: any = {};
   if (updates.specialty !== undefined) dentistUpdates.specialization = updates.specialty;
   if (updates.license !== undefined) dentistUpdates.license_number = updates.license;
+  if (updates.titleName !== undefined) dentistUpdates.title_name = updates.titleName;
+  if (updates.university !== undefined) dentistUpdates.university = updates.university;
+  if (updates.experienceYears !== undefined) dentistUpdates.experience_years = updates.experienceYears;
+  if (updates.imageUrl !== undefined) dentistUpdates.image_url = updates.imageUrl;
+  if (updates.startDate !== undefined) dentistUpdates.start_date = updates.startDate;
+
   if (Object.keys(dentistUpdates).length > 0) {
     const { error } = await supabase.from('dentist').update(dentistUpdates).eq('dentist_id', id);
     if (error) throw error;
   }
-  if (updates.active !== undefined) {
-    const { data } = await supabase.from('dentist').select('user_id').eq('dentist_id', id).single();
-    if (data?.user_id) {
-      await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', data.user_id);
+
+  const { data: dentistData } = await supabase.from('dentist').select('user_id').eq('dentist_id', id).single();
+  if (dentistData?.user_id) {
+    if (updates.active !== undefined) {
+      await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', dentistData.user_id);
+    }
+
+    const profileUpdates: any = {};
+    if (updates.firstName !== undefined) profileUpdates.first_name = updates.firstName;
+    if (updates.lastName !== undefined) profileUpdates.last_name = updates.lastName;
+    if (updates.phone !== undefined) profileUpdates.phone_number = updates.phone;
+    if (updates.gender !== undefined) profileUpdates.gender = (updates.gender === 'ชาย' || updates.gender === 'หญิง') ? updates.gender : null;
+    if (updates.birthDate !== undefined) profileUpdates.birth_date = updates.birthDate;
+    if (updates.address !== undefined) profileUpdates.current_address = updates.address;
+
+    if (Object.keys(profileUpdates).length > 0) {
+      const { data: userData } = await supabase.from('users').select('citizen_id').eq('user_id', dentistData.user_id).single();
+      if (userData?.citizen_id) {
+        await supabase.from('profile').update(profileUpdates).eq('citizen_id', userData.citizen_id);
+      }
     }
   }
 
@@ -192,8 +231,8 @@ export async function getAdmins() {
     user_id,
     email,
     account_status,
-    profile (first_name, last_name, phone_number, citizen_id),
-    staff (salary)
+    profile (first_name, last_name, phone_number, citizen_id, gender, birth_date, current_address),
+    staff (position, salary, employment_status, hire_date)
   `).eq('role', 'admin');
 
   if (error) {
@@ -203,18 +242,28 @@ export async function getAdmins() {
 
   return data.map((d: any) => {
     const p = d.profile;
+    const s = Array.isArray(d.staff) ? d.staff[0] : d.staff;
     return {
       id: d.user_id,
       name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
+      firstName: p?.first_name || '',
+      lastName: p?.last_name || '',
+      gender: p?.gender || '',
+      birthDate: p?.birth_date || '',
+      address: p?.current_address || '',
       email: d.email || '',
       phone: p?.phone_number || '',
       citizenId: p?.citizen_id || '',
-      active: d.account_status === 'active'
-    };
+      active: d.account_status === 'active',
+      role: s?.position || 'ผู้ดูแลระบบ',
+      salary: s?.salary?.toString() || '',
+      startDate: s?.hire_date || '',
+      employmentStatus: s?.employment_status || 'ปฏิบัติงานปกติ'
+    } as AdminInfo;
   });
 }
 
-export async function addAdmin(admin: any) {
+export async function addAdmin(admin: AdminInfo) {
   const adminAuthClient = createClient(
     import.meta.env.VITE_SUPABASE_URL || '',
     import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -237,13 +286,16 @@ export async function addAdmin(admin: any) {
       throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
   }
 
-  const names = admin.name.split(' ');
   await supabase.from('profile').insert({
     citizen_id: citizenIdToUse,
-    first_name: names[0] || '',
-    last_name: names.slice(1).join(' ') || '',
-    phone_number: admin.phone
+    first_name: admin.firstName || '',
+    last_name: admin.lastName || '',
+    phone_number: admin.phone || null,
+    gender: (admin.gender === 'ชาย' || admin.gender === 'หญิง') ? admin.gender : null,
+    birth_date: admin.birthDate || null,
+    current_address: admin.address || null
   });
+  
   await supabase.from('users').insert({
     user_id: realUserId,
     citizen_id: citizenIdToUse,
@@ -254,28 +306,48 @@ export async function addAdmin(admin: any) {
 
   await supabase.from('staff').insert({
     user_id: realUserId,
-    position: 'ผู้ดูแลระบบ',
-    employment_status: admin.active ? 'ปฏิบัติงานปกติ' : 'พักงาน',
-    hire_date: new Date().toISOString().split('T')[0],
+    position: admin.role || 'ผู้ดูแลระบบ',
+    employment_status: admin.employmentStatus || (admin.active ? 'ปฏิบัติงานปกติ' : 'พักงาน'),
+    hire_date: admin.startDate || new Date().toISOString().split('T')[0],
     salary: admin.salary ? parseFloat(admin.salary) : null
   });
 
   return {
+    ...admin,
     id: realUserId,
-    name: admin.name,
-    email: admin.email,
-    phone: admin.phone,
-    active: admin.active
+    name: `${admin.firstName || ''} ${admin.lastName || ''}`.trim()
   };
 }
 
-export async function updateAdmin(id: string, updates: any) {
+export async function updateAdmin(id: string, updates: Partial<AdminInfo>) {
   if (updates.active !== undefined) {
     await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', id);
   }
-  if (updates.salary !== undefined) {
-    await supabase.from('staff').update({ salary: updates.salary ? parseFloat(updates.salary) : null }).eq('user_id', id);
+  
+  const staffUpdates: any = {};
+  if (updates.salary !== undefined) staffUpdates.salary = updates.salary ? parseFloat(updates.salary) : null;
+  if (updates.role !== undefined) staffUpdates.position = updates.role;
+  if (updates.employmentStatus !== undefined) staffUpdates.employment_status = updates.employmentStatus;
+  if (updates.startDate !== undefined) staffUpdates.hire_date = updates.startDate;
+  if (Object.keys(staffUpdates).length > 0) {
+    await supabase.from('staff').update(staffUpdates).eq('user_id', id);
   }
+
+  const profileUpdates: any = {};
+  if (updates.firstName !== undefined) profileUpdates.first_name = updates.firstName;
+  if (updates.lastName !== undefined) profileUpdates.last_name = updates.lastName;
+  if (updates.phone !== undefined) profileUpdates.phone_number = updates.phone;
+  if (updates.gender !== undefined) profileUpdates.gender = (updates.gender === 'ชาย' || updates.gender === 'หญิง') ? updates.gender : null;
+  if (updates.birthDate !== undefined) profileUpdates.birth_date = updates.birthDate;
+  if (updates.address !== undefined) profileUpdates.current_address = updates.address;
+  
+  if (Object.keys(profileUpdates).length > 0) {
+    const { data: userData } = await supabase.from('users').select('citizen_id').eq('user_id', id).single();
+    if (userData?.citizen_id) {
+      await supabase.from('profile').update(profileUpdates).eq('citizen_id', userData.citizen_id);
+    }
+  }
+
   return { id, ...updates };
 }
 
@@ -283,11 +355,13 @@ export async function updateAdmin(id: string, updates: any) {
 export async function getStaff() {
   const { data, error } = await supabase.from('staff').select(`
     *,
-    users (
+    users!inner (
       email,
-      profile (first_name, last_name, phone_number, citizen_id)
+      account_status,
+      role,
+      profile (first_name, last_name, phone_number, citizen_id, gender, birth_date, current_address)
     )
-  `);
+  `).neq('users.role', 'admin');
   if (error) {
     console.error("getStaff error:", error);
     return [];
@@ -299,25 +373,29 @@ export async function getStaff() {
       id: d.staff_id,
       userId: d.user_id,
       name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
+      firstName: p?.first_name || '',
+      lastName: p?.last_name || '',
+      gender: p?.gender || '',
+      birthDate: p?.birth_date || '',
+      address: p?.current_address || '',
       role: d.position || 'พนักงาน',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
       citizenId: p?.citizen_id || '',
       startDate: d.hire_date,
-      active: d.employment_status === 'ปฏิบัติงานปกติ',
+      employmentStatus: d.employment_status || 'ปฏิบัติงานปกติ',
+      active: d.users?.account_status === 'active',
       salary: d.salary?.toString() || ''
     };
   }) as StaffInfo[];
 }
 
 export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo> {
-  // สร้าง Admin Client สำหรับจัดการ Auth โดยเฉพาะ
   const adminAuthClient = createClient(
     import.meta.env.VITE_SUPABASE_URL || '',
     import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
   );
 
-  // 1. สร้างบัญชีผู้ใช้ใน Supabase Auth จริงๆ
   const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
     email: staff.email,
     password: staff.password || 'password123',
@@ -334,13 +412,17 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
   if (!citizenIdToUse || citizenIdToUse.length !== 13) {
       throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
   }
-  const names = staff.name.split(' ');
+  
   await supabase.from('profile').insert({
     citizen_id: citizenIdToUse,
-    first_name: names[0] || '',
-    last_name: names.slice(1).join(' ') || '',
-    phone_number: staff.phone
+    first_name: staff.firstName || '',
+    last_name: staff.lastName || '',
+    phone_number: staff.phone || null,
+    gender: (staff.gender === 'ชาย' || staff.gender === 'หญิง') ? staff.gender : null,
+    birth_date: staff.birthDate || null,
+    current_address: staff.address || null
   });
+
   await supabase.from('users').insert({
     user_id: realUserId,
     citizen_id: citizenIdToUse,
@@ -348,27 +430,57 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
     role: 'พนักงาน',
     account_status: staff.active ? 'active' : 'inactive'
   });
+
   const { data, error } = await supabase.from('staff').insert({
     user_id: realUserId,
     position: staff.role,
-    employment_status: staff.active ? 'ปฏิบัติงานปกติ' : 'พักงาน',
+    employment_status: staff.employmentStatus || (staff.active ? 'ปฏิบัติงานปกติ' : 'พักงาน'),
     hire_date: staff.startDate,
     salary: staff.salary ? parseFloat(staff.salary) : null
   }).select().single();
 
   if (error) throw error;
-  return { ...staff, id: data.staff_id };
+  return { 
+    ...staff, 
+    id: data.staff_id, 
+    userId: realUserId,
+    name: `${staff.firstName || ''} ${staff.lastName || ''}`.trim()
+  };
 }
 export async function updateStaff(id: number, updates: Partial<StaffInfo>): Promise<StaffInfo> {
   const staffUpdates: any = {};
   if (updates.role !== undefined) staffUpdates.position = updates.role;
-  if (updates.active !== undefined) staffUpdates.employment_status = updates.active ? 'ปฏิบัติงานปกติ' : 'พักงาน';
+  if (updates.employmentStatus !== undefined) staffUpdates.employment_status = updates.employmentStatus;
+  if (updates.startDate !== undefined) staffUpdates.hire_date = updates.startDate;
   if (updates.salary !== undefined) staffUpdates.salary = updates.salary ? parseFloat(updates.salary) : null;
 
   if (Object.keys(staffUpdates).length > 0) {
     const { error } = await supabase.from('staff').update(staffUpdates).eq('staff_id', id);
     if (error) throw error;
   }
+  
+  const { data: staffData } = await supabase.from('staff').select('user_id').eq('staff_id', id).single();
+  if (staffData?.user_id) {
+    if (updates.active !== undefined) {
+      await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', staffData.user_id);
+    }
+    
+    const profileUpdates: any = {};
+    if (updates.firstName !== undefined) profileUpdates.first_name = updates.firstName;
+    if (updates.lastName !== undefined) profileUpdates.last_name = updates.lastName;
+    if (updates.phone !== undefined) profileUpdates.phone_number = updates.phone;
+    if (updates.gender !== undefined) profileUpdates.gender = (updates.gender === 'ชาย' || updates.gender === 'หญิง') ? updates.gender : null;
+    if (updates.birthDate !== undefined) profileUpdates.birth_date = updates.birthDate;
+    if (updates.address !== undefined) profileUpdates.current_address = updates.address;
+
+    if (Object.keys(profileUpdates).length > 0) {
+      const { data: userData } = await supabase.from('users').select('citizen_id').eq('user_id', staffData.user_id).single();
+      if (userData?.citizen_id) {
+        await supabase.from('profile').update(profileUpdates).eq('citizen_id', userData.citizen_id);
+      }
+    }
+  }
+
   return { id, ...updates } as StaffInfo;
 }
 export async function deleteStaff(id: number): Promise<void> {
