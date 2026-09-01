@@ -21,8 +21,8 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
   const [showSchedule, setShowSchedule] = useState(true);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [leavePeriod, setLeavePeriod] = useState<"เต็มวัน" | "ครึ่งวันเช้า" | "ครึ่งวันบ่าย">("เต็มวัน");
-  const [leaveType, setLeaveType] = useState<"ลาพักร้อน" | "ลาป่วย">("ลาพักร้อน");
+  const [leaveType, setLeaveType] = useState<"ลาป่วย" | "ลากิจ" | "ลาพักร้อน">("ลาป่วย");
+  const [leaveReason, setLeaveReason] = useState("");
 
   useEffect(() => {
     if (doctorId) fetchData();
@@ -55,14 +55,19 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     e.preventDefault();
     if (!doctorId || !selectedDate) return;
     
+    if (!leaveReason.trim()) {
+      alert("กรุณาระบุเหตุผลการลา");
+      return;
+    }
+
     try {
       const added = await addLeaveRequest({
         doctorId: doctorId,
         startDate: selectedDate,
         endDate: selectedDate, // Simplified to single day
-        leavePeriod: leavePeriod,
-        reason: leaveType,
-        status: "รอการอนุมัติ"
+        leaveType: leaveType,
+        reason: leaveReason.trim(),
+        status: "รออนุมัติ"
       });
       // We append a mocked version for immediate UI update until refresh
       setLeaves([...leaves, {
@@ -71,9 +76,9 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
         doctorName: doctor?.name || "",
         startDate: selectedDate,
         endDate: selectedDate,
-        leavePeriod: leavePeriod,
-        reason: leaveType,
-        status: "รอการอนุมัติ",
+        leaveType: leaveType,
+        reason: leaveReason.trim(),
+        status: "รออนุมัติ",
         createdAt: selectedDate
       }]);
       setLeaveModalOpen(false);
@@ -180,35 +185,17 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
       indicators.push(<div key="clinic-off" className="w-1.5 h-1.5 rounded-full bg-red-400"></div>);
       tooltip = "คลินิกปิดทำการ (วันหยุดประจำสัปดาห์)";
     } else if (leave) {
-      if (leave.status === "รอการอนุมัติ") {
+      if (leave.status === "รออนุมัติ") {
         cellBg = "bg-yellow-50";
         textColor = "text-yellow-700";
         indicators.push(<div key="pending" className="w-1.5 h-1.5 rounded-full bg-yellow-400 border border-yellow-500"></div>);
-        tooltip = `รออนุมัติลา: ${leave.reason} (${leave.leavePeriod})`;
+        tooltip = `รออนุมัติลา: ${leave.reason}`;
       } else if (leave.status === "อนุมัติแล้ว") {
-        if (leave.leavePeriod === "เต็มวัน") {
+        if (leave.leaveType === "ลาป่วย" || leave.leaveType === "ลากิจ" || leave.leaveType === "ลาพักร้อน") {
           cellBg = "bg-red-50";
           textColor = "text-red-700";
           indicators.push(<div key="full" className="w-2 h-2 rounded-full bg-red-500"></div>);
-          tooltip = `ลาเต็มวัน: ${leave.reason}`;
-        } else if (leave.leavePeriod === "ครึ่งวันเช้า") {
-          indicators.push(
-            <div key="am" className="flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-red-500"></div>
-              <div className="w-2 h-2 rounded-full bg-green-500"></div>
-            </div>
-          );
-          tooltip = `ลาครึ่งวันเช้า (${leave.reason}) • ทำงานบ่าย`;
-          isWorking = true;
-        } else if (leave.leavePeriod === "ครึ่งวันบ่าย") {
-          indicators.push(
-            <div key="pm" className="flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-green-500"></div>
-              <div className="w-2 h-2 rounded-full bg-red-500"></div>
-            </div>
-          );
-          tooltip = `ลาครึ่งวันบ่าย (${leave.reason}) • ทำงานเช้า`;
-          isWorking = true;
+          tooltip = `ลา${leave.leaveType}: ${leave.reason}`;
         }
       } else {
          // Rejected - treat as normal day but show a clear rejected dot
@@ -282,9 +269,9 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
   };
 
   const renderLeaveSummary = () => {
-    const pending = leaves.filter(l => l.status === "รอการอนุมัติ").length;
+    const pending = leaves.filter(l => l.status === "รออนุมัติ").length;
     const approved = leaves.filter(l => l.status === "อนุมัติแล้ว").length;
-    const rejected = leaves.filter(l => l.status === "ปฏิเสธ").length;
+    const rejected = leaves.filter(l => l.status === "ไม่อนุมัติ").length;
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
@@ -410,52 +397,30 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">ประเภทการลา</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" checked={leaveType === "ลาพักร้อน"} onChange={() => setLeaveType("ลาพักร้อน")} className="w-4 h-4 text-blue-600 focus:ring-blue-500" />
-                    <span className="text-sm">ลาพักร้อน</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" checked={leaveType === "ลาป่วย"} onChange={() => setLeaveType("ลาป่วย")} className="w-4 h-4 text-blue-600 focus:ring-blue-500" />
                     <span className="text-sm">ลาป่วย</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" checked={leaveType === "ลากิจ"} onChange={() => setLeaveType("ลากิจ")} className="w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                    <span className="text-sm">ลากิจ</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" checked={leaveType === "ลาพักร้อน"} onChange={() => setLeaveType("ลาพักร้อน")} className="w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                    <span className="text-sm">ลาพักร้อน</span>
                   </label>
                 </div>
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">ช่วงเวลา</label>
-                <div className="space-y-2">
-                  <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
-                    style={{ borderColor: leavePeriod === "เต็มวัน" ? "#3B82F6" : "#E5E7EB", backgroundColor: leavePeriod === "เต็มวัน" ? "#EFF6FF" : "" }}>
-                    <div className="flex items-center gap-3">
-                      <input type="radio" checked={leavePeriod === "เต็มวัน"} onChange={() => setLeavePeriod("เต็มวัน")} className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">เต็มวัน</p>
-                        <p className="text-xs text-gray-500">หยุดตลอดทั้งวัน</p>
-                      </div>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
-                    style={{ borderColor: leavePeriod === "ครึ่งวันเช้า" ? "#3B82F6" : "#E5E7EB", backgroundColor: leavePeriod === "ครึ่งวันเช้า" ? "#EFF6FF" : "" }}>
-                    <div className="flex items-center gap-3">
-                      <input type="radio" checked={leavePeriod === "ครึ่งวันเช้า"} onChange={() => setLeavePeriod("ครึ่งวันเช้า")} className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">ครึ่งวันเช้า</p>
-                        <p className="text-xs text-gray-500">ทำงานช่วงบ่าย (13:00 - 17:00)</p>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
-                    style={{ borderColor: leavePeriod === "ครึ่งวันบ่าย" ? "#3B82F6" : "#E5E7EB", backgroundColor: leavePeriod === "ครึ่งวันบ่าย" ? "#EFF6FF" : "" }}>
-                    <div className="flex items-center gap-3">
-                      <input type="radio" checked={leavePeriod === "ครึ่งวันบ่าย"} onChange={() => setLeavePeriod("ครึ่งวันบ่าย")} className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">ครึ่งวันบ่าย</p>
-                        <p className="text-xs text-gray-500">ทำงานช่วงเช้า (09:00 - 12:00)</p>
-                      </div>
-                    </div>
-                  </label>
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">เหตุผลการลา <span className="text-red-500">*</span></label>
+                <textarea
+                  value={leaveReason}
+                  onChange={(e) => setLeaveReason(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="ระบุเหตุผลการลาให้ชัดเจน"
+                  required
+                ></textarea>
               </div>
 
               <div className="flex gap-3">

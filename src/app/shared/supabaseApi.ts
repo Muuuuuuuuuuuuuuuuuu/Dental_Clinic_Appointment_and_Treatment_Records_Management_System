@@ -3,7 +3,7 @@ import { supabase } from './utils/supabaseClient';
 import { sendOTPEmail } from './utils/emailService';
 export { supabase };
 import { RegForm } from '../patient/types';
-import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan, ServiceCategory } from './data';
+import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan, ServiceCategoryType } from './data';
 
 // ============================================================================
 // REALTIME HELPERS
@@ -1696,9 +1696,9 @@ export async function getLeaveRequests() {
       doctorName: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       startDate: d.leave_date,
       endDate: d.leave_date, // โครงสร้างใหม่มีแค่วันที่เดียว
-      leavePeriod: d.leave_period || 'เต็มวัน',
-      reason: d.leave_type,
-      status: d.is_approved === true ? 'อนุมัติแล้ว' : d.is_approved === false ? 'ปฏิเสธ' : 'รอการอนุมัติ',
+      leaveType: d.leave_type as 'ลาป่วย' | 'ลากิจ' | 'ลาพักร้อน' | undefined,
+      reason: d.reason,
+      status: d.is_approved === true ? 'อนุมัติแล้ว' : d.is_approved === false ? 'ไม่อนุมัติ' : 'รออนุมัติ',
       createdAt: d.leave_date
     };
   }) as LeaveRequest[];
@@ -1707,8 +1707,9 @@ export async function addLeaveRequest(req: Omit<LeaveRequest, 'id' | 'createdAt'
   const { data, error } = await supabase.from('leave_record').insert({
     user_id: req.doctorId, // Expecting UUID here
     leave_date: req.startDate,
-    leave_period: req.leavePeriod || 'เต็มวัน',
-    leave_type: req.reason,
+    leave_period: 'เต็มวัน',
+    leave_type: req.leaveType,
+    reason: req.reason,
     is_approved: null // null means pending
   }).select().single();
 
@@ -1755,15 +1756,7 @@ export async function updateLeaveStatus(id: number, status: string) {
   if (is_approved === true) {
     const { data: leaveRecord } = await supabase.from('leave_record').select('*').eq('leave_id', id).single();
     if (leaveRecord) {
-      let start = '00:00';
-      let end = '23:59';
-      if (leaveRecord.leave_period === 'ครึ่งวันเช้า') {
-        end = '13:00';
-      } else if (leaveRecord.leave_period === 'ครึ่งวันบ่าย') {
-        start = '13:00';
-      }
-
-      const conflict = await checkAppointmentConflicts(leaveRecord.user_id, leaveRecord.leave_date, start, end);
+      const conflict = await checkAppointmentConflicts(leaveRecord.user_id, leaveRecord.leave_date, '00:00', '23:59');
       if (conflict.hasConflict) {
         throw new Error(`ไม่สามารถอนุมัติได้ เนื่องจากมีคิวคนไข้จองไว้แล้ว ${conflict.count} คิว กรุณาเลื่อนหรือยกเลิกคิวก่อน`);
       }
@@ -2589,7 +2582,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
 
     // Check leave
     const docLeave = leaves?.find(l => l.user_id === dUser.user_id);
-    if (docLeave && docLeave.leave_period === 'เต็มวัน') continue; // Skip if full day leave
+    if (docLeave) continue; // Skip if on leave (now only full-day leaves)
 
     // Find shift
     const shift = shifts?.find((s: any) => s.users?.dentist?.[0]?.dentist_id === dId);
@@ -2600,14 +2593,6 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
     const shiftStartMin = startH * 60 + startM;
     const shiftEndMin = endH * 60 + endM;
 
-    // Determine leave block if partial leave
-    let leaveStartMin = -1;
-    let leaveEndMin = -1;
-    if (docLeave?.leave_period === 'ครึ่งวันเช้า') {
-      leaveStartMin = 0; leaveEndMin = 13 * 60; // Up to 13:00
-    } else if (docLeave?.leave_period === 'ครึ่งวันบ่าย') {
-      leaveStartMin = 13 * 60; leaveEndMin = 24 * 60; // 13:00 onwards
-    }
 
     const docApps = appointments?.filter(a => a.dentist_id === dId) || [];
     const patApps = patientId ? (appointments?.filter(a => a.patient_id === patientId) || []) : [];
@@ -2619,7 +2604,6 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
 
     // Generate 30 min slots
     for (let min = shiftStartMin; min <= shiftEndMin - 30; min += 30) {
-      if (min >= leaveStartMin && min < leaveEndMin) continue; // Inside leave block
 
       // Prevent booking past times for today
       if (isToday && min <= currentMin) continue;

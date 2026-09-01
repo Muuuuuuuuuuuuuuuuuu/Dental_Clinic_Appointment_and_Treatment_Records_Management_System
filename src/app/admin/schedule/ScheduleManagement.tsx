@@ -33,16 +33,6 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
   const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingChanges, setPendingChanges] = useState<Record<number, Partial<Shift>>>({});
-  const [closureDay, setClosureDay] = useState("");
-  const [closureMonth, setClosureMonth] = useState("");
-  const [closureYear, setClosureYear] = useState("");
-  const [endDay, setEndDay] = useState("");
-  const [endMonth, setEndMonth] = useState("");
-  const [endYear, setEndYear] = useState("");
-  const [closureError, setClosureError] = useState("");
-  const [closureSuccess, setClosureSuccess] = useState("");
-
-  const [editingClosure, setEditingClosure] = useState<{ id: number; reason: string } | null>(null);
 
   // Calendar State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -54,7 +44,6 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
   const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(false);
 
   // Modals
-  const [newClosure, setNewClosure] = useState({ date: "", reason: "" });
   const [selectedDayInfo, setSelectedDayInfo] = useState<{ dateObj: Date; dateStr: string } | null>(null);
   
   // Shift Edit Modal
@@ -67,18 +56,18 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [ds, ss, sh, cl, lv, offDays] = await Promise.all([
+      const [ds, ss, sh, lv, offDays, cl] = await Promise.all([
         getDentists(),
         getStaff(),
         getShifts(),
-        getClinicClosures(),
         getLeaveRequests(),
-        getWeeklyOffDays()
+        getWeeklyOffDays(),
+        getClinicClosures()
       ]);
       setDentists(ds);
       setStaffList(ss);
       setShifts(sh);
-      setClosures(cl.sort((a, b) => a.date.localeCompare(b.date)));
+      setClosures(cl);
       setLeaves(lv.filter(l => l.status === 'อนุมัติแล้ว'));
       setWeeklyOffDays(offDays);
     } catch (err) {
@@ -135,114 +124,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     }
   };
 
-  const handleUpdateClosure = async (id: number, newReason: string) => {
-    if (!newReason.trim()) return;
-    try {
-      const { error } = await (await import('../../shared/supabaseApi')).supabase
-        .from('clinic_holiday')
-        .update({ holiday_name: newReason.trim() })
-        .eq('holiday_id', id);
-      if (error) throw error;
-      setClosures(prev => prev.map(c => c.id === id ? { ...c, reason: newReason.trim() } : c));
-      setEditingClosure(null);
-    } catch (err: any) {
-      alert('เกิดข้อผิดพลาด: ' + (err?.message || err));
-    }
-  };
 
-
-
-  const handleAddClosure = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setClosureError("");
-    setClosureSuccess("");
-
-    if (!closureDay || !closureMonth || !closureYear || !newClosure.reason) {
-      setClosureError("กรุณากรอกข้อมูลวันที่เริ่มต้น และสาเหตุให้ครบถ้วน");
-      return;
-    }
-
-    const startD = parseInt(closureDay);
-    const startM = parseInt(closureMonth);
-    const startY = parseInt(closureYear);
-    
-    // Check if end date is provided, else default to start date
-    const isRange = !!(endDay || endMonth || endYear);
-    const endD = isRange && endDay ? parseInt(endDay) : startD;
-    const endM = isRange && endMonth ? parseInt(endMonth) : startM;
-    const endY = isRange && endYear ? parseInt(endYear) : startY;
-
-    if (isNaN(startD) || isNaN(startM) || isNaN(startY) || isNaN(endD) || isNaN(endM) || isNaN(endY)) {
-      setClosureError("กรุณาระบุวันที่เป็นตัวเลขที่ถูกต้อง");
-      return;
-    }
-    
-    const startDate = new Date(startY, startM - 1, startD);
-    const endDate = new Date(endY, endM - 1, endD);
-
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || startY < 2024 || endY < 2024) {
-      setClosureError("วันที่ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง");
-      return;
-    }
-
-    if (endDate < startDate) {
-      setClosureError("วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น");
-      return;
-    }
-
-    // Generate list of dates
-    const datesToClose: string[] = [];
-    const currentDateIter = new Date(startDate);
-    while (currentDateIter <= endDate) {
-      const y = currentDateIter.getFullYear();
-      const m = currentDateIter.getMonth() + 1;
-      const d = currentDateIter.getDate();
-      const isoDate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      if (closures.find(c => c.date === isoDate)) {
-        setClosureError(`วันที่ ${d}/${m}/${y} มีในระบบแล้ว กรุณาเลี่ยงวันที่ซ้ำ`);
-        return;
-      }
-      datesToClose.push(isoDate);
-      currentDateIter.setDate(currentDateIter.getDate() + 1);
-    }
-
-    try {
-      // 2. Create Clinic Closures
-      const newClosures: SpecialClosure[] = [];
-      for (const iso of datesToClose) {
-        const added = await addClinicClosure({ 
-          date: iso, 
-          reason: newClosure.reason
-        });
-        newClosures.push(added);
-      }
-
-      setClosures(prev => [...prev, ...newClosures].sort((a, b) => a.date.localeCompare(b.date)));
-      setNewClosure({ date: "", reason: "" });
-      setClosureDay(""); setClosureMonth(""); setClosureYear("");
-      setEndDay(""); setEndMonth(""); setEndYear("");
-      setClosureSuccess(`เพิ่มวันหยุด ${datesToClose.length} วัน เรียบร้อยแล้ว`);
-      setTimeout(() => setClosureSuccess(""), 10000);
-    } catch (err: any) {
-      console.error("Error adding closure", err);
-      setClosureError("เกิดข้อผิดพลาด: " + (err?.message || JSON.stringify(err)));
-    }
-  };
-
-  const handleDeleteClosure = async (id?: number) => {
-    if (!id) return;
-    const closureToDelete = closures.find(c => c.id === id);
-    if (!closureToDelete) return;
-    
-    if (!confirm("คุณต้องการลบวันหยุดพิเศษนี้?")) return;
-    
-    try {
-      await deleteClinicClosure(id);
-      setClosures(closures.filter(c => c.id !== id));
-    } catch (err) {
-      console.error("Error deleting closure", err);
-    }
-  };
 
   const handleAdminToggleLeave = async (personId: number, personUserId: string, dateStr: string) => {
     if (!personUserId) {
@@ -259,9 +141,9 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
         doctorId: personUserId,
         startDate: dateStr,
         endDate: dateStr,
-        leavePeriod: 'เต็มวัน',
+        leaveType: 'ลากิจ',
         reason: 'แอดมินกำหนดวันหยุดเฉพาะกิจ',
-        status: 'รอการอนุมัติ'
+        status: 'รออนุมัติ'
       });
       // Auto approve
       await updateLeaveStatus(req.leave_id, 'อนุมัติแล้ว');
@@ -574,119 +456,6 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
         </div>
       </div>
 
-      {/* ─── SECTION 3: Special Closures ─── */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
-        <h2 className="text-lg font-bold text-[#1A365D] mb-6 flex items-center gap-2">
-          <CalendarIcon size={18} /> จัดการวันหยุดพิเศษ (Special Closures)
-        </h2>
-        
-        {closureError && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">{'❌ ' + closureError}</div>}
-        
-        <form onSubmit={handleAddClosure} className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-          <h3 className="font-semibold text-sm mb-3 text-gray-700">เพิ่มวันหยุดพิเศษ</h3>
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
-              <label className="block text-xs text-gray-500 mb-1">วันที่เริ่มต้น (DD/MM/YYYY)</label>
-              <div className="flex gap-2">
-                <input type="text" placeholder="DD" value={closureDay} onChange={e => setClosureDay(e.target.value)} maxLength={2} className="w-16 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ring-blue-100 text-center" />
-                <span className="text-gray-400 py-2">/</span>
-                <input type="text" placeholder="MM" value={closureMonth} onChange={e => setClosureMonth(e.target.value)} maxLength={2} className="w-16 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ring-blue-100 text-center" />
-                <span className="text-gray-400 py-2">/</span>
-                <input type="text" placeholder="YYYY" value={closureYear} onChange={e => setClosureYear(e.target.value)} maxLength={4} className="w-24 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ring-blue-100 text-center" />
-              </div>
-            </div>
-            
-            <div className="flex-1">
-              <label className="block text-xs text-gray-500 mb-1">วันที่สิ้นสุด (ไม่บังคับ)</label>
-              <div className="flex gap-2">
-                <input type="text" placeholder="DD" value={endDay} onChange={e => setEndDay(e.target.value)} maxLength={2} className="w-16 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ring-blue-100 text-center" />
-                <span className="text-gray-400 py-2">/</span>
-                <input type="text" placeholder="MM" value={endMonth} onChange={e => setEndMonth(e.target.value)} maxLength={2} className="w-16 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ring-blue-100 text-center" />
-                <span className="text-gray-400 py-2">/</span>
-                <input type="text" placeholder="YYYY" value={endYear} onChange={e => setEndYear(e.target.value)} maxLength={4} className="w-24 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ring-blue-100 text-center" />
-              </div>
-            </div>
-
-            <div className="flex-[2]">
-              <label className="block text-xs text-gray-500 mb-1">สาเหตุการหยุด</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={newClosure.reason}
-                  onChange={e => setNewClosure({ ...newClosure, reason: e.target.value })}
-                  placeholder="เช่น วันปีใหม่"
-                  className="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 ring-blue-100"
-                />
-                <button type="submit" className="px-5 py-2 bg-[#1A365D] text-white text-sm font-bold rounded-lg hover:bg-blue-800 transition-colors whitespace-nowrap">
-                  + เพิ่ม
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          {closureSuccess && (
-            <div className="mt-4 animate-fade-in">
-              <div className="flex items-center justify-between text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-                <span>✓ {closureSuccess}</span>
-              </div>
-            </div>
-          )}
-        </form>
-
-        <div className="space-y-2">
-          {closures.length === 0 ? <p className="text-sm text-gray-500">ไม่มีวันหยุดพิเศษที่ตั้งไว้</p> : closures.map(c => (
-            <div key={c.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-orange-50">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  {editingClosure?.id === c.id ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        autoFocus
-                        type="text"
-                        value={editingClosure.reason}
-                        onChange={e => setEditingClosure({ ...editingClosure, reason: e.target.value })}
-                        onKeyDown={e => { if (e.key === 'Enter') handleUpdateClosure(c.id!, editingClosure.reason); if (e.key === 'Escape') setEditingClosure(null); }}
-                        className="flex-1 px-2 py-1 text-sm border border-orange-300 rounded-lg focus:outline-none focus:ring-2 ring-orange-200 bg-white"
-                      />
-                      <button onClick={() => handleUpdateClosure(c.id!, editingClosure.reason)} className="text-green-600 hover:text-green-800 p-1">
-                        <Check size={15} />
-                      </button>
-                      <button onClick={() => setEditingClosure(null)} className="text-gray-400 hover:text-gray-600 p-1">
-                        <X size={15} />
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-sm font-medium text-orange-900 truncate">{c.reason}</p>
-                  )}
-                  <p className="text-xs mt-0.5 text-orange-700">
-                    {new Date(c.date + 'T00:00:00').toLocaleDateString("th-TH", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-                  </p>
-                  {!c.linkedAnnouncementId && (
-                    <div className="mt-2 flex items-center gap-2 bg-yellow-100/50 p-2 rounded-lg border border-yellow-200 inline-flex">
-                      <span className="text-[10px] text-yellow-800 font-medium">⚠️ ยังไม่ได้ประกาศแจ้งคนไข้</span>
-                      <button 
-                        onClick={() => handleCreateMissingAnnouncement(c)}
-                        className="text-[10px] bg-white text-yellow-700 px-2 py-0.5 rounded shadow-sm hover:bg-yellow-50 border border-yellow-300"
-                      >
-                        สร้างประกาศเดี๋ยวนี้
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                <button onClick={() => setEditingClosure({ id: c.id!, reason: c.reason })} className="text-orange-400 hover:text-orange-600 p-2" title="แก้ไขชื่อ">
-                  <Pencil size={14} />
-                </button>
-                <button onClick={() => handleDeleteClosure(c.id)} className="text-red-400 hover:text-red-600 p-2" title="ลบ">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* ─── MODALS ─── */}
 

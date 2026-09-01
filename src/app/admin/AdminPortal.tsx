@@ -135,7 +135,7 @@ export default function AdminPortal({
   // Fetch pending leave count for badge
   useEffect(() => {
     getLeaveRequests()
-      .then(leaves => setPendingLeaves(leaves.filter(l => l.status === "รอการอนุมัติ").length))
+      .then(leaves => setPendingLeaves(leaves.filter(l => l.status === "รออนุมัติ").length))
       .catch(console.error);
   }, []);
 

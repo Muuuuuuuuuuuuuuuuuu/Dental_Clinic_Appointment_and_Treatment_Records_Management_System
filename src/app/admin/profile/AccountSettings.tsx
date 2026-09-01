@@ -9,6 +9,7 @@ export default function AccountSettings() {
   const [message, setMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
 
   const [newEmail, setNewEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMessage, setEmailMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
 
@@ -47,6 +48,10 @@ export default function AccountSettings() {
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentPassword) {
+      setEmailMessage({ type: "error", text: "กรุณากรอกรหัสผ่านปัจจุบันเพื่อความปลอดภัย" });
+      return;
+    }
     if (!newEmail || !newEmail.includes("@")) {
       setEmailMessage({ type: "error", text: "กรุณากรอกอีเมลให้ถูกต้อง" });
       return;
@@ -55,12 +60,24 @@ export default function AccountSettings() {
     try {
       setEmailLoading(true);
       setEmailMessage(null);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("ไม่พบข้อมูลผู้ใช้");
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword
+      });
+
+      if (signInError) throw new Error("รหัสผ่านปัจจุบันไม่ถูกต้อง");
+
       const { error } = await supabase.auth.updateUser({ email: newEmail });
       
       if (error) throw error;
       
       setEmailMessage({ type: "success", text: "ส่งลิงก์ยืนยันไปที่อีเมลใหม่แล้ว กรุณาตรวจสอบอีเมลของคุณเพื่อยืนยัน" });
       setNewEmail("");
+      setCurrentPassword("");
     } catch (err: any) {
       console.error(err);
       setEmailMessage({ type: "error", text: err.message || "เกิดข้อผิดพลาดในการเปลี่ยนอีเมล" });
@@ -97,6 +114,17 @@ export default function AccountSettings() {
           )}
 
           <form onSubmit={handleEmailSubmit} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium block mb-1.5" style={{ color: "#4A6080" }}>รหัสผ่านปัจจุบัน (เพื่อความปลอดภัย)</label>
+              <input 
+                type="password" 
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all" 
+                style={{ backgroundColor: "#F8F9FA", border: "1px solid #E2E8F0", color: "#1A365D" }}
+                placeholder="กรอกรหัสผ่านปัจจุบันของคุณ"
+              />
+            </div>
             <div>
               <label className="text-sm font-medium block mb-1.5" style={{ color: "#4A6080" }}>อีเมลใหม่</label>
               <input 

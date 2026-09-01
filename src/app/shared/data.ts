@@ -136,9 +136,9 @@ export interface LeaveRequest {
   doctorName: string;
   startDate: string;
   endDate: string;
-  leavePeriod?: string;
+  leaveType?: 'ลาป่วย' | 'ลากิจ' | 'ลาพักร้อน';
   reason: string;
-  status: "รอการอนุมัติ" | "อนุมัติแล้ว" | "ปฏิเสธ";
+  status: 'รออนุมัติ' | 'อนุมัติแล้ว' | 'ไม่อนุมัติ' | 'ปฏิเสธ';
   createdAt: string;
 }
 
