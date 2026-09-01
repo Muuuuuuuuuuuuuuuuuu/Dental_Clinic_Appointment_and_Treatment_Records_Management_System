@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Calendar as CalendarIcon, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, AlertCircle, Trash2, Pencil, Check, Settings, History } from "lucide-react";
+import { Plus, Search, Calendar as CalendarIcon, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, AlertCircle, Trash2, Pencil, Check, Settings, History, Info } from "lucide-react";
 import { DentistInfo, StaffInfo, Shift, SpecialClosure, LeaveRequest } from "../../shared/data";
 import { 
   getDentists, getStaff, getShifts, updateShift, 
@@ -32,7 +32,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pendingChanges, setPendingChanges] = useState<Record<number, Partial<Shift>>>({});
+  const [pendingChanges, setPendingChanges] = useState<Record<string, Partial<Shift> & { userId: string, dayNum: number }>>({});
 
   // Calendar State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -43,11 +43,20 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
   const [templateFilter, setTemplateFilter] = useState<'all' | 'dentist' | 'staff'>('all');
   const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(false);
 
+  // Bulk Edit State
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [bulkConfig, setBulkConfig] = useState({
+    target: 'all' as 'all' | 'dentist' | 'staff',
+    startTime: '09:00',
+    endTime: '20:00',
+    days: [1, 2, 3, 4, 5] // Default Mon-Fri
+  });
+
   // Modals
   const [selectedDayInfo, setSelectedDayInfo] = useState<{ dateObj: Date; dateStr: string } | null>(null);
   
   // Shift Edit Modal
-  const [editingShift, setEditingShift] = useState<{ shift: Shift | undefined, personId: number, personType: string, personName: string, dayNum: number } | null>(null);
+  const [editingShift, setEditingShift] = useState<{ shift: Shift | undefined, personId: number, personType: string, personName: string, dayNum: number, userId: string } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -77,44 +86,68 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     }
   };
 
-  const handleShiftChange = (shiftId: number | undefined, field: 'start_time' | 'end_time' | 'is_off', value: any) => {
-    if (!shiftId) return;
+  const handleShiftChange = (personId: number, personType: string, userId: string, dayNum: number, field: 'start_time' | 'end_time' | 'is_off', value: any) => {
     const dbValue = (value === "") ? null : value;
+    const pendingKey = `${userId}_${dayNum}`;
     
     // Update local state for UI
-    setShifts(shifts.map(s => {
-      if (s.id === shiftId) {
+    let found = false;
+    const updatedShifts = shifts.map(s => {
+      if (s.person_id === personId && s.person_type === personType && s.day_of_week === dayNum) {
+        found = true;
         return { ...s, [field]: dbValue };
       }
       return s;
-    }));
+    });
+
+    if (!found) {
+      // Mock a temporary shift so the UI renders it
+      updatedShifts.push({
+        id: -1, // Mock ID
+        person_id: personId,
+        person_type: personType as "dentist" | "staff",
+        day_of_week: dayNum,
+        start_time: field === 'start_time' ? dbValue : null,
+        end_time: field === 'end_time' ? dbValue : null,
+        is_off: field === 'is_off' ? dbValue : true
+      });
+    }
+    
+    setShifts(updatedShifts);
 
     // Add to pending changes
     setPendingChanges(prev => ({
       ...prev,
-      [shiftId]: {
-         ...prev[shiftId],
+      [pendingKey]: {
+         ...(prev[pendingKey] || {}),
+         userId,
+         dayNum,
          [field]: dbValue
       }
     }));
       
     // Update editing shift state so UI reflects changes immediately
-    if (editingShift && editingShift.shift && editingShift.shift.id === shiftId) {
-      setEditingShift({ ...editingShift, shift: { ...editingShift.shift, [field]: dbValue } });
+    if (editingShift && editingShift.personId === personId && editingShift.dayNum === dayNum) {
+      setEditingShift({
+        ...editingShift,
+        shift: editingShift.shift 
+          ? { ...editingShift.shift, [field]: dbValue } 
+          : { id: -1, person_id: personId, person_type: personType as "dentist" | "staff", day_of_week: dayNum, start_time: null, end_time: null, is_off: true, [field]: dbValue }
+      });
     }
   };
 
   const handleSave = async () => {
-    const shiftIds = Object.keys(pendingChanges);
-    if (shiftIds.length === 0) return;
+    const keys = Object.keys(pendingChanges);
+    if (keys.length === 0) return;
 
     if (!confirm("คุณต้องการบันทึกการเปลี่ยนแปลงตารางเวรใช่หรือไม่?")) return;
 
     try {
-      const { updateShift } = await import('../../shared/supabaseApi');
-      for (const idStr of shiftIds) {
-        const id = parseInt(idStr);
-        await updateShift(id, pendingChanges[id]);
+      const { upsertShift } = await import('../../shared/supabaseApi');
+      for (const key of keys) {
+        const changes = pendingChanges[key];
+        await upsertShift(changes.userId, changes.dayNum, changes);
       }
       setPendingChanges({});
       fetchData();
@@ -170,6 +203,58 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     ...dentists.map(d => ({ id: d.id, name: d.name, type: 'dentist' as const, userId: d.userId, color: '#FF8C9A' })),
     ...staffList.map(s => ({ id: s.id, name: s.name, type: 'staff' as const, userId: (s as any).userId, color: '#1A365D' })),
   ];
+
+  const handleBulkApply = () => {
+    const newPendingChanges = { ...pendingChanges };
+    const newShifts = [...shifts];
+
+    allPersons.forEach(person => {
+      if (!person.userId) return; // Need user_id to insert
+      if (bulkConfig.target !== 'all' && person.type !== bulkConfig.target) return;
+
+      for (let dayIndex = 0; dayIndex <= 6; dayIndex++) {
+        const isClinicOff = weeklyOffDays.includes(dayIndex);
+        const isWorkingDay = !isClinicOff && bulkConfig.days.includes(dayIndex);
+        const pendingKey = `${person.userId}_${dayIndex}`;
+        
+        let shiftIndex = newShifts.findIndex(s => s.person_id === person.id && s.person_type === person.type && s.day_of_week === dayIndex);
+        
+        const updatedFields = {
+          is_off: !isWorkingDay,
+          start_time: isWorkingDay ? `${bulkConfig.startTime}:00` : null,
+          end_time: isWorkingDay ? `${bulkConfig.endTime}:00` : null
+        };
+
+        if (shiftIndex !== -1) {
+          // Update existing local shift
+          newShifts[shiftIndex] = { ...newShifts[shiftIndex], ...updatedFields };
+        } else {
+          // Push mock shift
+          newShifts.push({
+            id: -1,
+            person_id: person.id,
+            person_type: person.type,
+            day_of_week: dayIndex,
+            ...updatedFields
+          });
+        }
+
+        // Add to pending
+        newPendingChanges[pendingKey] = {
+           ...(newPendingChanges[pendingKey] || {}),
+           userId: person.userId,
+           dayNum: dayIndex,
+           ...updatedFields
+        };
+      }
+    });
+
+    setShifts(newShifts);
+    setPendingChanges(newPendingChanges);
+    setShowBulkEditModal(false);
+    // Smooth scroll to top to see "Save" button
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -251,6 +336,12 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
           </div>
           
           <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={() => setShowBulkEditModal(true)}
+              className="px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1.5"
+            >
+              <Settings size={14} /> ตั้งค่าด่วน (Bulk)
+            </button>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
               <input 
@@ -330,7 +421,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
                     return (
                       <td key={dayIndex} className="p-2 text-center border-r last:border-0">
                         <button 
-                          onClick={() => setEditingShift({ shift, personId: person.id, personType: person.type, personName: person.name, dayNum: dayIndex })}
+                          onClick={() => setEditingShift({ shift, personId: person.id, personType: person.type, personName: person.name, dayNum: dayIndex, userId: person.userId })}
                           className={`w-full py-2 rounded-lg text-xs font-medium transition-colors hover:ring-2 ring-gray-200 ${isWorking ? 'bg-blue-50 text-blue-700' : 'bg-gray-100/50 text-gray-400'}`}
                         >
                           {isWorking ? `${shift.start_time?.substring(0,5) || '--:--'} - ${shift.end_time?.substring(0,5) || '--:--'}` : 'หยุด'}
@@ -568,13 +659,19 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
 
             {!editingShift.shift ? (
                <div className="text-center py-4">
-                  <p className="text-sm text-gray-500 mb-4">ไม่พบข้อมูลเวรในระบบฐานข้อมูล</p>
+                  <p className="text-gray-600 font-medium mb-4">ปัจจุบันยังไม่มีข้อมูลเวร</p>
+                  <button 
+                    onClick={() => handleShiftChange(editingShift.personId, editingShift.personType, editingShift.userId, editingShift.dayNum, 'is_off', false)}
+                    className="w-full py-2.5 bg-blue-100 text-blue-700 font-bold rounded-xl hover:bg-blue-200 transition-colors"
+                  >
+                    ตั้งเป็นวันทำงาน
+                  </button>
                </div>
             ) : editingShift.shift.is_off ? (
               <div className="text-center py-4">
                 <p className="text-gray-600 font-medium mb-4">ปัจจุบันตั้งเป็นวันหยุด</p>
                 <button 
-                  onClick={() => handleShiftChange(editingShift.shift!.id, 'is_off', false)}
+                  onClick={() => handleShiftChange(editingShift.personId, editingShift.personType, editingShift.userId, editingShift.dayNum, 'is_off', false)}
                   className="w-full py-2.5 bg-blue-100 text-blue-700 font-bold rounded-xl hover:bg-blue-200 transition-colors"
                 >
                   เปลี่ยนเป็นทำงาน
@@ -586,20 +683,20 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
                   <input
                     type="time"
                     value={editingShift.shift.start_time?.substring(0,5) || ''}
-                    onChange={e => handleShiftChange(editingShift.shift!.id, 'start_time', e.target.value)}
+                    onChange={e => handleShiftChange(editingShift.personId, editingShift.personType, editingShift.userId, editingShift.dayNum, 'start_time', e.target.value)}
                     className="flex-1 px-3 py-2 border rounded-xl text-center focus:outline-none focus:ring-2 ring-blue-100"
                   />
                   <span className="text-gray-400">ถึง</span>
                   <input
                     type="time"
                     value={editingShift.shift.end_time?.substring(0,5) || ''}
-                    onChange={e => handleShiftChange(editingShift.shift!.id, 'end_time', e.target.value)}
+                    onChange={e => handleShiftChange(editingShift.personId, editingShift.personType, editingShift.userId, editingShift.dayNum, 'end_time', e.target.value)}
                     className="flex-1 px-3 py-2 border rounded-xl text-center focus:outline-none focus:ring-2 ring-blue-100"
                   />
                 </div>
                 <div className="pt-4 border-t">
                   <button 
-                    onClick={() => handleShiftChange(editingShift.shift!.id, 'is_off', true)}
+                    onClick={() => handleShiftChange(editingShift.personId, editingShift.personType, editingShift.userId, editingShift.dayNum, 'is_off', true)}
                     className="w-full py-2.5 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors"
                   >
                     ตั้งเป็นหยุด
@@ -607,6 +704,128 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
                 </div>
               </div>
             )}
+            
+            <button 
+              onClick={() => setEditingShift(null)}
+              className="w-full py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors mt-6"
+            >
+              ตกลง
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Bulk Edit Modal */}
+      {showBulkEditModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-[#1A365D]">ตั้งค่าเวลาทำงานด่วน</h3>
+                <p className="text-xs text-gray-500 mt-1">อัปเดตตารางเวลาของทุกคนแบบรวดเร็ว</p>
+              </div>
+              <button onClick={() => setShowBulkEditModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            
+            <div className="space-y-5">
+              {/* Target Group */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">กลุ่มเป้าหมาย</label>
+                <div className="flex bg-gray-100 p-1 rounded-lg">
+                  {[
+                    { id: 'all', label: 'ทุกคน' },
+                    { id: 'dentist', label: 'เฉพาะหมอ' },
+                    { id: 'staff', label: 'เฉพาะพนักงาน' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setBulkConfig({...bulkConfig, target: tab.id as any})}
+                      className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${bulkConfig.target === tab.id ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Work Days */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">วันทำงานในสัปดาห์</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 1, label: 'จ' }, { id: 2, label: 'อ' }, { id: 3, label: 'พ' },
+                    { id: 4, label: 'พฤ' }, { id: 5, label: 'ศ' }, { id: 6, label: 'ส' }, { id: 0, label: 'อา' }
+                  ].map(day => {
+                    const isClinicOff = weeklyOffDays.includes(day.id);
+                    if (isClinicOff) return null;
+                    
+                    const isSelected = bulkConfig.days.includes(day.id);
+                    return (
+                      <button
+                        key={day.id}
+                        onClick={() => {
+                          if (isSelected) {
+                            setBulkConfig({...bulkConfig, days: bulkConfig.days.filter(d => d !== day.id)});
+                          } else {
+                            setBulkConfig({...bulkConfig, days: [...bulkConfig.days, day.id]});
+                          }
+                        }}
+                        className={`w-10 h-10 rounded-full text-sm font-medium flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      >
+                        {day.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Work Hours */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">เวลาเข้างาน</label>
+                  <input
+                    type="time"
+                    value={bulkConfig.startTime}
+                    onChange={e => setBulkConfig({...bulkConfig, startTime: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 ring-blue-100 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">เวลาเลิกงาน</label>
+                  <input
+                    type="time"
+                    value={bulkConfig.endTime}
+                    onChange={e => setBulkConfig({...bulkConfig, endTime: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 ring-blue-100 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Warning */}
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3 mt-4">
+                <Info size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-blue-800 leading-relaxed">
+                  การตั้งค่าด่วนจะนำไปแสดงในตารางแบบร่าง (Pending) <br />
+                  <b>อย่าลืมกด "บันทึกการเปลี่ยนแปลง"</b> ด้านบนสุดเพื่อยืนยันอีกครั้ง
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={() => setShowBulkEditModal(false)}
+                  className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button 
+                  onClick={handleBulkApply}
+                  className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                  ประยุกต์ใช้ตาราง
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

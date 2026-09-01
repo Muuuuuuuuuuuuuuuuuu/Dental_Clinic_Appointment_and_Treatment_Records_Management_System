@@ -52,6 +52,7 @@ export interface Appointment {
 
 export interface DentistInfo {
   id: number;
+  userId?: string;
   name: string;
   specialty: string;
   license: string;
@@ -61,7 +62,6 @@ export interface DentistInfo {
   password?: string;
   phone: string;
   active: boolean;
-  userId?: string;
   serviceIds?: number[];
   defaultRoom?: string;
 }

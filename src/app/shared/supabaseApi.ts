@@ -297,6 +297,7 @@ export async function getStaff() {
     const p = d.users?.profile;
     return {
       id: d.staff_id,
+      userId: d.user_id,
       name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       role: d.position || 'พนักงาน',
       email: d.users?.email || '',
@@ -1982,6 +1983,53 @@ export async function updateShift(id: number, updates: Partial<Shift>) {
     end_time: data.end_shift,
     is_off: data.is_off
   } as Shift;
+}
+
+export async function upsertShift(userId: string, dayOfWeek: number, updates: Partial<Shift>) {
+  const payload: any = {
+    user_id: userId,
+    day_of_week: dayOfWeek,
+  };
+  
+  if (updates.start_time !== undefined) payload.start_shift = updates.start_time;
+  if (updates.end_time !== undefined) payload.end_shift = updates.end_time;
+  if (updates.is_off !== undefined) payload.is_off = updates.is_off;
+
+  // First check if it exists
+  const { data: existing, error: findError } = await supabase
+    .from('schedule')
+    .select('schedule_id')
+    .eq('user_id', userId)
+    .eq('day_of_week', dayOfWeek)
+    .maybeSingle();
+
+  if (findError) {
+    console.error("upsertShift find error:", findError);
+    throw findError;
+  }
+
+  if (existing) {
+    // Update
+    const { error: updateError } = await supabase
+      .from('schedule')
+      .update(payload)
+      .eq('schedule_id', existing.schedule_id);
+      
+    if (updateError) {
+      console.error("upsertShift update error:", updateError);
+      throw updateError;
+    }
+  } else {
+    // Insert
+    const { error: insertError } = await supabase
+      .from('schedule')
+      .insert(payload);
+      
+    if (insertError) {
+      console.error("upsertShift insert error:", insertError);
+      throw insertError;
+    }
+  }
 }
 
 export async function getPromotions() {

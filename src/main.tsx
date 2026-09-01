@@ -17,7 +17,7 @@
         if (args.length === 0) {
           super(OriginalDate.now() + offset);
         } else {
-          super(...args as any);
+          super(...(args as [any]));
         }
       }
       static now() {

@@ -356,8 +356,6 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
         {/* Legend */}
         <div className="flex flex-wrap gap-4 mb-4 text-xs">
           <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-red-500" /> ลาเต็มวัน</div>
-          <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-red-500" /><div className="w-2 h-2 rounded-full bg-green-500" /> ลาครึ่งเช้า</div>
-          <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-green-500" /><div className="w-2 h-2 rounded-full bg-red-500" /> ลาครึ่งบ่าย</div>
           <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-yellow-400" /> รออนุมัติ</div>
           <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-orange-500" /> คลินิกปิด</div>
         </div>
