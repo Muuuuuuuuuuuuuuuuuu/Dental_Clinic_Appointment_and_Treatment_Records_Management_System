@@ -1,36 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit3, Trash2, Check, Clock, Folder, Settings2 } from "lucide-react";
+import { Plus, Edit3, Check, Clock, Settings2 } from "lucide-react";
 import StatusBadge from "../../shared/components/StatusBadge";
-import { ServiceInfo, ServiceCategory } from "../../shared/data";
+import { ServiceInfo, SERVICE_CATEGORIES } from "../../shared/data";
 import { 
-  getServices, updateService, addService, updateServiceActiveStatus,
-  getServiceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory
+  getServices, updateService, addService, updateServiceActiveStatus
 } from "../../shared/supabaseApi";
 
-
-const iconEmojiMap: Record<string, string> = {
-  Smile: '😊',
-  Sparkles: '✨',
-  Activity: '📈',
-  Shield: '🛡️',
-  Layers: '🦷',
-  Crown: '👑',
-  Scissors: '✂️',
-  Zap: '⚡',
-  Baby: '👶',
-  Syringe: '💉',
-  Heart: '❤️',
-  Star: '⭐',
-  Clock: '🕒',
-  Award: '🏆',
-};
-
 export default function ServiceManagement() {
-  const [activeTab, setActiveTab] = useState<'services' | 'categories'>('services');
+  const [activeTab, setActiveTab] = useState<'services'>('services');
   
   // Data States
   const [services, setServices] = useState<ServiceInfo[]>([]);
-  const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Services Edit States
@@ -39,24 +19,14 @@ export default function ServiceManagement() {
   const [times, setTimes] = useState<Record<number, string>>({});
   const [names, setNames] = useState<Record<number, string>>({});
   const [descs, setDescs] = useState<Record<number, string>>({});
-  const [catIds, setCatIds] = useState<Record<number, number>>({});
+  const [cats, setCats] = useState<Record<number, string>>({});
   const [reqConfs, setReqConfs] = useState<Record<number, boolean>>({});
   
   // Services Add States
   const [isAdding, setIsAdding] = useState(false);
   const [newService, setNewService] = useState({ 
-    name: "", desc: "", price: "", time: "30", categoryId: 0, requiresConfirmation: false 
+    name: "", desc: "", price: "", time: "30", category: SERVICE_CATEGORIES[0], requiresConfirmation: false 
   });
-
-  // Categories Edit States
-  const [catEditId, setCatEditId] = useState<number | null>(null);
-  const [catNames, setCatNames] = useState<Record<number, string>>({});
-  const [catIcons, setCatIcons] = useState<Record<number, string>>({});
-  const [catColors, setCatColors] = useState<Record<number, string>>({});
-  
-  // Categories Add States
-  const [isAddingCat, setIsAddingCat] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: "", icon: "Smile", color: "#F0F4F8" });
 
   useEffect(() => {
     fetchData();
@@ -65,12 +35,8 @@ export default function ServiceManagement() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [srvs, cats] = await Promise.all([getServices(), getServiceCategories()]);
+      const srvs = await getServices();
       setServices(srvs);
-      setCategories(cats);
-      if (cats.length > 0 && newService.categoryId === 0) {
-        setNewService(prev => ({ ...prev, categoryId: cats[0].id }));
-      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -84,7 +50,7 @@ export default function ServiceManagement() {
     const t = parseInt(times[id] ?? "30", 10);
     const n = names[id];
     const d = descs[id];
-    const cId = catIds[id];
+    const c = cats[id];
     const rc = reqConfs[id];
     
     if (!isNaN(p) && !isNaN(t)) {
@@ -92,11 +58,9 @@ export default function ServiceManagement() {
         const payload: any = { basePrice: p, estimatedTime: t };
         if (n !== undefined) payload.name = n;
         if (d !== undefined) payload.description = d;
-        if (cId !== undefined) payload.categoryId = cId;
+        if (c !== undefined) payload.category = c;
         if (rc !== undefined) payload.requiresConfirmation = rc;
-        const updated = await updateService(id, payload);
-        
-        // Refresh to get category names joined properly
+        await updateService(id, payload);
         fetchData();
       } catch (err) {
         console.error(err);
@@ -122,7 +86,7 @@ export default function ServiceManagement() {
   };
 
   const handleAddService = async () => {
-    if (!newService.name || !newService.price || !newService.time || !newService.categoryId) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+    if (!newService.name || !newService.price || !newService.time || !newService.category) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
     const p = parseInt(newService.price, 10);
     const t = parseInt(newService.time, 10);
     if (isNaN(p) || isNaN(t)) return alert("ราคาและเวลาต้องเป็นตัวเลข");
@@ -132,8 +96,7 @@ export default function ServiceManagement() {
         name: newService.name,
         description: newService.desc,
         basePrice: p,
-        categoryId: newService.categoryId,
-        category: "", // unused directly in add payload now
+        category: newService.category,
         estimatedTime: t,
         active: true,
         requiresConfirmation: newService.requiresConfirmation
@@ -144,50 +107,6 @@ export default function ServiceManagement() {
     } catch (err) {
       console.error(err);
       alert("Failed to add service");
-    }
-  };
-
-  // --- CATEGORY LOGIC ---
-  const handleDeleteCategory = async (id: number) => {
-    if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบหมวดหมู่นี้? (หากมีบริการในหมวดหมู่นี้ อาจจะไม่สามารถลบได้)')) {
-      try {
-        await deleteServiceCategory(id);
-        fetchData();
-        alert('ลบหมวดหมู่สำเร็จ');
-      } catch (err: any) {
-        alert('ไม่สามารถลบหมวดหมู่ได้ เนื่องจากมีบริการที่อยู่ในหมวดหมู่นี้ หรือเกิดข้อผิดพลาดอื่น: ' + (err.message || ''));
-      }
-    }
-  };
-
-  const saveCategoryChanges = async (id: number) => {
-    const n = catNames[id];
-    const i = catIcons[id];
-    const c = catColors[id];
-    try {
-      const payload: Partial<ServiceCategory> = {};
-      if (n !== undefined) payload.name = n;
-      if (i !== undefined) payload.icon = i;
-      if (c !== undefined) payload.color = c;
-      await updateServiceCategory(id, payload);
-      fetchData();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update category");
-    }
-    setCatEditId(null);
-  };
-
-  const handleAddCategory = async () => {
-    if (!newCategory.name) return alert("กรุณาระบุชื่อหมวดหมู่");
-    try {
-      const added = await addServiceCategory(newCategory.name, newCategory.icon, newCategory.color);
-      setCategories(prev => [...prev, added]);
-      setIsAddingCat(false);
-      setNewCategory({ name: "", icon: "Smile", color: "#F0F4F8" });
-    } catch (err) {
-      console.error(err);
-      alert("Failed to add category");
     }
   };
 
@@ -204,10 +123,6 @@ export default function ServiceManagement() {
           <button onClick={() => setActiveTab('services')}
             className={`px-4 py-1.5 text-sm font-medium rounded-md flex items-center gap-2 transition-colors ${activeTab === 'services' ? "bg-[#1A365D] text-white" : "text-slate-500 hover:text-slate-800"}`}>
             <Settings2 size={16} /> รายการบริการ
-          </button>
-          <button onClick={() => setActiveTab('categories')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md flex items-center gap-2 transition-colors ${activeTab === 'categories' ? "bg-[#1A365D] text-white" : "text-slate-500 hover:text-slate-800"}`}>
-            <Folder size={16} /> หมวดหมู่
           </button>
         </div>
       </div>
@@ -231,11 +146,11 @@ export default function ServiceManagement() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">หมวดหมู่</label>
                   <select 
-                    value={newService.categoryId} 
-                    onChange={e => setNewService({...newService, categoryId: parseInt(e.target.value)})} 
+                    value={newService.category} 
+                    onChange={e => setNewService({...newService, category: e.target.value})} 
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]"
                   >
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {SERVICE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
@@ -264,19 +179,17 @@ export default function ServiceManagement() {
             </div>
           )}
 
-          {categories.map(cat => (
-            <div key={cat.id} className="mb-5">
-              <div className="flex items-center gap-2 mb-3 px-1">
-                <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 shadow-sm border border-slate-200/50" style={{ backgroundColor: cat.color }}>
-                  <span className="text-[10px]">✨</span>
+          {SERVICE_CATEGORIES.map(cat => {
+            const catServices = services.filter(s => s.category === cat);
+            if (catServices.length === 0) return null;
+
+            return (
+              <div key={cat} className="mb-5">
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <h2 className="text-sm font-semibold" style={{ color: "#1A365D" }}>{cat}</h2>
                 </div>
-                <h2 className="text-sm font-semibold" style={{ color: "#1A365D" }}>{cat.name}</h2>
-              </div>
-              <div className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
-                {services.filter(s => s.categoryId === cat.id).length === 0 ? (
-                  <div className="px-5 py-4 text-xs text-slate-400">ไม่มีบริการในหมวดหมู่นี้</div>
-                ) : (
-                  services.filter(s => s.categoryId === cat.id).map((s, i, arr) => (
+                <div className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
+                  {catServices.map((s, i, arr) => (
                     <div key={s.id} className="flex items-center gap-4 px-5 py-4" style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(26,54,93,0.05)" : "none" }}>
                       <div className="flex-1 min-w-0">
                         {editId === s.id ? (
@@ -289,11 +202,11 @@ export default function ServiceManagement() {
                               placeholder="ชื่อบริการ"
                             />
                             <select
-                              defaultValue={s.categoryId}
-                              onChange={e => setCatIds(c => ({ ...c, [s.id]: parseInt(e.target.value) }))}
+                              defaultValue={s.category}
+                              onChange={e => setCats(c => ({ ...c, [s.id]: e.target.value }))}
                               className="w-full px-2 py-1 rounded-lg text-sm outline-none border border-slate-200"
                             >
-                              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                              {SERVICE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                             <input
                               type="text"
@@ -366,7 +279,7 @@ export default function ServiceManagement() {
                               setTimes(t => ({ ...t, [s.id]: String(s.estimatedTime || 30) }));
                               setNames(n => ({ ...n, [s.id]: s.name }));
                               setDescs(d => ({ ...d, [s.id]: s.description }));
-                              setCatIds(c => ({ ...c, [s.id]: s.categoryId }));
+                              setCats(c => ({ ...c, [s.id]: s.category }));
                             }} className="p-1.5 rounded-lg hover:bg-gray-100" style={{ color: "#4A6080" }}>
                               <Edit3 size={15} />
                             </button>
@@ -377,134 +290,12 @@ export default function ServiceManagement() {
                         </button>
                       </div>
                     </div>
-                  ))
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </>
-      )}
-
-      {activeTab === 'categories' && (
-        <div className="max-w-4xl">
-          <div className="mb-4 text-right">
-            <button onClick={() => setIsAddingCat(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A365D] text-white rounded-xl text-sm font-medium hover:bg-[#122847] transition-colors">
-              <Plus size={16} /> เพิ่มหมวดหมู่ใหม่
-            </button>
-          </div>
-          
-          {isAddingCat && (
-            <div className="mb-6 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 animate-fade-in flex flex-col sm:flex-row items-end gap-4">
-              <div className="flex-1 w-full">
-                <label className="block text-xs font-medium text-slate-500 mb-1">ชื่อหมวดหมู่</label>
-                <input type="text" value={newCategory.name} onChange={e => setNewCategory({...newCategory, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="เช่น ศัลยกรรม" />
-              </div>
-              <div className="w-32">
-                <label className="block text-xs font-medium text-slate-500 mb-1">สีพื้นหลัง</label>
-                <input type="color" value={newCategory.color} onChange={e => setNewCategory({...newCategory, color: e.target.value})} className="w-full h-9 p-0 border-0 rounded cursor-pointer" />
-              </div>
-              <div className="w-40">
-                <label className="block text-xs font-medium text-slate-500 mb-1">ไอคอน</label>
-                <select value={newCategory.icon} onChange={e => setNewCategory({...newCategory, icon: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none">
-                  <option value="Smile">😊 Smile</option>
-                  <option value="Sparkles">✨ Sparkles</option>
-                  <option value="Activity">📈 Activity</option>
-                  <option value="Heart">❤️ Heart</option>
-                  <option value="Star">⭐ Star</option>
-                  <option value="Shield">🛡️ Shield</option>
-                  <option value="Clock">🕒 Clock</option>
-                  <option value="Award">🏆 Award</option>
-                </select>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setIsAddingCat(false)} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg">ยกเลิก</button>
-                <button onClick={handleAddCategory} className="px-4 py-2 text-sm bg-[#FF8C9A] text-white rounded-lg hover:bg-[#FF7A8A]">บันทึก</button>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-500">
-                <tr>
-                  <th className="px-5 py-3 font-medium">ชื่อหมวดหมู่</th>
-                  <th className="px-5 py-3 font-medium">สี & ไอคอน</th>
-                  <th className="px-5 py-3 font-medium text-center">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {categories.map(c => (
-                  <tr key={c.id}>
-                    <td className="px-5 py-4 font-medium text-slate-800">
-                      {catEditId === c.id ? (
-                        <input
-                          type="text"
-                          defaultValue={c.name}
-                          onChange={e => setCatNames(n => ({ ...n, [c.id]: e.target.value }))}
-                          className="w-full px-2 py-1 rounded-lg outline-none border border-slate-200"
-                        />
-                      ) : (
-                        c.name
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      {catEditId === c.id ? (
-                        <div className="flex items-center gap-2">
-                          <input type="color" defaultValue={c.color} onChange={e => setCatColors(cc => ({ ...cc, [c.id]: e.target.value }))} className="w-8 h-8 p-0 border-0 rounded cursor-pointer" />
-                          <select defaultValue={c.icon} onChange={e => setCatIcons(i => ({ ...i, [c.id]: e.target.value }))} className="w-32 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg outline-none">
-                            <option value="Smile">😊 Smile (ทั่วไป/จัดฟัน)</option>
-                            <option value="Sparkles">✨ Sparkles (ความงาม)</option>
-                            <option value="Activity">📈 Activity (ศัลยกรรม)</option>
-                            <option value="Shield">🛡️ Shield (ป้องกัน)</option>
-                            <option value="Layers">🦷 Layers (ประดิษฐ์/รากเทียม)</option>
-                            <option value="Crown">👑 Crown (ครอบฟัน)</option>
-                            <option value="Scissors">✂️ Scissors (ผ่าตัด)</option>
-                            <option value="Zap">⚡ Zap (เทคโนโลยี)</option>
-                            <option value="Baby">👶 Baby (ทันตกรรมเด็ก)</option>
-                            <option value="Syringe">💉 Syringe (ฉีดยา)</option>
-                            <option value="Heart">❤️ Heart (สุขภาพ)</option>
-                            <option value="Star">⭐ Star (แนะนำ)</option>
-                            <option value="Clock">🕒 Clock (เวลา/รวดเร็ว)</option>
-                            <option value="Award">🏆 Award (พรีเมียม)</option>
-                          </select>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm border border-slate-200/50" style={{ backgroundColor: c.color }}>
-                            <span className="text-xs">{iconEmojiMap[c.icon] || '✨'}</span>
-                          </div>
-                          <span className="text-xs text-slate-400 font-mono">{c.color}</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      {catEditId === c.id ? (
-                        <button onClick={() => saveCategoryChanges(c.id)} className="px-3 py-1.5 rounded-lg bg-[#E8FFF0] hover:bg-[#D1FADD] flex items-center gap-1 mx-auto">
-                          <Check size={14} style={{ color: "#1B7A3E" }} />
-                          <span className="text-sm font-medium" style={{ color: "#1B7A3E" }}>บันทึก</span>
-                        </button>
-                      ) : (
-                        <div className="flex justify-center gap-2">
-                            <button onClick={() => {
-                              setCatEditId(c.id);
-                              setCatNames(n => ({ ...n, [c.id]: c.name }));
-                              setCatIcons(i => ({ ...i, [c.id]: c.icon }));
-                              setCatColors(cc => ({ ...cc, [c.id]: c.color }));
-                            }} className="p-1.5 rounded-lg hover:bg-gray-100 text-slate-500">
-                              <Edit3 size={15} />
-                            </button>
-                            <button onClick={() => handleDeleteCategory(c.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500" title="ลบหมวดหมู่">
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
       )}
     </div>
   );

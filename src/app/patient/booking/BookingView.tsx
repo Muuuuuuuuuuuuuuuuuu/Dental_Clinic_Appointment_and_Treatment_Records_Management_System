@@ -546,16 +546,12 @@ export default function BookingView({
       {step === 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {servicesData.map((s, i) => {
-            const Icon = iconMap[s.iconName] || Smile;
             return (
               <button key={i} onClick={() => { setSelService(i); setStep(1); }}
                 className="p-5 rounded-2xl text-left"
                 style={{ backgroundColor: "white", border: "2px solid transparent", boxShadow: "0 2px 12px rgba(26,54,93,0.06)", transition: "all 0.18s ease" }}
                 onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 20px rgba(255,140,154,0.2)")}
                 onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 2px 12px rgba(26,54,93,0.06)")}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: s.color }}>
-                  <Icon size={18} style={{ color: "#1A365D" }} />
-                </div>
                 <p className="font-semibold text-sm mb-1" style={{ color: "#1A365D" }}>{s.title}</p>
                 <div className="flex items-center gap-1.5 mb-2 text-xs" style={{ color: "#4A6080" }}>
                   <Clock size={12} style={{ color: "#FF8C9A" }} />

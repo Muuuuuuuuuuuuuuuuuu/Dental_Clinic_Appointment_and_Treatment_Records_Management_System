@@ -364,44 +364,8 @@ export async function deleteStaff(id: number): Promise<void> {
   await supabase.from('staff').delete().eq('staff_id', id);
 }
 
-// --- Services ---
-export async function getServiceCategories(): Promise<ServiceCategory[]> {
-  const { data, error } = await supabase.from('service_category').select('*').order('category_id');
-  if (error) return [];
-  return data.map(d => ({
-    id: d.category_id,
-    name: d.category_name,
-    icon: d.icon_name,
-    color: d.color_code
-  }));
-}
-
-export async function addServiceCategory(name: string, icon: string, color: string): Promise<ServiceCategory> {
-  const { data, error } = await supabase.from('service_category').insert({
-    category_name: name,
-    icon_name: icon,
-    color_code: color
-  }).select().single();
-  if (error) throw error;
-  return { id: data.category_id, name: data.category_name, icon: data.icon_name, color: data.color_code };
-}
-
-export async function updateServiceCategory(id: number, updates: Partial<ServiceCategory>): Promise<ServiceCategory> {
-  const dbUpdates: any = {};
-  if (updates.name !== undefined) dbUpdates.category_name = updates.name;
-  if (updates.icon !== undefined) dbUpdates.icon_name = updates.icon;
-  if (updates.color !== undefined) dbUpdates.color_code = updates.color;
-
-  const { data, error } = await supabase.from('service_category').update(dbUpdates).eq('category_id', id).select().single();
-  if (error) throw error;
-  return { id: data.category_id, name: data.category_name, icon: data.icon_name, color: data.color_code };
-}
-
 export async function getServices() {
-  const { data, error } = await supabase.from('service').select(`
-    *,
-    service_category:category_id (*)
-  `);
+  const { data, error } = await supabase.from('service').select('*');
   if (error) return [];
 
   return data.map((d: any) => ({
@@ -409,10 +373,9 @@ export async function getServices() {
     name: d.service_name,
     description: d.description || `ใช้เวลาประมาณ ${d.estimated_time} นาที`,
     basePrice: d.base_price,
-    categoryId: d.category_id,
-    category: d.service_category?.category_name || 'ทั่วไป',
-    newCategoryIcon: d.service_category?.icon_name || 'Smile',
-    newCategoryColor: d.service_category?.color_code || '#F0F4F8',
+    category: d.category || 'ทันตกรรมทั่วไป (General Dentistry)',
+    newCategoryIcon: 'Smile',
+    newCategoryColor: '#F0F4F8',
     estimatedTime: d.estimated_time,
     requiresConfirmation: d.requires_confirmation,
     isFixedPrice: d.is_fixed_price,
@@ -427,7 +390,7 @@ export async function addService(service: Omit<ServiceInfo, 'id'>) {
     service_name: service.name,
     description: service.description,
     base_price: service.basePrice,
-    category_id: service.categoryId,
+    category: service.category,
     estimated_time: estimatedTime,
     is_active: service.active !== false,
     requires_confirmation: service.requiresConfirmation || false
@@ -440,7 +403,7 @@ export async function updateService(id: number, updates: Partial<ServiceInfo>): 
   if (updates.name !== undefined) serviceUpdates.service_name = updates.name;
   if (updates.description !== undefined) serviceUpdates.description = updates.description;
   if (updates.basePrice !== undefined) serviceUpdates.base_price = updates.basePrice;
-  if (updates.categoryId !== undefined) serviceUpdates.category_id = updates.categoryId;
+  if (updates.category !== undefined) serviceUpdates.category = updates.category;
   if (updates.estimatedTime !== undefined) serviceUpdates.estimated_time = updates.estimatedTime;
   if (updates.requiresConfirmation !== undefined) serviceUpdates.requires_confirmation = updates.requiresConfirmation;
   if (updates.active !== undefined) serviceUpdates.is_active = updates.active;
@@ -476,7 +439,7 @@ export async function updateServiceActiveStatus(id: number, active: boolean) {
 
 // --- Landing Page Data ---
 export async function getLandingServices() {
-  const { data, error } = await supabase.from('service').select('*, service_category:category_id (icon_name, color_code)');
+  const { data, error } = await supabase.from('service').select('*');
   if (error) return [];
 
   const { data: settingsData } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
@@ -489,11 +452,11 @@ export async function getLandingServices() {
     .filter((d: any) => !disabledIds.includes(d.service_id))
     .map((d: any) => ({
       serviceId: d.service_id,
-      iconName: d.service_category?.icon_name || 'Smile',
+      iconName: 'Smile',
       title: d.service_name,
       desc: d.description || `บริการระดับมืออาชีพ ใช้เวลาประมาณ ${d.estimated_time} นาที`,
       price: d.base_price ? `เริ่มต้น ${d.base_price.toLocaleString()} บาท` : 'แจ้งราคาหลังตรวจ',
-      color: d.service_category?.color_code || '#FFE8EC',
+      color: '#FFE8EC',
       type: d.service_type || 'general',
       baseTimeMins: d.estimated_time || 30,
       requiresConfirmation: d.requires_confirmation || false

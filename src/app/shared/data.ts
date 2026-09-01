@@ -102,19 +102,24 @@ export interface AdminInfo {
   salary?: string;
 }
 
-export interface ServiceCategory {
-  id: number;
-  name: string;
-  icon: string;
-  color: string;
-}
+export const SERVICE_CATEGORIES = [
+  'ทันตกรรมทั่วไป (General Dentistry)',
+  'ศัลยกรรมช่องปาก (Oral Surgery)',
+  'ทันตกรรมประดิษฐ์ (Prosthodontics)',
+  'จัดฟัน (Orthodontics)',
+  'รักษารากฟัน (Endodontics)',
+  'ทันตกรรมเพื่อความงาม (Aesthetic)',
+  'ทันตกรรมรากเทียม (Implantology)',
+  'ทันตกรรมเด็กและป้องกัน (Pediatric & Preventive)'
+] as const;
+
+export type ServiceCategoryType = typeof SERVICE_CATEGORIES[number];
 
 export interface ServiceInfo {
   id: number;
   name: string;
   description: string;
   basePrice: number;
-  categoryId: number;
   category: string;
   newCategoryIcon?: string;
   newCategoryColor?: string;
