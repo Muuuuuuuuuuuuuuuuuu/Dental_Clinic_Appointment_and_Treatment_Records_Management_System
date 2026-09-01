@@ -113,7 +113,7 @@ function SubViewWrapper({ title, onBack, children }: { title: string; onBack: ()
         className="flex items-center gap-2 text-sm font-medium mb-4 px-3 py-1.5 rounded-lg transition-colors hover:bg-white/80"
         style={{ color: "#4A6080" }}>
         <ArrowLeft size={16} />
-        ← กลับไปเลือกหมวดหมู่
+        กลับไปเลือกหมวดหมู่
       </button>
       {children}
     </div>

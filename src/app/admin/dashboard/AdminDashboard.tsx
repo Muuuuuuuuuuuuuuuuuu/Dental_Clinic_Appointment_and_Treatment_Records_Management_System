@@ -13,7 +13,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showApptModal, setShowApptModal] = useState(false);
-  
+
   const [timeframe, setTimeframe] = useState<Timeframe>("today");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
@@ -33,13 +33,13 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
     // ใช้ sv-SE locale เพื่อรับ YYYY-MM-DD format ใน timezone ไทย แทนการคำนวณ UTC
     return d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
   };
-  
+
   const targetDateStr = getLocalDateStr(selectedDate);
-  
+
   // Filter appointments based on timeframe and selectedDate
   const filteredAppts = appointments.filter(a => {
     if (!a.date) return false; // ป้องกัน a.date เป็น null หรือ undefined
-    
+
     if (timeframe === "today") {
       return a.date === targetDateStr;
     } else if (timeframe === "week") {
@@ -57,7 +57,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   const pending = leaves.filter(l => l.status === "รอการอนุมัติ").length;
 
   // Chart data
-  const chartData = timeframe === "today" ? 
+  const chartData = timeframe === "today" ?
     Array.from({ length: 12 }).map((_, i) => {
       const hour = i + 9;
       const hourPrefix = hour.toString().padStart(2, '0');
@@ -66,26 +66,26 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
       const hourRev = hourAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
       return { day: timeLabel, appts: hourAppts.length, revenue: hourRev, fullDate: targetDateStr };
     })
-  : timeframe === "month" ? (() => {
-    const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
-    return Array.from({ length: daysInMonth }).map((_, i) => {
-      const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i + 1);
-      const dStr = getLocalDateStr(d);
-      const dayLabel = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-      const dayAppts = appointments.filter(a => a.date === dStr);
-      const dayRev = dayAppts.filter(a => ["เสร็จสิ้น"].includes(a.status)).reduce((s, a) => s + (a.cost ?? 0), 0);
-      return { day: dayLabel, appts: dayAppts.length, revenue: dayRev, fullDate: dStr };
-    });
-  })()
-  : Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() - (7 - 1 - i));
-    const dStr = getLocalDateStr(d);
-    const dayLabel = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-    const dayAppts = appointments.filter(a => a.date === dStr);
-    const dayRev = dayAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
-    return { day: dayLabel, appts: dayAppts.length, revenue: dayRev, fullDate: dStr };
-  });
+    : timeframe === "month" ? (() => {
+      const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+      return Array.from({ length: daysInMonth }).map((_, i) => {
+        const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i + 1);
+        const dStr = getLocalDateStr(d);
+        const dayLabel = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+        const dayAppts = appointments.filter(a => a.date === dStr);
+        const dayRev = dayAppts.filter(a => ["เสร็จสิ้น"].includes(a.status)).reduce((s, a) => s + (a.cost ?? 0), 0);
+        return { day: dayLabel, appts: dayAppts.length, revenue: dayRev, fullDate: dStr };
+      });
+    })()
+      : Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date(selectedDate);
+        d.setDate(d.getDate() - (7 - 1 - i));
+        const dStr = getLocalDateStr(d);
+        const dayLabel = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+        const dayAppts = appointments.filter(a => a.date === dStr);
+        const dayRev = dayAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
+        return { day: dayLabel, appts: dayAppts.length, revenue: dayRev, fullDate: dStr };
+      });
 
   const handleChartClick = (data: any) => {
     if (timeframe !== "today" && data && data.activePayload && data.activePayload.length > 0) {
@@ -101,7 +101,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   const completedCnt = filteredAppts.filter(a => a.status === "เสร็จสิ้น").length;
   const scheduledCnt = filteredAppts.filter(a => ["รอการยืนยัน", "ยืนยันการจอง", "เช็คอินเรียบร้อย", "กำลังรักษา", "รอชำระเงิน"].includes(a.status)).length;
   const cancelledCnt = filteredAppts.filter(a => a.status === "ยกเลิก").length;
-  const postponedCnt = filteredAppts.filter(a => a.status === "ไม่มาตามนัด").length;
+  const noShowCnt = filteredAppts.filter(a => a.status === "ไม่มาตามนัด").length;
   const totalCnt = filteredAppts.length || 1;
 
   // Continuous Cases
@@ -118,7 +118,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <input 
+          <input
             type="date" value={targetDateStr}
             onChange={(e) => { if (e.target.value) setSelectedDate(new Date(e.target.value)); }}
             className="px-2 py-1 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 outline-none focus:border-[#1A365D]"
@@ -130,9 +130,8 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
               { id: "month", label: "เดือน" }
             ].map(t => (
               <button key={t.id} onClick={() => setTimeframe(t.id as Timeframe)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  timeframe === t.id ? "bg-[#1A365D] text-white" : "text-slate-500 hover:text-slate-800"
-                }`}>
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${timeframe === t.id ? "bg-[#1A365D] text-white" : "text-slate-500 hover:text-slate-800"
+                  }`}>
                 {t.label}
               </button>
             ))}
@@ -143,10 +142,10 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
       {/* Row 2: KPI Cards — compact horizontal */}
       <div className="grid grid-cols-4 gap-3 mb-3 flex-shrink-0">
         {[
-          { label: "นัดหมาย",      val: filteredAppts.length,            icon: Calendar,    bg: "#E8F4FF", ic: "#1D6FA4" },
-          { label: "รายได้",       val: `฿${revenue.toLocaleString()}`,  icon: TrendingUp,  bg: "#E8FFF0", ic: "#1B7A3E" },
-          { label: "แพทย์ออกตรวจ",  val: new Set(filteredAppts.map(a => a.doctorId).filter(Boolean)).size, icon: UserCheck,   bg: "#FFE8EC", ic: "#FF6B7E" },
-          { label: "รออนุมัติลา",   val: pending,                         icon: AlertCircle, bg: "#FFF3E0", ic: "#E65100" },
+          { label: "นัดหมาย", val: filteredAppts.length, icon: Calendar, bg: "#E8F4FF", ic: "#1D6FA4" },
+          { label: "รายได้", val: `฿${revenue.toLocaleString()}`, icon: TrendingUp, bg: "#E8FFF0", ic: "#1B7A3E" },
+          { label: "แพทย์ออกตรวจ", val: new Set(filteredAppts.map(a => a.doctorId).filter(Boolean)).size, icon: UserCheck, bg: "#FFE8EC", ic: "#FF6B7E" },
+          { label: "รออนุมัติลา", val: pending, icon: AlertCircle, bg: "#FFF3E0", ic: "#E65100" },
         ].map(s => (
           <div key={s.label} className="rounded-xl bg-white px-4 py-3 cursor-pointer hover:shadow-md transition-shadow flex items-center gap-3"
             style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}
@@ -167,17 +166,17 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         {/* Appointment chart */}
         <div className="rounded-xl bg-white p-4 flex flex-col" style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}>
           <div className="flex items-center justify-between mb-2 flex-shrink-0">
-              <h2 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
-                กราฟนัดหมาย ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "รายเดือน" : "7 วัน"})
-              </h2>
+            <h2 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
+              กราฟนัดหมาย ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "รายเดือน" : "7 วัน"})
+            </h2>
             {timeframe !== "today" && (
               <span className="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">💡 คลิกแท่ง</span>
             )}
           </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} barSize={timeframe === "month" ? 10 : timeframe === "today" ? 10 : 16} 
-                        onClick={handleChartClick} style={{ cursor: timeframe !== "today" ? 'pointer' : 'default' }}>
+              <BarChart data={chartData} barSize={timeframe === "month" ? 10 : timeframe === "today" ? 10 : 16}
+                onClick={handleChartClick} style={{ cursor: timeframe !== "today" ? 'pointer' : 'default' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,54,93,0.06)" />
                 <XAxis dataKey="day" tick={{ fontSize: 9, fill: "#4A6080" }} axisLine={false} tickLine={false} minTickGap={15} />
                 <YAxis tick={{ fontSize: 9, fill: "#4A6080" }} axisLine={false} tickLine={false} width={25} />
@@ -192,9 +191,9 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         {/* Revenue Chart */}
         <div className="rounded-xl bg-white p-4 flex flex-col" style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}>
           <div className="flex items-center justify-between mb-2 flex-shrink-0">
-              <h3 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
-                กราฟรายได้ ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "รายเดือน" : "7 วัน"})
-              </h3>
+            <h3 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
+              กราฟรายได้ ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "รายเดือน" : "7 วัน"})
+            </h3>
           </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -219,16 +218,16 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
             <h3 className="font-semibold text-sm" style={{ color: "#1A365D" }}>สัดส่วนสถานะ</h3>
           </div>
           <div className="flex h-2.5 rounded-full overflow-hidden mb-2.5 bg-slate-100">
-            <div style={{ width: `${(completedCnt/totalCnt)*100}%`, backgroundColor: "#22C55E" }} />
-            <div style={{ width: `${(scheduledCnt/totalCnt)*100}%`, backgroundColor: "#3B82F6" }} />
-            <div style={{ width: `${(postponedCnt/totalCnt)*100}%`, backgroundColor: "#9CA3AF" }} />
-            <div style={{ width: `${(cancelledCnt/totalCnt)*100}%`, backgroundColor: "#EF4444" }} />
+            <div style={{ width: `${(completedCnt / totalCnt) * 100}%`, backgroundColor: "#22C55E" }} />
+            <div style={{ width: `${(scheduledCnt / totalCnt) * 100}%`, backgroundColor: "#3B82F6" }} />
+            <div style={{ width: `${(cancelledCnt / totalCnt) * 100}%`, backgroundColor: "#EF4444" }} />
+            <div style={{ width: `${(noShowCnt / totalCnt) * 100}%`, backgroundColor: "#D946EF" }} />
           </div>
-          <div className="flex items-center gap-5 text-xs font-medium" style={{ color: "#4A6080" }}>
+          <div className="flex flex-wrap items-center gap-4 text-xs font-medium" style={{ color: "#4A6080" }}>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> สำเร็จ <b className="text-slate-800">{completedCnt}</b></span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" /> รอคิว <b className="text-slate-800">{scheduledCnt}</b></span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-400 inline-block" /> เลื่อน <b className="text-slate-800">{postponedCnt}</b></span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" /> ยกเลิก <b className="text-red-600">{cancelledCnt}</b></span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-fuchsia-500 inline-block" /> ไม่มาตามนัด <b className="text-fuchsia-600">{noShowCnt}</b></span>
           </div>
         </div>
 

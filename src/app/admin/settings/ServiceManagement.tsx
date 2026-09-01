@@ -2,17 +2,17 @@ import React, { useState, useEffect } from "react";
 import { Plus, Edit3, Check, Clock, Settings2 } from "lucide-react";
 import StatusBadge from "../../shared/components/StatusBadge";
 import { ServiceInfo, SERVICE_CATEGORIES } from "../../shared/data";
-import { 
+import {
   getServices, updateService, addService, updateServiceActiveStatus
 } from "../../shared/supabaseApi";
 
 export default function ServiceManagement() {
   const [activeTab, setActiveTab] = useState<'services'>('services');
-  
+
   // Data States
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Services Edit States
   const [editId, setEditId] = useState<number | null>(null);
   const [prices, setPrices] = useState<Record<number, string>>({});
@@ -21,11 +21,11 @@ export default function ServiceManagement() {
   const [descs, setDescs] = useState<Record<number, string>>({});
   const [cats, setCats] = useState<Record<number, string>>({});
   const [reqConfs, setReqConfs] = useState<Record<number, boolean>>({});
-  
+
   // Services Add States
   const [isAdding, setIsAdding] = useState(false);
-  const [newService, setNewService] = useState({ 
-    name: "", desc: "", price: "", time: "30", category: SERVICE_CATEGORIES[0], requiresConfirmation: false 
+  const [newService, setNewService] = useState({
+    name: "", desc: "", price: "", time: "30", category: SERVICE_CATEGORIES[0] as string, requiresConfirmation: false
   });
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function ServiceManagement() {
     const d = descs[id];
     const c = cats[id];
     const rc = reqConfs[id];
-    
+
     if (!isNaN(p) && !isNaN(t)) {
       try {
         const payload: any = { basePrice: p, estimatedTime: t };
@@ -90,7 +90,7 @@ export default function ServiceManagement() {
     const p = parseInt(newService.price, 10);
     const t = parseInt(newService.time, 10);
     if (isNaN(p) || isNaN(t)) return alert("ราคาและเวลาต้องเป็นตัวเลข");
-    
+
     try {
       await addService({
         name: newService.name,
@@ -119,12 +119,7 @@ export default function ServiceManagement() {
           <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ตั้งค่าบริการ</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>จัดการบริการและหมวดหมู่บริการ</p>
         </div>
-        <div className="flex items-center bg-white rounded-lg p-1 shadow-sm border border-slate-200">
-          <button onClick={() => setActiveTab('services')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md flex items-center gap-2 transition-colors ${activeTab === 'services' ? "bg-[#1A365D] text-white" : "text-slate-500 hover:text-slate-800"}`}>
-            <Settings2 size={16} /> รายการบริการ
-          </button>
-        </div>
+
       </div>
 
       {activeTab === 'services' && (
@@ -141,13 +136,13 @@ export default function ServiceManagement() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">ชื่อบริการ</label>
-                  <input type="text" value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="เช่น ขูดหินปูน" />
+                  <input type="text" value={newService.name} onChange={e => setNewService({ ...newService, name: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="เช่น ขูดหินปูน" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">หมวดหมู่</label>
-                  <select 
-                    value={newService.category} 
-                    onChange={e => setNewService({...newService, category: e.target.value})} 
+                  <select
+                    value={newService.category}
+                    onChange={e => setNewService({ ...newService, category: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]"
                   >
                     {SERVICE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -155,19 +150,19 @@ export default function ServiceManagement() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">ราคา (บาท)</label>
-                  <input type="number" value={newService.price} onChange={e => setNewService({...newService, price: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="500" />
+                  <input type="number" value={newService.price} onChange={e => setNewService({ ...newService, price: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">เวลา (นาที)</label>
-                  <input type="number" value={newService.time} onChange={e => setNewService({...newService, time: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="30" />
+                  <input type="number" value={newService.time} onChange={e => setNewService({ ...newService, time: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="30" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">คำอธิบาย</label>
-                  <input type="text" value={newService.desc} onChange={e => setNewService({...newService, desc: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="คำอธิบายสั้นๆ" />
+                  <input type="text" value={newService.desc} onChange={e => setNewService({ ...newService, desc: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="คำอธิบายสั้นๆ" />
                 </div>
                 <div className="flex flex-col justify-center">
                   <label className="flex items-center gap-2 cursor-pointer mt-5">
-                    <input type="checkbox" checked={newService.requiresConfirmation} onChange={e => setNewService({...newService, requiresConfirmation: e.target.checked})} className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]" />
+                    <input type="checkbox" checked={newService.requiresConfirmation} onChange={e => setNewService({ ...newService, requiresConfirmation: e.target.checked })} className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]" />
                     <span className="text-xs font-medium text-slate-700">เคสยาก</span>
                   </label>
                 </div>
@@ -273,9 +268,9 @@ export default function ServiceManagement() {
                                 {s.estimatedTime || 30} นาที
                               </div>
                             </div>
-                            <button onClick={() => { 
-                              setEditId(s.id); 
-                              setPrices(p => ({ ...p, [s.id]: String(s.basePrice) })); 
+                            <button onClick={() => {
+                              setEditId(s.id);
+                              setPrices(p => ({ ...p, [s.id]: String(s.basePrice) }));
                               setTimes(t => ({ ...t, [s.id]: String(s.estimatedTime || 30) }));
                               setNames(n => ({ ...n, [s.id]: s.name }));
                               setDescs(d => ({ ...d, [s.id]: s.description }));
