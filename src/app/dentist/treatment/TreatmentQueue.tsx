@@ -448,7 +448,7 @@ export default function TreatmentQueue({
                         {act.next === "รอชำระเงิน" ? <><ClipboardList size={14} /> {act.label}</> : <><Clock size={14} /> {act.label}</>}
                       </button>
                     )}
-                    {!activePlan && (
+                    {!activePlan && ["จัดฟัน", "รักษาราก", "เทียม", "ปลอม", "วีเนียร์", "ครอบฟัน"].some(kw => a.service.includes(kw)) && (
                       <button 
                         onClick={() => setSelectedPatientIdForPlan(a.patientId)}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all text-teal-700 bg-teal-50 hover:bg-teal-100"
