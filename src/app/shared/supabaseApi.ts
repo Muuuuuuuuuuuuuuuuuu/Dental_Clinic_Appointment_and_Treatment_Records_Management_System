@@ -3,7 +3,7 @@ import { supabase } from './utils/supabaseClient';
 import { sendOTPEmail } from './utils/emailService';
 export { supabase };
 import { RegForm } from '../patient/types';
-import { Appointment, DentistInfo, PatientInfo, StaffInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan, ServiceCategoryType } from './data';
+import { Appointment, DentistInfo, PatientInfo, StaffInfo, AdminInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan, ServiceCategoryType } from './data';
 
 // ============================================================================
 // REALTIME HELPERS
@@ -608,7 +608,10 @@ export async function getPaymentPlans(serviceId: number) {
 
 export async function getLandingDoctors() {
   const { data, error } = await supabase.from('dentist').select('*, users(profile(first_name, last_name))');
-  if (error) return [];
+  if (error) {
+    console.error("getLandingDoctors error:", error);
+    return [];
+  }
 
   return data.map((d: any) => ({
     id: d.dentist_id,
@@ -616,7 +619,7 @@ export async function getLandingDoctors() {
     name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
     specialty: d.specialization || 'ทันตแพทย์',
     img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format',
-    years: d.years_of_experience || 'ประสบการณ์ 5 ปี+'
+    years: `ประสบการณ์ ${d.experience_years || 0} ปี`
   }));
 }
 
@@ -2012,8 +2015,7 @@ export async function addClinicClosure(closure: Omit<SpecialClosure, 'id'>): Pro
   const { data, error } = await supabase.from('clinic_holiday').insert({
     holiday_date: closure.date,
     holiday_name: closure.reason,
-    is_recurring: false,
-    linked_announcement_id: closure.linkedAnnouncementId || null
+    is_recurring: false
   }).select().single();
 
   if (error) throw error;

@@ -280,46 +280,16 @@ export default function StaffPortal({
   const isOperationalView = currentNav?.isOperational ?? false;
   const showLockScreen = isOperationalView && !isClockedIn;
 
-  const handleChangePassword = async () => {
-    if (!oldPassword) {
-      setChangeError("กรุณากรอกรหัสผ่านเดิม");
-      return;
-    }
-    if (newPassword.length < 6) {
-      setChangeError("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setChangeError("รหัสผ่านไม่ตรงกัน");
-      return;
-    }
-    setIsChanging(true);
-    setChangeError("");
-    try {
-      const { changePassword } = await import("../shared/supabaseApi");
-      await changePassword(oldPassword, newPassword);
-      alert("เปลี่ยนรหัสผ่านสำเร็จ!");
-      setShowPasswordModal(false);
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err: any) {
-      setChangeError(err.message || "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน");
-    } finally {
-      setIsChanging(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "Prompt, sans-serif", backgroundColor: "#F0F4F8" }}>
       {sideOpen && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setSideOpen(false)} />}
 
       <aside className="fixed top-0 left-0 h-full z-40 hidden lg:block" style={{ width: 250 }}>
-        <StaffSidebar view={view} setView={setView} onLogout={onLogout} isClockedIn={isClockedIn} staffName={staffInfo?.name} staffRole={staffInfo?.role} staffInitial={staffInfo?.name?.charAt(0)} onChangePassword={() => setShowPasswordModal(true)} />
+        <StaffSidebar view={view} setView={setView} onLogout={onLogout} isClockedIn={isClockedIn} staffName={staffInfo?.name} staffRole={staffInfo?.role} staffInitial={staffInfo?.name?.charAt(0)} />
       </aside>
       {sideOpen && (
         <aside className="fixed top-0 left-0 h-full z-40" style={{ width: 250 }}>
-          <StaffSidebar view={view} setView={v => { setView(v); setSideOpen(false); }} onLogout={onLogout} isClockedIn={isClockedIn} staffName={staffInfo?.name} staffRole={staffInfo?.role} staffInitial={staffInfo?.name?.charAt(0)} onChangePassword={() => setShowPasswordModal(true)} />
+          <StaffSidebar view={view} setView={v => { setView(v); setSideOpen(false); }} onLogout={onLogout} isClockedIn={isClockedIn} staffName={staffInfo?.name} staffRole={staffInfo?.role} staffInitial={staffInfo?.name?.charAt(0)} />
         </aside>
       )}
 

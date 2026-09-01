@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 
 import { Appointment, SpecialClosure, STATUS_COLORS, StaffView, LeaveRequest, Shift, hasHealthAlert } from "../../shared/data";
-import {  getClinicClosures, updateAppointmentStatus, getDentists, getLeaveRequests, getShifts } from "../../shared/supabaseApi";
+import {  getClinicClosures, updateAppointmentStatus, getDentists, getLeaveRequests, getShifts, getWeeklyOffDays } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 type ViewMode = "daily" | "weekly" | "monthly";
@@ -277,12 +277,13 @@ function ViewToggle({ mode, setMode }: { mode: ViewMode; setMode: (m: ViewMode) 
 
 // ─── Daily View ───────────────────────────────────────────────────────────────
 function DailyView({
-  selectedDate, setSelectedDate, appointments, closures, dentists, leaves, shifts, setView, onUpdateAppt
+  selectedDate, setSelectedDate, appointments, closures, weeklyOffs, dentists, leaves, shifts, setView, onUpdateAppt
 }: {
   selectedDate: Date;
   setSelectedDate: (d: Date) => void;
   appointments: Appointment[];
   closures: SpecialClosure[];
+  weeklyOffs: number[];
   dentists: any[];
   leaves: LeaveRequest[];
   shifts: Shift[];
@@ -293,6 +294,8 @@ function DailyView({
   const todayStr = fmtDate(new Date());
   const isToday = dateStr === todayStr;
   const closure = closures.find(c => c.date === dateStr);
+  const isWeeklyOff = weeklyOffs.includes(selectedDate.getDay());
+  const isClosed = !!closure || isWeeklyOff;
 
   const dayAppts = appointments
     .filter(a => a.date === dateStr)
@@ -349,20 +352,22 @@ function DailyView({
       </div>
 
       {/* Closure Banner */}
-      {closure && (
+      {isClosed && (
         <div className="rounded-xl px-4 py-3 mb-5 flex items-center gap-3" style={{ backgroundColor: "#FFF3E0", border: "1px solid #FED7AA" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#FFCC80" }}>
             <CalendarIcon size={16} style={{ color: "#E65100" }} />
           </div>
           <div>
             <p className="text-sm font-semibold" style={{ color: "#E65100" }}>คลินิกปิดทำการ</p>
-            <p className="text-xs" style={{ color: "#BF360C" }}>{closure.reason}</p>
+            <p className="text-xs" style={{ color: "#BF360C" }}>
+              {closure ? closure.reason : `วันหยุดประจำสัปดาห์ (${thaiDay[selectedDate.getDay()]})`}
+            </p>
           </div>
         </div>
       )}
 
       {/* Doctors on Duty */}
-      {!closure && (
+      {!isClosed && (
         <div className="mb-5 flex flex-col gap-3 bg-white p-4 rounded-2xl border border-gray-100" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.04)" }}>
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm" style={{ color: "#1A365D" }}>แพทย์ออกตรวจวันนี้</h3>
@@ -436,12 +441,13 @@ function DailyView({
 
 // ─── Weekly View ──────────────────────────────────────────────────────────────
 function WeeklyView({
-  selectedDate, setSelectedDate, appointments, closures, setMode
+  selectedDate, setSelectedDate, appointments, closures, weeklyOffs, setMode
 }: {
   selectedDate: Date;
   setSelectedDate: (d: Date) => void;
   appointments: Appointment[];
   closures: SpecialClosure[];
+  weeklyOffs: number[];
   setMode: (m: ViewMode) => void;
 }) {
   const monday = getMonday(selectedDate);
@@ -509,6 +515,8 @@ function WeeklyView({
             const isToday = ds === todayStr;
             const dayAppts = appointments.filter(a => a.date === ds);
             const closure = closures.find(c => c.date === ds);
+            const isWeeklyOff = weeklyOffs.includes(day.getDay());
+            const isClosed = !!closure || isWeeklyOff;
 
             return (
               <div key={ds} className="border-r border-gray-100 last:border-r-0 relative min-w-[120px]">
@@ -523,9 +531,9 @@ function WeeklyView({
                 {/* Day Body */}
                 <div className="relative flex flex-col" style={{ height: `${12 * 6}rem` /* 12 hours * 6rem (h-24) */ }}>
                   {/* Appointments */}
-                  {closure ? (
+                  {isClosed ? (
                     <div className="absolute inset-0 flex items-center justify-center p-2 text-center" style={{ backgroundColor: "rgba(255, 243, 224, 0.4)", zIndex: 5 }}>
-                      <span className="text-[11px] font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-md">ปิด: {closure.reason}</span>
+                      <span className="text-[11px] font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-md">{closure ? `ปิด: ${closure.reason}` : "วันหยุด"}</span>
                     </div>
                   ) : (
                     hours.map(h => {
@@ -563,12 +571,13 @@ function WeeklyView({
 
 // ─── Monthly View ─────────────────────────────────────────────────────────────
 function MonthlyView({
-  selectedDate, setSelectedDate, appointments, closures, setMode
+  selectedDate, setSelectedDate, appointments, closures, weeklyOffs, setMode
 }: {
   selectedDate: Date;
   setSelectedDate: (d: Date) => void;
   appointments: Appointment[];
   closures: SpecialClosure[];
+  weeklyOffs: number[];
   setMode: (m: ViewMode) => void;
 }) {
   const [monthDate, setMonthDate] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
@@ -623,24 +632,25 @@ function MonthlyView({
             const isToday = ds === todayStr;
             const closure = closures.find(c => c.date === ds);
             const dayAppts = appointments.filter(a => a.date === ds);
-            const isSunday = new Date(year, month, d).getDay() === 0;
+            const isWeeklyOff = weeklyOffs.includes(new Date(year, month, d).getDay());
+            const isClosed = !!closure || isWeeklyOff;
 
             return (
               <button key={d} onClick={() => handleDayClick(d)}
                 className="relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all hover:shadow-md hover:ring-2 hover:ring-pink-200 group"
-                title={closure ? `ปิดทำการ: ${closure.reason}` : isSunday ? "วันหยุด" : `${dayAppts.length} นัดหมาย`}
+                title={isClosed ? (closure ? `ปิดทำการ: ${closure.reason}` : "วันหยุดประจำสัปดาห์") : `${dayAppts.length} นัดหมาย`}
                 style={{
-                  backgroundColor: closure ? "#FFF8F0" : isToday ? "#FFE8EC" : isSunday ? "#F8F9FA" : "#FAFBFC",
+                  backgroundColor: isClosed ? "#FFF8F0" : isToday ? "#FFE8EC" : "#FAFBFC",
                   border: isToday ? "2px solid #FF8C9A" : "1px solid #F0F2F5",
                 }}>
                 <span className="text-sm font-semibold" style={{
-                  color: closure ? "#E65100" : isToday ? "#FF6B7E" : isSunday ? "#CBD5E1" : "#1A365D"
+                  color: isClosed ? "#E65100" : isToday ? "#FF6B7E" : "#1A365D"
                 }}>
                   {d}
                 </span>
 
                 {/* Appointment count badge */}
-                {dayAppts.length > 0 && !closure && (
+                {dayAppts.length > 0 && !isClosed && (
                   <span className="absolute bottom-1 text-xs font-bold px-1.5 py-0 rounded-full"
                     style={{ backgroundColor: "#FF8C9A", color: "white", fontSize: "9px" }}>
                     {dayAppts.length}
@@ -648,7 +658,7 @@ function MonthlyView({
                 )}
 
                 {/* Closure indicator */}
-                {closure && (
+                {isClosed && (
                   <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E65100" }} />
                 )}
               </button>
@@ -688,6 +698,7 @@ export default function QueueBoard({
 }) {
   const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
+  const [weeklyOffs, setWeeklyOffs] = useState<number[]>([]);
   const [dentists, setDentists] = useState<any[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -701,13 +712,15 @@ export default function QueueBoard({
       getClinicClosures(),
       getDentists(),
       getLeaveRequests(),
-      getShifts()
+      getShifts(),
+      getWeeklyOffDays()
     ])
-      .then(([cls, dents, lvs, shfts]) => {
+      .then(([cls, dents, lvs, shfts, wOffs]) => {
         setClosures(cls);
         setDentists(dents);
         setLeaves(lvs);
         setShifts(shfts);
+        setWeeklyOffs(wOffs);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -758,6 +771,7 @@ export default function QueueBoard({
           setSelectedDate={setSelectedDate}
           appointments={appointments}
           closures={closures}
+          weeklyOffs={weeklyOffs}
           dentists={dentists}
           leaves={leaves}
           shifts={shifts}
@@ -771,6 +785,7 @@ export default function QueueBoard({
           setSelectedDate={setSelectedDate}
           appointments={appointments}
           closures={closures}
+          weeklyOffs={weeklyOffs}
           setMode={setViewMode}
         />
       )}
@@ -780,6 +795,7 @@ export default function QueueBoard({
           setSelectedDate={setSelectedDate}
           appointments={appointments}
           closures={closures}
+          weeklyOffs={weeklyOffs}
           setMode={setViewMode}
         />
       )}

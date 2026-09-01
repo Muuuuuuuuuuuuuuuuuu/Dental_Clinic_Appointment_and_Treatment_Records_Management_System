@@ -41,7 +41,7 @@ function AdminStatusBanner() {
   );
 }
 
-type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub";
+type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub" | "profile";
 
 const ADMIN_NAV: { key: AdminView; label: string; icon: any }[] = [
   { key: "dashboard",    label: "แดชบอร์ด",           icon: Home },

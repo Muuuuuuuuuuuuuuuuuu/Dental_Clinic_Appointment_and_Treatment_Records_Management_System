@@ -174,15 +174,13 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     let isWorking = false;
 
     if (closure) {
-      cellBg = "bg-orange-50";
-      textColor = "text-orange-700";
-      indicators.push(<div key="closure" className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>);
+      cellBg = "bg-gray-50";
+      textColor = "text-gray-400";
       tooltip = `ปิดคลินิก: ${closure.reason}`;
     } else if (isClinicOff) {
       // Clinic-level weekly off day — takes priority over personal schedule
-      cellBg = "bg-red-50/60";
-      textColor = "text-red-400";
-      indicators.push(<div key="clinic-off" className="w-1.5 h-1.5 rounded-full bg-red-400"></div>);
+      cellBg = "bg-gray-50";
+      textColor = "text-gray-400";
       tooltip = "คลินิกปิดทำการ (วันหยุดประจำสัปดาห์)";
     } else if (leave) {
       if (leave.status === "รออนุมัติ") {
