@@ -2297,7 +2297,8 @@ export async function savePatientData(form: RegForm) {
     last_name: form.lastName,
     phone_number: form.phone || null,
     gender: validGender,
-    birth_date: form.dob || null
+    birth_date: form.dob || null,
+    current_address: form.address || null
   }, { onConflict: 'citizen_id' });
   if (pErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลส่วนตัว: ${pErr.message}`);
 

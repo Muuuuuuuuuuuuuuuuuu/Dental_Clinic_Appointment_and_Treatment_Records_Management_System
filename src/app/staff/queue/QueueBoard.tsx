@@ -695,12 +695,6 @@ export default function QueueBoard({
   const [viewMode, setViewMode] = useState<ViewMode>("daily");
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Update state if props change (Realtime from PatientPortal)
-  useEffect(() => {
-    if (initialAppointments) {
-      setAppointments(initialAppointments);
-    }
-  }, [initialAppointments]);
 
   useEffect(() => {
     Promise.all([
@@ -732,10 +726,13 @@ export default function QueueBoard({
       if (updates.status) {
         const updated = await updateAppointmentStatus(id, updates.status);
         setAppointments(apps => apps.map(a => a.id === id ? { ...a, status: updated.status } : a));
+        // Also trigger a background refetch to ensure full sync
+        fetchAppointments();
       }
     } catch (err) {
       console.error(err);
       alert("Failed to update status");
+      fetchAppointments();
     }
   };
 
@@ -789,3 +786,4 @@ export default function QueueBoard({
     </div>
   );
 }
+

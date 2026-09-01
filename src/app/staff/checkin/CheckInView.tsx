@@ -184,3 +184,4 @@ export default function CheckInView() {
     </div>
   );
 }
+
