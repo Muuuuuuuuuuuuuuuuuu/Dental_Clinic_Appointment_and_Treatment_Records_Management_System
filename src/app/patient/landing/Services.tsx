@@ -21,7 +21,6 @@ export default function Services({ onCTA }: { onCTA: () => void }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map((s, i) => {
-            const Icon = iconMap[s.iconName] || Smile;
             return (
               <div key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
                 className="group rounded-2xl p-6 cursor-pointer transition-all duration-300 animate-fade-in-up"
@@ -31,9 +30,6 @@ export default function Services({ onCTA }: { onCTA: () => void }) {
                   transform: hovered === i ? "translateY(-4px)" : "translateY(0)",
                   animationDelay: `${i * 0.1}s`,
                 }}>
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: s.color }}>
-                  <Icon size={22} style={{ color: "#1A365D" }} />
-                </div>
                 <h3 className="text-lg font-semibold mb-2" style={{ color: "#1A365D" }}>{s.title}</h3>
                 <p className="text-sm leading-relaxed mb-4" style={{ color: "#4A6080", fontWeight: 300 }}>{s.desc}</p>
                 <div className="flex items-center gap-1.5 mb-4 text-xs font-medium" style={{ color: "#4A6080" }}>
