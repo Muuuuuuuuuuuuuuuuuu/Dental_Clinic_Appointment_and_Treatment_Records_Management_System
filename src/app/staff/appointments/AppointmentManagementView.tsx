@@ -30,26 +30,8 @@ export default function AppointmentManagementView({
 
   useEffect(() => {
     fetchData();
-
-    const channel = supabase.channel('icemu-updates')
-      .on('broadcast', { event: 'appointments-updated' }, () => {
-        if (!initialAppointments) {
-          fetchAppointments().catch(console.error);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
-  // Update state if props change (Realtime from PatientPortal)
-  useEffect(() => {
-    if (initialAppointments) {
-      setAppointments(initialAppointments);
-    }
-  }, [initialAppointments]);
 
   const fetchData = () => {
     setLoading(true);
@@ -64,9 +46,6 @@ export default function AppointmentManagementView({
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const onUpdateAppt = async (id: number, updates: Partial<Appointment> & { reason?: string }) => {
     try {
@@ -438,3 +417,4 @@ export default function AppointmentManagementView({
     </div>
   );
 }
+

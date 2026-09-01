@@ -60,8 +60,19 @@ export default function PatientPortal() {
   const [loginEmail, setLoginEmail] = useState("");
   const [clinicStatus, setClinicStatus] = useState<ClinicStatus | null>(null);
   const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number} | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   
   const { appointments: sharedAppointments, setAppointments: setSharedAppointments } = useRealtimeAppointments();
+
+  const PORTAL_VIEWS: View[] = ["dashboard", "profile", "booking", "appointments", "history", "record"];
+
+  const updateView = (v: View) => {
+    setPortalView(v);
+    setView(v);
+    if (PORTAL_VIEWS.includes(v)) {
+      localStorage.setItem("supat_last_view", v);
+    }
+  };
 
   useEffect(() => {
     // Fetch clinic status data
@@ -70,7 +81,64 @@ export default function PatientPortal() {
     }).catch(console.error);
   }, []);
 
+  // Check Supabase session on mount to persist login
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: userData } = await supabase.from('users').select('role').eq('user_id', session.user.id).single();
+          const role = userData?.role || "patient";
+          const isPatient = role === "patient" || role === "คนไข้";
 
+          if (isPatient) {
+            const { getPatientProfileByUserId } = await import("../shared/supabaseApi");
+            const profile = await getPatientProfileByUserId(session.user.id) as any;
+            if (profile) {
+              setUser({
+                patientId: profile.patientId || null,
+                idCard: profile.idCard || "",
+                firstName: profile.firstName || "",
+                lastName: profile.lastName || "",
+                dob: profile.dob || "",
+                gender: profile.gender || "",
+                phone: profile.phone || "",
+                email: session.user.email || "",
+                emergencyName: profile.emergencyName || "",
+                emergencyPhone: profile.emergencyPhone || "",
+                emergencyRelationship: profile.emergencyRelationship || "",
+                conditions: profile.conditions || "",
+                allergies: profile.allergies || ""
+              });
+              setRole("patient");
+              setIsLoggedIn(true);
+              
+              // Restore last view or go to dashboard
+              const savedView = localStorage.getItem("supat_last_view") as View;
+              if (savedView && PORTAL_VIEWS.includes(savedView)) {
+                updateView(savedView);
+              } else {
+                updateView("dashboard");
+              }
+            }
+          } else {
+            let mappedRole: UserRole = "patient";
+            if (role === "admin" || role === "ผู้ดูแลระบบ") mappedRole = "admin";
+            else if (role === "dentist" || role === "doctor" || role === "ทันตแพทย์") mappedRole = "doctor";
+            else if (role === "staff" || role === "พนักงาน") mappedRole = "staff";
+            setRole(mappedRole);
+            setLoginEmail(session.user.email || "");
+            setIsLoggedIn(true);
+          }
+        }
+      } catch (err) {
+        console.error("Session restore error:", err);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+    checkSession();
+  }, []);
 
   const updateAppt = (id: number, updates: Partial<Appointment>) =>
     setSharedAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
@@ -98,8 +166,7 @@ export default function PatientPortal() {
     setUser(u);
     setRole("patient");
     setIsLoggedIn(true);
-    setPortalView("dashboard");
-    setView("dashboard");
+    updateView("dashboard");
   };
 
   const handleLoginRole = (r: UserRole, email?: string) => {
@@ -113,6 +180,8 @@ export default function PatientPortal() {
     setRole(null);
     setUser(null);
     setView("landing");
+    localStorage.removeItem("supat_last_view");
+    supabase.auth.signOut();
   };
 
   const handleRegisterSuccess = (email: string, formData?: RegForm, patientId?: number) => {
@@ -134,8 +203,7 @@ export default function PatientPortal() {
       });
       setRole("patient");
       setIsLoggedIn(true);
-      setPortalView("dashboard");
-      setView("dashboard");
+      updateView("dashboard");
     }
   };
 
@@ -150,7 +218,7 @@ export default function PatientPortal() {
   };
 
   const goCTA = () => {
-    if (isLoggedIn && role === "patient") { setPortalView("booking"); setView("booking"); }
+    if (isLoggedIn && role === "patient") { updateView("booking"); }
     else goLogin();
   };
 
@@ -166,23 +234,26 @@ export default function PatientPortal() {
   }
 
   // ─── Patient portal views ─────────────────────────────────────────────────
-  const PORTAL_VIEWS: View[] = ["dashboard", "profile", "booking", "appointments", "history", "record"];
   const isPortalView = PORTAL_VIEWS.includes(view);
+
+  if (isInitializing) {
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400">กำลังโหลดข้อมูล...</div>;
+  }
 
   if (isPortalView && isLoggedIn && role === "patient" && user) {
     return (
       <PortalLayout
         user={user}
         view={view}
-        setView={(v) => { setPortalView(v); setView(v); }}
+        setView={updateView}
         onLogout={handleLogout}
         onMainSite={() => setView("landing")}
       >
-        {view === "dashboard"    && <DashboardView user={user} setView={v => { setPortalView(v); setView(v); }} appointments={sharedAppointments} />}
+        {view === "dashboard"    && <DashboardView user={user} setView={updateView} appointments={sharedAppointments} />}
         {view === "profile"      && <ProfileView user={user} setUser={setUser} />}
         {view === "booking"      && (
           <BookingView 
-            setView={v => { setPortalView(v); setView(v); setFollowUpProps(null); }} 
+            setView={(v) => { updateView(v); setFollowUpProps(null); }} 
             initialService={followUpProps?.service}
             initialDoctor={followUpProps?.doctor}
             isFollowUp={followUpProps !== null}
@@ -193,13 +264,12 @@ export default function PatientPortal() {
         {view === "appointments" && (
           <AppointmentsView 
             user={user}
-            setView={v => { setPortalView(v); setView(v); }}
+            setView={updateView}
             appointments={sharedAppointments}
             onUpdateAppt={updateAppt}
             onBookFollowUp={(serviceId, doctorId) => {
               setFollowUpProps({ service: serviceId, doctor: doctorId });
-              setPortalView("booking");
-              setView("booking");
+              updateView("booking");
             }}
           />
         )}
@@ -207,8 +277,8 @@ export default function PatientPortal() {
         {view === "record" && (
           <DentalRecordView 
             user={user}
-            onBack={() => { setPortalView("dashboard"); setView("dashboard"); }} 
-            onBookAppointment={() => { setPortalView("booking"); setView("booking"); }} 
+            onBack={() => { updateView("dashboard"); }} 
+            onBookAppointment={() => { updateView("booking"); }} 
           />
         )}
       </PortalLayout>
@@ -245,7 +315,7 @@ export default function PatientPortal() {
         onLoginClick={goLogin}
         isLoggedIn={isLoggedIn}
         onPortal={() => {
-          if (role === "patient") { setPortalView("dashboard"); setView("dashboard"); }
+          if (role === "patient") { updateView("dashboard"); }
           else if (role === "doctor") setRole("doctor");
           else if (role === "admin") setRole("admin");
           else if (role === "staff") setRole("staff");

@@ -258,7 +258,7 @@ export default function StaffPortal({
   const [sideOpen, setSideOpen] = useState(false);
   
   // Clock-in & Network State
-  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [isClockedIn, setIsClockedIn] = useState(true);
 
   useIdleTimeout(() => {
     alert("ระบบได้ทำการออกจากระบบอัตโนมัติเนื่องจากไม่มีการใช้งาน");

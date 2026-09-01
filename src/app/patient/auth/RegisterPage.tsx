@@ -48,10 +48,10 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
     });
   }, []);
 
-  // Timeout for incomplete registration
+  // Timeout for incomplete registration (เริ่มนับตั้งแต่ step 1 = หลัง signUp ถูกเรียก)
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
-    if (step >= 2 && step <= 4) {
+    if (step >= 1 && step <= 4) {
       timeout = setTimeout(async () => {
         alert("หมดเวลาทำรายการ (5 นาที) กรุณาทำรายการใหม่");
         await cancelRegistration();
@@ -59,6 +59,20 @@ export default function RegisterPage({ onSuccess, onLogin, onBack }: { onSuccess
       }, 5 * 60 * 1000);
     }
     return () => clearTimeout(timeout);
+  }, [step]);
+
+  // ถ้าผู้ใช้ปิดแท็บ/ออกจากหน้าระหว่างสมัครสมาชิก (step 1-4) → ลบ Auth User ทิ้ง
+  useEffect(() => {
+    if (step < 1 || step > 4) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // แจ้งเตือนผู้ใช้ก่อนออก
+      e.preventDefault();
+      e.returnValue = "คุณกำลังออกจากหน้าสมัครสมาชิก ข้อมูลที่กรอกจะหายไป";
+      // ยิง cancelRegistration แบบ sync (best-effort) เพื่อลบ Auth User
+      cancelRegistration().catch(() => {});
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [step]);
 
   const set = (k: keyof RegForm, v: string) => setForm(f => ({ ...f, [k]: v }));
