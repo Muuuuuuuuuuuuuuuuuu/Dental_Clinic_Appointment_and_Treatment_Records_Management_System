@@ -30,8 +30,7 @@ import Hero from "./landing/Hero";
 import Services from "./landing/Services";
 import WhyUs from "./landing/WhyUs";
 import Doctors from "./landing/Doctors";
-import Promotions from "./landing/Promotions";
-import PublicAnnouncements from "./landing/PublicAnnouncements";
+
 import Contact from "./landing/Contact";
 import Footer from "./landing/Footer";
 
@@ -255,8 +254,7 @@ export default function PatientPortal() {
       <main>
         <Hero onCTA={goCTA} />
         <Services onCTA={goCTA} />
-        <PublicAnnouncements onCTA={goCTA} />
-        <Promotions onCTA={goCTA} />
+
         <WhyUs />
         <Doctors onCTA={goCTA} />
         <Contact onCTA={goCTA} />

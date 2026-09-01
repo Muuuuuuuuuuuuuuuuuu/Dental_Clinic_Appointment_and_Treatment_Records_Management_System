@@ -55,15 +55,15 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
     
     try {
       const added = await addLeaveRequest({
-        doctorId: staffUserId, // Using doctorId field to store user UUID for staff as well
+        doctorId: staffUserId,
         startDate: selectedDate,
-        endDate: selectedDate, 
+        endDate: selectedDate,
         leavePeriod: leavePeriod,
         reason: leaveType,
         status: "รอการอนุมัติ"
       });
       setLeaves([...leaves, {
-        id: added.leave_id || Date.now(),
+        id: added?.leave_id || Date.now(),
         doctorId: staffUserId,
         doctorName: staff?.name || "",
         startDate: selectedDate,

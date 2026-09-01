@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Settings, Megaphone, Percent, ArrowLeft, ChevronRight, Clock, Banknote } from "lucide-react";
-import { getServices, getAnnouncements, getPromotions } from "../../shared/supabaseApi";
+import { Settings, ArrowLeft, ChevronRight, Clock } from "lucide-react";
+import { getServices } from "../../shared/supabaseApi";
 import ServiceManagement from "../settings/ServiceManagement";
-import AnnouncementManagement from "../announcements/AnnouncementManagement";
-import PromotionManagement from "../announcements/PromotionManagement";
 import ClinicSettingsManagement from "../settings/ClinicSettingsManagement";
-import PackageManagement from "../settings/PackageManagement";
 
-type ClinicSubView = null | "services" | "announcements" | "promotions" | "packages" | "settings";
+type ClinicSubView = null | "services" | "settings";
 
 const CARD_DEFS = [
   {
@@ -18,33 +15,6 @@ const CARD_DEFS = [
     gradient: "linear-gradient(135deg, #667EEA 0%, #764BA2 100%)",
     bgLight: "#F0EDFF",
     countLabel: "บริการ",
-  },
-  {
-    key: "announcements" as const,
-    icon: Megaphone,
-    title: "ประกาศ",
-    desc: "แจ้งข่าวสารภายในองค์กรและประกาศสาธารณะ",
-    gradient: "linear-gradient(135deg, #1A365D 0%, #2D5F9A 100%)",
-    bgLight: "#EBF2FF",
-    countLabel: "ประกาศ",
-  },
-  {
-    key: "promotions" as const,
-    icon: Percent,
-    title: "โปรโมชั่น",
-    desc: "จัดการข้อเสนอพิเศษและโปรโมชั่นสำหรับลูกค้า",
-    gradient: "linear-gradient(135deg, #FF6B7E 0%, #FF8C9A 100%)",
-    bgLight: "#FFF0F2",
-    countLabel: "รายการ",
-  },
-  {
-    key: "packages" as const,
-    icon: Banknote,
-    title: "แพ็กเกจผ่อนชำระ",
-    desc: "จัดการแพ็กเกจและโปรโมชั่นผ่อนชำระจัดฟัน",
-    gradient: "linear-gradient(135deg, #10B981 0%, #047857 100%)",
-    bgLight: "#ECFDF5",
-    countLabel: "แพ็กเกจ",
   },
   {
     key: "settings" as const,
@@ -62,21 +32,14 @@ export default function ClinicHub() {
   const [counts, setCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    Promise.all([getServices(), getAnnouncements(), getPromotions()])
-      .then(([svc, ann, promo]) => {
-        setCounts({ services: svc.length, announcements: ann.length, promotions: promo.length });
-      })
+    getServices()
+      .then((svc) => setCounts({ services: svc.length }))
       .catch(console.error);
   }, []);
 
-  // Sub-view rendering
-  if (subView === "services") return <SubViewWrapper title="บริการ" onBack={() => setSubView(null)}><ServiceManagement /></SubViewWrapper>;
-  if (subView === "announcements") return <SubViewWrapper title="ประกาศ" onBack={() => setSubView(null)}><AnnouncementManagement /></SubViewWrapper>;
-  if (subView === "promotions") return <SubViewWrapper title="โปรโมชั่น" onBack={() => setSubView(null)}><PromotionManagement /></SubViewWrapper>;
-  if (subView === "packages") return <SubViewWrapper title="แพ็กเกจผ่อนชำระ" onBack={() => setSubView(null)}><PackageManagement /></SubViewWrapper>;
-  if (subView === "settings") return <SubViewWrapper title="ตั้งค่าเวลาและวันหยุด" onBack={() => setSubView(null)}><ClinicSettingsManagement /></SubViewWrapper>;
+  if (subView === "services") return <SubViewWrapper onBack={() => setSubView(null)}><ServiceManagement /></SubViewWrapper>;
+  if (subView === "settings") return <SubViewWrapper onBack={() => setSubView(null)}><ClinicSettingsManagement /></SubViewWrapper>;
 
-  // Hub card selector
   return (
     <div>
       <div className="mb-8">
@@ -86,7 +49,7 @@ export default function ClinicHub() {
         <p className="text-sm" style={{ color: "#4A6080" }}>เลือกหมวดหมู่ที่ต้องการจัดการ</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
         {CARD_DEFS.map((card) => (
           <button
             key={card.key}
@@ -94,7 +57,6 @@ export default function ClinicHub() {
             className="group text-left bg-white rounded-2xl overflow-hidden shadow-sm border transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
             style={{ borderColor: "rgba(26,54,93,0.08)" }}
           >
-            {/* Gradient header */}
             <div className="p-6 pb-4" style={{ background: card.gradient }}>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3"
                 style={{ backgroundColor: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }}>
@@ -102,15 +64,13 @@ export default function ClinicHub() {
               </div>
               <h3 className="text-lg font-bold text-white mb-0.5">{card.title}</h3>
             </div>
-
-            {/* Body */}
             <div className="p-6 pt-4">
               <p className="text-sm mb-4 leading-relaxed" style={{ color: "#4A6080" }}>
                 {card.desc}
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold px-3 py-1.5 rounded-full"
-                  style={{ backgroundColor: card.bgLight, color: card.gradient.includes("FF6B7E") ? "#E05B6E" : card.gradient.includes("1A365D") ? "#1A365D" : card.gradient.includes("F59E0B") ? "#D97706" : "#5B4DC7" }}>
+                  style={{ backgroundColor: card.bgLight, color: card.key === "settings" ? "#D97706" : "#5B4DC7" }}>
                   {card.key === "settings" ? "ข้อมูลทั่วไป" : (counts[card.key] !== undefined ? `${counts[card.key]} ${card.countLabel}` : "กำลังโหลด...")}
                 </span>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 group-hover:translate-x-1"
@@ -126,7 +86,7 @@ export default function ClinicHub() {
   );
 }
 
-function SubViewWrapper({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
+function SubViewWrapper({ onBack, children }: { onBack: () => void; children: React.ReactNode }) {
   return (
     <div>
       <button onClick={onBack}

@@ -492,7 +492,7 @@ export async function getLandingServices() {
       iconName: d.service_category?.icon_name || 'Smile',
       title: d.service_name,
       desc: d.description || `บริการระดับมืออาชีพ ใช้เวลาประมาณ ${d.estimated_time} นาที`,
-      price: `เริ่มต้น ${d.base_price.toLocaleString()} บาท`,
+      price: d.base_price ? `เริ่มต้น ${d.base_price.toLocaleString()} บาท` : 'แจ้งราคาหลังตรวจ',
       color: d.service_category?.color_code || '#FFE8EC',
       type: d.service_type || 'general',
       baseTimeMins: d.estimated_time || 30,

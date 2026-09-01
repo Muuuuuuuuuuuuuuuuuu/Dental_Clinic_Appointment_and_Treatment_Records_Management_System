@@ -38,6 +38,8 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   
   // Filter appointments based on timeframe and selectedDate
   const filteredAppts = appointments.filter(a => {
+    if (!a.date) return false; // ป้องกัน a.date เป็น null หรือ undefined
+    
     if (timeframe === "today") {
       return a.date === targetDateStr;
     } else if (timeframe === "week") {
