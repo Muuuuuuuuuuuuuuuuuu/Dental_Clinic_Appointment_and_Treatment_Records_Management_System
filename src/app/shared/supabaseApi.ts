@@ -2214,7 +2214,16 @@ export async function resendOTP(email: string) {
     type: 'signup',
     email: email
   });
-  if (error) throw error;
+  if (error) {
+    // Supabase Free Tier จำกัดการส่งอีเมล 2 ครั้ง/ชั่วโมง
+    if (error.message?.toLowerCase().includes('rate limit') || error.status === 429) {
+      throw new Error('ส่งรหัสได้เกินกำหนดแล้ว (สูงสุด 2 ครั้ง/ชั่วโมง) กรุณารอสักครู่แล้วลองใหม่');
+    }
+    if (error.message?.toLowerCase().includes('email not confirmed')) {
+      throw new Error('ไม่พบบัญชีที่รอยืนยัน กรุณาเริ่มสมัครสมาชิกใหม่');
+    }
+    throw new Error(error.message || 'ไม่สามารถส่งรหัส OTP ได้ กรุณาลองใหม่อีกครั้ง');
+  }
   return true;
 }
 export async function verifyOTP(email: string, otp: string) {
