@@ -174,13 +174,15 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     let isWorking = false;
 
     if (closure) {
-      cellBg = "bg-gray-50";
-      textColor = "text-gray-400";
+      cellBg = "bg-orange-50";
+      textColor = "text-orange-600";
+      indicators.push(<div key={`closure-${day}`} className="w-2 h-2 rounded-full bg-orange-500"></div>);
       tooltip = `ปิดคลินิก: ${closure.reason}`;
     } else if (isClinicOff) {
       // Clinic-level weekly off day — takes priority over personal schedule
-      cellBg = "bg-gray-50";
-      textColor = "text-gray-400";
+      cellBg = "bg-orange-50";
+      textColor = "text-orange-600";
+      indicators.push(<div key={`off-${day}`} className="w-2 h-2 rounded-full bg-orange-500"></div>);
       tooltip = "คลินิกปิดทำการ (วันหยุดประจำสัปดาห์)";
     } else if (leave) {
       if (leave.status === "รออนุมัติ") {
@@ -193,7 +195,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
           cellBg = "bg-red-50";
           textColor = "text-red-700";
           indicators.push(<div key="full" className="w-2 h-2 rounded-full bg-red-500"></div>);
-          tooltip = `ลา${leave.leaveType}: ${leave.reason}`;
+          tooltip = `${leave.leaveType}: ${leave.reason}`;
         }
       } else {
          // Rejected - treat as normal day but show a clear rejected dot
