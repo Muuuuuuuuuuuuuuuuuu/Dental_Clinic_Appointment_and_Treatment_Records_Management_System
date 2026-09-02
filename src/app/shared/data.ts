@@ -48,6 +48,16 @@ export interface Appointment {
   emergencyRelationship?: string;
   note?: string;
   odontogramData?: Record<number, string>;
+  walkInRegistration?: {
+    citizenId: string;
+    firstName: string;
+    lastName: string;
+    gender: string;
+    dob: string;
+    address: string;
+    email?: string;
+    password?: string;
+  };
 }
 
 export interface DentistInfo {

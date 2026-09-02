@@ -1370,34 +1370,80 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   // 2. Resolve Patient ID
   let finalPatientId = appointment.patientId;
   if (!finalPatientId) {
-    const { data: patData } = await supabase.from('patient').select('patient_id, users!inner(profile!inner(first_name, last_name, phone_number))');
+    const { data: patData } = await supabase.from('patient').select('patient_id, users!inner(profile!inner(first_name, last_name, phone_number, citizen_id))');
     if (patData && patData.length > 0) {
-      // 🐛 BUG FIX: Use strict phone number matching only. 
-      // Do not use fuzzy name matching (.includes) to prevent merging wrong patient records.
+      // 🐛 BUG FIX: Use strict matching. Match by Citizen ID first, fallback to phone number.
       const matched = patData.find((p: any) =>
-        appointment.patientPhone && p.users?.profile?.phone_number === appointment.patientPhone
+        (appointment.walkInRegistration && p.users?.profile?.citizen_id === appointment.walkInRegistration.citizenId) ||
+        (appointment.patientPhone && p.users?.profile?.phone_number === appointment.patientPhone)
       );
       if (matched) finalPatientId = matched.patient_id;
     }
 
     if (!finalPatientId) {
-      const mockUserId = crypto.randomUUID();
-      const mockCitizenId = '99' + Math.floor(Math.random() * 100000000000).toString().padStart(11, '0');
-      const names = appointment.patientName.split(' ');
-      await supabase.from('profile').insert({
-        citizen_id: mockCitizenId,
-        first_name: names[0] || 'Unknown',
-        last_name: names.slice(1).join(' ') || '',
-        phone_number: appointment.patientPhone || ''
-      });
-      await supabase.from('users').insert({
-        user_id: mockUserId,
-        citizen_id: mockCitizenId,
-        role: 'คนไข้',
-        account_status: 'active'
-      });
-      const { data: newPat } = await supabase.from('patient').insert({ user_id: mockUserId }).select().single();
-      finalPatientId = newPat.patient_id;
+      if (appointment.walkInRegistration) {
+        const reg = appointment.walkInRegistration;
+        let finalUserId = crypto.randomUUID(); // Default to mock ID
+
+        if (reg.email && reg.password) {
+          // Scenario A: Create real Auth user
+          const adminAuthClient = createClient(
+            import.meta.env.VITE_SUPABASE_URL || '',
+            import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+          );
+          const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+            email: reg.email,
+            password: reg.password,
+            email_confirm: true
+          });
+          if (authErr) throw new Error(`ไม่สามารถสร้างบัญชีผู้ใช้ได้: ${authErr.message}`);
+          if (authData.user) {
+            finalUserId = authData.user.id;
+          }
+        }
+
+        // Upsert Profile
+        await supabase.from('profile').upsert({
+          citizen_id: reg.citizenId,
+          first_name: reg.firstName,
+          last_name: reg.lastName,
+          phone_number: appointment.patientPhone || '',
+          gender: reg.gender,
+          birth_date: reg.dob || null,
+          current_address: reg.address || null
+        }, { onConflict: 'citizen_id' });
+
+        // Upsert Users
+        await supabase.from('users').upsert({
+          user_id: finalUserId,
+          citizen_id: reg.citizenId,
+          email: reg.email || null,
+          role: 'คนไข้',
+          account_status: 'active'
+        }, { onConflict: 'user_id' });
+
+        const { data: newPat } = await supabase.from('patient').insert({ user_id: finalUserId }).select().single();
+        finalPatientId = newPat.patient_id;
+      } else {
+        // Fallback for old mock logic
+        const mockUserId = crypto.randomUUID();
+        const mockCitizenId = '99' + Math.floor(Math.random() * 100000000000).toString().padStart(11, '0');
+        const names = appointment.patientName.split(' ');
+        await supabase.from('profile').insert({
+          citizen_id: mockCitizenId,
+          first_name: names[0] || 'Unknown',
+          last_name: names.slice(1).join(' ') || '',
+          phone_number: appointment.patientPhone || ''
+        });
+        await supabase.from('users').insert({
+          user_id: mockUserId,
+          citizen_id: mockCitizenId,
+          role: 'คนไข้',
+          account_status: 'active'
+        });
+        const { data: newPat } = await supabase.from('patient').insert({ user_id: mockUserId }).select().single();
+        finalPatientId = newPat.patient_id;
+      }
     }
   }
 
@@ -1598,7 +1644,8 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
       end_time_est: appointment.time ? endTimeStr : null,
       appointment_status: appointment.status,
       channel: appointment.source === 'doctor' ? 'Walk-in' : 'ออนไลน์',
-      plan_id: appointment.paymentPlanId || null
+      plan_id: appointment.paymentPlanId || null,
+      note: appointment.note || null
     })
     .select()
     .single();
@@ -2427,6 +2474,9 @@ export async function savePatientData(form: RegForm) {
 
   // gender ต้องเป็น 'ชาย' หรือ 'หญิง' เท่านั้น (ตาม CHECK constraint)
   const validGender = (form.gender === 'ชาย' || form.gender === 'หญิง') ? form.gender : null;
+  // Check if old user exists by citizen_id (for Account Linking)
+  const { data: oldUser } = await supabase.from('users').select('user_id').eq('citizen_id', cleanIdCard).maybeSingle();
+
   // Upsert into Profile (handles case where trigger may have already created a record)
   const { error: pErr } = await supabase.from('profile').upsert({
     citizen_id: cleanIdCard,
@@ -2449,26 +2499,39 @@ export async function savePatientData(form: RegForm) {
   }, { onConflict: 'user_id' });
   if (uErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลบัญชี: ${uErr.message}`);
 
-  // Check if patient record already exists before inserting
-  const { data: existingPatient } = await supabase
-    .from('patient')
-    .select('patient_id')
-    .eq('user_id', userId)
-    .maybeSingle();
-
   let returnedPatientId: number;
 
-  if (!existingPatient) {
-    // Insert into Patient only if it doesn't exist yet
-    const { data: patData, error: patErr } = await supabase.from('patient').insert({
-      user_id: userId
-    }).select('patient_id').single();
-
-    if (patErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลคนไข้: ${patErr.message}`);
-    returnedPatientId = patData.patient_id;
+  if (oldUser && oldUser.user_id !== userId) {
+    // ACCOUNT LINKING: They walked in before (mock ID), now they registered online
+    const { data: linkedPat } = await supabase.from('patient').update({ user_id: userId }).eq('user_id', oldUser.user_id).select('patient_id').maybeSingle();
+    if (linkedPat) {
+      returnedPatientId = linkedPat.patient_id;
+    } else {
+      const { data: patData } = await supabase.from('patient').insert({ user_id: userId }).select('patient_id').single();
+      returnedPatientId = patData.patient_id;
+    }
+    // Keep db clean
+    await supabase.from('users').delete().eq('user_id', oldUser.user_id);
   } else {
-    // Patient already exists, we use its ID
-    returnedPatientId = existingPatient.patient_id;
+    // Normal Check if patient record already exists before inserting
+    const { data: existingPatient } = await supabase
+      .from('patient')
+      .select('patient_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!existingPatient) {
+      // Insert into Patient only if it doesn't exist yet
+      const { data: patData, error: patErr } = await supabase.from('patient').insert({
+        user_id: userId
+      }).select('patient_id').single();
+
+      if (patErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลคนไข้: ${patErr.message}`);
+      returnedPatientId = patData.patient_id;
+    } else {
+      // Patient already exists, we use its ID
+      returnedPatientId = existingPatient.patient_id;
+    }
   }
 
   // Update Emergency Contact
