@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, AppointmentStatus } from "../../shared/data";
-import { supabase, processPaymentApi, addAppointment } from "../../shared/supabaseApi";
+import { supabase, processPaymentApi, addAppointment, getClinicTimeSlots, TimeSlotStatus } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function PaymentView({ 
@@ -36,6 +36,21 @@ export default function PaymentView({
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpTime, setFollowUpTime] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeSlots, setTimeSlots] = useState<TimeSlotStatus[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    if (!followUp || isOpenTicket || !followUpDate) {
+      setTimeSlots([]);
+      return;
+    }
+    setIsLoadingSlots(true);
+    getClinicTimeSlots(followUpDate, followUp.serviceId || 1, isBound ? followUp.doctorId : undefined, followUp.patientId).then(slots => {
+      setTimeSlots(slots);
+    }).finally(() => {
+      setIsLoadingSlots(false);
+    });
+  }, [followUpDate, isOpenTicket, followUp, isBound]);
 
   useEffect(() => {
     if (initialAppointments) {
@@ -267,8 +282,21 @@ export default function PaymentView({
               <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>ใบสรุปการรักษาจากแพทย์</h3>
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
                 <div>
-                  <p className="font-semibold text-sm mb-1" style={{ color: "#1A365D" }}>หัตถการ / บริการที่ทำ</p>
-                  {(selectedAppt.treatmentServices && selectedAppt.treatmentServices.length > 0) ? (
+                  <p className="font-semibold text-sm mb-2" style={{ color: "#1A365D" }}>หัตถการ / บริการที่ทำ</p>
+                  {(selectedAppt.detailedServices && selectedAppt.detailedServices.length > 0) ? (
+                    <div className="space-y-1.5">
+                      {selectedAppt.detailedServices.map((s, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm py-1.5 px-3 rounded-lg bg-white border border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium" style={{ color: "#1D6FA4" }}>{s.name}</span>
+                            {s.locationCode && <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">ซี่ {s.locationCode}</span>}
+                            {s.qty > 1 && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">x{s.qty}</span>}
+                          </div>
+                          <span className="font-semibold" style={{ color: "#1A365D" }}>฿{(s.price * s.qty).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (selectedAppt.treatmentServices && selectedAppt.treatmentServices.length > 0) ? (
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {selectedAppt.treatmentServices.map(s => (
                         <span key={s} className="text-[11px] px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: "white", color: "#1D6FA4", border: "1px solid #E8F4FF" }}>
@@ -543,15 +571,39 @@ export default function PaymentView({
                       </label>
 
                       {!isOpenTicket && (
-                        <div className="grid grid-cols-2 gap-3 p-4 rounded-xl border border-gray-200 bg-white">
+                        <div className="grid grid-cols-1 gap-3 p-4 rounded-xl border border-gray-200 bg-white">
                           <div>
                             <label className="text-xs font-bold block mb-1" style={{ color: "#4A6080" }}>วันที่นัด</label>
-                            <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none border border-gray-200" style={{ color: "#1A365D" }} />
+                            <input type="date" value={followUpDate} onChange={e => { setFollowUpDate(e.target.value); setFollowUpTime(''); }} className="w-full px-3 py-2 rounded-lg text-sm outline-none border border-gray-200" style={{ color: "#1A365D" }} />
                           </div>
-                          <div>
-                            <label className="text-xs font-bold block mb-1" style={{ color: "#4A6080" }}>เวลา</label>
-                            <input type="time" value={followUpTime} onChange={e => setFollowUpTime(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none border border-gray-200" style={{ color: "#1A365D" }} />
-                          </div>
+                          {followUpDate && (
+                            <div>
+                              <label className="text-xs font-bold block mb-2" style={{ color: "#4A6080" }}>เวลาที่ว่าง</label>
+                              {isLoadingSlots ? (
+                                <div className="text-xs text-center py-4 text-gray-500">กำลังตรวจสอบคิวว่าง...</div>
+                              ) : timeSlots.length > 0 ? (
+                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+                                  {timeSlots.map((s, i) => {
+                                    const isAvail = s.status === 'Available';
+                                    return (
+                                      <button key={i}
+                                        disabled={!isAvail}
+                                        onClick={() => setFollowUpTime(s.time)}
+                                        className={`py-1.5 px-2 rounded-lg text-xs font-semibold text-center border-2 transition-all ${
+                                          followUpTime === s.time ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" :
+                                          !isAvail ? "border-gray-100 bg-gray-50 text-gray-400 opacity-60 cursor-not-allowed" :
+                                          "border-transparent bg-gray-100 text-[#4A6080] hover:bg-blue-50 hover:text-blue-600"
+                                        }`}>
+                                        {s.time}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-center py-4 text-red-500 bg-red-50 rounded-lg border border-red-100">ไม่มีคิวว่างในวันนี้ หรือหมอไม่ได้เข้าเวร</div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -581,7 +633,7 @@ export default function PaymentView({
                             doctorId: isBound ? followUp.doctorId : undefined,
                             date: isOpenTicket ? '' : followUpDate,
                             time: isOpenTicket ? '' : followUpTime,
-                            status: isOpenTicket ? 'ยืนยันการจอง' : 'ยืนยันการจอง',
+                            status: isOpenTicket ? 'รอการยืนยัน' : 'ยืนยันการจอง',
                             source: 'doctor',
                             note: isBound ? `แพทย์ประจำเคส: ${followUp.doctorName}` : ''
                           } as any);

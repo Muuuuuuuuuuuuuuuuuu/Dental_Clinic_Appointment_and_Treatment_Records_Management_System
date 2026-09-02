@@ -39,6 +39,7 @@ export interface Appointment {
   allergies: string;
   treatmentNotes?: string;
   treatmentServices?: string[];
+  detailedServices?: any[];
   recommendations?: string;
   cost?: number;
   paid?: boolean;

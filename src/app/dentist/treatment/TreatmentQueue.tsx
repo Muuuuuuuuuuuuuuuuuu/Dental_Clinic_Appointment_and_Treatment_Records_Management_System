@@ -52,7 +52,12 @@ export default function TreatmentQueue({
   }, []);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [recording, setRecording] = useState<number | null>(null);
-  const [form, setForm] = useState<{ notes: string; recommendations: string; services: {name: string, qty: number}[]; actualCost: number | "" }>({ notes: "", recommendations: "", services: [], actualCost: "" });
+  const [form, setForm] = useState<{ 
+    notes: string; 
+    recommendations: string; 
+    services: { id: number; name: string; qty: number; price: number; locationCode?: string }[]; 
+    actualCost: number | "" 
+  }>({ notes: "", recommendations: "", services: [], actualCost: "" });
   const [toothData, setToothData] = useState<Record<number, ToothStatus>>({});
   const [isChild, setIsChild] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
@@ -98,24 +103,25 @@ export default function TreatmentQueue({
       return a.time.localeCompare(b.time);
     });
 
-  const incrementService = (s: string) => {
+  const incrementService = (svc: any, tooth?: number) => {
     setForm(f => {
-      const existing = f.services.find(x => x.name === s);
+      const location = tooth ? String(tooth) : (svc.applyTo === 'MOUTH' || svc.applyTo === 'ทั้งปาก' ? 'MOUTH' : undefined);
+      const existing = f.services.find(x => x.id === svc.id && x.locationCode === location);
       if (existing) {
-        return { ...f, services: f.services.map(x => x.name === s ? { ...x, qty: x.qty + 1 } : x) };
+        return { ...f, services: f.services.map(x => x === existing ? { ...x, qty: x.qty + 1 } : x) };
       }
-      return { ...f, services: [...f.services, { name: s, qty: 1 }] };
+      return { ...f, services: [...f.services, { id: svc.id, name: svc.name, qty: 1, price: svc.basePrice || 0, locationCode: location }] };
     });
   };
 
-  const decrementService = (s: string, e: React.MouseEvent) => {
+  const decrementService = (svcId: number, location: string | undefined, e: React.MouseEvent) => {
     e.stopPropagation();
     setForm(f => {
-      const existing = f.services.find(x => x.name === s);
+      const existing = f.services.find(x => x.id === svcId && x.locationCode === location);
       if (existing && existing.qty > 1) {
-        return { ...f, services: f.services.map(x => x.name === s ? { ...x, qty: x.qty - 1 } : x) };
+        return { ...f, services: f.services.map(x => x === existing ? { ...x, qty: x.qty - 1 } : x) };
       }
-      return { ...f, services: f.services.filter(x => x.name !== s) };
+      return { ...f, services: f.services.filter(x => x !== existing) };
     });
   };
 
@@ -161,8 +167,7 @@ export default function TreatmentQueue({
     }
 
     const cost = form.services.reduce((sum, sItem) => {
-      const svc = services.find(ms => ms.name === sItem.name);
-      return sum + ((svc?.basePrice ?? 0) * sItem.qty);
+      return sum + ((sItem.price ?? 0) * sItem.qty);
     }, 0);
     
     const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
@@ -171,12 +176,12 @@ export default function TreatmentQueue({
     setForm(f => ({ ...f, actualCost: suggestedCost > 0 ? suggestedCost : "" }));
   }, [form.services, toothData, services, selectedPlanMonth, activePlan, activeInstallments]);
 
-  const onUpdateAppt = async (id: number, updates: Partial<Appointment>) => {
+  const onUpdateAppt = async (id: number, updates: Partial<Appointment>, detailedServices?: any[]) => {
     try {
       if (updates.status) {
         if (updates.status === "รอชำระเงิน" && updates.treatmentNotes !== undefined) {
           // บันทึก Supabase ก่อน แล้วค่อยอัปเดต UI
-          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id, activePlan?.plan_id, selectedPlanMonth || undefined);
+          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id, activePlan?.plan_id, selectedPlanMonth || undefined, detailedServices);
         } else {
           await updateAppointmentStatus(id, updates.status);
         }
@@ -222,7 +227,7 @@ export default function TreatmentQueue({
   };
 
   const submitTreatment = async (appt: Appointment) => {
-    const formattedServices = form.services.map(s => `${s.name}${s.qty > 1 ? ` x${s.qty}` : ''}`);
+    const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
     await onUpdateAppt(appt.id, {
       status: "รอชำระเงิน",
       treatmentNotes: form.notes,
@@ -230,7 +235,8 @@ export default function TreatmentQueue({
       recommendations: form.recommendations,
       cost: Number(form.actualCost) || 0,
       odontogramData: { ...toothData, wholeMouth: false } as any
-    });
+    }, form.services); // Pass the raw service items here
+    
     setRecording(null);
     setForm({ notes: "", recommendations: "", services: [], actualCost: "" });
     setToothData({});
@@ -260,9 +266,11 @@ export default function TreatmentQueue({
           tooth={selectedToothForAction}
           services={services}
           onClose={() => setSelectedToothForAction(null)}
-          onAction={(status, serviceName, notes) => {
+          onAction={(status, service, notes) => {
             setToothData(prev => ({ ...prev, [selectedToothForAction]: status }));
-            if (serviceName) incrementService(serviceName);
+            if (service) {
+              incrementService(service, selectedToothForAction);
+            }
             if (notes) {
               setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n(${notes})` : `(${notes})` }));
             }
@@ -566,10 +574,10 @@ export default function TreatmentQueue({
                         <p className="text-[10px] mb-2 text-slate-500">ตัวเลือกด้านล่างนี้ใช้สำหรับหัตถการที่ไม่ได้ผูกกับซี่ฟันใดซี่ฟันหนึ่งโดยเฉพาะ เช่น ขูดหินปูน จัดฟัน ฟอกสีฟัน ฯลฯ</p>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
                           {services.filter(s => s.active && s.applyTo !== 'TOOTH').map(s => {
-                            const existing = form.services.find(x => x.name === s.name);
+                            const existing = form.services.find(x => x.id === s.id);
                             const isSelected = !!existing;
                             return (
-                              <button key={s.id} onClick={() => incrementService(s.name)}
+                              <button key={s.id} onClick={() => incrementService(s)}
                                 className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] text-left transition-all leading-tight relative"
                                 style={{
                                   backgroundColor: isSelected ? "#FFE8EC" : "#F0F4F8",
@@ -578,11 +586,11 @@ export default function TreatmentQueue({
                                 }}>
                                 <div className="flex items-center gap-1.5 flex-1">
                                   {isSelected ? (
-                                    <span className="font-bold text-[#FF6B7E] flex-shrink-0">x{existing.qty}</span>
+                                    <div className="flex-shrink-0 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center">
+                                      <CheckCircle size={10} />
+                                    </div>
                                   ) : (
-                                    <span className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0 flex items-center justify-center">
-                                      <Plus size={8} className="text-gray-400" />
-                                    </span>
+                                    <div className="flex-shrink-0 w-4 h-4 rounded-full border border-gray-300"></div>
                                   )}
                                   <span className="leading-[1.2]">{s.name}</span>
                                 </div>

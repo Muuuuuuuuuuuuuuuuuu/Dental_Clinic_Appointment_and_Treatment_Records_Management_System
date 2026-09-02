@@ -10,7 +10,7 @@ export default function ToothActionModal({
 }: { 
   tooth: number, 
   onClose: () => void, 
-  onAction: (status: ToothStatus, serviceName?: string, notes?: string) => void,
+  onAction: (status: ToothStatus, service?: any, notes?: string) => void,
   services?: any[] 
 }) {
   const [step, setStep] = useState<"main" | "select_service">("main");
@@ -28,7 +28,7 @@ export default function ToothActionModal({
   const handleServiceClick = (service: any) => {
     const isExtraction = service.name.includes("ถอน") || service.name.includes("ผ่าคุด") || service.category?.includes("ศัลยกรรม");
     const status = isExtraction ? "cross" : "blue";
-    onAction(status, service.name, `ทำ ${service.name} ซี่ ${tooth}`);
+    onAction(status, service, `ทำ ${service.name} ซี่ ${tooth}`);
   };
 
   return (
