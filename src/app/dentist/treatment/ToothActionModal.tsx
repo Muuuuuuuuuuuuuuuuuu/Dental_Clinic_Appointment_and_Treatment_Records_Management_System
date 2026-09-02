@@ -16,7 +16,11 @@ export default function ToothActionModal({
   const [step, setStep] = useState<"main" | "select_service">("main");
 
   // Filter out services that apply to the whole mouth (not specific to a tooth)
-  const filteredServices = services.filter(s => s.applyTo !== 'mouth');
+  const filteredServices = services.filter(s => {
+    const isMouth = s.applyTo?.toLowerCase() === 'mouth' || s.applyTo === 'ทั้งปาก';
+    const isMouthKeyword = s.name.includes('ขูดหินปูน') || s.name.includes('จัดฟัน') || s.name.includes('ตรวจสุขภาพ') || s.name.includes('ฟลูออไรด์');
+    return !isMouth && !isMouthKeyword;
+  });
   
   // Group filtered services by category
   const categories = Array.from(new Set(filteredServices.map(s => s.category || "อื่นๆ")));

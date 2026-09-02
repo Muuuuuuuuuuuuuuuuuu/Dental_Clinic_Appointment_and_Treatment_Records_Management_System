@@ -3,12 +3,13 @@ import { Users, UserPlus, FileText, Settings, Calendar, Play, TrendingUp, UserCh
 
 import { Appointment, AppointmentStatus, DentistInfo, LeaveRequest, STATUS_COLORS, AdminView } from "../../shared/data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { getAppointments, getDentists, getLeaveRequests, getDoctorSchedules } from "../../shared/supabaseApi";
+import { getDentists, getLeaveRequests, getDoctorSchedules } from "../../shared/supabaseApi";
+import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 type Timeframe = "today" | "week" | "month";
 
 export default function AdminDashboard({ setView }: { setView: (v: AdminView) => void }) {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { appointments, loading: apptsLoading } = useRealtimeAppointments();
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
@@ -20,12 +21,10 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
 
   useEffect(() => {
     Promise.all([
-      getAppointments(),
       getDentists(),
       getLeaveRequests(),
       getDoctorSchedules()
-    ]).then(([appts, dents, lvs, scheds]) => {
-      setAppointments(appts);
+    ]).then(([dents, lvs, scheds]) => {
       setDentists(dents);
       setLeaves(lvs);
       setDoctorSchedules(scheds);
@@ -58,6 +57,10 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
 
   const revenue = filteredAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
   const pending = leaves.filter(l => l.status === "รออนุมัติ").length;
+
+  if (loading || apptsLoading) return (
+    <div className="p-8 flex justify-center items-center h-64">Loading...</div>
+  );
 
   // Calculate dentists on duty
   const targetDayOfWeek = selectedDate.getDay();
