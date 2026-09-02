@@ -7,6 +7,8 @@ import ToothActionModal from './ToothActionModal';
 interface ServiceOption {
   service_id: number;
   service_name: string;
+  category?: string;
+  apply_to?: string;
 }
 
 interface PlanDetail {
@@ -48,7 +50,7 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
   }, [existingPlan]);
 
   const fetchServices = async () => {
-    const { data } = await supabase.from('service').select('service_id, service_name').eq('is_active', true);
+    const { data } = await supabase.from('service').select('service_id, service_name, category, apply_to').eq('is_active', true);
     if (data) setAvailableServices(data);
   };
 
@@ -196,6 +198,7 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
       {selectedToothForAction && (
         <ToothActionModal 
           tooth={selectedToothForAction}
+          services={availableServices.map(s => ({ id: s.service_id, name: s.service_name, category: s.category, applyTo: s.apply_to }))}
           onClose={() => setSelectedToothForAction(null)}
           onAction={handleToothAction}
         />

@@ -258,6 +258,7 @@ export default function TreatmentQueue({
       {selectedToothForAction && (
         <ToothActionModal 
           tooth={selectedToothForAction}
+          services={services}
           onClose={() => setSelectedToothForAction(null)}
           onAction={(status, serviceName, notes) => {
             setToothData(prev => ({ ...prev, [selectedToothForAction]: status }));

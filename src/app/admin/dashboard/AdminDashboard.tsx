@@ -74,7 +74,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
     Array.from({ length: 12 }).map((_, i) => {
       const hour = i + 9;
       const hourPrefix = hour.toString().padStart(2, '0');
-      const timeLabel = `${hourPrefix}:00`;
+      const timeLabel = `${hourPrefix}:00-${hourPrefix}:59`;
       const hourAppts = filteredAppts.filter(a => a.time.startsWith(`${hourPrefix}:`));
       const hourRev = hourAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
       return { day: timeLabel, appts: hourAppts.length, revenue: hourRev, fullDate: targetDateStr };
