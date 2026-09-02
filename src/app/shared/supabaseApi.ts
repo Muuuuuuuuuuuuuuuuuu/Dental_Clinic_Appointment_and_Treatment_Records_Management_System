@@ -1451,7 +1451,7 @@ export async function getPatientTreatmentRecords(patientId?: number) {
         try { treatmentServices = JSON.parse(parts[0]); } catch (e) { }
         rawNote = parts.slice(1).join("|||");
       }
-      }
+      
       const noteParts = rawNote.split('\\nคำแนะนำ: ');
       treatmentNotes = noteParts[0];
       if (noteParts.length > 1) recommendations = noteParts[1];
