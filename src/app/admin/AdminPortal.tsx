@@ -4,10 +4,10 @@ import UserProfile from "../shared/components/UserProfile";
 import ScheduleHub from "./hubs/ScheduleHub";
 import ClinicHub from "./hubs/ClinicHub";
 import UsersHub from "./hubs/UsersHub";
-import SettingsHub from "./hubs/SettingsHub";
+import UserManual from "./help/UserManual";
 
 import {
-  Home, LogOut, Smile, Menu, Calendar, Clipboard, Users, Settings, Bell
+  Home, LogOut, Smile, Menu, Calendar, Clipboard, Users, BookOpen, Bell
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -41,14 +41,14 @@ function AdminStatusBanner() {
   );
 }
 
-type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub" | "profile";
+type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "manual" | "profile";
 
 const ADMIN_NAV: { key: AdminView; label: string; icon: any }[] = [
   { key: "dashboard",    label: "แดชบอร์ด",           icon: Home },
   { key: "schedule-hub", label: "ตารางเวรและการลา",    icon: Calendar },
   { key: "clinic-hub",   label: "จัดการคลินิก",        icon: Clipboard },
   { key: "users-hub",    label: "จัดการผู้ใช้งาน",      icon: Users },
-  { key: "settings-hub", label: "ตั้งค่า",             icon: Settings },
+  { key: "manual",       label: "คู่มือการใช้งาน",       icon: BookOpen },
 ];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -184,9 +184,9 @@ export default function AdminPortal({
           {view === "dashboard"    && <AdminDashboard setView={setView} />}
           {view === "schedule-hub" && <ScheduleHub />}
           {view === "clinic-hub"   && <ClinicHub />}
-          {view === "users-hub"    && <UsersHub />}
-          {view === "settings-hub" && <SettingsHub />}
-          {view === "profile"      && <UserProfile user={adminInfo} type="admin" />}
+          { view === "users-hub"    && <UsersHub />}
+          { view === "manual"       && <UserManual />}
+          { view === "profile"      && <UserProfile user={adminInfo} type="admin" />}
         </main>
       </div>
     </div>

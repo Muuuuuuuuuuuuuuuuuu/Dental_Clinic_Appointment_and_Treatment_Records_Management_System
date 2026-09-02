@@ -3,7 +3,7 @@ import { Users, UserPlus, FileText, Settings, Calendar, Play, TrendingUp, UserCh
 
 import { Appointment, AppointmentStatus, DentistInfo, LeaveRequest, STATUS_COLORS, AdminView } from "../../shared/data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { getAppointments, getDentists, getLeaveRequests } from "../../shared/supabaseApi";
+import { getAppointments, getDentists, getLeaveRequests, getDoctorSchedules } from "../../shared/supabaseApi";
 
 type Timeframe = "today" | "week" | "month";
 
@@ -11,6 +11,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showApptModal, setShowApptModal] = useState(false);
 
@@ -21,11 +22,13 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
     Promise.all([
       getAppointments(),
       getDentists(),
-      getLeaveRequests()
-    ]).then(([appts, dents, lvs]) => {
+      getLeaveRequests(),
+      getDoctorSchedules()
+    ]).then(([appts, dents, lvs, scheds]) => {
       setAppointments(appts);
       setDentists(dents);
       setLeaves(lvs);
+      setDoctorSchedules(scheds);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -55,6 +58,16 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
 
   const revenue = filteredAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
   const pending = leaves.filter(l => l.status === "รออนุมัติ").length;
+
+  // Calculate dentists on duty
+  const targetDayOfWeek = selectedDate.getDay();
+  let onDutyDentistsCnt = 0;
+  if (timeframe === "today") {
+    onDutyDentistsCnt = new Set(doctorSchedules.filter(s => s.dayOfWeek === targetDayOfWeek && !s.isOff).map(s => s.dentistId)).size;
+  } else {
+    // For week/month, show total active dentists
+    onDutyDentistsCnt = new Set(doctorSchedules.filter(s => !s.isOff).map(s => s.dentistId)).size;
+  }
 
   // Chart data
   const chartData = timeframe === "today" ?
@@ -144,7 +157,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         {[
           { label: "นัดหมาย", val: filteredAppts.length, icon: Calendar, bg: "#E8F4FF", ic: "#1D6FA4" },
           { label: "รายได้", val: `฿${revenue.toLocaleString()}`, icon: TrendingUp, bg: "#E8FFF0", ic: "#1B7A3E" },
-          { label: "แพทย์ออกตรวจ", val: new Set(filteredAppts.map(a => a.doctorId).filter(Boolean)).size, icon: UserCheck, bg: "#FFE8EC", ic: "#FF6B7E" },
+          { label: "แพทย์ออกตรวจ", val: onDutyDentistsCnt, icon: UserCheck, bg: "#FFE8EC", ic: "#FF6B7E" },
           { label: "รออนุมัติลา", val: pending, icon: AlertCircle, bg: "#FFF3E0", ic: "#E65100" },
         ].map(s => (
           <div key={s.label} className="rounded-xl bg-white px-4 py-3 cursor-pointer hover:shadow-md transition-shadow flex items-center gap-3"

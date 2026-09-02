@@ -792,6 +792,66 @@ export async function getPatients() {
   }) as PatientInfo[];
 }
 
+export async function searchPatientByKeyword(keyword: string): Promise<PatientInfo[]> {
+  const cleanKeyword = keyword.trim();
+  let userIds: number[] = [];
+
+  if (cleanKeyword.includes('@')) {
+    const { data } = await supabase.from('users').select('user_id').eq('email', cleanKeyword);
+    if (data) userIds = data.map(d => d.user_id);
+  } else if (cleanKeyword.replace(/-/g, '').length === 13 && /^\d+$/.test(cleanKeyword.replace(/-/g, ''))) {
+    const unformattedId = cleanKeyword.replace(/-/g, '');
+    const { data } = await supabase.from('users').select('user_id').eq('citizen_id', unformattedId);
+    if (data) userIds = data.map(d => d.user_id);
+  } else {
+    // try phone, first_name, last_name
+    const searchPattern = `%${cleanKeyword}%`;
+    const { data } = await supabase.from('profile')
+      .select('user_id')
+      .or(`phone_number.eq.${cleanKeyword},first_name.ilike.${searchPattern},last_name.ilike.${searchPattern}`);
+    if (data) userIds = data.map(d => d.user_id);
+  }
+
+  if (userIds.length === 0) return [];
+
+  const { data, error: patErr } = await supabase.from('patient').select(`
+    *,
+    users (
+      email,
+      profile (first_name, last_name, phone_number)
+    ),
+    emergency_contact (contact_name, contact_phone, relationship),
+    patient_allergy (allergy_name),
+    patient_disease (disease_name)
+  `).in('user_id', userIds);
+
+  if (patErr || !data) return [];
+
+  return data.map(d => {
+    const p = d.users?.profile;
+    const ec = Array.isArray(d.emergency_contact) ? d.emergency_contact[0] : d.emergency_contact;
+    const allergies = d.patient_allergy && d.patient_allergy.length > 0 
+      ? d.patient_allergy.map((a: any) => a.allergy_name).join(', ') 
+      : 'ไม่มี';
+    const diseases = d.patient_disease && d.patient_disease.length > 0
+      ? d.patient_disease.map((a: any) => a.disease_name).join(', ')
+      : 'ไม่มี';
+    
+    return {
+      id: d.patient_id,
+      hn: `HN${String(d.patient_id).padStart(3, '0')}`,
+      name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
+      email: d.users?.email || '',
+      phone: p?.phone_number || '',
+      allergyHistory: allergies,
+      underlyingDisease: diseases,
+      emergencyContactName: ec?.contact_name || '',
+      emergencyContactPhone: ec?.contact_phone || '',
+      emergencyContactRelationship: ec?.relationship || ''
+    } as PatientInfo;
+  });
+}
+
 export async function addPatient(patient: {
   email: string;
   password?: string;
@@ -988,6 +1048,8 @@ export async function updatePatientProfile(userId: string, updates: {
   emergencyName?: string;
   emergencyPhone?: string;
   emergencyRelationship?: string;
+  allergyHistory?: string;
+  underlyingDisease?: string;
 }) {
   // 1. ดึง citizen_id และ patient_id
   const { data: userData, error: userErr } = await supabase
@@ -1047,6 +1109,75 @@ export async function updatePatientProfile(userId: string, updates: {
         contact_phone: updates.emergencyPhone || '-',
         relationship: updates.emergencyRelationship || 'ไม่ได้ระบุ',
       });
+    }
+  }
+
+  // 5. อัปเดต Allergy และ Disease
+  if (patientData?.patient_id) {
+    if (updates.allergyHistory !== undefined) {
+      await supabase.from('patient_allergy').delete().eq('patient_id', patientData.patient_id);
+      if (updates.allergyHistory && updates.allergyHistory !== 'ไม่มี' && updates.allergyHistory !== 'ไม่มีประวัติ' && updates.allergyHistory !== '-') {
+        const allergies = updates.allergyHistory.split(',').map(s => s.trim()).filter(s => s);
+        for (const a of allergies) {
+          await supabase.from('patient_allergy').insert({ patient_id: patientData.patient_id, allergy_name: a });
+        }
+      }
+    }
+    
+    if (updates.underlyingDisease !== undefined) {
+      await supabase.from('patient_disease').delete().eq('patient_id', patientData.patient_id);
+      if (updates.underlyingDisease && updates.underlyingDisease !== 'ไม่มี' && updates.underlyingDisease !== 'ไม่มีประวัติ' && updates.underlyingDisease !== '-') {
+        const diseases = updates.underlyingDisease.split(',').map(s => s.trim()).filter(s => s);
+        for (const d of diseases) {
+          await supabase.from('patient_disease').insert({ patient_id: patientData.patient_id, disease_name: d });
+        }
+      }
+    }
+  }
+}
+
+export async function updatePatientInfoByPatientId(patientId: number, updates: {
+  phone?: string;
+  email?: string;
+  allergyHistory?: string;
+  underlyingDisease?: string;
+}) {
+  const { data: patientData, error: pErr } = await supabase
+    .from('patient')
+    .select('user_id')
+    .eq('patient_id', patientId)
+    .single();
+  
+  if (pErr || !patientData) throw new Error('ไม่พบข้อมูลคนไข้');
+
+  const userId = patientData.user_id;
+  const { data: userData } = await supabase.from('users').select('citizen_id').eq('user_id', userId).single();
+
+  if (updates.email !== undefined) {
+    await supabase.from('users').update({ email: updates.email, updated_at: new Date().toISOString() }).eq('user_id', userId);
+  }
+
+  if (updates.phone !== undefined && userData?.citizen_id) {
+    await supabase.from('profile').update({ phone_number: updates.phone }).eq('citizen_id', userData.citizen_id);
+  }
+
+  if (updates.allergyHistory !== undefined) {
+    await supabase.from('patient_allergy').delete().eq('patient_id', patientId);
+    if (updates.allergyHistory && updates.allergyHistory !== 'ไม่มี' && updates.allergyHistory !== 'ไม่มีประวัติ' && updates.allergyHistory !== '-') {
+      const allergies = updates.allergyHistory.split(',').map(s => s.trim()).filter(s => s);
+      for (const a of allergies) {
+        await supabase.from('patient_allergy').insert({ patient_id: patientId, allergy_name: a });
+      }
+    }
+  }
+
+  if (updates.underlyingDisease !== undefined) {
+    await supabase.from('patient_disease').delete().eq('patient_id', patientId);
+    if (updates.underlyingDisease && updates.underlyingDisease !== 'ไม่มี' && updates.underlyingDisease !== 'ไม่มีประวัติ' && updates.underlyingDisease !== '-') {
+      const diseases = updates.underlyingDisease.split(',').map(s => s.trim()).filter(s => s);
+      for (const d of diseases) {
+        await supabase.from('patient_disease').insert({ patient_id: patientId, disease_name: d });
+      }
     }
   }
 }

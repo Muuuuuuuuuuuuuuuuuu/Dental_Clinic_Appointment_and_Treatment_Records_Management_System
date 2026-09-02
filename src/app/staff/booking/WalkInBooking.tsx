@@ -4,15 +4,19 @@ import { Clock, UserPlus, CheckCircle, ChevronLeft, ChevronRight, ArrowRight } f
 import { Appointment, DentistInfo, ServiceInfo } from "../../shared/data";
 import { 
   getDentists, getServices, addAppointment, getClinicTimeSlots,
-  getClinicClosures, getWeeklyOffDays, getDoctorSchedules, getUpcomingLeaves
+  getClinicClosures, getWeeklyOffDays, getDoctorSchedules, getUpcomingLeaves, getPatients
 } from "../../shared/supabaseApi";
 
 export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appointment) => void }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ 
-    firstName: "", lastName: "", citizenId: "", gender: "ชาย", dob: "", address: "", 
-    email: "", password: "", phone: "", service: "", doctorId: 0, date: "", time: "", note: "", openAppt: false 
+    service: "", doctorId: 0, date: "", time: "", note: "", openAppt: false 
   });
+  const [patientResults, setPatientResults] = useState<any[]>([]);
+  const [patientInfo, setPatientInfo] = useState<any>(null);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -22,20 +26,22 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
   const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([0]);
   const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
   const [upcomingLeaves, setUpcomingLeaves] = useState<any[]>([]);
+  const [allPatients, setAllPatients] = useState<any[]>([]);
   
   const [monthOffset, setMonthOffset] = useState(0);
 
   useEffect(() => {
     Promise.all([
       getDentists(), getServices(),
-      getClinicClosures(), getWeeklyOffDays(), getDoctorSchedules(), getUpcomingLeaves()
-    ]).then(([d, s, cData, offData, dsData, leavesData]) => {
+      getClinicClosures(), getWeeklyOffDays(), getDoctorSchedules(), getUpcomingLeaves(), getPatients()
+    ]).then(([d, s, cData, offData, dsData, leavesData, patData]) => {
       setDentists(d.filter(x => x.active));
       setServices(s.filter(x => x.active));
       setClosures(cData);
       setWeeklyOffDays(offData);
       setDoctorSchedules(dsData);
       setUpcomingLeaves(leavesData);
+      setAllPatients(patData);
     }).catch(console.error);
   }, []);
 
@@ -128,29 +134,48 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
     return { status: "available" as const };
   };
 
+  useEffect(() => {
+    const keyword = searchKeyword.trim().toLowerCase();
+    if (!keyword) {
+      setPatientResults([]);
+      setSearchError("");
+      if (patientInfo) setPatientInfo(null);
+      return;
+    }
+    
+    // Local filter like PatientManagement.tsx
+    const filtered = allPatients.filter(p => 
+      p.name.toLowerCase().includes(keyword) || 
+      p.hn.toLowerCase().includes(keyword) ||
+      (p.phone && p.phone.includes(keyword)) ||
+      (p.email && p.email.toLowerCase().includes(keyword)) ||
+      (p.citizenId && p.citizenId.includes(keyword))
+    );
+
+    setPatientResults(filtered);
+    if (filtered.length === 0 && !patientInfo) {
+      setSearchError("ไม่พบข้อมูลคนไข้ในระบบ กรุณาตรวจสอบอีกครั้ง หรือไปที่เมนูลงทะเบียนคนไข้ใหม่");
+    } else {
+      setSearchError("");
+    }
+  }, [searchKeyword, allPatients]);
+
   const confirm = async () => {
     const doctorName = dentists.find(d => d.id === form.doctorId)?.name ?? "ท่านใดก็ได้";
     const isComplex = services.find(s => s.name === form.service)?.requiresConfirmation || false;
     const newAppt: Omit<Appointment, "id"> = {
-      hn: `HN${Date.now().toString().slice(-3)}`,
-      patientName: `${form.firstName} ${form.lastName}`, patientPhone: form.phone,
+      hn: patientInfo?.hn || `HN${Date.now().toString().slice(-3)}`,
+      patientId: patientInfo?.id,
+      patientName: patientInfo?.name || "Unknown", 
+      patientPhone: patientInfo?.phone || "",
       service: form.service, doctorName,
       doctorId: form.doctorId,
       date: form.openAppt ? "" : form.date,
       time: form.openAppt ? "" : form.time, 
       status: form.openAppt ? (isComplex ? "รอการยืนยัน" : "ยืนยันการจอง") : "เช็คอินเรียบร้อย",
-      conditions: "ไม่ทราบ (Walk-in)", allergies: "ไม่ทราบ (Walk-in)",
-      note: form.note,
-      walkInRegistration: {
-        citizenId: form.citizenId,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        gender: form.gender,
-        dob: form.dob,
-        address: form.address,
-        email: form.email,
-        password: form.password
-      }
+      conditions: patientInfo?.underlyingDisease || "ไม่มี", 
+      allergies: patientInfo?.allergyHistory || "ไม่มี",
+      note: form.note
     };
     setIsSubmitting(true);
     try {
@@ -174,9 +199,9 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
           <CheckCircle size={28} style={{ color: "#22C55E" }} />
         </div>
         <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จอง Walk-in สำเร็จ!</h2>
-        <p className="text-sm mb-1" style={{ color: "#4A6080" }}>{form.firstName} {form.lastName}</p>
+        <p className="text-sm mb-1" style={{ color: "#4A6080" }}>{patientInfo?.name}</p>
         <p className="text-sm mb-6" style={{ color: "#4A6080" }}>{form.service} • {form.openAppt ? "รอคนไข้ระบุวัน-เวลา" : `เวลา ${form.time} น.`}</p>
-        <button onClick={() => { setStep(0); setForm({ firstName: "", lastName: "", citizenId: "", gender: "ชาย", dob: "", address: "", email: "", password: "", phone: "", service: "", doctorId: 0, date: "", time: "", note: "", openAppt: false }); setDone(false); }}
+        <button onClick={() => { setStep(0); setForm({ service: "", doctorId: 0, date: "", time: "", note: "", openAppt: false }); setPatientInfo(null); setPatientResults([]); setSearchKeyword(""); setDone(false); }}
           className="px-6 py-2.5 rounded-xl text-sm font-medium text-white"
           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
           จองรายต่อไป
@@ -212,87 +237,63 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
 
         <div className="rounded-2xl bg-white p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
           {step === 0 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>ชื่อ *</label>
-                  <input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
-                    placeholder="ชื่อ" className="w-full px-3 py-3 rounded-xl text-sm outline-none"
-                    style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>นามสกุล *</label>
-                  <input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
-                    placeholder="นามสกุล" className="w-full px-3 py-3 rounded-xl text-sm outline-none"
-                    style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
+            <div className="space-y-4 max-w-xl mx-auto py-8">
+              <div className="text-center mb-6">
+                 <h3 className="text-lg font-bold text-[#1A365D] mb-2">ค้นหาประวัติคนไข้</h3>
+                 <p className="text-sm text-[#4A6080]">กรุณากรอกชื่อ-สกุล, เลขบัตรประชาชน, เบอร์โทรศัพท์ หรืออีเมลเพื่อดึงข้อมูล</p>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>เลขประจำตัวประชาชน *</label>
-                  <input value={form.citizenId} onChange={e => setForm(f => ({ ...f, citizenId: e.target.value }))}
-                    placeholder="เลข 13 หลัก" maxLength={13} className="w-full px-3 py-3 rounded-xl text-sm outline-none"
-                    style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+              {!patientInfo && (
+                <div className="flex gap-2">
+                   <div className="relative flex-1">
+                     <input 
+                       type="text" 
+                       value={searchKeyword} 
+                       onChange={e => {
+                         setSearchKeyword(e.target.value);
+                         if (patientInfo) setPatientInfo(null); // Clear selected if typing anew
+                       }}
+                       placeholder="พิมพ์ชื่อ-สกุล / เลขบัตรฯ / เบอร์โทร / อีเมล" 
+                       className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/30"
+                       style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} 
+                     />
+                   </div>
                 </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>เพศ *</label>
-                  <select value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
-                    className="w-full px-3 py-3 rounded-xl text-sm outline-none bg-transparent"
-                    style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}>
-                    <option value="ชาย">ชาย</option>
-                    <option value="หญิง">หญิง</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>วันเกิด</label>
-                  <input type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))}
-                    className="w-full px-3 py-3 rounded-xl text-sm outline-none"
-                    style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์ *</label>
-                  <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                    placeholder="0XX-XXX-XXXX" className="w-full px-3 py-3 rounded-xl text-sm outline-none"
-                    style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>ที่อยู่ปัจจุบัน</label>
-                <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                  placeholder="ที่อยู่" className="w-full px-3 py-3 rounded-xl text-sm outline-none resize-none h-16"
-                  style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-              </div>
-              
-              <div className="pt-4 border-t border-gray-100">
-                <p className="text-sm font-semibold mb-1" style={{ color: "#1A365D" }}>สร้างบัญชีผู้ใช้ (ตัวเลือกเสริม)</p>
-                <p className="text-xs mb-3 text-gray-500">หากคนไข้ต้องการใช้แอป สามารถกรอกอีเมลและตั้งรหัสผ่านให้ได้เลย</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>อีเมล</label>
-                    <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                      placeholder="ไม่ต้องระบุก็ได้" className="w-full px-3 py-3 rounded-xl text-sm outline-none"
-                      style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>รหัสผ่าน</label>
-                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                      placeholder="ไม่ต้องระบุก็ได้" className="w-full px-3 py-3 rounded-xl text-sm outline-none"
-                      style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>หมายเหตุ / รายละเอียดนัดหมาย (ตัวเลือก)</label>
-                <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-                  placeholder="เช่น อุดฟันซี่ 13, 14 ต่อ" className="w-full px-3 py-3 rounded-xl text-sm outline-none resize-none h-16"
-                  style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-              </div>
+              )}
+              {searchError && (
+                 <div className="p-4 rounded-xl mt-4 text-sm flex items-center justify-between" style={{ backgroundColor: "#FFF0F2", color: "#E63946" }}>
+                   <span>{searchError}</span>
+                 </div>
+              )}
+              {patientResults.length > 0 && !patientInfo && (
+                 <div className="mt-4 space-y-2">
+                   <p className="text-sm font-medium text-[#1A365D]">พบข้อมูลคนไข้ {patientResults.length} รายการ กรุณาเลือก:</p>
+                   {patientResults.map((p: any) => (
+                     <button key={p.id} onClick={() => setPatientInfo(p)} className="w-full text-left p-4 rounded-xl border flex items-center justify-between transition-colors hover:bg-[#FAFCFF] focus:bg-[#FAFCFF]" style={{ borderColor: "rgba(26,54,93,0.1)" }}>
+                       <div>
+                         <p className="font-bold text-[#1A365D] text-sm">{p.name}</p>
+                         <p className="text-xs text-[#4A6080]">{p.hn} • {p.phone}</p>
+                       </div>
+                       <ChevronRight size={16} className="text-[#4A6080]" />
+                     </button>
+                   ))}
+                 </div>
+              )}
+              {patientInfo && (
+                 <div className="p-4 rounded-xl mt-4 border flex items-center justify-between" style={{ borderColor: "rgba(26,54,93,0.1)", backgroundColor: "#FAFCFF" }}>
+                   <div>
+                     <p className="font-bold text-[#1A365D] text-lg">{patientInfo.name}</p>
+                     <p className="text-sm text-[#4A6080]">{patientInfo.hn} • {patientInfo.phone}</p>
+                   </div>
+                   <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#E8FFF0] text-[#1B7A3E]">
+                     <CheckCircle size={20} />
+                   </div>
+                 </div>
+              )}
+              {patientInfo && patientResults.length > 1 && (
+                 <button onClick={() => setPatientInfo(null)} className="text-xs text-[#4A6080] underline mt-3 block w-full text-center">
+                   เลือกคนไข้รายอื่น
+                 </button>
+              )}
             </div>
           )}
 
@@ -422,6 +423,13 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
                   <input type="checkbox" id="openAppt" checked={form.openAppt} onChange={e => setForm(f => ({ ...f, openAppt: e.target.checked, time: "" }))} className="w-4 h-4 rounded text-pink-500" />
                   <label htmlFor="openAppt" className="text-sm font-medium" style={{ color: "#1A365D" }}>นัดแบบเปิด (ให้คนไข้ไปเลือกวัน-เวลาทีหลัง)</label>
                 </div>
+                
+                <div className="mt-4">
+                  <label className="text-xs font-medium block mb-1.5" style={{ color: "#4A6080" }}>หมายเหตุ / รายละเอียดนัดหมาย (ตัวเลือก)</label>
+                  <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                    placeholder="เช่น อุดฟันซี่ 13, 14 ต่อ" className="w-full px-3 py-3 rounded-xl text-sm outline-none resize-none h-16"
+                    style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                </div>
               </div>
 
               {/* COL 3: Time Slots */}
@@ -468,10 +476,9 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
             <div>
               <h3 className="font-semibold mb-4" style={{ color: "#1A365D" }}>ยืนยันการจอง Walk-in</h3>
               {[
-                ["คนไข้", `${form.firstName} ${form.lastName}`],
-                ["บัตรประชาชน", form.citizenId],
-                ["เบอร์โทร", form.phone],
-                ["บัญชีแอป", form.email ? "สร้างบัญชีใหม่" : "Walk-in อย่างเดียว (ไม่สร้างบัญชี)"],
+                ["คนไข้", patientInfo?.name || "-"],
+                ["รหัสคนไข้", patientInfo?.hn || "-"],
+                ["เบอร์โทร", patientInfo?.phone || "-"],
                 ["บริการ", form.service],
                 ["ทันตแพทย์", form.doctorId ? dentists.find(d => d.id === form.doctorId)?.name ?? "-" : "ท่านใดก็ได้"],
                 ["วัน-เวลา", form.openAppt ? "รอระบุวัน-เวลา" : `วันที่ ${form.date} เวลา ${form.time} น.`],
@@ -496,7 +503,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
               onClick={() => step < 2 ? setStep(s => s + 1) : confirm()}
               disabled={
                 isSubmitting ||
-                (step === 0 && (!form.firstName || !form.lastName || !form.citizenId || form.citizenId.length < 13 || !form.phone)) ||
+                (step === 0 && !patientInfo) ||
                 (step === 1 && (!form.service || (!form.openAppt && (!form.date || !form.time))))
               }
               className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40"
