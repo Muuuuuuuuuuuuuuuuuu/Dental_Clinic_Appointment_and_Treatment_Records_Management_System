@@ -4,7 +4,7 @@ import StatusBadge from "../../shared/components/StatusBadge";
 import { UserPlus, Edit3, Trash2 , Plus, CheckCircle, X } from "lucide-react";
 
 import { DentistInfo, ServiceInfo } from "../../shared/data";
-import { getDentists, addDentist, updateDentist, getServices } from "../../shared/supabaseApi";
+import { getDentists, addDentist, updateDentist, getServices, uploadAvatar } from "../../shared/supabaseApi";
 
 export default function DentistManagement() {
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
@@ -12,6 +12,7 @@ export default function DentistManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<DentistInfo | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   const [form, setForm] = useState({ 
     titleName: "ทพ.",
@@ -28,6 +29,7 @@ export default function DentistManagement() {
     gender: "",
     birthDate: "",
     experienceYears: 0,
+    graduationYear: new Date().getFullYear(),
     imageUrl: "",
     startDate: "",
     serviceIds: [] as number[] 
@@ -50,6 +52,7 @@ export default function DentistManagement() {
       gender: d.gender || "",
       birthDate: d.birthDate || "",
       experienceYears: d.experienceYears || 0,
+      graduationYear: d.graduationYear || new Date().getFullYear(),
       imageUrl: d.imageUrl || "",
       startDate: d.startDate || "",
       serviceIds: d.serviceIds || [] 
@@ -68,6 +71,7 @@ export default function DentistManagement() {
       gender: "",
       birthDate: "",
       experienceYears: 0,
+      graduationYear: new Date().getFullYear(),
       imageUrl: "",
       startDate: new Date().toISOString().split('T')[0],
       serviceIds: [] 
@@ -264,8 +268,8 @@ export default function DentistManagement() {
                   <input value={form.university} onChange={e => setForm(f => ({ ...f, university: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ประสบการณ์ (ปี)</label>
-                  <input type="number" value={form.experienceYears} onChange={e => setForm(f => ({ ...f, experienceYears: parseInt(e.target.value) || 0 }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ปีที่เรียนจบ (ค.ศ.)</label>
+                  <input type="number" value={form.graduationYear} onChange={e => setForm(f => ({ ...f, graduationYear: parseInt(e.target.value) || new Date().getFullYear() }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                 </div>
               </div>
 
@@ -277,6 +281,43 @@ export default function DentistManagement() {
                 <div>
                   <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์</label>
                   <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>วันที่เริ่มงาน</label>
+                  <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>รูปโปรไฟล์ (อัปโหลด)</label>
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          setUploadingImage(true);
+                          const url = await uploadAvatar(file);
+                          setForm(f => ({ ...f, imageUrl: url }));
+                        } catch (err) {
+                          alert("อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่");
+                        } finally {
+                          setUploadingImage(false);
+                        }
+                      }}
+                      disabled={uploadingImage}
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#1A365D] file:text-white hover:file:bg-[#122847]"
+                    />
+                    {uploadingImage && <span className="text-xs text-slate-500 animate-pulse">กำลังอัปโหลด...</span>}
+                  </div>
+                  {form.imageUrl && (
+                    <div className="mt-2 text-xs text-green-600 truncate">
+                      อัปโหลดแล้ว: {form.imageUrl.substring(0, 30)}...
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -298,10 +339,6 @@ export default function DentistManagement() {
                 )}
               </div>
 
-              <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>รูปประจำตัว (Text Link ชั่วคราว)</label>
-                <input value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} placeholder="https://example.com/image.jpg" className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-              </div>
 
               <div>
                 <label className="text-xs font-medium block mb-2" style={{ color: "#4A6080" }}>บริการที่รับผิดชอบ</label>

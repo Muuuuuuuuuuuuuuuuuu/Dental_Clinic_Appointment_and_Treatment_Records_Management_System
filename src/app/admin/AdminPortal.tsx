@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import {
   Appointment, AppointmentStatus, DentistInfo, StaffInfo, ServiceInfo, AdminInfo,
-  LeaveRequest, STATUS_COLORS, getClinicStatus, ClinicStatus,
+  LeaveRequest, STATUS_COLORS, getClinicStatus, ClinicStatus, AdminView,
 } from "../shared/data";
 import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours, getLeaveRequests, getAdmins } from "../shared/supabaseApi";
 import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
@@ -41,7 +41,7 @@ function AdminStatusBanner() {
   );
 }
 
-type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "manual" | "profile";
+
 
 const ADMIN_NAV: { key: AdminView; label: string; icon: any }[] = [
   { key: "dashboard",    label: "แดชบอร์ด",           icon: Home },

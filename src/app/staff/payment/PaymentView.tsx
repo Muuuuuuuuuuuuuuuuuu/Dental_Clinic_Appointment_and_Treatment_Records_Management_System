@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt } from "lucide-react";
+import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt, AlertTriangle } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, AppointmentStatus } from "../../shared/data";
 import { supabase, processPaymentApi, addAppointment, getClinicTimeSlots, TimeSlotStatus } from "../../shared/supabaseApi";
@@ -25,6 +25,8 @@ export default function PaymentView({
 
   // Installment info
   const [installmentInfo, setInstallmentInfo] = useState<{ id: number; amount: number; installment_number: number } | null>(null);
+  const [activePlan, setActivePlan] = useState<any | null>(null);
+  const [hasFutureAppointment, setHasFutureAppointment] = useState<boolean>(false);
 
   // Modals
   const [receiptData, setReceiptData] = useState<any | null>(null);
@@ -73,61 +75,34 @@ export default function PaymentView({
 
   const selectedAppt = appointments.find(a => a.id === selectedApptId);
 
-  // Reset dashboard when selecting new patient
-  useEffect(() => {
-    if (!selectedAppt) return;
-    setDiscount("0");
-    setPaymentMethod("เงินสด");
-    setInstallmentInfo(null);
+    // Reset dashboard when selecting new patient
+    useEffect(() => {
+      if (!selectedAppt) return;
+      setDiscount("0");
+      setPaymentMethod("เงินสด");
+      setInstallmentInfo(null);
+      setActivePlan(null);
 
-    // Try to get installment amount for this patient's plan
-    const fetchInstallment = async () => {
-      try {
-        const { data: apptData } = await supabase
-          .from('appointment')
-          .select('patient_id')
-          .eq('appointment_id', selectedAppt.id)
-          .maybeSingle();
-
-        if (!apptData?.patient_id) {
-          setBaseCost(String(selectedAppt.cost || ""));
-          return;
-        }
-
-        const { data: plans } = await supabase
-          .from('treatment_plan')
-          .select('plan_id')
-          .eq('patient_id', apptData.patient_id)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (!plans || plans.length === 0) {
-          setBaseCost(String(selectedAppt.cost || ""));
-          return;
-        }
-
-        const { data: insts } = await supabase
-          .from('installment')
-          .select('installment_id, installment_number, amount')
-          .eq('plan_id', plans[0].plan_id)
-          .eq('paid', false)
-          .order('installment_number')
-          .limit(1);
-
-        if (insts && insts.length > 0) {
-          setInstallmentInfo({ id: insts[0].installment_id, amount: Number(insts[0].amount), installment_number: insts[0].installment_number });
-          setBaseCost(String(insts[0].amount));
-        } else {
-          setBaseCost(String(selectedAppt.cost || "0"));
-        }
-      } catch (err) {
-        console.error('fetchInstallment error:', err);
-        setBaseCost(String(selectedAppt.cost || ""));
+      if (selectedAppt.patientId) {
+        import('../../shared/supabaseApi').then(({ getPatientActiveTreatmentPlan, getPatientAppointments }) => {
+          getPatientActiveTreatmentPlan(selectedAppt.patientId!).then(plan => {
+            setActivePlan(plan);
+          });
+          getPatientAppointments(selectedAppt.patientId!).then(appts => {
+            // Check if there are any appointments in the future or "open tickets" (รอการยืนยัน)
+            const today = new Date().toISOString().split('T')[0];
+            const future = appts.filter(a => 
+              a.id !== selectedAppt.id && 
+              (a.date > today || (!a.date && a.status === 'รอการยืนยัน'))
+            );
+            setHasFutureAppointment(future.length > 0);
+          });
+        });
       }
-    };
 
-    fetchInstallment();
-  }, [selectedApptId]);
+      // Set base cost from the appointment directly, without auto-adding installments
+      setBaseCost(String(selectedAppt.cost || "0"));
+    }, [selectedApptId]);
 
   const netTotal = useMemo(() => {
     const base = parseInt(baseCost || "0", 10);
@@ -277,6 +252,58 @@ export default function PaymentView({
               </div>
             </div>
 
+            {/* Treatment Plan Summary (Informational) */}
+            {activePlan && (
+              <div className="mb-4">
+                <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>ข้อมูลแผนการรักษาระยะยาว</h3>
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-sm" style={{ color: "#1D6FA4" }}>{activePlan.plan_name}</span>
+                    <span className="text-xs font-medium px-2 py-1 bg-white rounded-md text-blue-700 border border-blue-200">
+                      ยอดรวม ฿{(activePlan.total_cost || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  
+                  {(() => {
+                    if (activePlan.plan_details && activePlan.plan_details.length > 0) {
+                      const completedCount = activePlan.plan_details.filter((d: any) => d.status === 'completed').length;
+                      const nextMonth = activePlan.plan_details.find((d: any) => d.status !== 'completed');
+                      return (
+                        <div className="text-xs" style={{ color: "#4A6080" }}>
+                          <p>ดำเนินการแล้ว: <span className="font-bold text-green-600">{completedCount}</span> / {activePlan.plan_details.length} เดือน</p>
+                          {nextMonth && (
+                            <p className="mt-1">
+                              นัดหมายครั้งถัดไปควรเป็น: <span className="font-bold" style={{ color: "#1A365D" }}>รอบเดือนที่ {nextMonth.month}</span>
+                            </p>
+                          )}
+                          
+                          {/* Future Appointment Status Indicator */}
+                          <div className={`mt-2 p-2 rounded-lg border text-xs flex items-center gap-2 ${
+                            hasFutureAppointment 
+                              ? "bg-green-50 border-green-200 text-green-700" 
+                              : "bg-orange-50 border-orange-200 text-orange-700"
+                          }`}>
+                            {hasFutureAppointment ? (
+                              <>
+                                <CheckCircle size={14} className="text-green-600" />
+                                <span>คนไข้มี <strong>ใบนัดหมายล่วงหน้า</strong> สำหรับรอบถัดไปแล้ว</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertTriangle size={14} className="text-orange-600" />
+                                <span>คนไข้ <strong>ยังไม่มี</strong> ใบนัดหมายล่วงหน้า (กรุณาสร้างใบนัดก่อนให้คนไข้กลับ)</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              </div>
+            )}
+
             {/* Treatment Summary */}
             <div className="mb-4">
               <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>ใบสรุปการรักษาจากแพทย์</h3>
@@ -333,14 +360,7 @@ export default function PaymentView({
             <div className="mb-4 space-y-2">
               <h3 className="text-xs font-bold mb-1" style={{ color: "#4A6080" }}>สรุปยอดค่าใช้จ่าย</h3>
               
-              {/* Installment Badge */}
-              {installmentInfo && (
-                <div className="flex items-center justify-between text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mb-1">
-                  <span className="font-semibold text-blue-800">งวดที่ {installmentInfo.installment_number} (ค่างวดจัดฟัน)</span>
-                  <span className="font-bold text-blue-700">฿{installmentInfo.amount.toLocaleString()}</span>
-                </div>
-              )}
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium" style={{ color: "#1A365D" }}>ค่ารักษา (Base Cost)</span>
                 <div className="flex items-center gap-1.5">
@@ -462,7 +482,7 @@ export default function PaymentView({
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between text-xs border-b border-dashed border-gray-200 pb-2">
                     <span style={{ color: "#64748B" }}>{k}</span>
-                    <span className="font-semibold text-right max-w-[180px] truncate" style={{ color: "#1A365D" }}>{v}</span>
+                    <span className="font-semibold text-right text-balance" style={{ color: "#1A365D", maxWidth: "65%" }}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -584,7 +604,7 @@ export default function PaymentView({
                               ) : timeSlots.length > 0 ? (
                                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
                                   {timeSlots.map((s, i) => {
-                                    const isAvail = s.status === 'Available';
+                                    const isAvail = s.status === 'available';
                                     return (
                                       <button key={i}
                                         disabled={!isAvail}

@@ -10,6 +10,7 @@ import TreatmentQueue from "./treatment/TreatmentQueue";
 import DoctorDashboard from "./dashboard/DoctorDashboard";
 
 import TreatmentHistory from "./treatment/TreatmentHistory";
+import TreatmentTrackingView from "../staff/tracking/TreatmentTrackingView";
 
 import {
   Home, Calendar, Users, FileText, LogOut, Smile, ChevronRight,
@@ -52,7 +53,7 @@ const DOC_NAV = [
   { key: "records"   as DocView, label: "เวชระเบียน",         icon: FileText },
   { key: "history"   as DocView, label: "ประวัติการทำงาน",      icon: ClipboardList },
   { key: "calendar"  as DocView, label: "ปฏิทินและการลางาน",   icon: Calendar },
-
+  { key: "tracking"  as DocView, label: "ติดตามเคส",         icon: AlertTriangle },
   { key: "profile"   as DocView, label: "ข้อมูลส่วนตัว",     icon: User },
 ];
 
@@ -181,7 +182,7 @@ export default function DoctorPortal({
           {view === "records"   && <PatientRecords />}
           {view === "history"   && <TreatmentHistory doctor={doctor} />}
           {view === "calendar"  && <DoctorCalendar doctor={doctor} />}
-
+          {view === "tracking"  && <TreatmentTrackingView />}
           {view === "profile"   && <DoctorProfile doctor={doctor} />}
         </main>
       </div>

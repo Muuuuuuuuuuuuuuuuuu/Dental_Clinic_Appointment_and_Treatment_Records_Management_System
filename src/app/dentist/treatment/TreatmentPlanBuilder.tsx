@@ -16,9 +16,10 @@ interface PlanDetail {
   services: ServiceOption[];
   notes: string;
   odontogram_data?: Record<number, ToothStatus>;
+  status?: string;
 }
 
-export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan }: { patientId: number, onClose: (plan?: any) => void, existingPlan?: any }) {
+export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan, lockedDentistId }: { patientId: number, onClose: (plan?: any) => void, existingPlan?: any, lockedDentistId?: number }) {
   const [months, setMonths] = useState<number>(24);
   const [planDetails, setPlanDetails] = useState<PlanDetail[]>([]);
   const [availableServices, setAvailableServices] = useState<ServiceOption[]>([]);
@@ -27,6 +28,11 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
   const [dentists, setDentists] = useState<any[]>([]);
   const [primaryDentist, setPrimaryDentist] = useState<number | "">("");
   
+  // Financial state
+  const [totalCost, setTotalCost] = useState<number>(40000);
+  const [downPayment, setDownPayment] = useState<number>(3000);
+  const [downPaymentMonths, setDownPaymentMonths] = useState<number>(3);
+  
   // Bulk add state
   const [bulkService, setBulkService] = useState<number | null>(null);
   
@@ -34,20 +40,32 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
   const [editingOdontogramMonth, setEditingOdontogramMonth] = useState<number | null>(null);
   const [selectedToothForAction, setSelectedToothForAction] = useState<number | null>(null);
   const [isChild, setIsChild] = useState(false);
-  const [isWholeMouth, setIsWholeMouth] = useState(false);
   
+  // โหลด services + plan details
   useEffect(() => {
     fetchServices();
-    getDentists().then(data => setDentists(data));
     
     if (existingPlan && existingPlan.plan_details) {
       setPlanDetails(existingPlan.plan_details);
       setMonths(existingPlan.plan_details.length);
-      if (existingPlan.dentist_id) setPrimaryDentist(existingPlan.dentist_id);
+      if (existingPlan.total_cost) setTotalCost(existingPlan.total_cost);
     } else {
       generatePlan(24);
     }
   }, [existingPlan]);
+
+  // โหลดรายชื่อหมอ → แล้วค่อย set primary dentist
+  useEffect(() => {
+    getDentists().then(data => {
+      setDentists(data);
+      // ต้องรอ dentists โหลดก่อน ถึง select จะแสดงชื่อได้
+      if (existingPlan?.dentist_id) {
+        setPrimaryDentist(existingPlan.dentist_id);
+      } else if (lockedDentistId) {
+        setPrimaryDentist(lockedDentistId);
+      }
+    });
+  }, [existingPlan, lockedDentistId]);
 
   const fetchServices = async () => {
     const { data } = await supabase.from('service').select('service_id, service_name, category, apply_to').eq('is_active', true);
@@ -55,24 +73,27 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
   };
 
   const generatePlan = (numMonths: number) => {
-    const newPlan: PlanDetail[] = [];
-    for (let i = 1; i <= numMonths; i++) {
-      newPlan.push({
-        month: i,
-        services: [],
-        notes: ''
-      });
-    }
-    setPlanDetails(newPlan);
+    setPlanDetails(prev => {
+      const newPlan = [...prev];
+      if (numMonths > newPlan.length) {
+        for (let i = newPlan.length + 1; i <= numMonths; i++) {
+          newPlan.push({
+            month: i,
+            services: [],
+            notes: ''
+          });
+        }
+      } else if (numMonths < newPlan.length) {
+        newPlan.length = numMonths;
+      }
+      return newPlan;
+    });
   };
 
   const handleMonthsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value);
+    const val = parseInt(e.target.value) || 1;
     setMonths(val);
-  };
-  
-  const handleGenerate = () => {
-    generatePlan(months);
+    generatePlan(val);
   };
 
   const applyBulkService = () => {
@@ -155,16 +176,55 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
       
       const dentistIdVal = primaryDentist ? Number(primaryDentist) : null;
       
+      let planId;
+      
       if (existingPlan?.plan_id) {
+        planId = existingPlan.plan_id;
         // Update existing plan
         const { data, error } = await supabase.from('treatment_plan').update({
           plan_name: `แผนการรักษาจัดฟัน (${months} เดือน)`,
-          plan_details: planDetails,
           dentist_id: dentistIdVal
-        }).eq('plan_id', existingPlan.plan_id).select();
+        }).eq('plan_id', planId).select();
         
         if (error) throw error;
         resultData = data;
+        
+        // --- Sync with treatment_plan_item ---
+        // 1. Delete excess months
+        const { error: deleteError } = await supabase.from('treatment_plan_item')
+          .delete()
+          .eq('plan_id', planId)
+          .gt('month_number', months);
+        if (deleteError) throw new Error("Failed to delete excess months: " + deleteError.message);
+          
+        // 2. Upsert each month
+        for (const p of planDetails) {
+          const { data: existingItem } = await supabase.from('treatment_plan_item')
+            .select('item_id')
+            .eq('plan_id', planId)
+            .eq('month_number', p.month)
+            .single();
+            
+          if (existingItem) {
+            const { error: updateError } = await supabase.from('treatment_plan_item').update({
+              services_json: p.services,
+              odontogram_data: p.odontogram_data || {},
+              notes: p.notes || ''
+              // Do NOT update status here to preserve 'completed' state
+            }).eq('item_id', existingItem.item_id);
+            if (updateError) throw new Error("Failed to update month " + p.month + ": " + updateError.message);
+          } else {
+            const { error: insertItemError } = await supabase.from('treatment_plan_item').insert({
+              plan_id: planId,
+              month_number: p.month,
+              services_json: p.services,
+              odontogram_data: p.odontogram_data || {},
+              notes: p.notes || '',
+              status: p.status || 'pending'
+            });
+            if (insertItemError) throw new Error("Failed to insert month " + p.month + ": " + insertItemError.message);
+          }
+        }
         
         alert("อัปเดตแผนการรักษาเรียบร้อยแล้ว");
       } else {
@@ -173,11 +233,62 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
           patient_id: patientId,
           plan_name: `แผนการรักษาจัดฟัน (${months} เดือน)`,
           dentist_id: dentistIdVal,
-          plan_details: planDetails // Ensure DB is updated to accept this column
+          total_cost: totalCost
         }).select();
 
         if (error) throw error;
         resultData = data;
+        planId = data[0].plan_id;
+        
+        // --- 1. Create Installments ---
+        const installmentsToInsert = [];
+        let remainingBalance = totalCost;
+        let dueDate = new Date();
+        
+        for (let i = 1; i <= months; i++) {
+          let amount = 0;
+          if (i <= downPaymentMonths && remainingBalance > 0) {
+            amount = Math.min(downPayment, remainingBalance);
+          } else if (remainingBalance > 0) {
+            // Auto divide the rest
+            const remainingMonths = months - downPaymentMonths;
+            amount = remainingMonths > 0 ? Math.ceil(remainingBalance / remainingMonths) : remainingBalance;
+            amount = Math.min(amount, remainingBalance);
+          }
+          
+          installmentsToInsert.push({
+            plan_id: planId,
+            installment_number: i,
+            amount: amount,
+            due_date: dueDate.toISOString().split('T')[0],
+            paid: false
+          });
+          
+          remainingBalance -= amount;
+          // Next month
+          dueDate.setMonth(dueDate.getMonth() + 1);
+        }
+        
+        if (installmentsToInsert.length > 0) {
+          const { error: instError } = await supabase.from('installment').insert(installmentsToInsert);
+          if (instError) console.error("Error inserting installments:", instError);
+        }
+        
+        // Insert all months into treatment_plan_item
+        const itemsToInsert = planDetails.map(p => ({
+          plan_id: planId,
+          month_number: p.month,
+          services_json: p.services,
+          odontogram_data: p.odontogram_data || {},
+          notes: p.notes || '',
+          status: p.status || 'pending'
+        }));
+        
+        const { error: itemError } = await supabase.from('treatment_plan_item').insert(itemsToInsert);
+        if (itemError) {
+          console.error("Error inserting items:", itemError);
+          throw new Error("บันทึกแผนแม่สำเร็จ แต่บันทึกรายเดือนลง treatment_plan_item ล้มเหลว: " + itemError.message);
+        }
         
         alert("บันทึกแผนการรักษาเรียบร้อยแล้ว");
       }
@@ -189,7 +300,7 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
       }
     } catch (err: any) {
       console.error(err);
-      alert("เกิดข้อผิดพลาด: " + err.message + "\n(หาก Error ว่าไม่พบ plan_details กรุณาตรวจสอบฐานข้อมูลว่าเพิ่ม column หรือยัง)");
+      alert("เกิดข้อผิดพลาด: " + err.message);
     }
   };
 
@@ -228,24 +339,36 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">หมอประจำเคส (Primary Doctor)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  หมอประจำเคส (Primary Doctor)
+                  {lockedDentistId && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+                      👤 ตั้งจากบัญชีของคุณ
+                    </span>
+                  )}
+                </label>
                 <select 
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   value={primaryDentist}
-                  onChange={(e) => setPrimaryDentist(e.target.value === "" ? "" : Number(e.target.value))}
+                  onChange={(e) => {
+                    setPrimaryDentist(e.target.value === "" ? "" : Number(e.target.value));
+                  }}
                 >
                   <option value="">-- ไม่ระบุ (No specific doctor) --</option>
                   {dentists.map(d => (
-                    <option key={d.dentist_id} value={d.dentist_id}>{d.first_name} {d.last_name}</option>
+                    <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
                 </select>
+                {lockedDentistId && (
+                  <p className="mt-1 text-xs text-slate-500">ℹ️ ระบบเลือกจากบัญชีที่ login อยู่ — สามารถเปลี่ยนได้หากจำเป็น</p>
+                )}
               </div>
             </div>
           </div>
           
           <div className="bg-white p-4 rounded-lg border border-slate-200 mb-6 flex flex-wrap gap-4 items-end shadow-sm">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">จำนวนระยะเวลา (เดือน/ครั้ง)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">จำนวนระยะเวลา (เดือน)</label>
               <div className="flex items-center gap-2">
                 <input 
                   type="number" 
@@ -254,16 +377,46 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
                   onChange={handleMonthsChange}
                   min="1"
                 />
-                <button 
-                  onClick={handleGenerate}
-                  className="bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors"
-                >
-                  สร้างตาราง
-                </button>
               </div>
             </div>
             
-            <div className="w-px h-12 bg-slate-200 mx-2 hidden sm:block"></div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">ราคาแพ็กเกจเต็ม (บาท)</label>
+              <input 
+                type="number" 
+                className="border border-slate-300 rounded-lg px-3 py-2 w-32 focus:ring-2 focus:ring-teal-500 focus:border-teal-500" 
+                value={totalCost}
+                onChange={(e) => setTotalCost(Number(e.target.value))}
+                min="0"
+                step="1000"
+              />
+            </div>
+            
+            <div className="bg-orange-50 p-3 rounded-lg border border-orange-100 flex-1">
+              <label className="block text-xs font-semibold text-orange-800 mb-1">ตั้งค่าการจ่ายล่วงหน้า (ค่างวดแรกเข้า)</label>
+              <div className="flex items-center gap-2 text-sm">
+                <span>จ่ายเดือนละ</span>
+                <input 
+                  type="number" 
+                  className="border border-orange-200 rounded px-2 py-1 w-24" 
+                  value={downPayment}
+                  onChange={(e) => setDownPayment(Number(e.target.value))}
+                  step="500"
+                />
+                <span>เป็นเวลา</span>
+                <input 
+                  type="number" 
+                  className="border border-orange-200 rounded px-2 py-1 w-16" 
+                  value={downPaymentMonths}
+                  onChange={(e) => setDownPaymentMonths(Number(e.target.value))}
+                  min="0"
+                />
+                <span>เดือน</span>
+              </div>
+              <p className="text-[10px] text-orange-600 mt-1">*ที่เหลือระบบจะหารเฉลี่ยให้เดือนถัดๆ ไปอัตโนมัติ</p>
+            </div>
+            
+            <div className="w-full h-px bg-slate-200 my-2"></div>
             
             <div className="flex-1 min-w-[300px]">
               <label className="block text-sm font-medium text-slate-700 mb-1">เพิ่มหัตถการลงใน "ทุกเดือน" อัตโนมัติ (Bulk Apply)</label>
@@ -274,9 +427,29 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
                   onChange={(e) => setBulkService(Number(e.target.value))}
                 >
                   <option value="">-- เลือกหัตถการ --</option>
-                  {availableServices.map(s => (
-                    <option key={s.service_id} value={s.service_id}>{s.service_name}</option>
-                  ))}
+                  {(() => {
+                    const mouthServices = availableServices.filter(s => {
+                      const applyType = s.apply_to?.toLowerCase();
+                      return applyType !== 'tooth' && applyType !== 'รายซี่';
+                    });
+                    const categories = Array.from(new Set(mouthServices.map(s => s.category || 'อื่นๆ')));
+                    // Sort to put 'จัดฟัน' first
+                    categories.sort((a, b) => {
+                      if (a.includes('จัดฟัน')) return -1;
+                      if (b.includes('จัดฟัน')) return 1;
+                      if (a.includes('ทั่วไป')) return -1;
+                      if (b.includes('ทั่วไป')) return 1;
+                      return a.localeCompare(b);
+                    });
+                    
+                    return categories.map(cat => (
+                      <optgroup key={cat} label={cat}>
+                        {mouthServices.filter(s => (s.category || 'อื่นๆ') === cat).map(s => (
+                          <option key={s.service_id} value={s.service_id}>{s.service_name}</option>
+                        ))}
+                      </optgroup>
+                    ));
+                  })()}
                 </select>
                 <button 
                   onClick={applyBulkService}
@@ -329,9 +502,28 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
                         defaultValue=""
                       >
                         <option value="">+ เพิ่มหัตถการ...</option>
-                        {availableServices.map(s => (
-                          <option key={s.service_id} value={s.service_id}>{s.service_name}</option>
-                        ))}
+                        {(() => {
+                          const mouthServices = availableServices.filter(s => {
+                            const applyType = s.apply_to?.toLowerCase();
+                            return applyType !== 'tooth' && applyType !== 'รายซี่';
+                          });
+                          const categories = Array.from(new Set(mouthServices.map(s => s.category || 'อื่นๆ')));
+                          categories.sort((a, b) => {
+                            if (a.includes('จัดฟัน')) return -1;
+                            if (b.includes('จัดฟัน')) return 1;
+                            if (a.includes('ทั่วไป')) return -1;
+                            if (b.includes('ทั่วไป')) return 1;
+                            return a.localeCompare(b);
+                          });
+                          
+                          return categories.map(cat => (
+                            <optgroup key={`cat-${index}-${cat}`} label={cat}>
+                              {mouthServices.filter(s => (s.category || 'อื่นๆ') === cat).map(s => (
+                                <option key={`opt-${index}-${s.service_id}`} value={s.service_id}>{s.service_name}</option>
+                              ))}
+                            </optgroup>
+                          ));
+                        })()}
                       </select>
                     </div>
                     
@@ -368,10 +560,6 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan 
                   <div className="mt-4 pt-4 border-t border-slate-100">
                     <div className="flex justify-between items-center mb-3">
                       <p className="text-sm font-semibold text-slate-700">ระบุซี่ฟันสำหรับเดือนที่ {plan.month}</p>
-                      <button onClick={() => setIsWholeMouth(!isWholeMouth)}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${!isWholeMouth ? 'bg-white border text-blue-600 shadow-sm' : 'text-gray-500'}`}>
-                        เหมาทั้งปาก (ไม่ระบุซี่)
-                      </button>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-center">
                       <Odontogram

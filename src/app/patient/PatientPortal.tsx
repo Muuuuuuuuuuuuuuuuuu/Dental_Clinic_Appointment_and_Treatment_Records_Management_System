@@ -59,7 +59,7 @@ export default function PatientPortal() {
   const [portalView, setPortalView] = useState<View>("dashboard");
   const [loginEmail, setLoginEmail] = useState("");
   const [clinicStatus, setClinicStatus] = useState<ClinicStatus | null>(null);
-  const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number} | null>(null);
+  const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number, planItem?: number} | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   
   const { appointments: sharedAppointments, setAppointments: setSharedAppointments } = useRealtimeAppointments();
@@ -115,7 +115,10 @@ export default function PatientPortal() {
               
               // Restore last view or go to dashboard
               const savedView = localStorage.getItem("supat_last_view") as View;
-              if (savedView && PORTAL_VIEWS.includes(savedView)) {
+              const urlParams = new URLSearchParams(window.location.search);
+              if (urlParams.get('planItem') || urlParams.get('followUp')) {
+                updateView("booking");
+              } else if (savedView && PORTAL_VIEWS.includes(savedView)) {
                 updateView(savedView);
               } else {
                 updateView("dashboard");
@@ -138,6 +141,23 @@ export default function PatientPortal() {
       }
     };
     checkSession();
+  }, []);
+
+  useEffect(() => {
+    // URL param handling for open tickets
+    const urlParams = new URLSearchParams(window.location.search);
+    const planItem = urlParams.get('planItem');
+    const doctorStr = urlParams.get('doctorId');
+    const serviceStr = urlParams.get('serviceId');
+
+    if (planItem) {
+      setFollowUpProps({
+        planItem: parseInt(planItem, 10),
+        doctor: doctorStr ? parseInt(doctorStr, 10) : 1, // fallback to any/1
+        service: serviceStr ? parseInt(serviceStr, 10) : 1 // fallback to any/1
+      });
+      setView("login"); // Require login first, or go directly to booking if logged in
+    }
   }, []);
 
   const updateAppt = (id: number, updates: Partial<Appointment>) =>
@@ -257,6 +277,7 @@ export default function PatientPortal() {
             initialService={followUpProps?.service}
             initialDoctor={followUpProps?.doctor}
             isFollowUp={followUpProps !== null}
+            planItemId={followUpProps?.planItem}
             user={user}
             onAddAppt={addAppt}
           />

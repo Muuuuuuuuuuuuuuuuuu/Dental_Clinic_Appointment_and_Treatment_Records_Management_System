@@ -228,6 +228,23 @@ export default function TreatmentQueue({
 
   const submitTreatment = async (appt: Appointment) => {
     const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
+    
+    const detailedServices = [...form.services];
+
+    if (selectedPlanMonth && activePlan && activeInstallments.length > 0) {
+      const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
+      if (inst && Number(inst.amount) > 0) {
+        formattedServices.unshift(`ชำระค่างวดจัดฟัน งวดที่ ${inst.installment_number} (รอบเดือนที่ ${selectedPlanMonth})`);
+        
+        detailedServices.unshift({
+          id: null, // Null to avoid foreign key violation
+          name: `จัดฟัน งวดที่ ${inst.installment_number} (แผน: ${activePlan.plan_name})`,
+          qty: 1,
+          price: Number(inst.amount)
+        } as any);
+      }
+    }
+
     await onUpdateAppt(appt.id, {
       status: "รอชำระเงิน",
       treatmentNotes: form.notes,
@@ -235,7 +252,7 @@ export default function TreatmentQueue({
       recommendations: form.recommendations,
       cost: Number(form.actualCost) || 0,
       odontogramData: { ...toothData, wholeMouth: false } as any
-    }, form.services); // Pass the raw service items here
+    }, detailedServices);
     
     setRecording(null);
     setForm({ notes: "", recommendations: "", services: [], actualCost: "" });
@@ -283,6 +300,7 @@ export default function TreatmentQueue({
         <TreatmentPlanBuilder 
           patientId={selectedPatientIdForPlan} 
           existingPlan={isEditingPlan ? activePlan : undefined}
+          lockedDentistId={doctor?.id}
           onClose={(newPlan) => {
             setSelectedPatientIdForPlan(null);
             setIsEditingPlan(false);
@@ -488,70 +506,107 @@ export default function TreatmentQueue({
                     </div>
                   </div>
                   
-                  {activePlan && activePlan.plan_details && (
-                    <div className="mb-4 bg-teal-50/50 rounded-xl p-3 border border-teal-100">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="text-xs font-semibold text-teal-800">
-                          แผนการรักษา: {activePlan.plan_name}
-                        </p>
-                        <div className="flex items-center gap-2">
+                  {activePlan && activePlan.plan_details && (() => {
+                    const currentMonthData = activePlan.plan_details.find((d: any) => d.month === selectedPlanMonth);
+                    const totalMonths = activePlan.plan_details.length;
+                    const completedMonths = activePlan.plan_details.filter((d: any) => d.status === 'completed').length;
+                    return (
+                      <div className="mb-4 rounded-xl border border-teal-200 overflow-hidden">
+                        {/* Header - Plan context */}
+                        <div className="bg-teal-600 text-white px-3 py-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <ClipboardList size={14} />
+                            <span className="text-xs font-semibold">{activePlan.plan_name}</span>
+                            <span className="bg-teal-500 text-teal-100 text-[10px] px-2 py-0.5 rounded-full">
+                              ทำไปแล้ว {completedMonths}/{totalMonths} ครั้ง
+                            </span>
+                          </div>
                           <button 
-                            onClick={() => {
-                              setIsEditingPlan(true);
-                              setSelectedPatientIdForPlan(a.patientId);
-                            }}
-                            className="bg-white border border-teal-200 text-teal-600 text-[10px] px-2.5 py-1 rounded-md hover:bg-teal-50 transition-colors flex items-center gap-1 shadow-sm"
+                            onClick={() => { setIsEditingPlan(true); setSelectedPatientIdForPlan(a.patientId); }}
+                            className="bg-teal-500 hover:bg-teal-400 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1 transition-colors"
                           >
                             ✏️ แก้ไขแผน
                           </button>
-                          {selectedPlanMonth && (
-                          <button 
-                            onClick={() => {
-                              const monthData = activePlan.plan_details.find((d: any) => d.month === selectedPlanMonth);
-                              if (monthData) {
-                                setForm(f => ({
-                                  ...f,
-                                  notes: monthData.notes || f.notes,
-                                  services: (() => {
-                                    const existingNames = new Set(f.services.map(s => s.name));
-                                    const newS = (monthData.services || []).filter((s: any) => !existingNames.has(s.service_name)).map((s: any) => ({ name: s.service_name, qty: 1 }));
-                                    return [...f.services, ...newS];
-                                  })()
-                                }));
-                                if (monthData.odontogram_data) {
-                                  setToothData(prev => ({ ...prev, ...monthData.odontogram_data }));
-                                }
-                              }
-                            }}
-                            className="bg-teal-600 text-white text-[10px] px-2.5 py-1 rounded-md hover:bg-teal-700 transition-colors flex items-center gap-1 shadow-sm"
-                          >
-                            <CheckCircle size={12} /> ดึงข้อมูลเดือนนี้
-                          </button>
+                        </div>
+
+                        {/* Context banner — บอกหมอว่ากำลังบันทึกอะไร */}
+                        {selectedPlanMonth ? (
+                          <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex items-start gap-2">
+                            <span className="text-amber-500 mt-0.5 shrink-0">📋</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-amber-800">
+                                กำลังบันทึกการรักษา — ครั้งที่ {selectedPlanMonth} ตามแผน
+                              </p>
+                              {currentMonthData?.services?.length > 0 ? (
+                                <p className="text-[11px] text-amber-700 mt-0.5">
+                                  แผนวางไว้: {currentMonthData.services.map((s: any) => s.service_name).join(', ')}
+                                  {' '}— บันทึกสิ่งที่ทำจริงด้านล่าง (อาจต่างจากแผนได้)
+                                </p>
+                              ) : (
+                                <p className="text-[11px] text-amber-700 mt-0.5">ไม่มีหัตถการระบุไว้ล่วงหน้าในครั้งนี้ — บันทึกสิ่งที่ทำจริงด้านล่าง</p>
+                              )}
+                            </div>
+                            {currentMonthData?.services?.length > 0 && (
+                              <button 
+                                onClick={() => {
+                                  if (currentMonthData) {
+                                    setForm(f => ({
+                                      ...f,
+                                      notes: currentMonthData.notes || f.notes,
+                                      services: (() => {
+                                        const existingNames = new Set(f.services.map(s => s.name));
+                                        const newS = (currentMonthData.services || []).filter((s: any) => !existingNames.has(s.service_name)).map((s: any) => ({ name: s.service_name, qty: 1 }));
+                                        return [...f.services, ...newS];
+                                      })()
+                                    }));
+                                    if (currentMonthData.odontogram_data) {
+                                      setToothData(prev => ({ ...prev, ...currentMonthData.odontogram_data }));
+                                    }
+                                  }
+                                }}
+                                className="shrink-0 bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] px-2 py-1 rounded border border-amber-300 transition-colors whitespace-nowrap"
+                              >
+                                ↓ ดึงมาใส่
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center gap-2">
+                            <span className="text-slate-400 shrink-0">👆</span>
+                            <p className="text-[11px] text-slate-600">
+                              เลือกครั้งที่ด้านล่างเพื่อระบุว่าวันนี้ทำตาม<strong>ครั้งที่เท่าไหร่</strong>ในแผน — หรือไม่เลือกก็ได้ถ้าเป็นการรักษาที่ไม่ใช่ส่วนของแผนนี้
+                            </p>
+                          </div>
                         )}
+
+                        {/* Month selector */}
+                        <div className="bg-white px-3 py-2.5">
+                          <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">เลือกครั้งที่ในแผน</p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {activePlan.plan_details.map((plan: any) => {
+                              const isSelected = selectedPlanMonth === plan.month;
+                              const isCompleted = plan.status === 'completed';
+                              return (
+                                <button
+                                  key={plan.month}
+                                  onClick={() => setSelectedPlanMonth(isSelected ? null : plan.month)}
+                                  title={isCompleted ? `ครั้งที่ ${plan.month} — เสร็จแล้ว` : `ครั้งที่ ${plan.month}${plan.services?.length > 0 ? ': ' + plan.services.map((s:any) => s.service_name).join(', ') : ''}`}
+                                  className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${
+                                    isCompleted ? "bg-teal-600 border-teal-600 text-white cursor-default" :
+                                    isSelected ? "bg-teal-100 border-teal-500 text-teal-800 shadow-sm ring-1 ring-teal-500" : 
+                                    "bg-white border-slate-200 text-slate-600 hover:border-teal-300"
+                                  }`}
+                                >
+                                  <span className="text-sm font-bold">{plan.month}</span>
+                                  {!isCompleted && plan.services?.length > 0 && <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5"></div>}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex gap-2 flex-wrap pb-2">
-                        {activePlan.plan_details.map((plan: any) => {
-                          const isSelected = selectedPlanMonth === plan.month;
-                          const isCompleted = plan.status === 'completed';
-                          return (
-                            <button
-                              key={plan.month}
-                              onClick={() => setSelectedPlanMonth(plan.month)}
-                              className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${
-                                isCompleted ? "bg-teal-600 border-teal-600 text-white" :
-                                isSelected ? "bg-teal-100 border-teal-500 text-teal-800 shadow-sm ring-1 ring-teal-500" : 
-                                "bg-white border-slate-200 text-slate-600 hover:border-teal-300"
-                              }`}
-                            >
-                              <span className="text-sm font-bold">{plan.month}</span>
-                              {!isCompleted && plan.services?.length > 0 && <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5"></div>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <div>
@@ -596,7 +651,7 @@ export default function TreatmentQueue({
                                 </div>
                                 {isSelected && (
                                   <div 
-                                    onClick={(e) => decrementService(s.name, e)}
+                                    onClick={(e) => decrementService(s.id, undefined, e)}
                                     className="w-4 h-4 rounded-full bg-white border border-[#FF8C9A] flex items-center justify-center text-[#FF6B7E] hover:bg-[#FF8C9A] hover:text-white transition-colors"
                                   >
                                     <span className="text-[10px] leading-none font-bold mb-[1px]">-</span>
@@ -635,9 +690,43 @@ export default function TreatmentQueue({
                         className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
                         style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                     </div>
-                    <div className="flex justify-end gap-2 pt-4">
+                    
+                    {/* Bill Preview / Safety Net */}
+                    {(() => {
+                      let baseInstAmount = 0;
+                      if (selectedPlanMonth && activePlan && activeInstallments.length > 0) {
+                        const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
+                        if (inst && Number(inst.amount) > 0) baseInstAmount = Number(inst.amount);
+                      }
+                      
+                      const servicesCost = form.services.reduce((sum, s) => sum + ((s.price ?? 0) * s.qty), 0);
+                      const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
+                      const suggestedExtraCost = servicesCost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : servicesCost;
+                      const totalBill = baseInstAmount + suggestedExtraCost;
+
+                      if (totalBill > 0) {
+                        return (
+                          <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-bold text-red-800 uppercase tracking-wide">บิลที่จะส่งให้พนักงานเก็บเงิน</span>
+                              <div className="flex items-center gap-1.5 text-xs text-red-600 mt-1">
+                                {baseInstAmount > 0 && <span>ค่างวด ({baseInstAmount.toLocaleString()})</span>}
+                                {baseInstAmount > 0 && suggestedExtraCost > 0 && <span>+</span>}
+                                {suggestedExtraCost > 0 && <span>ค่าหัตถการ ({suggestedExtraCost.toLocaleString()})</span>}
+                              </div>
+                            </div>
+                            <div className="text-lg font-black text-red-700">
+                              ฿{totalBill.toLocaleString()}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    <div className="flex justify-end gap-2 pt-1">
                       <button onClick={() => submitTreatment(a)}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 shadow-sm hover:shadow"
                         style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
                         <Send size={14} /> ส่งข้อมูลให้พนักงาน
                       </button>

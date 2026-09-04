@@ -28,6 +28,7 @@ export interface Appointment {
   service: string;
   serviceId?: number;
   paymentPlanId?: number;
+  planItemId?: number;
   doctorName: string;
   doctorId?: number;
   date: string;
@@ -75,6 +76,7 @@ export interface DentistInfo {
   license: string;
   university: string;
   experienceYears?: number;
+  graduationYear?: number;
   imageUrl?: string;
   startDate?: string;
   citizenId?: string;
@@ -164,6 +166,8 @@ export interface ServiceInfo {
   newCategoryColor?: string;
   estimatedTime?: number; // Duration in minutes
   active: boolean;
+  isPublic?: boolean;
+  serviceType?: string;
   isFixedPrice?: boolean;
   requiresConfirmation?: boolean;
   applyTo?: string;
@@ -337,10 +341,10 @@ export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: stri
   "ไม่มาตามนัด":      { bg: "#F3F4F6", text: "#4B5563", dot: "#6B7280" },
 };
 
-export type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub" | "profile";
+export type AdminView = "dashboard" | "schedule-hub" | "clinic-hub" | "users-hub" | "settings-hub" | "manual" | "profile";
 export type DoctorView = "dashboard" | "queue" | "patients" | "schedule" | "leaves" | "announcements";
-export type DocView = "dashboard" | "queue" | "records" | "history" | "calendar" | "profile" | "announcements";
-export type StaffView = "queue" | "appointments" | "patients" | "walkin" | "payment" | "leave" | "announcements" | "profile";
+export type DocView = "dashboard" | "queue" | "records" | "history" | "calendar" | "profile" | "announcements" | "tracking";
+export type StaffView = "queue" | "appointments" | "patients" | "walkin" | "payment" | "leave" | "announcements" | "profile" | "tracking";
 
 import React from 'react';
 

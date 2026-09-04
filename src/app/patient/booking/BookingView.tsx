@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   ChevronLeft, Check, ChevronRight, CheckCircle,
-  ArrowRight, UserPlus, FileText, Clock, Info,
+  ArrowRight, UserPlus, FileText, Clock, Info, AlertTriangle,
 } from "lucide-react";
 
 import { View, PatientUser } from "../types";
@@ -97,6 +97,7 @@ export default function BookingView({
   initialService = null,
   initialDoctor = null,
   isFollowUp = false,
+  planItemId,
   user,
   onAddAppt,
 }: {
@@ -104,6 +105,7 @@ export default function BookingView({
   initialService?: number | null;
   initialDoctor?: number | null;
   isFollowUp?: boolean;
+  planItemId?: number;
   user: PatientUser | null;
   onAddAppt?: (appt: any) => void;
 }) {
@@ -380,6 +382,14 @@ export default function BookingView({
 
   const handleConfirm = async () => {
     if (isSubmitting) return;
+    
+    if (isFollowUp || planItemId) {
+      const confirmMsg = `ยืนยันการจองคิวนัดหมายต่อเนื่อง\nวันที่ ${selDay} เวลา ${selTime} น.?\n\n(กรุณาตรวจสอบว่าวันนัดหมายห่างจากรอบที่แล้วตามที่คุณหมอแนะนำ เพื่อให้การรักษาเป็นไปตามแผนครับ)`;
+      if (!window.confirm(confirmMsg)) {
+        return;
+      }
+    }
+    
     setIsSubmitting(true);
     const serviceTitle = servicesData[selService!]?.title || "";
     let finalDoctorId: number | undefined;
@@ -446,6 +456,7 @@ export default function BookingView({
           ...(healthData.conditions.includes('โรคอื่นๆ') && healthData.conditionOther ? [`อื่นๆ: ${healthData.conditionOther}`] : [])
         ].join(", ") || "ไม่มี"),
         paymentPlanId: selPaymentPlan || undefined,
+        planItemId: planItemId || undefined,
       });
       let finalAssignedDoctorName = finalDoctorName;
       let finalAssignedDoctorId = finalDoctorId || (res as any).assignedDoctorId || 0;
@@ -708,6 +719,19 @@ export default function BookingView({
                       {plan.installments > 1 && <p style={{ fontSize: 11, color: "#4A6080", marginTop: 4 }}>แบ่ง {plan.installments} งวด งวดละ {plan.per_month?.toLocaleString()} บาท</p>}
                     </button>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Warning Note for Follow-up / Plan Items */}
+            {(isFollowUp || planItemId) && (
+              <div style={{ borderRadius: 12, backgroundColor: "#FEF3C7", padding: "12px 16px", border: "1px solid #FDE68A", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <AlertTriangle size={18} style={{ color: "#D97706", marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: 13, color: "#B45309", marginBottom: 2 }}>คำแนะนำสำหรับเคสต่อเนื่อง</p>
+                  <p style={{ fontSize: 12, color: "#92400E", lineHeight: 1.4 }}>
+                    กรุณาเลือกวันนัดหมาย <strong>ห่างจากรอบที่แล้วประมาณ 3-4 สัปดาห์</strong> หรือตามที่ทันตแพทย์ได้แจ้งไว้ เพื่อให้การรักษาเป็นไปตามแผนครับ
+                  </p>
                 </div>
               </div>
             )}

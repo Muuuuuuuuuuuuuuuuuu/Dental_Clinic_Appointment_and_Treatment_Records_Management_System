@@ -3,7 +3,7 @@ import { Plus, Edit3, Check, Clock, Settings2 } from "lucide-react";
 import StatusBadge from "../../shared/components/StatusBadge";
 import { ServiceInfo, SERVICE_CATEGORIES } from "../../shared/data";
 import {
-  getServices, updateService, addService, updateServiceActiveStatus
+  getServices, updateService, addService, updateServiceActiveStatus, updateServicePublicStatus
 } from "../../shared/supabaseApi";
 
 export default function ServiceManagement() {
@@ -21,11 +21,15 @@ export default function ServiceManagement() {
   const [descs, setDescs] = useState<Record<number, string>>({});
   const [cats, setCats] = useState<Record<number, string>>({});
   const [reqConfs, setReqConfs] = useState<Record<number, boolean>>({});
+  const [applyTos, setApplyTos] = useState<Record<number, string>>({});
+  const [srvTypes, setSrvTypes] = useState<Record<number, string>>({});
+  const [fixedPrices, setFixedPrices] = useState<Record<number, boolean>>({});
 
   // Services Add States
   const [isAdding, setIsAdding] = useState(false);
   const [newService, setNewService] = useState({
-    name: "", desc: "", price: "", time: "30", category: SERVICE_CATEGORIES[0] as string, requiresConfirmation: false
+    name: "", desc: "", price: "", time: "30", category: SERVICE_CATEGORIES[0] as string, 
+    requiresConfirmation: false, applyTo: "MOUTH", serviceType: "treatment", isFixedPrice: false
   });
 
   useEffect(() => {
@@ -52,6 +56,9 @@ export default function ServiceManagement() {
     const d = descs[id];
     const c = cats[id];
     const rc = reqConfs[id];
+    const at = applyTos[id];
+    const st = srvTypes[id];
+    const fp = fixedPrices[id];
 
     if (!isNaN(p) && !isNaN(t)) {
       try {
@@ -60,6 +67,9 @@ export default function ServiceManagement() {
         if (d !== undefined) payload.description = d;
         if (c !== undefined) payload.category = c;
         if (rc !== undefined) payload.requiresConfirmation = rc;
+        if (at !== undefined) payload.applyTo = at;
+        if (st !== undefined) payload.serviceType = st;
+        if (fp !== undefined) payload.isFixedPrice = fp;
         await updateService(id, payload);
         fetchData();
       } catch (err) {
@@ -73,7 +83,7 @@ export default function ServiceManagement() {
   const toggleActiveService = async (s: ServiceInfo) => {
     if (!s.id) return;
     const actionText = s.active ? "ปิด" : "เปิด";
-    const confirmMsg = `ต้องการ${actionText}ใช้งานบริการ "${s.name}" ใช่หรือไม่?`;
+    const confirmMsg = `ต้องการ${actionText}ใช้งานบริการ "${s.name}" (ในระบบ) ใช่หรือไม่?`;
     if (!window.confirm(confirmMsg)) return;
 
     try {
@@ -82,6 +92,22 @@ export default function ServiceManagement() {
     } catch (err) {
       console.error(err);
       alert("เกิดข้อผิดพลาดในการอัปเดตสถานะบริการ");
+    }
+  };
+
+  const togglePublicService = async (s: ServiceInfo) => {
+    if (!s.id) return;
+    const isPublic = s.isPublic ?? true;
+    const actionText = isPublic ? "ซ่อนจาก" : "แสดงบน";
+    const confirmMsg = `ต้องการ${actionText}หน้าเว็บจองคิว สำหรับบริการ "${s.name}" ใช่หรือไม่?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await updateServicePublicStatus(s.id, !isPublic);
+      setServices(ss => ss.map(x => x.id === s.id ? { ...x, isPublic: !isPublic } : x));
+    } catch (err) {
+      console.error(err);
+      alert("เกิดข้อผิดพลาดในการอัปเดตสถานะหน้าเว็บ");
     }
   };
 
@@ -99,11 +125,14 @@ export default function ServiceManagement() {
         category: newService.category,
         estimatedTime: t,
         active: true,
-        requiresConfirmation: newService.requiresConfirmation
+        requiresConfirmation: newService.requiresConfirmation,
+        applyTo: newService.applyTo,
+        serviceType: newService.serviceType,
+        isFixedPrice: newService.isFixedPrice
       });
       fetchData();
       setIsAdding(false);
-      setNewService({ ...newService, name: "", desc: "", price: "", requiresConfirmation: false });
+      setNewService({ ...newService, name: "", desc: "", price: "", requiresConfirmation: false, isFixedPrice: false });
     } catch (err) {
       console.error(err);
       alert("Failed to add service");
@@ -133,7 +162,7 @@ export default function ServiceManagement() {
           {isAdding && (
             <div className="mb-6 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 animate-fade-in">
               <h2 className="text-sm font-bold mb-4" style={{ color: "#1A365D" }}>เพิ่มบริการใหม่</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">ชื่อบริการ</label>
                   <input type="text" value={newService.name} onChange={e => setNewService({ ...newService, name: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="เช่น ขูดหินปูน" />
@@ -156,14 +185,45 @@ export default function ServiceManagement() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">เวลา (นาที)</label>
                   <input type="number" value={newService.time} onChange={e => setNewService({ ...newService, time: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="30" />
                 </div>
+                
                 <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">ประเภทบริการ</label>
+                  <select
+                    value={newService.serviceType}
+                    onChange={e => setNewService({ ...newService, serviceType: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]"
+                  >
+                    <option value="treatment">รักษา (Treatment)</option>
+                    <option value="consultation">ปรึกษา (Consultation)</option>
+                    <option value="surgery">ศัลยกรรม (Surgery)</option>
+                    <option value="product">สินค้า/ยา (Product)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">บริเวณที่ทำ (Odontogram)</label>
+                  <select
+                    value={newService.applyTo}
+                    onChange={e => setNewService({ ...newService, applyTo: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]"
+                  >
+                    <option value="MOUTH">ทำทั้งปาก (เช่น ขูดหินปูน)</option>
+                    <option value="TOOTH">ระบุซี่ฟัน (เช่น อุดฟัน)</option>
+                    <option value="ARCH">ขากรรไกร บน/ล่าง</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
                   <label className="block text-xs font-medium text-slate-500 mb-1">คำอธิบาย</label>
                   <input type="text" value={newService.desc} onChange={e => setNewService({ ...newService, desc: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="คำอธิบายสั้นๆ" />
                 </div>
-                <div className="flex flex-col justify-center">
-                  <label className="flex items-center gap-2 cursor-pointer mt-5">
+
+                <div className="md:col-span-4 flex flex-wrap gap-4 mt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={newService.requiresConfirmation} onChange={e => setNewService({ ...newService, requiresConfirmation: e.target.checked })} className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]" />
-                    <span className="text-xs font-medium text-slate-700">เคสยาก</span>
+                    <span className="text-xs font-medium text-slate-700">เคสยาก (ต้องยืนยัน)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={newService.isFixedPrice} onChange={e => setNewService({ ...newService, isFixedPrice: e.target.checked })} className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]" />
+                    <span className="text-xs font-medium text-slate-700">ราคาคงที่ (แก้ราคาตอนคิดเงินไม่ได้)</span>
                   </label>
                 </div>
               </div>
@@ -210,15 +270,47 @@ export default function ServiceManagement() {
                               className="w-full px-2 py-1 rounded-lg text-sm outline-none border border-slate-200"
                               placeholder="คำอธิบาย"
                             />
-                            <label className="flex items-center gap-2 cursor-pointer mt-1">
-                              <input
-                                type="checkbox"
-                                defaultChecked={s.requiresConfirmation}
-                                onChange={e => setReqConfs(rc => ({ ...rc, [s.id]: e.target.checked }))}
-                                className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]"
-                              />
-                              <span className="text-xs font-medium text-slate-700">เคสยาก (รอการยืนยัน)</span>
-                            </label>
+                            <div className="grid grid-cols-2 gap-2 mt-1">
+                              <select
+                                defaultValue={s.serviceType || 'treatment'}
+                                onChange={e => setSrvTypes(st => ({ ...st, [s.id]: e.target.value }))}
+                                className="w-full px-2 py-1 rounded-lg text-xs outline-none border border-slate-200"
+                              >
+                                <option value="treatment">รักษา (Treatment)</option>
+                                <option value="consultation">ปรึกษา (Consultation)</option>
+                                <option value="surgery">ศัลยกรรม (Surgery)</option>
+                                <option value="product">สินค้า/ยา (Product)</option>
+                              </select>
+                              <select
+                                defaultValue={s.applyTo || 'MOUTH'}
+                                onChange={e => setApplyTos(at => ({ ...at, [s.id]: e.target.value }))}
+                                className="w-full px-2 py-1 rounded-lg text-xs outline-none border border-slate-200"
+                              >
+                                <option value="MOUTH">ทำทั้งปาก (MOUTH)</option>
+                                <option value="TOOTH">ระบุซี่ฟัน (TOOTH)</option>
+                                <option value="ARCH">ขากรรไกร (ARCH)</option>
+                              </select>
+                            </div>
+                            <div className="flex flex-col gap-1 mt-1">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  defaultChecked={s.requiresConfirmation}
+                                  onChange={e => setReqConfs(rc => ({ ...rc, [s.id]: e.target.checked }))}
+                                  className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]"
+                                />
+                                <span className="text-xs font-medium text-slate-700">เคสยาก (รอการยืนยัน)</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  defaultChecked={s.isFixedPrice}
+                                  onChange={e => setFixedPrices(fp => ({ ...fp, [s.id]: e.target.checked }))}
+                                  className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]"
+                                />
+                                <span className="text-xs font-medium text-slate-700">ราคาคงที่</span>
+                              </label>
+                            </div>
                           </div>
                         ) : (
                           <>
@@ -280,9 +372,14 @@ export default function ServiceManagement() {
                             </button>
                           </div>
                         )}
-                        <button onClick={() => toggleActiveService(s)} title={s.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}>
-                          <StatusBadge label="" active={s.active} />
-                        </button>
+                        <div className="flex flex-col gap-2 items-end">
+                          <button onClick={() => toggleActiveService(s)} title={s.active ? "ปิดใช้งานระบบ" : "เปิดใช้งานระบบ"}>
+                            <StatusBadge label={s.active ? "ระบบ: เปิด" : "ระบบ: ปิด"} active={s.active} />
+                          </button>
+                          <button onClick={() => togglePublicService(s)} title={(s.isPublic ?? true) ? "ซ่อนจากเว็บ" : "แสดงบนเว็บ"}>
+                            <StatusBadge label={(s.isPublic ?? true) ? "เว็บ: แสดง" : "เว็บ: ซ่อน"} active={s.isPublic ?? true} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}

@@ -22,26 +22,33 @@ export default function AppointmentsView({
   onUpdateAppt?: (id: number, updates: Partial<Appointment>) => void;
   onBookFollowUp?: (serviceId: number, doctorId: number) => void;
 }) {
-  const [appts, setAppts] = useState<Appointment[]>(globalAppointments?.filter(a => a.patientId === user.patientId) || []);
+  const [appts, setAppts] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelId, setCancelId] = useState<number | null>(null);
 
+  // Always fetch fresh data from DB when mounted or patientId changes
+  // (ไม่พึ่ง globalAppointments เพราะอาจ [] หรือ RLS block ได้)
   useEffect(() => {
-    if (globalAppointments) {
-      setAppts(globalAppointments.filter(a => a.patientId === user.patientId));
-      setLoading(false);
+    if (!user.patientId) {
+      setLoading(false); // ไม่มี patientId → หยุด loading ทันที
+      return;
     }
-  }, [globalAppointments, user.patientId]);
+    setLoading(true);
+    getPatientAppointments(user.patientId)
+      .then(data => setAppts(data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [user.patientId]);
 
+  // Sync optimistic cancel updates from parent state
   useEffect(() => {
-    if (!globalAppointments) {
-      if (!user.patientId) return; // Wait until we have the ID
-      getPatientAppointments(user.patientId)
-        .then(data => setAppts(data))
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }
-  }, [user, globalAppointments]);
+    if (!globalAppointments || !user.patientId) return;
+    const parentAppts = globalAppointments.filter(a => a.patientId === user.patientId);
+    setAppts(prev => prev.map(a => {
+      const updated = parentAppts.find(p => p.id === a.id);
+      return updated ? { ...a, status: updated.status } : a;
+    }));
+  }, [globalAppointments, user.patientId]);
 
   const doCancel = async (id: number) => {
     // 1. ซ่อนจากหน้าจอทันที (Optimistic Update) เพื่อให้หายไปเลยโดยไม่ต้องรอโหลด

@@ -59,6 +59,14 @@ export async function getDentists() {
 
   return data.map((d: any) => {
     const p = d.users?.profile;
+    
+    // คำนวณอายุงานจาก graduation_year
+    let expYears = 0;
+    if (d.graduation_year) {
+      const now = new Date();
+      expYears = Math.max(0, now.getFullYear() - d.graduation_year);
+    }
+
     return {
       id: d.dentist_id,
       name: p ? `${d.title_name || ''} ${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
@@ -71,7 +79,8 @@ export async function getDentists() {
       specialty: d.specialization || 'ทันตกรรมทั่วไป',
       license: d.license_number,
       university: d.university || 'N/A',
-      experienceYears: d.experience_years || 0,
+      experienceYears: expYears,
+      graduationYear: d.graduation_year,
       imageUrl: d.image_url || '',
       startDate: d.start_date || '',
       email: d.users?.email || '',
@@ -84,6 +93,28 @@ export async function getDentists() {
     };
   }) as DentistInfo[];
 }
+
+export async function uploadAvatar(file: File): Promise<string> {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+  const filePath = `${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('dentist_profiles')
+    .upload(filePath, file);
+
+  if (uploadError) {
+    console.error('Error uploading image:', uploadError);
+    throw new Error('ไม่สามารถอัปโหลดรูปภาพได้');
+  }
+
+  const { data } = supabase.storage
+    .from('dentist_profiles')
+    .getPublicUrl(filePath);
+
+  return data.publicUrl;
+}
+
 
 export async function updateDentistRoom(id: number, roomName: string): Promise<void> {
   const { error } = await supabase.from('dentist').update({ default_room: roomName }).eq('dentist_id', id);
@@ -155,9 +186,9 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
     specialization: dentist.specialty,
     license_number: dentist.license,
     university: dentist.university || 'N/A',
-    experience_years: dentist.experienceYears || null,
     image_url: dentist.imageUrl || null,
     start_date: dentist.startDate || null,
+    graduation_year: dentist.graduationYear || null,
   }).select().single();
 
   if (error) throw error;
@@ -180,9 +211,9 @@ export async function updateDentist(id: number, updates: Partial<DentistInfo>): 
   if (updates.license !== undefined) dentistUpdates.license_number = updates.license;
   if (updates.titleName !== undefined) dentistUpdates.title_name = updates.titleName;
   if (updates.university !== undefined) dentistUpdates.university = updates.university;
-  if (updates.experienceYears !== undefined) dentistUpdates.experience_years = updates.experienceYears;
   if (updates.imageUrl !== undefined) dentistUpdates.image_url = updates.imageUrl;
   if (updates.startDate !== undefined) dentistUpdates.start_date = updates.startDate;
+  if (updates.graduationYear !== undefined) dentistUpdates.graduation_year = updates.graduationYear;
 
   if (Object.keys(dentistUpdates).length > 0) {
     const { error } = await supabase.from('dentist').update(dentistUpdates).eq('dentist_id', id);
@@ -488,10 +519,16 @@ export async function deleteStaff(id: number): Promise<void> {
 }
 
 export async function getServices() {
-  const { data, error } = await supabase.from('service').select('*');
+  const { data: serviceData, error } = await supabase.from('service').select('*');
   if (error) return [];
 
-  return data.map((d: any) => ({
+  const { data: settingsData } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
+  let disabledIds: number[] = [];
+  if (settingsData && settingsData.setting_value) {
+    try { disabledIds = typeof settingsData.setting_value === 'string' ? JSON.parse(settingsData.setting_value) : settingsData.setting_value; } catch (e) { }
+  }
+
+  return serviceData.map((d: any) => ({
     id: d.service_id,
     name: d.service_name,
     description: d.description || `ใช้เวลาประมาณ ${d.estimated_time} นาที`,
@@ -503,7 +540,9 @@ export async function getServices() {
     requiresConfirmation: d.requires_confirmation,
     isFixedPrice: d.is_fixed_price,
     active: d.is_active,
-    applyTo: d.apply_to
+    isPublic: !disabledIds.includes(d.service_id),
+    applyTo: d.apply_to,
+    serviceType: d.service_type
   })) as ServiceInfo[];
 }
 
@@ -516,7 +555,10 @@ export async function addService(service: Omit<ServiceInfo, 'id'>) {
     category: service.category,
     estimated_time: estimatedTime,
     is_active: service.active !== false,
-    requires_confirmation: service.requiresConfirmation || false
+    requires_confirmation: service.requiresConfirmation || false,
+    service_type: service.serviceType,
+    apply_to: service.applyTo || 'MOUTH',
+    is_fixed_price: service.isFixedPrice || false
   }).select().single();
   if (error) throw error;
   return { ...service, id: data.service_id, estimatedTime, description: data.description || `ใช้เวลาประมาณ ${estimatedTime} นาที` } as ServiceInfo;
@@ -530,6 +572,9 @@ export async function updateService(id: number, updates: Partial<ServiceInfo>): 
   if (updates.estimatedTime !== undefined) serviceUpdates.estimated_time = updates.estimatedTime;
   if (updates.requiresConfirmation !== undefined) serviceUpdates.requires_confirmation = updates.requiresConfirmation;
   if (updates.active !== undefined) serviceUpdates.is_active = updates.active;
+  if (updates.serviceType !== undefined) serviceUpdates.service_type = updates.serviceType;
+  if (updates.applyTo !== undefined) serviceUpdates.apply_to = updates.applyTo;
+  if (updates.isFixedPrice !== undefined) serviceUpdates.is_fixed_price = updates.isFixedPrice;
 
   const { error } = await supabase.from('service').update(serviceUpdates).eq('service_id', id);
   if (error) throw error;
@@ -540,13 +585,18 @@ export async function deleteService(id: number): Promise<void> {
 }
 
 export async function updateServiceActiveStatus(id: number, active: boolean) {
+  const { error } = await supabase.from('service').update({ is_active: active }).eq('service_id', id);
+  if (error) throw error;
+}
+
+export async function updateServicePublicStatus(id: number, isPublic: boolean) {
   const { data } = await supabase.from('clinic_settings').select('setting_value').eq('setting_key', 'disabled_services').maybeSingle();
   let disabledIds: number[] = [];
   if (data && data.setting_value) {
     try { disabledIds = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value; } catch (e) { }
   }
 
-  if (active) {
+  if (isPublic) {
     disabledIds = disabledIds.filter(x => x !== id);
   } else {
     if (!disabledIds.includes(id)) disabledIds.push(id);
@@ -613,14 +663,23 @@ export async function getLandingDoctors() {
     return [];
   }
 
-  return data.map((d: any) => ({
-    id: d.dentist_id,
-    userId: d.user_id,
-    name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
-    specialty: d.specialization || 'ทันตแพทย์',
-    img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format',
-    years: `ประสบการณ์ ${d.experience_years || 0} ปี`
-  }));
+  const currentYear = new Date().getFullYear();
+
+  return data.map((d: any) => {
+    let expYears = 0;
+    if (d.graduation_year) {
+      expYears = Math.max(0, currentYear - d.graduation_year);
+    }
+    
+    return {
+      id: d.dentist_id,
+      userId: d.user_id,
+      name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
+      specialty: d.specialization || 'ทันตแพทย์',
+      img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format',
+      years: `ประสบการณ์ ${expYears} ปี`
+    };
+  });
 }
 
 // ดึงหมอที่ทำบริการ (service_id) นั้นได้ ผ่านตาราง dentist_service
@@ -1246,7 +1305,7 @@ export async function getAppointments(date?: string) {
       if (tr && tr.treatment_detail) {
         detailedServices = tr.treatment_detail.map((td: any) => ({
           serviceId: td.service_id,
-          name: td.service?.service_name || 'ไม่ระบุ',
+          name: td.service?.service_name || td.diagnosis || 'ไม่ระบุ',
           locationCode: td.location_code,
           qty: td.quantity,
           price: td.actual_price
@@ -1485,13 +1544,27 @@ export async function getPatientTreatmentRecords(patientId?: number) {
 }
 
 export async function getPatientActiveTreatmentPlan(patientId: number) {
-  const { data } = await supabase.from('treatment_plan')
+  const { data: plan } = await supabase.from('treatment_plan')
     .select('*')
     .eq('patient_id', patientId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  return data;
+    
+  if (plan) {
+    const { data: items } = await supabase.from('treatment_plan_item').select('*').eq('plan_id', plan.plan_id);
+    const planDetails = (items || []).map(item => ({
+      month: item.month_number,
+      services: item.services_json || [],
+      odontogram_data: item.odontogram_data || {},
+      notes: item.notes || '',
+      status: item.status
+    })).sort((a, b) => a.month - b.month);
+    
+    plan.plan_details = planDetails;
+  }
+  
+  return plan;
 }
 
 export async function getPatientLatestOdontogram(patientId: number) {
@@ -1565,7 +1638,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
           });
           if (authErr) throw new Error(`ไม่สามารถสร้างบัญชีผู้ใช้ได้: ${authErr.message}`);
           if (authData.user) {
-            finalUserId = authData.user.id;
+            finalUserId = authData.user.id as any;
           }
         }
 
@@ -1841,6 +1914,17 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
     }
   }
 
+  // 7. If this appointment is linked to a treatment plan item (long-term tracking)
+  if (appointment.planItemId) {
+    // Assuming status can be set to 'นัดหมายแล้ว' or similar in our tracking logic
+    // But since the actual column is `status` (which only takes pending/completed natively in TreatmentPlanBuilder)
+    // we'll update it to 'booked' or update a notes field, or if we rely on appointment_id, we could store it in notes for now
+    // Let's just update the status to 'booked'
+    await supabase.from('treatment_plan_item')
+      .update({ status: 'booked' })
+      .eq('item_id', appointment.planItemId);
+  }
+
   notifyAppointmentsUpdated();
   return { ...newAppt, assignedDoctorId: finalDoctorId };
 }
@@ -1917,6 +2001,7 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
       treatment_id: treatmentId,
       service_id: s.id,
       location_code: s.locationCode || null,
+      diagnosis: s.name || null,
       quantity: s.qty || 1,
       actual_price: s.price || 0
     }));
@@ -1940,17 +2025,11 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
 
   // 4. Update Treatment Plan Progress if provided
   if (planId && planMonth) {
-    const { data: planData } = await supabase.from('treatment_plan').select('plan_details').eq('plan_id', planId).single();
-    if (planData && planData.plan_details) {
-      const details = planData.plan_details as any[];
-      const updatedDetails = details.map((d: any) => {
-        if (d.month === planMonth) {
-          return { ...d, status: 'completed', completed_at: new Date().toISOString() };
-        }
-        return d;
-      });
-      await supabase.from('treatment_plan').update({ plan_details: updatedDetails }).eq('plan_id', planId);
-    }
+    // Update the new relational table
+    await supabase.from('treatment_plan_item')
+      .update({ status: 'completed' })
+      .eq('plan_id', planId)
+      .eq('month_number', planMonth);
   }
 
   notifyAppointmentsUpdated();
@@ -1986,17 +2065,30 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
     }
   }
 
-  // 4. Handle Installment payment (Auto-mark next unpaid installment as paid)
-  if (patientId) {
-    const { data: plans } = await supabase.from('treatment_plan').select('plan_id').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(1);
-    if (plans && plans.length > 0) {
-      const planId = plans[0].plan_id;
-      const { data: insts } = await supabase.from('installment').select('installment_id').eq('plan_id', planId).eq('paid', false).order('installment_number').limit(1);
-      if (insts && insts.length > 0) {
-        await supabase.from('installment').update({ 
-          paid: true, 
-          paid_at: new Date().toISOString() 
-        }).eq('installment_id', insts[0].installment_id);
+  // 4. Handle Installment payment
+  if (treatmentId && patientId) {
+    // Check if the doctor explicitly charged an installment in this treatment
+    const { data: details } = await supabase.from('treatment_detail').select('diagnosis').eq('treatment_id', treatmentId);
+    if (details) {
+      for (const d of details) {
+        if (d.diagnosis && d.diagnosis.includes("จัดฟัน งวดที่")) {
+          const match = d.diagnosis.match(/งวดที่ (\d+)/);
+          if (match && match[1]) {
+            const instNumber = parseInt(match[1], 10);
+            
+            // Find the active plan for this patient
+            const { data: plans } = await supabase.from('treatment_plan').select('plan_id').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(1);
+            if (plans && plans.length > 0) {
+              const planId = plans[0].plan_id;
+              
+              // Mark that specific installment as paid
+              await supabase.from('installment').update({ 
+                paid: true, 
+                paid_at: new Date().toISOString() 
+              }).eq('plan_id', planId).eq('installment_number', instNumber);
+            }
+          }
+        }
       }
     }
   }
@@ -2490,7 +2582,7 @@ export async function deletePromotion(id: number) {
 
 export async function getTreatmentPlans(hn?: string) {
   let query = supabase.from('treatment_plan').select(`
-    plan_id, patient_id, plan_name, total_cost, paid_amount, dentist_id, package_id, plan_details,
+    plan_id, patient_id, plan_name, total_cost, dentist_id, package_id,
     installment (installment_id, installment_number, amount, due_date, paid),
     patient (users (profile (first_name, last_name)))
   `);
@@ -2508,25 +2600,54 @@ export async function getTreatmentPlans(hn?: string) {
     return [];
   }
 
+  // Fetch normalized items from the new table
+  const planIds = data.map((d: any) => d.plan_id);
+  let itemsByPlan: Record<number, any[]> = {};
+  if (planIds.length > 0) {
+    const { data: itemsData } = await supabase.from('treatment_plan_item').select('*').in('plan_id', planIds);
+    if (itemsData) {
+      itemsData.forEach((item: any) => {
+        if (!itemsByPlan[item.plan_id]) itemsByPlan[item.plan_id] = [];
+        itemsByPlan[item.plan_id].push({
+          month: item.month_number,
+          services: item.services_json || [],
+          odontogram_data: item.odontogram_data || {},
+          notes: item.notes || '',
+          status: item.status
+        });
+      });
+    }
+  }
+
   return data.map((d: any) => {
     const prof = d.patient?.users?.profile;
     const installments = (d.installment || []).map((inst: any) => ({
       id: inst.installment_id,
+      installment_number: inst.installment_number,
       dueDate: inst.due_date,
       amount: inst.amount,
       paid: inst.paid
-    })).sort((a: any, b: any) => a.id - b.id);
+    })).sort((a: any, b: any) => a.installment_number - b.installment_number);
+    
+    let planDetails = itemsByPlan[d.plan_id] || [];
+    if (planDetails.length > 0) {
+      planDetails.sort((a: any, b: any) => a.month - b.month);
+    }
+
+    const paidAmount = installments.filter((i: any) => i.paid).reduce((sum: number, i: any) => sum + Number(i.amount || 0), 0);
+    const totalCost = Number(d.total_cost || 0);
 
     return {
       id: d.plan_id,
       hn: `HN${String(d.patient_id).padStart(3, '0')}`,
       name: prof ? `${prof.first_name} ${prof.last_name}` : 'ไม่ระบุชื่อ',
       planName: d.plan_name || 'แผนการรักษา',
-      totalCost: d.total_cost || 0,
-      paidAmount: d.paid_amount || 0,
+      totalCost: totalCost,
+      paidAmount: paidAmount,
+      remainingAmount: totalCost - paidAmount,
       packageId: d.package_id,
-      planDetails: d.plan_details || [],
-      installments
+      plan_details: planDetails,
+      installments: installments
     };
   });
 }
@@ -2538,12 +2659,9 @@ export async function updateInstallmentPaid(installmentId: number, paid: boolean
   }).eq('installment_id', installmentId);
   if (error) throw error;
 }
-export async function updateTreatmentPlanPaidAmount(planId: number, paidAmount: number) {
-  const { error } = await supabase.from('treatment_plan').update({
-    paid_amount: paidAmount
-  }).eq('plan_id', planId);
-  if (error) throw error;
-}
+// updateTreatmentPlanPaidAmount ถูกลบออกแล้ว
+// paid_amount คำนวณอัตโนมัติจาก View treatment_plan_summary (SUM จากตาราง payment)
+// ไม่จำเป็นต้อง update ด้วยมืออีกต่อไป
 
 export async function getTreatmentRecords(patientName?: string) {
   let query = supabase.from('treatment_record').select(`
@@ -2566,7 +2684,7 @@ export async function getTreatmentRecords(patientName?: string) {
   return data.map((d: any) => {
     const dr = d.dentist?.users?.profile;
     const detail = d.treatment_detail?.[0]; // Assume 1 detail per treatment for simplicity
-    const srvName = detail?.service?.service_name || 'ไม่ระบุบริการ';
+    const srvName = detail?.service?.service_name || detail?.diagnosis || 'ไม่ระบุบริการ';
     const costAmt = d.payment?.[0]?.total_amount || detail?.actual_price || 0;
 
     return {
@@ -2583,6 +2701,81 @@ export async function getTreatmentRecords(patientName?: string) {
   });
 }
 
+// --- Proactive Long-Term Treatment Tracking ---
+
+export async function getActiveTreatmentTrackings() {
+  // Fetch treatment plans that are not fully completed
+  const { data: plans, error } = await supabase.from('treatment_plan').select(`
+    plan_id, patient_id, plan_name, total_cost, dentist_id,
+    dentist (users(profile(first_name, last_name))),
+    patient (users(profile(first_name, last_name, phone_number)))
+  `);
+  
+  if (error || !plans) return [];
+
+  const planIds = plans.map(p => p.plan_id);
+  
+  if (planIds.length === 0) return [];
+
+  // Fetch items for these plans
+  const { data: items } = await supabase.from('treatment_plan_item')
+    .select('item_id, plan_id, month_number, services_json, status')
+    .in('plan_id', planIds)
+    .order('month_number', { ascending: true });
+
+  if (!items) return [];
+
+  const trackings: any[] = [];
+  
+  plans.forEach(plan => {
+    const planItems = items.filter(i => i.plan_id === plan.plan_id);
+    // Find the next incomplete month
+    const nextItem = planItems.find(i => i.status !== 'completed');
+    
+    if (nextItem) {
+      const patientProf = (plan as any).patient?.users?.profile || {};
+      const doctorProf = (plan as any).dentist?.users?.profile || {};
+      const doctorName = doctorProf.first_name ? `${doctorProf.first_name} ${doctorProf.last_name}` : 'ไม่ระบุ';
+      
+      // We interpret 'pending' as waiting for booking, 'sent_slip' as slip sent, 'booked' as booked.
+      let trackingStatus = 'รอติดตาม';
+      if (nextItem.status === 'sent_slip') trackingStatus = 'ส่งใบนัดแล้ว';
+      if (nextItem.status === 'booked') trackingStatus = 'นัดหมายแล้ว';
+      
+      let nextService = '';
+      if (nextItem.services_json && nextItem.services_json.length > 0) {
+         nextService = nextItem.services_json.map((s:any) => s.service_name || s.name).join(', ');
+      }
+      
+      trackings.push({
+        id: nextItem.item_id,
+        planId: plan.plan_id,
+        patientId: plan.patient_id,
+        patientName: `${patientProf.first_name || ''} ${patientProf.last_name || ''}`.trim(),
+        patientPhone: patientProf.phone_number || '',
+        planName: plan.plan_name,
+        doctorId: plan.dentist_id,
+        doctorName: doctorName,
+        month: nextItem.month_number,
+        nextService: nextService,
+        trackingStatus: trackingStatus,
+        dueDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0], // Mock Due Date based on today for simplicity in UI, ideally from schedule
+      });
+    }
+  });
+
+  return trackings;
+}
+
+export async function sendAppointmentSlip(planItemId: number) {
+  // We just update the item status to 'sent_slip'
+  const { error } = await supabase.from('treatment_plan_item')
+    .update({ status: 'sent_slip' })
+    .eq('item_id', planItemId);
+    
+  if (error) throw error;
+  return true;
+}
 
 // --- Patient Registration ---
 export async function checkEmailExists(email: string): Promise<boolean> {

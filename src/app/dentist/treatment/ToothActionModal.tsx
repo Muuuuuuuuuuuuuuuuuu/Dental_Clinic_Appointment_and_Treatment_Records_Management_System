@@ -14,12 +14,16 @@ export default function ToothActionModal({
   services?: any[] 
 }) {
   const [step, setStep] = useState<"main" | "select_service">("main");
-
   // Filter out services that apply to the whole mouth (not specific to a tooth)
   const filteredServices = services.filter(s => {
-    const isMouth = s.applyTo?.toLowerCase() === 'mouth' || s.applyTo === 'ทั้งปาก';
+    const applyType = s.applyTo?.toLowerCase();
+    if (applyType === 'tooth' || applyType === 'รายซี่') return true;
+    // ถ้าตั้งค่าเป็น ทั้งปาก ชัดเจน ให้บล็อคเสมอ
+    if (applyType === 'mouth' || applyType === 'ทั้งปาก') return false;
+    
+    // ถ้าไม่ได้ตั้งค่า (ข้อมูลเก่า) ค่อยใช้คีย์เวิร์ด
     const isMouthKeyword = s.name.includes('ขูดหินปูน') || s.name.includes('จัดฟัน') || s.name.includes('ตรวจสุขภาพ') || s.name.includes('ฟลูออไรด์');
-    return !isMouth && !isMouthKeyword;
+    return !isMouthKeyword;
   });
   
   // Group filtered services by category
