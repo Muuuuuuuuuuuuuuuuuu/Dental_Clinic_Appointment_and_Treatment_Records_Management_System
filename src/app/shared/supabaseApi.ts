@@ -3275,3 +3275,163 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
 
   return results;
 }
+
+// --- Bulk calendar: ตรวจสอบวันที่คิวเต็มทั้งเดือนในครั้งเดียว ---
+export async function getMonthlyFullyBookedDates(
+  year: number,
+  month: number,
+  serviceId?: number,
+  doctorId?: number,
+  estTimeMins: number = 30
+): Promise<string[]> {
+  const startDateStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const endDateObj = new Date(year, month + 1, 0);
+  const endDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDateObj.getDate()).padStart(2, '0')}`;
+
+  // ดึงข้อมูลทั้งหมดที่ต้องใช้ใน batch เดียว
+  const [dailyHours, holidaysRes, dentistUsersRes, leavesRes, shiftsRes, appointmentsRes] = await Promise.all([
+    getDailyHours(),
+    supabase.from('clinic_holiday').select('holiday_date').gte('holiday_date', startDateStr).lte('holiday_date', endDateStr),
+    supabase.from('dentist').select('dentist_id, user_id'),
+    supabase.from('leave_record').select('user_id, leave_period, leave_date').gte('leave_date', startDateStr).lte('leave_date', endDateStr).eq('is_approved', true),
+    supabase.from('schedule').select('users!inner(dentist(dentist_id)), start_shift, end_shift, is_off, day_of_week'),
+    supabase.from('appointment').select('appointment_date, dentist_id, start_time, end_time_est').gte('appointment_date', startDateStr).lte('appointment_date', endDateStr).in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']),
+  ]);
+
+  const holidaySet = new Set((holidaysRes.data || []).map((h: any) => h.holiday_date));
+  const allDentistUsers = dentistUsersRes.data || [];
+  const allLeaves = leavesRes.data || [];
+  const allShifts = shiftsRes.data || [];
+  const allAppointments = appointmentsRes.data || [];
+
+  // หา targetDoctorIds
+  let targetDoctorIds: number[] = [];
+  if (doctorId) {
+    targetDoctorIds = [doctorId];
+  } else if (serviceId) {
+    const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
+    if (dsData && dsData.length > 0) {
+      targetDoctorIds = dsData.map((d: any) => d.dentist_id);
+    } else {
+      // ถ้าบริการนี้ไม่มีหมอเฉพาะ ให้ใช้หมอทั้งหมด
+      targetDoctorIds = allDentistUsers.map((d: any) => d.dentist_id);
+    }
+  } else {
+    targetDoctorIds = allDentistUsers.map((d: any) => d.dentist_id);
+  }
+
+  // ถ้าไม่มีหมอเลยในระบบ ไม่ต้อง mark วันไหนว่าเต็ม
+  if (targetDoctorIds.length === 0) return [];
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const currentMin = now.getHours() * 60 + now.getMinutes();
+  const reqSlots = Math.ceil(estTimeMins / 30);
+  const fullyBooked: string[] = [];
+
+  for (let d = 1; d <= endDateObj.getDate(); d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (dateStr < todayStr) continue;
+    if (holidaySet.has(dateStr)) continue;
+
+    const dateObj = new Date(year, month, d);
+    const dayOfWeek = dateObj.getDay();
+    const dayHours = dailyHours[dayOfWeek.toString()];
+    if (!dayHours) continue;
+
+    const [openH, openM] = dayHours.open.split(':').map(Number);
+    const [closeH, closeM] = dayHours.close.split(':').map(Number);
+    const clinicOpenMin = openH * 60 + openM;
+    const clinicCloseMin = closeH * 60 + closeM;
+    if (clinicOpenMin >= clinicCloseMin) continue;
+
+    const isToday = dateStr === todayStr;
+    const dayAppointments = allAppointments.filter((a: any) => a.appointment_date === dateStr);
+    const dayLeaves = allLeaves.filter((l: any) => l.leave_date === dateStr);
+
+    const slots: { time: string; status: string }[] = [];
+
+    for (let min = clinicOpenMin; min <= clinicCloseMin - 30; min += 30) {
+      const hh = Math.floor(min / 60);
+      const mm = min % 60;
+      const timeStr = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+
+      if (isToday && min <= currentMin) {
+        slots.push({ time: timeStr, status: 'past' });
+        continue;
+      }
+
+      let anyAvailable = false;
+      for (const dId of targetDoctorIds) {
+        const dUser = allDentistUsers.find((du: any) => du.dentist_id === dId);
+        if (!dUser) continue;
+
+        // เช็คลาเต็มวัน
+        const docFullDayLeave = dayLeaves.find((l: any) => l.user_id === dUser.user_id && l.leave_period === 'เต็มวัน');
+        if (docFullDayLeave) continue;
+
+        // เช็คเวรประจำวัน
+        const shift = allShifts.find((s: any) => {
+          const dentistId = s.users?.dentist?.dentist_id ?? s.users?.dentist?.[0]?.dentist_id;
+          return dentistId === dId && s.day_of_week === dayOfWeek;
+        });
+
+        let isWorking = true;
+        if (shift) {
+          if (shift.is_off) { isWorking = false; }
+          else {
+            const [sH, sM] = (shift.start_shift || '00:00').split(':').map(Number);
+            const [eH, eM] = (shift.end_shift || '23:59').split(':').map(Number);
+            const shiftStart = sH * 60 + sM;
+            const shiftEnd = eH * 60 + eM;
+            if (min < shiftStart || min >= shiftEnd) isWorking = false;
+          }
+        }
+        if (!isWorking) continue;
+
+        // เช็คลาครึ่งวัน
+        const docPartLeave = dayLeaves.find((l: any) => l.user_id === dUser.user_id && l.leave_period !== 'เต็มวัน');
+        if (docPartLeave) {
+          if (docPartLeave.leave_period === 'ครึ่งวันเช้า' && min < 13 * 60) continue;
+          if (docPartLeave.leave_period === 'ครึ่งวันบ่าย' && min >= 13 * 60) continue;
+        }
+
+        // เช็คว่า slot ถูกจองหรือยัง
+        let hasConflict = false;
+        for (const app of dayAppointments) {
+          if (app.dentist_id !== dId || !app.start_time || !app.end_time_est) continue;
+          const [aSh, aSm] = app.start_time.split(':').map(Number);
+          const [aEh, aEm] = app.end_time_est.split(':').map(Number);
+          if ((aSh * 60 + aSm) < min + 30 && (aEh * 60 + aEm) > min) {
+            hasConflict = true;
+            break;
+          }
+        }
+        if (!hasConflict) { anyAvailable = true; break; }
+      }
+      slots.push({ time: timeStr, status: anyAvailable ? 'available' : 'booked' });
+    }
+
+    // ตรวจว่ามี consecutive slots เพียงพอสำหรับบริการนี้หรือไม่
+    let hasAnyCanBook = false;
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i].status !== 'available') continue;
+      let ok = true;
+      for (let j = 1; j < reqSlots; j++) {
+        if (i + j >= slots.length || slots[i + j].status !== 'available') { ok = false; break; }
+        const [pH, pM] = slots[i + j - 1].time.split(':').map(Number);
+        const [cH, cM] = slots[i + j].time.split(':').map(Number);
+        if ((cH * 60 + cM) - (pH * 60 + pM) !== 30) { ok = false; break; }
+      }
+      if (ok) { hasAnyCanBook = true; break; }
+    }
+
+    // mark ว่าเต็มเมื่อ: มี slot ที่ควรจองได้ (ไม่ใช่แค่ past ทั้งหมด) แต่ไม่มีช่วงว่างเลย
+    const hasBookableSlots = slots.some(s => s.status !== 'past');
+    if (hasBookableSlots && !hasAnyCanBook) {
+      fullyBooked.push(dateStr);
+    }
+  }
+
+  return fullyBooked;
+}

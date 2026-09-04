@@ -8,7 +8,7 @@ import { View, PatientUser } from "../types";
 import {
   addAppointment, getClinicClosures,
   getLandingServices, getLandingDoctors, getDentistsByService,
-  getPaymentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves
+  getPaymentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves, getMonthlyFullyBookedDates
 } from "../../shared/supabaseApi";
 import { SpecialClosure, hasHealthAlert } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";
@@ -119,7 +119,7 @@ export default function BookingView({
   const [isPending, setIsPending] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [healthData, setHealthData] = useState<HealthChecklistData>({
     emergencyName: user?.emergencyName || "",
     emergencyPhone: user?.emergencyPhone || "",
@@ -200,7 +200,7 @@ export default function BookingView({
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const closure = closures.find((c) => c.date === dateStr);
     if (closure) return { status: "past" as const, reason: closure.reason };
-    
+
     // Check doctor schedule
     if (step >= 1 && filteredDoctors.length > 0) {
       let isWorking = false;
@@ -218,7 +218,7 @@ export default function BookingView({
         const shift = doctorSchedules.find(s => s.dentistId === selDoctor && s.dayOfWeek === dayOfWk);
         const selDocData = filteredDoctors.find(fd => fd.id === selDoctor) || landingDoctors.find(d => d.id === selDoctor);
         const isFullLeave = selDocData ? upcomingLeaves.some(l => l.user_id === selDocData.userId && l.leave_date === dateStr && l.leave_period === 'เต็มวัน') : false;
-        
+
         if (shift && shift.isOff) {
           isWorking = false;
         } else if (isFullLeave) {
@@ -236,7 +236,7 @@ export default function BookingView({
   const estTime = selService !== null && servicesData[selService] ? servicesData[selService].baseTimeMins : 30;
   const totalDuration = estTime; // Service time directly dictates the blocked time
   const reqSlots = Math.ceil(totalDuration / 30);
-  
+
   // Patient sees only treatment time
   const patientEndTimeStr = selTime ? (() => {
     const [h, m] = selTime.split(":").map(Number);
@@ -281,13 +281,13 @@ export default function BookingView({
           }
           if (ok) { hasAnyCanBook = true; break; }
         }
-        
+
         if (!hasAnyCanBook && slots.length > 0) {
           setFullyBookedDates(prev => new Set(prev).add(dateStr));
         } else {
           setFullyBookedDates(prev => { const next = new Set(prev); next.delete(dateStr); return next; });
         }
-        
+
         // Retain the selected time if it's still available in the new slots
         setSelTime((prevTime) => {
           if (!prevTime) return null;
@@ -310,9 +310,8 @@ export default function BookingView({
       .finally(() => setLoadingSlots(false));
   }, [selDay, selDoctor, selService, monthOffset, year, month, servicesData]);
 
-  // Handle doctor or service changes to invalidate selected day and clear fully booked cache
+  // Handle doctor or service changes to invalidate selected day
   useEffect(() => {
-    setFullyBookedDates(new Set());
     if (selDay !== null) {
       if (dayStatus(selDay).status !== "available") {
         setSelDay(null);
@@ -320,6 +319,22 @@ export default function BookingView({
       }
     }
   }, [selDoctor, selService]);
+
+  // Fetch monthly fully booked dates for the calendar
+  useEffect(() => {
+    if (step >= 1) {
+      const serviceId = selService !== null ? servicesData[selService]?.serviceId : undefined;
+      const doctorId = selDoctor !== "any" && selDoctor !== null ? (selDoctor as number) : undefined;
+      const estMins = selService !== null && servicesData[selService] ? (servicesData[selService]?.baseTimeMins || 30) : 30;
+
+      setFullyBookedDates(new Set()); // clear while loading
+      getMonthlyFullyBookedDates(year, month, serviceId, doctorId, estMins)
+        .then(dates => {
+          setFullyBookedDates(new Set(dates));
+        })
+        .catch(console.error);
+    }
+  }, [year, month, selService, selDoctor, step, servicesData]);
 
   // Handle month change separately to always clear selected day
   useEffect(() => {
@@ -369,7 +384,7 @@ export default function BookingView({
     const serviceTitle = servicesData[selService!]?.title || "";
     let finalDoctorId: number | undefined;
     let finalDoctorName = "ไม่ระบุแพทย์";
-    
+
     if (selDoctor !== "any" && selDoctor !== null) {
       const doc = landingDoctors.find((d) => d.id === selDoctor);
       if (doc) {
@@ -381,20 +396,20 @@ export default function BookingView({
       // Backend will auto-assign, we don't set finalDoctorId
       finalDoctorId = undefined;
     }
-    
+
     const serviceData = servicesData[selService!];
     const isComplex = serviceData?.requiresConfirmation || false;
-    
+
     // Check health risk for routing
     const isReturning = Boolean(user && (
-      hasHealthAlert(user.allergies, user.conditions) || 
+      hasHealthAlert(user.allergies, user.conditions) ||
       (user.emergencyName && user.emergencyName.trim() !== '')
     ));
     const hasExistingCondition = user && hasHealthAlert(user.allergies, user.conditions);
     const newRiskSelected = healthData.hasCondition === true && healthData.conditions.length > 0;
-    
+
     const finalHealthRisk = (isReturning && healthData.hasChanges === false) ? hasExistingCondition : newRiskSelected;
-    
+
     const initialStatus = (isComplex || finalHealthRisk) ? "รอการยืนยัน" : "ยืนยันการจอง";
 
     try {
@@ -425,7 +440,7 @@ export default function BookingView({
         allergies: healthData.hasChanges === false ? (user?.allergies || "ไม่มี") : (healthData.hasAllergy === false ? "ไม่มี" : [
           ...healthData.allergies.filter(a => a !== 'แพ้อื่นๆ'),
           ...(healthData.allergies.includes('แพ้อื่นๆ') && healthData.allergyOther ? [`อื่นๆ: ${healthData.allergyOther}`] : [])
-        ].join(", ") || "ไม่มี"), 
+        ].join(", ") || "ไม่มี"),
         conditions: healthData.hasChanges === false ? (user?.conditions || "ไม่มี") : (healthData.hasCondition === false ? "ไม่มี" : [
           ...healthData.conditions.filter(c => c !== 'โรคอื่นๆ'),
           ...(healthData.conditions.includes('โรคอื่นๆ') && healthData.conditionOther ? [`อื่นๆ: ${healthData.conditionOther}`] : [])
@@ -434,7 +449,7 @@ export default function BookingView({
       });
       let finalAssignedDoctorName = finalDoctorName;
       let finalAssignedDoctorId = finalDoctorId || (res as any).assignedDoctorId || 0;
-      
+
       if (finalDoctorName === "ไม่ระบุแพทย์" && (res as any).assignedDoctorId) {
         setMatchedDoctor((res as any).assignedDoctorId);
         const assignedDoc = landingDoctors.find(d => d.doctorId === (res as any).assignedDoctorId || d.id === (res as any).assignedDoctorId);
@@ -740,27 +755,47 @@ export default function BookingView({
                     const isAvailable = st === "available";
                     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
                     const isFullyBooked = isAvailable && fullyBookedDates.has(dateStr);
+                    // ใช้ disabled เฉพาะวัน past เท่านั้น — วันคิวเต็มไม่ใช้ disabled เพราะ browser จะ override สี
                     return (
-                      <button key={d} disabled={!isAvailable} onClick={() => { setSelDay(d); setSelTime(null); }}
+                      <button
+                        key={d}
+                        disabled={isPast}
+                        onClick={() => { if (isAvailable && !isFullyBooked) { setSelDay(d); setSelTime(null); } }}
                         title={isFullyBooked ? "คิวเต็มทุกช่วงเวลา" : reason}
                         style={{
                           height: 30, borderRadius: 6, border: "none", width: "100%",
-                          fontSize: 10, fontWeight: sel ? 700 : 500,
-                          cursor: isAvailable ? "pointer" : "not-allowed",
+                          fontSize: 10,
+                          fontWeight: (sel || isFullyBooked) ? 700 : 500,
+                          cursor: (isPast || isFullyBooked) ? "not-allowed" : "pointer",
                           transition: "all 0.15s",
                           background: sel
                             ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)"
-                            : isFullyBooked ? "rgba(239,68,68,0.08)" : "transparent",
-                          color: sel ? "white" : isPast ? "#D1D5DB" : isFullyBooked ? "#EF4444" : "#1A365D",
+                            : isFullyBooked ? "rgba(239,68,68,0.12)" : "transparent",
+                          color: sel
+                            ? "white"
+                            : isPast
+                              ? "#D1D5DB"
+                              : isFullyBooked
+                                ? "#DC2626"
+                                : "#1A365D",
                           boxShadow: sel ? "0 2px 6px rgba(255,140,154,0.5)" : "none",
-                          position: "relative",
+                          opacity: isPast ? 0.4 : 1,
+                          outline: isFullyBooked ? "1px solid rgba(239,68,68,0.30)" : "none",
                         }}
-                        onMouseEnter={e => { if (isAvailable && !sel) e.currentTarget.style.backgroundColor = isFullyBooked ? "rgba(239,68,68,0.15)" : "#FFF0F2"; }}
-                        onMouseLeave={e => { if (isAvailable && !sel) e.currentTarget.style.backgroundColor = isFullyBooked ? "rgba(239,68,68,0.08)" : "transparent"; }}>
+                        onMouseEnter={e => {
+                          if (isAvailable && !sel && !isFullyBooked)
+                            e.currentTarget.style.backgroundColor = "#FFF0F2";
+                        }}
+                        onMouseLeave={e => {
+                          if (isAvailable && !sel && !isFullyBooked)
+                            e.currentTarget.style.backgroundColor = "transparent";
+                        }}
+                      >
                         {d}
                       </button>
                     );
                   })}
+
                 </div>
                 {/* Legend */}
                 <div style={{ display: "flex", gap: 10, marginTop: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -799,7 +834,7 @@ export default function BookingView({
                         const isOutside = status === 'outside_shift';
                         const isPast = status === 'past';
                         const isDisabled = (!canBook && !isActive) || isBooked || isOutside || isPast;
-                        
+
                         const slotEndTime = (() => {
                           const [h, m] = t.split(":").map(Number);
                           const tot = h * 60 + m + 30;
@@ -807,7 +842,7 @@ export default function BookingView({
                         })();
 
                         return (
-                          <button key={t} disabled={isDisabled} onClick={() => { if(canBook) setSelTime(t) }}
+                          <button key={t} disabled={isDisabled} onClick={() => { if (canBook) setSelTime(t) }}
                             style={{
                               padding: "8px 2px", borderRadius: 10, fontSize: 11, fontWeight: 600,
                               border: (!isDisabled && !isActive) ? "1.5px solid rgba(255,140,154,0.3)" : (isDisabled && !isActive) ? "1px solid #E5E7EB" : "none",
@@ -860,13 +895,13 @@ export default function BookingView({
       {/* ══ STEP 2: Health Checklist ══ */}
       {step === 2 && (
         <div className="animate-fade-in space-y-6">
-          <HealthChecklistForm 
-            user={user} 
-            data={healthData} 
+          <HealthChecklistForm
+            user={user}
+            data={healthData}
             onChange={(data, valid) => {
               setHealthData(data);
               setHealthValid(valid);
-            }} 
+            }}
           />
           <button onClick={handleNext} disabled={!canNext()}
             style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: canNext() ? "pointer" : "not-allowed", background: canNext() ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)" : "rgba(26,54,93,0.08)", color: canNext() ? "white" : "#94A3B8", boxShadow: canNext() ? "0 4px 20px rgba(255,140,154,0.35)" : "none", transition: "all 0.2s" }}>
