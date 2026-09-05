@@ -19,6 +19,10 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveErr, setSaveErr] = useState("");
   const [pwMode, setPwMode] = useState(false);
+  const [emailMode, setEmailMode] = useState(false);
+  const [emailForm, setEmailForm] = useState({ oldPw: "", newEmail: "" });
+  const [emailErr, setEmailErr] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
   const [pw, setPw] = useState({ old: "", newPw: "", confirm: "" });
   const [pwErr, setPwErr] = useState("");
   const [pwLoading, setPwLoading] = useState(false);
@@ -42,6 +46,28 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
       setSaveErr(err.message || "‡πÄ‡∏Å‡∏¥‡∏î‡∏Ç‡πâ‡∏≠‡∏ú‡∏¥‡∏î‡∏û‡∏•‡∏≤‡∏î‡πÉ‡∏ô‡∏Å‡∏≤‡∏£‡∏ö‡∏±‡∏ô‡∏ó‡∏∂‡∏Å‡∏Ç‡πâ‡∏≠‡∏°‡∏π‡∏•");
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const saveEmail = async () => {
+    setEmailErr("");
+    if (!emailForm.oldPw) { setEmailErr("°√ÿ≥“°√Õ°√À— ºË“π‡æ◊ËÕ¬◊π¬—π"); return; }
+    if (!emailForm.newEmail || !emailForm.newEmail.includes('@')) { setEmailErr("Õ’‡¡≈‰¡Ë∂Ÿ°µÈÕß"); return; }
+
+    setEmailLoading(true);
+    try {
+      const { changeEmail } = await import("../../shared/api/authApi");
+      await changeEmail(emailForm.oldPw, emailForm.newEmail);
+      setUser({ ...user, email: emailForm.newEmail });
+      setEmailMode(false);
+      setEmailForm({ oldPw: "", newEmail: "" });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      alert("‡ª≈’Ë¬πÕ’‡¡≈ ”‡√Á® °√ÿ≥“µ√«® Õ∫Õ’‡¡≈„À¡Ë‡æ◊ËÕ¬◊π¬—π (∂È“¡’)");
+    } catch (err: any) {
+      setEmailErr(err.message || "‡°‘¥¢ÈÕº‘¥æ≈“¥„π°“√‡ª≈’Ë¬πÕ’‡¡≈");
+    } finally {
+      setEmailLoading(false);
     }
   };
 
@@ -150,7 +176,7 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
                 </div>
               )}
             </div>
-            {["phone", "email", "address", "emergencyName", "emergencyPhone"].map(k => {
+            {["phone", "address", "emergencyName", "emergencyPhone"].map(k => {
               const labels: Record<string, string> = { phone: "‡πÄ‡∏ö‡∏≠‡∏£‡πå‡πÇ‡∏ó‡∏£‡∏®‡∏±‡∏û‡∏ó‡πå", email: "‡∏≠‡∏µ‡πÄ‡∏°‡∏•", address: "‡∏ó‡∏µ‡πà‡∏≠‡∏¢‡∏π‡πà‡∏õ‡∏±‡∏à‡∏à‡∏∏‡∏ö‡∏±‡∏ô", emergencyName: "‡∏ú‡∏π‡πâ‡∏ï‡∏¥‡∏î‡∏ï‡πà‡∏≠‡∏â‡∏∏‡∏Å‡πÄ‡∏â‡∏¥‡∏ô (‡∏ä‡∏∑‡πà‡∏≠)", emergencyPhone: "‡∏ú‡∏π‡πâ‡∏ï‡∏¥‡∏î‡∏ï‡πà‡∏≠‡∏â‡∏∏‡∏Å‡πÄ‡∏â‡∏¥‡∏ô (‡πÄ‡∏ö‡∏≠‡∏£‡πå)" };
               return editing ? (
                 <div key={k} className="py-2" style={{ borderBottom: "1px solid rgba(26,54,93,0.06)" }}>
@@ -169,47 +195,84 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
             })}
           </div>
 
-          {/* Password */}
+          {/* Security */}
           <div className="rounded-2xl bg-white p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-sm" style={{ color: "#1A365D" }}>‡∏£‡∏´‡∏±‡∏™‡∏ú‡πà‡∏≤‡∏ô</h3>
-              <button onClick={() => setPwMode(!pwMode)} className="flex items-center gap-1.5 text-xs font-medium hover:opacity-70" style={{ color: "#FF8C9A" }}>
-                <Lock size={12} /> {pwMode ? "‡∏¢‡∏Å‡πÄ‡∏•‡∏¥‡∏Å" : "‡πÄ‡∏õ‡∏•‡∏µ‡πà‡∏¢‡∏ô‡∏£‡∏´‡∏±‡∏™‡∏ú‡πà‡∏≤‡∏ô"}
-              </button>
+              <h3 className="font-semibold text-sm" style={{ color: "#1A365D" }}>°“√®—¥°“√§«“¡ª≈Õ¥¿—¬ (Security)</h3>
             </div>
-            {!pwMode ? (
-              <p className="text-sm" style={{ color: "#4A6080" }}>‚óè‚óè‚óè‚óè‚óè‚óè‚óè‚óè</p>
-            ) : (
-              <div className="space-y-3">
-                {pwErr && <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}><AlertCircle size={13} /> {pwErr}</div>}
-                {[
-                  { k: "old",    label: "‡∏£‡∏´‡∏±‡∏™‡∏ú‡πà‡∏≤‡∏ô‡πÄ‡∏î‡∏¥‡∏°" },
-                  { k: "newPw",  label: "‡∏£‡∏´‡∏±‡∏™‡∏ú‡πà‡∏≤‡∏ô‡πÉ‡∏´‡∏°‡πà (‡∏≠‡∏¢‡πà‡∏≤‡∏á‡∏ô‡πâ‡∏≠‡∏¢ 8 ‡∏ï‡∏±‡∏ß‡∏≠‡∏±‡∏Å‡∏©‡∏£)" },
-                  { k: "confirm",label: "‡∏¢‡∏∑‡∏ô‡∏¢‡∏±‡∏ô‡∏£‡∏´‡∏±‡∏™‡∏ú‡πà‡∏≤‡∏ô‡πÉ‡∏´‡∏°‡πà" },
-                ].map(f => (
-                  <div key={f.k}>
-                    <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>{f.label}</label>
-                    <input type="password" value={(pw as any)[f.k]} onChange={e => setPw(p => ({ ...p, [f.k]: e.target.value }))}
+            
+            {/* Email Edit */}
+            <div className="py-3 border-b border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium" style={{ color: "#4A6080" }}>Õ’‡¡≈ (Email)</span>
+                <button onClick={() => { setEmailMode(!emailMode); setPwMode(false); }} className="flex items-center gap-1.5 text-xs font-medium hover:opacity-70" style={{ color: "#FF8C9A" }}>
+                  <Edit3 size={12} /> {emailMode ? "¬°‡≈‘°" : "‡ª≈’Ë¬πÕ’‡¡≈"}
+                </button>
+              </div>
+              {!emailMode ? (
+                <p className="text-sm" style={{ color: "#1A365D" }}>{user.email}</p>
+              ) : (
+                <div className="space-y-3 mt-3">
+                  {emailErr && <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}><AlertCircle size={13} /> {emailErr}</div>}
+                  <div>
+                    <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>Õ’‡¡≈„À¡Ë</label>
+                    <input type="email" value={emailForm.newEmail} onChange={e => setEmailForm(p => ({ ...p, newEmail: e.target.value }))}
                       className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                   </div>
-                ))}
-                <div className="flex gap-2 pt-1">
-                  <button onClick={savePw} disabled={pwLoading}
-                    className="text-sm px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50 transition-all"
-                    style={{ backgroundColor: "#FF8C9A" }}>
-                    {pwLoading ? "‡∏Å‡∏≥‡∏•‡∏±‡∏á‡∏ö‡∏±‡∏ô‡∏ó‡∏∂‡∏Å..." : "‡∏ö‡∏±‡∏ô‡∏ó‡∏∂‡∏Å‡∏£‡∏´‡∏±‡∏™‡∏ú‡πà‡∏≤‡∏ô‡πÉ‡∏´‡∏°‡πà"}
-                  </button>
-                  <button onClick={() => { setPwMode(false); setPwErr(""); setPw({ old: "", newPw: "", confirm: "" }); }}
-                    className="text-sm px-4 py-2 rounded-xl font-medium" style={{ border: "1px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
-                    ‡∏¢‡∏Å‡πÄ‡∏•‡∏¥‡∏Å
-                  </button>
+                  <div>
+                    <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>√À— ºË“πª—®®ÿ∫—π (‡æ◊ËÕ¬◊π¬—πµ—«µπ)</label>
+                    <input type="password" value={emailForm.oldPw} onChange={e => setEmailForm(p => ({ ...p, oldPw: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={saveEmail} disabled={emailLoading}
+                      className="text-sm px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50 transition-all"
+                      style={{ backgroundColor: "#FF8C9A" }}>
+                      {emailLoading ? "°”≈—ß∫—π∑÷°..." : "¬◊π¬—π‡ª≈’Ë¬πÕ’‡¡≈"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
+            {/* Password Edit */}
+            <div className="py-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium" style={{ color: "#4A6080" }}>√À— ºË“π (Password)</span>
+                <button onClick={() => { setPwMode(!pwMode); setEmailMode(false); }} className="flex items-center gap-1.5 text-xs font-medium hover:opacity-70" style={{ color: "#FF8C9A" }}>
+                  <Lock size={12} /> {pwMode ? "¬°‡≈‘°" : "‡ª≈’Ë¬π√À— ºË“π"}
+                </button>
+              </div>
+              {!pwMode ? (
+                <p className="text-sm" style={{ color: "#1A365D" }}>????????</p>
+              ) : (
+                <div className="space-y-3 mt-3">
+                  {pwErr && <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}><AlertCircle size={13} /> {pwErr}</div>}
+                  {[
+                    { k: "old",    label: "√À— ºË“π‡¥‘¡" },
+                    { k: "newPw",  label: "√À— ºË“π„À¡Ë (Õ¬Ë“ßπÈÕ¬ 8 µ—«Õ—°…√)" },
+                    { k: "confirm",label: "¬◊π¬—π√À— ºË“π„À¡Ë" },
+                  ].map(f => (
+                    <div key={f.k}>
+                      <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>{f.label}</label>
+                      <input type="password" value={(pw as any)[f.k]} onChange={e => setPw(p => ({ ...p, [f.k]: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                    </div>
+                  ))}
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={savePw} disabled={pwLoading}
+                      className="text-sm px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50 transition-all"
+                      style={{ backgroundColor: "#FF8C9A" }}>
+                      {pwLoading ? "°”≈—ß∫—π∑÷°..." : "∫—π∑÷°√À— ºË“π„À¡Ë"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+

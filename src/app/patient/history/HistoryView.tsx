@@ -110,29 +110,31 @@ export default function HistoryView({ user }: { user: PatientUser }) {
 
             {/* Body */}
             <div className="p-6 space-y-5">
+              {/* Detailed Services */}
+              {selected.detailedServices && selected.detailedServices.length > 0 && (
+                <Section icon={<Smile size={16} style={{ color: "#FF8C9A" }} />} title="บริการที่ได้รับ">
+                  <ul className="list-disc list-inside text-sm leading-relaxed" style={{ color: "#1A365D" }}>
+                    {selected.detailedServices.map((ds: any, idx: number) => (
+                      <li key={idx}>
+                        {ds.name} {ds.locationCode && ds.locationCode !== 'NONE' && ds.locationCode !== 'MOUTH' ? `(ซี่ที่: ${ds.locationCode})` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </Section>
+              )}
+
               {/* Doctor notes */}
-              {selected.treatmentNotes && (
+              {selected.notes && (
                 <Section icon={<FileText size={16} style={{ color: "#FF8C9A" }} />} title="บันทึกของทันตแพทย์">
-                  <p className="text-sm leading-relaxed" style={{ color: "#1A365D" }}>{selected.treatmentNotes}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#1A365D" }}>{selected.notes}</p>
                 </Section>
               )}
 
               {/* Recommendations */}
               {selected.recommendations && (
                 <Section icon={<Bell size={16} style={{ color: "#FF8C9A" }} />} title="คำแนะนำหลังการรักษา">
-                  <p className="text-sm leading-relaxed" style={{ color: "#1A365D" }}>{selected.recommendations}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#1A365D" }}>{selected.recommendations}</p>
                 </Section>
-              )}
-
-              {/* Odontogram */}
-              {selected.odontogramData && Object.keys(selected.odontogramData).length > 0 && (
-                <div className="mt-4">
-                  <Odontogram 
-                    toothData={selected.odontogramData} 
-                    isChild={false} 
-                    readonly={true} 
-                  />
-                </div>
               )}
             </div>
           </div>

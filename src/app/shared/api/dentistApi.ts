@@ -1,0 +1,354 @@
+import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../utils/supabaseClient';
+import { DentistInfo } from '../data';
+
+/**
+ * 🦷 Dentist API Module
+ * จัดการข้อมูลทันตแพทย์ทั้งหมด
+ */
+
+/**
+ * ดึงรายชื่อทันตแพทย์ทั้งหมด รวมถึงข้อมูล Profile และ Service ที่ทำได้
+ * @returns {Promise<DentistInfo[]>} อาร์เรย์ของข้อมูลทันตแพทย์
+ */
+export async function getDentists(): Promise<DentistInfo[]> {
+  const { data, error } = await supabase.from('dentist').select(`
+    *,
+    users (
+      email,
+      account_status,
+      profile (first_name, last_name, phone_number, citizen_id, gender, birth_date, current_address)
+    ),
+    dentist_service (
+      service_id
+    )
+  `);
+  if (error) {
+    console.error("getDentists error:", error);
+    return [];
+  }
+
+  return data.map((d: any) => {
+    const p = d.users?.profile;
+    
+    // คำนวณอายุงานจาก graduation_year
+    let expYears = 0;
+    if (d.graduation_year) {
+      const now = new Date();
+      expYears = Math.max(0, now.getFullYear() - d.graduation_year);
+    }
+
+    return {
+      id: d.dentist_id,
+      name: p ? `${d.title_name || ''} ${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
+      titleName: d.title_name || 'ทพ.',
+      firstName: p?.first_name || '',
+      lastName: p?.last_name || '',
+      gender: p?.gender || '',
+      birthDate: p?.birth_date || '',
+      address: p?.current_address || '',
+      specialty: d.specialization || 'ทันตกรรมทั่วไป',
+      license: d.license_number,
+      university: d.university || 'N/A',
+      experienceYears: expYears,
+      graduationYear: d.graduation_year,
+      imageUrl: d.image_url || '',
+      startDate: d.start_date || '',
+      email: d.users?.email || '',
+      phone: p?.phone_number || '',
+      citizenId: p?.citizen_id || '',
+      active: d.users?.account_status === 'active',
+      userId: d.user_id,
+      serviceIds: d.dentist_service?.map((ds: any) => ds.service_id) || [],
+      defaultRoom: d.default_room
+    };
+  }) as DentistInfo[];
+}
+
+/**
+ * อัปโหลดรูปโปรไฟล์ทันตแพทย์
+ * @param file ไฟล์รูปภาพ
+ * @returns {Promise<string>} Public URL ของรูปภาพ
+ */
+export async function uploadAvatar(file: File): Promise<string> {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+  const filePath = `${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('dentist_profiles')
+    .upload(filePath, file);
+
+  if (uploadError) {
+    console.error('Error uploading image:', uploadError);
+    throw new Error('ไม่สามารถอัปโหลดรูปภาพได้');
+  }
+
+  const { data } = supabase.storage
+    .from('dentist_profiles')
+    .getPublicUrl(filePath);
+
+  return data.publicUrl;
+}
+
+/**
+ * อัปเดตห้องประจำของทันตแพทย์
+ * @param id รหัสทันตแพทย์
+ * @param roomName ชื่อห้อง
+ */
+export async function updateDentistRoom(id: number, roomName: string): Promise<void> {
+  const { error } = await supabase.from('dentist').update({ default_room: roomName }).eq('dentist_id', id);
+  if (error) throw error;
+}
+
+/**
+ * เพิ่มทันตแพทย์ใหม่ลงในระบบ (Auth -> Profile -> Users -> Dentist)
+ * @param dentist ข้อมูลทันตแพทย์ (ไม่รวม ID)
+ * @returns {Promise<DentistInfo>} ข้อมูลทันตแพทย์ที่สร้างเสร็จ
+ */
+export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<DentistInfo> {
+  const adminAuthClient = createClient(
+    import.meta.env.VITE_SUPABASE_URL || '',
+    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  );
+
+  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+    email: dentist.email,
+    password: dentist.password || 'password123',
+    email_confirm: true
+  });
+
+  if (authErr) {
+    console.error("Auth creation failed:", authErr);
+    throw new Error("ไม่สามารถสร้างบัญชีผู้ใช้ได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+  }
+
+  const realUserId = authData.user.id;
+  const citizenIdToUse = dentist.citizenId?.trim();
+  if (!citizenIdToUse || citizenIdToUse.length !== 13) {
+      throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
+  }
+
+  await supabase.from('profile').insert({
+    citizen_id: citizenIdToUse,
+    first_name: dentist.firstName || '',
+    last_name: dentist.lastName || '',
+    phone_number: dentist.phone || null,
+    gender: (dentist.gender === 'ชาย' || dentist.gender === 'หญิง') ? dentist.gender : null,
+    birth_date: dentist.birthDate || null,
+    current_address: dentist.address || null
+  });
+
+  await supabase.from('users').insert({
+    user_id: realUserId,
+    citizen_id: citizenIdToUse,
+    email: dentist.email,
+    role: 'ทันตแพทย์',
+    account_status: dentist.active ? 'active' : 'inactive'
+  });
+
+  const { data, error } = await supabase.from('dentist').insert({
+    user_id: realUserId,
+    title_name: dentist.titleName || 'ทพ.',
+    specialization: dentist.specialty,
+    license_number: dentist.license,
+    university: dentist.university || 'N/A',
+    image_url: dentist.imageUrl || null,
+    start_date: dentist.startDate || null,
+    graduation_year: dentist.graduationYear || null,
+  }).select().single();
+
+  if (error) throw error;
+
+  if (dentist.serviceIds && dentist.serviceIds.length > 0) {
+    const dsInserts = dentist.serviceIds.map(sid => ({ dentist_id: data.dentist_id, service_id: sid }));
+    await supabase.from('dentist_service').insert(dsInserts);
+  }
+
+  return { 
+    ...dentist, 
+    id: data.dentist_id, 
+    userId: realUserId,
+    name: `${dentist.titleName || ''} ${dentist.firstName || ''} ${dentist.lastName || ''}`.trim()
+  };
+}
+
+/**
+ * แก้ไขข้อมูลทันตแพทย์
+ * @param id รหัสทันตแพทย์
+ * @param updates ข้อมูลที่ต้องการแก้ไข
+ * @returns {Promise<DentistInfo>} ข้อมูลทันตแพทย์หลังแก้ไข
+ */
+export async function updateDentist(id: number, updates: Partial<DentistInfo>): Promise<DentistInfo> {
+  const dentistUpdates: any = {};
+  if (updates.specialty !== undefined) dentistUpdates.specialization = updates.specialty;
+  if (updates.license !== undefined) dentistUpdates.license_number = updates.license;
+  if (updates.titleName !== undefined) dentistUpdates.title_name = updates.titleName;
+  if (updates.university !== undefined) dentistUpdates.university = updates.university;
+  if (updates.imageUrl !== undefined) dentistUpdates.image_url = updates.imageUrl;
+  if (updates.startDate !== undefined) dentistUpdates.start_date = updates.startDate;
+  if (updates.graduationYear !== undefined) dentistUpdates.graduation_year = updates.graduationYear;
+
+  if (Object.keys(dentistUpdates).length > 0) {
+    const { error } = await supabase.from('dentist').update(dentistUpdates).eq('dentist_id', id);
+    if (error) throw error;
+  }
+
+  const { data: dentistData } = await supabase.from('dentist').select('user_id').eq('dentist_id', id).single();
+  if (dentistData?.user_id) {
+    if (updates.active !== undefined) {
+      await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', dentistData.user_id);
+    }
+
+    const profileUpdates: any = {};
+    if (updates.firstName !== undefined) profileUpdates.first_name = updates.firstName;
+    if (updates.lastName !== undefined) profileUpdates.last_name = updates.lastName;
+    if (updates.phone !== undefined) profileUpdates.phone_number = updates.phone;
+    if (updates.gender !== undefined) profileUpdates.gender = (updates.gender === 'ชาย' || updates.gender === 'หญิง') ? updates.gender : null;
+    if (updates.birthDate !== undefined) profileUpdates.birth_date = updates.birthDate;
+    if (updates.address !== undefined) profileUpdates.current_address = updates.address;
+
+    if (Object.keys(profileUpdates).length > 0) {
+      const { data: userData } = await supabase.from('users').select('citizen_id').eq('user_id', dentistData.user_id).single();
+      if (userData?.citizen_id) {
+        await supabase.from('profile').update(profileUpdates).eq('citizen_id', userData.citizen_id);
+      }
+    }
+  }
+
+  if (updates.serviceIds !== undefined) {
+    await supabase.from('dentist_service').delete().eq('dentist_id', id);
+    if (updates.serviceIds.length > 0) {
+      const dsInserts = updates.serviceIds.map(sid => ({ dentist_id: id, service_id: sid }));
+      await supabase.from('dentist_service').insert(dsInserts);
+    }
+  }
+
+  return { id, ...updates } as DentistInfo;
+}
+
+/**
+ * ลบทันตแพทย์ออกจากระบบ
+ * @param id รหัสทันตแพทย์
+ */
+export async function deleteDentist(id: number): Promise<void> {
+  await supabase.from('dentist').delete().eq('dentist_id', id);
+}
+
+/**
+ * ดึงข้อมูลหมอสำหรับหน้า Landing Page
+ */
+export async function getLandingDoctors() {
+  const { data, error } = await supabase.from('dentist').select('*, users(profile(first_name, last_name))');
+  if (error) {
+    console.error("getLandingDoctors error:", error);
+    return [];
+  }
+
+  const currentYear = new Date().getFullYear();
+
+  return data.map((d: any) => {
+    let expYears = 0;
+    if (d.graduation_year) {
+      expYears = Math.max(0, currentYear - d.graduation_year);
+    }
+    
+    return {
+      id: d.dentist_id,
+      userId: d.user_id,
+      name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
+      specialty: d.specialization || 'ทันตแพทย์',
+      img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format',
+      years: `ประสบการณ์ ${expYears} ปี`
+    };
+  });
+}
+
+/**
+ * ดึงหมอที่ทำบริการ (service_id) นั้นได้ ผ่านตาราง dentist_service
+ * @param serviceId รหัสบริการ
+ */
+export async function getDentistsByService(serviceId: number) {
+  const { data, error } = await supabase
+    .from('dentist_service')
+    .select('dentist_id, dentist(dentist_id, user_id, title_name, specialization, image_url, users(profile(first_name, last_name)))')
+    .eq('service_id', serviceId);
+  if (error || !data) return [];
+
+  return data.map((row: any) => {
+    const d = row.dentist;
+    if (!d) return null;
+    return {
+      id: d.dentist_id,
+      userId: d.user_id,
+      name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
+      specialty: d.specialization || 'ทันตแพทย์',
+      img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format'
+    };
+  }).filter(Boolean);
+}
+
+/**
+ * ดึงประวัติการรักษาของทันตแพทย์
+ * @param dentistId รหัสทันตแพทย์
+ */
+export async function getDentistTreatmentHistory(dentistId: number) {
+  const { data, error } = await supabase
+    .from('treatment_record')
+    .select(`
+      treatment_id,
+      treatment_date,
+      doctor_note,
+      appointment!inner (
+        patient (
+          users ( profile ( first_name, last_name ) )
+        ),
+        appointment_detail ( service (service_name) )
+      )
+    `)
+    .eq('attending_dentist_id', dentistId)
+    .order('treatment_date', { ascending: false });
+
+  if (error) {
+    console.error("Error fetching dentist history:", error);
+    return [];
+  }
+
+  // Format data for easier display in UI
+  const history: any[] = [];
+  data.forEach((record: any) => {
+    const patientProfile = record.appointment?.patient?.users?.profile || (Array.isArray(record.appointment) ? record.appointment[0]?.patient?.users?.profile : null);
+    const patientName = patientProfile
+      ? `${patientProfile.first_name} ${patientProfile.last_name}`
+      : 'Unknown Patient';
+    const apptDetails = Array.isArray(record.appointment) ? record.appointment[0]?.appointment_detail : record.appointment?.appointment_detail;
+    const serviceName = Array.isArray(apptDetails) ? apptDetails[0]?.service?.service_name : apptDetails?.service?.service_name;
+
+    let parsedNote = record.doctor_note || '';
+    let parsedDiagnosis = '-';
+    
+    if (parsedNote.includes("|||")) {
+      const parts = parsedNote.split("|||");
+      parsedNote = parts.slice(1).join("|||");
+    }
+    
+    if (parsedNote.includes('\\nคำแนะนำ: ')) {
+      const noteParts = parsedNote.split('\\nคำแนะนำ: ');
+      parsedNote = noteParts[0];
+      if (noteParts.length > 1) parsedDiagnosis = noteParts[1];
+    }
+
+    history.push({
+      id: `rec-${record.treatment_id}`,
+      date: record.treatment_date,
+      patientName,
+      toothNumber: '-',
+      diagnosis: parsedDiagnosis,
+      serviceName: serviceName || '-',
+      actualPrice: 0,
+      note: parsedNote
+    });
+  });
+
+  return history;
+}

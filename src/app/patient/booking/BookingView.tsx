@@ -121,7 +121,7 @@ export default function BookingView({
   const [isPending, setIsPending] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  
   const [healthData, setHealthData] = useState<HealthChecklistData>({
     emergencyName: user?.emergencyName || "",
     emergencyPhone: user?.emergencyPhone || "",
@@ -144,8 +144,6 @@ export default function BookingView({
   const [landingDoctors, setLandingDoctors] = useState<any[]>([]);
   const [filteredDoctors, setFilteredDoctors] = useState<any[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
-  const [paymentPlans, setPaymentPlans] = useState<any[]>([]);
-  const [selPaymentPlan, setSelPaymentPlan] = useState<number | null>(null);
   const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([0]);
   const [backendSlots, setBackendSlots] = useState<TimeSlotStatus[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -177,11 +175,6 @@ export default function BookingView({
     }
   }, [step, selService, servicesData]);
 
-  useEffect(() => {
-    if (selService === null || !servicesData[selService]) { setPaymentPlans([]); setSelPaymentPlan(null); return; }
-    getPaymentPlans(servicesData[selService].serviceId).then(setPaymentPlans).catch(() => setPaymentPlans([]));
-  }, [selService, servicesData]);
-
   // Calendar helpers
   const today = new Date();
   const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
@@ -202,7 +195,7 @@ export default function BookingView({
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const closure = closures.find((c) => c.date === dateStr);
     if (closure) return { status: "past" as const, reason: closure.reason };
-
+    
     // Check doctor schedule
     if (step >= 1 && filteredDoctors.length > 0) {
       let isWorking = false;
@@ -220,7 +213,7 @@ export default function BookingView({
         const shift = doctorSchedules.find(s => s.dentistId === selDoctor && s.dayOfWeek === dayOfWk);
         const selDocData = filteredDoctors.find(fd => fd.id === selDoctor) || landingDoctors.find(d => d.id === selDoctor);
         const isFullLeave = selDocData ? upcomingLeaves.some(l => l.user_id === selDocData.userId && l.leave_date === dateStr && l.leave_period === 'เต็มวัน') : false;
-
+        
         if (shift && shift.isOff) {
           isWorking = false;
         } else if (isFullLeave) {
@@ -238,7 +231,7 @@ export default function BookingView({
   const estTime = selService !== null && servicesData[selService] ? servicesData[selService].baseTimeMins : 30;
   const totalDuration = estTime; // Service time directly dictates the blocked time
   const reqSlots = Math.ceil(totalDuration / 30);
-
+  
   // Patient sees only treatment time
   const patientEndTimeStr = selTime ? (() => {
     const [h, m] = selTime.split(":").map(Number);
@@ -283,13 +276,13 @@ export default function BookingView({
           }
           if (ok) { hasAnyCanBook = true; break; }
         }
-
+        
         if (!hasAnyCanBook && slots.length > 0) {
           setFullyBookedDates(prev => new Set(prev).add(dateStr));
         } else {
           setFullyBookedDates(prev => { const next = new Set(prev); next.delete(dateStr); return next; });
         }
-
+        
         // Retain the selected time if it's still available in the new slots
         setSelTime((prevTime) => {
           if (!prevTime) return null;
@@ -312,8 +305,9 @@ export default function BookingView({
       .finally(() => setLoadingSlots(false));
   }, [selDay, selDoctor, selService, monthOffset, year, month, servicesData]);
 
-  // Handle doctor or service changes to invalidate selected day
+  // Handle doctor or service changes to invalidate selected day and clear fully booked cache
   useEffect(() => {
+    setFullyBookedDates(new Set());
     if (selDay !== null) {
       if (dayStatus(selDay).status !== "available") {
         setSelDay(null);
@@ -322,9 +316,9 @@ export default function BookingView({
     }
   }, [selDoctor, selService]);
 
-  // Fetch monthly fully booked dates for the calendar
+  // ─── Fetch monthly fully booked dates ─────────
   useEffect(() => {
-    if (step >= 1) {
+    if (step === 1 && servicesData.length > 0) {
       const serviceId = selService !== null ? servicesData[selService]?.serviceId : undefined;
       const doctorId = selDoctor !== "any" && selDoctor !== null ? (selDoctor as number) : undefined;
       const estMins = selService !== null && servicesData[selService] ? (servicesData[selService]?.baseTimeMins || 30) : 30;
@@ -394,7 +388,7 @@ export default function BookingView({
     const serviceTitle = servicesData[selService!]?.title || "";
     let finalDoctorId: number | undefined;
     let finalDoctorName = "ไม่ระบุแพทย์";
-
+    
     if (selDoctor !== "any" && selDoctor !== null) {
       const doc = landingDoctors.find((d) => d.id === selDoctor);
       if (doc) {
@@ -406,28 +400,24 @@ export default function BookingView({
       // Backend will auto-assign, we don't set finalDoctorId
       finalDoctorId = undefined;
     }
-
+    
     const serviceData = servicesData[selService!];
     const isComplex = serviceData?.requiresConfirmation || false;
-
+    
     // Check health risk for routing
     const isReturning = Boolean(user && (
-      hasHealthAlert(user.allergies, user.conditions) ||
+      hasHealthAlert(user.allergies, user.conditions) || 
       (user.emergencyName && user.emergencyName.trim() !== '')
     ));
     const hasExistingCondition = user && hasHealthAlert(user.allergies, user.conditions);
     const newRiskSelected = healthData.hasCondition === true && healthData.conditions.length > 0;
-
+    
     const finalHealthRisk = (isReturning && healthData.hasChanges === false) ? hasExistingCondition : newRiskSelected;
-
+    
     const initialStatus = (isComplex || finalHealthRisk) ? "รอการยืนยัน" : "ยืนยันการจอง";
 
     try {
       let finalServiceTitle = serviceTitle;
-      if (selPaymentPlan && paymentPlans.length > 0) {
-        const planName = paymentPlans.find(p => p.plan_id === selPaymentPlan)?.plan_name;
-        if (planName) finalServiceTitle += ` (สนใจโปร: ${planName})`;
-      }
 
       const res = await addAppointment({
         patientId: user?.patientId,
@@ -450,7 +440,7 @@ export default function BookingView({
         allergies: healthData.hasChanges === false ? (user?.allergies || "ไม่มี") : (healthData.hasAllergy === false ? "ไม่มี" : [
           ...healthData.allergies.filter(a => a !== 'แพ้อื่นๆ'),
           ...(healthData.allergies.includes('แพ้อื่นๆ') && healthData.allergyOther ? [`อื่นๆ: ${healthData.allergyOther}`] : [])
-        ].join(", ") || "ไม่มี"),
+        ].join(", ") || "ไม่มี"), 
         conditions: healthData.hasChanges === false ? (user?.conditions || "ไม่มี") : (healthData.hasCondition === false ? "ไม่มี" : [
           ...healthData.conditions.filter(c => c !== 'โรคอื่นๆ'),
           ...(healthData.conditions.includes('โรคอื่นๆ') && healthData.conditionOther ? [`อื่นๆ: ${healthData.conditionOther}`] : [])
@@ -460,7 +450,7 @@ export default function BookingView({
       });
       let finalAssignedDoctorName = finalDoctorName;
       let finalAssignedDoctorId = finalDoctorId || (res as any).assignedDoctorId || 0;
-
+      
       if (finalDoctorName === "ไม่ระบุแพทย์" && (res as any).assignedDoctorId) {
         setMatchedDoctor((res as any).assignedDoctorId);
         const assignedDoc = landingDoctors.find(d => d.doctorId === (res as any).assignedDoctorId || d.id === (res as any).assignedDoctorId);
@@ -704,24 +694,7 @@ export default function BookingView({
               )}
             </div>
 
-            {/* Payment plans */}
-            {paymentPlans.length > 0 && (
-              <div style={{ borderRadius: 16, backgroundColor: "white", padding: "14px 16px", boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}>
-                <p style={{ fontWeight: 700, fontSize: 13, color: "#1A365D", marginBottom: 10 }}>แผนการชำระเงิน</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {paymentPlans.map((plan) => (
-                    <button key={plan.plan_id} onClick={() => setSelPaymentPlan(plan.plan_id)}
-                      style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer", border: selPaymentPlan === plan.plan_id ? "2px solid #FF8C9A" : "1.5px solid rgba(26,54,93,0.08)", backgroundColor: selPaymentPlan === plan.plan_id ? "#FFF0F2" : "white" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ fontWeight: 700, fontSize: 12, color: "#1A365D" }}>{plan.plan_name}</span>
-                        <span style={{ fontWeight: 700, fontSize: 12, color: "#FF8C9A" }}>{plan.total_amount?.toLocaleString()} บาท</span>
-                      </div>
-                      {plan.installments > 1 && <p style={{ fontSize: 11, color: "#4A6080", marginTop: 4 }}>แบ่ง {plan.installments} งวด งวดละ {plan.per_month?.toLocaleString()} บาท</p>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+
 
             {/* Warning Note for Follow-up / Plan Items */}
             {(isFollowUp || planItemId) && (
@@ -819,7 +792,6 @@ export default function BookingView({
                       </button>
                     );
                   })}
-
                 </div>
                 {/* Legend */}
                 <div style={{ display: "flex", gap: 10, marginTop: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -858,7 +830,7 @@ export default function BookingView({
                         const isOutside = status === 'outside_shift';
                         const isPast = status === 'past';
                         const isDisabled = (!canBook && !isActive) || isBooked || isOutside || isPast;
-
+                        
                         const slotEndTime = (() => {
                           const [h, m] = t.split(":").map(Number);
                           const tot = h * 60 + m + 30;
@@ -866,7 +838,7 @@ export default function BookingView({
                         })();
 
                         return (
-                          <button key={t} disabled={isDisabled} onClick={() => { if (canBook) setSelTime(t) }}
+                          <button key={t} disabled={isDisabled} onClick={() => { if(canBook) setSelTime(t) }}
                             style={{
                               padding: "8px 2px", borderRadius: 10, fontSize: 11, fontWeight: 600,
                               border: (!isDisabled && !isActive) ? "1.5px solid rgba(255,140,154,0.3)" : (isDisabled && !isActive) ? "1px solid #E5E7EB" : "none",
@@ -919,13 +891,13 @@ export default function BookingView({
       {/* ══ STEP 2: Health Checklist ══ */}
       {step === 2 && (
         <div className="animate-fade-in space-y-6">
-          <HealthChecklistForm
-            user={user}
-            data={healthData}
+          <HealthChecklistForm 
+            user={user} 
+            data={healthData} 
             onChange={(data, valid) => {
               setHealthData(data);
               setHealthValid(valid);
-            }}
+            }} 
           />
           <button onClick={handleNext} disabled={!canNext()}
             style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: canNext() ? "pointer" : "not-allowed", background: canNext() ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)" : "rgba(26,54,93,0.08)", color: canNext() ? "white" : "#94A3B8", boxShadow: canNext() ? "0 4px 20px rgba(255,140,154,0.35)" : "none", transition: "all 0.2s" }}>

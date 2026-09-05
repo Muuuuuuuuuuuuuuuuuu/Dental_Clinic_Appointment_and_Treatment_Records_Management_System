@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ArrowLeft, ShieldCheck, Activity } from "lucide-react";
+﻿import React, { useState, useEffect } from "react";
+import { ArrowLeft, ShieldCheck, Activity, X } from "lucide-react";
 import { Odontogram } from "react-odontogram";
 import "react-odontogram/style.css";
 import { getPatientTreatmentRecords } from "../../shared/supabaseApi";
@@ -53,6 +53,7 @@ export default function DentalRecordView({
   const [localLastUpdated, setLocalLastUpdated] = useState<string>(lastUpdated || "-");
   const [localAdvice, setLocalAdvice] = useState<string>(advice || "ยังไม่มีคำแนะนำ");
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [clickedTooth, setClickedTooth] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.patientId) return;
@@ -73,7 +74,20 @@ export default function DentalRecordView({
   // Map data for react-odontogram
   const cariesTeeth = Object.entries(localToothData).filter(([_, s]) => s === 'red').map(([n]) => `teeth-${n}`);
   const filledTeeth = Object.entries(localToothData).filter(([_, s]) => s === 'blue').map(([n]) => `teeth-${n}`);
-  const missingTeeth = Object.entries(localToothData).filter(([_, s]) => s === 'cross').map(([n]) => `teeth-${n}`);
+  
+  // Auto-infer missing teeth from extraction history
+  const inferredMissingTeeth = new Set<string>();
+  historyRecords.forEach(record => {
+    if (record.treatmentServices) {
+      record.treatmentServices.forEach((s: string) => {
+        const match = s.match(/ถอนฟัน.*?ซี่ที่:\s*(\d+)/);
+        if (match) inferredMissingTeeth.add(`teeth-${match[1]}`);
+      });
+    }
+  });
+  
+  const explicitMissing = Object.entries(localToothData).filter(([_, s]) => s === 'cross').map(([n]) => `teeth-${n}`);
+  const missingTeeth = Array.from(new Set([...explicitMissing, ...inferredMissingTeeth]));
 
   const conditions = [
     {
@@ -92,12 +106,57 @@ export default function DentalRecordView({
       label: "ถอน/สูญเสีย",
       teeth: missingTeeth,
       fillColor: "#F1F5F9",
-      outlineColor: "#94A3B8",
+      outlineColor: "#475569", // Darker slate color for better visibility
     }
   ];
+  // Mobile-friendly tooth popup logic
+  const renderToothPopup = () => {
+    if (!clickedTooth) return null;
+    const num = clickedTooth.replace('teeth-', '');
+    const toothName = getToothNameTh(num, isChild);
+    
+    let statusStr = "ปกติ (Normal)";
+    let colorStr = "#10B981"; // Green
+    
+    if (cariesTeeth.includes(clickedTooth)) {
+      statusStr = "พบปัญหา / ต้องรักษา";
+      colorStr = "#EF4444"; // Red
+    } else if (filledTeeth.includes(clickedTooth)) {
+      statusStr = "รักษาแล้ว";
+      colorStr = "#3B82F6"; // Blue
+    } else if (missingTeeth.includes(clickedTooth)) {
+      statusStr = "ถอน / สูญเสีย";
+      colorStr = "#64748B"; // Slate
+    }
 
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#1A365D]/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setClickedTooth(null)}>
+        <div className="bg-white rounded-3xl w-full max-w-[320px] p-6 shadow-2xl relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+          <button onClick={() => setClickedTooth(null)} className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-700 bg-gray-50 rounded-full transition-colors">
+            <X size={18} />
+          </button>
+          
+          <div className="text-center mb-6 mt-2">
+            <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: colorStr + "20", color: colorStr }}>
+              <span className="text-2xl font-bold font-display">{num}</span>
+            </div>
+            <h3 className="text-lg font-bold text-[#1A365D] mb-1">{toothName}</h3>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border" style={{ color: colorStr, backgroundColor: colorStr + "10", borderColor: colorStr + "30" }}>
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colorStr }}></div>
+              {statusStr}
+            </div>
+          </div>
+          
+          <button onClick={() => setClickedTooth(null)} className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors">
+            ปิด
+          </button>
+        </div>
+      </div>
+    );
+  };
   return (
     <div className="w-full min-h-screen bg-[#F8FAFC]">
+{renderToothPopup()}
       {/* Header Navigation */}
       <div className="bg-white px-4 py-4 flex items-center justify-between sticky top-0 z-50 border-b border-gray-100/50 backdrop-blur-md bg-white/80">
         <div className="flex items-center gap-3">
@@ -140,6 +199,17 @@ export default function DentalRecordView({
               </div>
             </div>
 
+            <style>{`
+              /* Override react-odontogram to allow clicking on read-only mode */
+              .Odontogram[data-read-only="true"] {
+                pointer-events: auto !important;
+              }
+              /* Prevent the blue hover effect on uncolored teeth */
+              .Odontogram[data-read-only="true"] g[class^="teeth-"]:hover path:nth-of-type(2):not([data-colored="true"]) {
+                opacity: 0 !important;
+              }
+            `}</style>
+
             <div className="relative z-10 w-full flex justify-center mt-4">
               {/* Using transform scale to reliably shrink the SVG and adjust height to remove whitespace without cutting off text */}
               <div className="origin-top relative pb-10" style={{ transform: "scale(0.55)", marginBottom: "-35%" }}>
@@ -150,7 +220,17 @@ export default function DentalRecordView({
                    <div className="absolute top-3 w-full text-center text-blue-400/80 font-bold text-xl tracking-wider">ฟันล่าง (Lower)</div>
                 </div>
 
-                <div className="relative z-10">
+                                <div 
+                  className="relative z-10 cursor-pointer" 
+                  onClick={(e: any) => {
+                    const g = e.target.closest('g');
+                    if (g) {
+                      const cls = g.getAttribute('class') || '';
+                      const match = cls.match(/teeth-\d+/);
+                      if (match) setClickedTooth(match[0]);
+                    }
+                  }}
+                >
                   <Odontogram 
                     teethConditions={conditions} 
                     showLabels={true} 
@@ -176,14 +256,6 @@ export default function DentalRecordView({
                   </div>
                   <span className="font-bold text-red-600">{cariesTeeth.length} ซี่</span>
                 </div>
-                {cariesTeeth.length > 0 && (
-                  <div className="pl-8 pb-1 space-y-1.5">
-                    {cariesTeeth.map(t => {
-                      const num = t.replace('teeth-', '');
-                      return <div key={t} className="text-xs text-red-800/80 font-medium">👉 {getToothNameTh(num, isChild)}</div>;
-                    })}
-                  </div>
-                )}
 
                 <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50 border border-blue-100">
                   <div className="flex items-center gap-3">
@@ -192,23 +264,25 @@ export default function DentalRecordView({
                   </div>
                   <span className="font-bold text-blue-600">{filledTeeth.length} ซี่</span>
                 </div>
-                {filledTeeth.length > 0 && (
-                  <div className="pl-8 pb-1 space-y-1.5">
-                    {filledTeeth.map(t => {
-                      const num = t.replace('teeth-', '');
-                      return <div key={t} className="text-xs text-blue-800/80 font-medium">✨ {getToothNameTh(num, isChild)}</div>;
-                    })}
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 mt-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-slate-500"></div>
+                    <span className="text-sm font-medium text-slate-800">ถอน / สูญเสีย</span>
                   </div>
-                )}
+                  <span className="font-bold text-slate-600">{missingTeeth.length} ซี่</span>
+                </div>
               </div>
-              <div className="mt-5 pt-5 border-t border-slate-100">
-                <button 
-                  onClick={onBookAppointment}
-                  className="w-full py-2.5 bg-[#FF8C9A] hover:bg-[#ff7a8a] text-white text-sm font-medium rounded-xl transition-colors shadow-sm"
-                >
-                  จองคิวรักษาฟันผุ
-                </button>
-              </div>
+              {cariesTeeth.length > 0 && (
+                <div className="mt-5 pt-5 border-t border-slate-100">
+                  <button 
+                    onClick={onBookAppointment}
+                    className="w-full py-2.5 bg-[#FF8C9A] hover:bg-[#ff7a8a] text-white text-sm font-medium rounded-xl transition-colors shadow-sm"
+                  >
+                    จองคิวรักษาต่อเนื่อง
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="bg-[#1A365D] p-5 rounded-2xl shadow-sm text-white">
@@ -294,3 +368,5 @@ export default function DentalRecordView({
     </div>
   );
 }
+
+
