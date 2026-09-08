@@ -8,6 +8,16 @@ import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 type Timeframe = "today" | "week" | "month";
 
+/** ดึงวันที่ "ปัจจุบัน" โดยรองรับ Time Travel mock datetime จาก localStorage */
+function getNow(): Date {
+  const mockDatetime = localStorage.getItem("supat_mock_date");
+  if (mockDatetime) {
+    const parsed = new Date(mockDatetime);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
 export default function AdminDashboard({ setView }: { setView: (v: AdminView) => void }) {
   const { appointments, loading: apptsLoading } = useRealtimeAppointments();
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
@@ -17,7 +27,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   const [showApptModal, setShowApptModal] = useState(false);
 
   const [timeframe, setTimeframe] = useState<Timeframe>("today");
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(getNow);
 
   useEffect(() => {
     Promise.all([
@@ -29,6 +39,24 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
       setLeaves(lvs);
       setDoctorSchedules(scheds);
     }).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  /**
+   * Sync selectedDate เมื่อ Time Travel Widget เปลี่ยนค่าใน localStorage
+   * - ฟัง storage event (กรณี tab อื่น reload)
+   * - ฟัง custom event "supat_mock_date_changed" (กรณี same tab)
+   */
+  useEffect(() => {
+    const syncDate = () => setSelectedDate(getNow());
+
+    // Storage event (cross-tab)
+    window.addEventListener("storage", (e) => {
+      if (e.key === "supat_mock_date") syncDate();
+    });
+
+    return () => {
+      window.removeEventListener("storage", syncDate);
+    };
   }, []);
 
   const getLocalDateStr = (d: Date) => {

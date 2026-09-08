@@ -1,9 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { Calendar, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Calendar, CheckCircle, Clock, AlertCircle, RefreshCw } from "lucide-react";
 
 import { View, PatientUser, patientStatusColor as statusColor } from "../types";
 import { Appointment } from "../../shared/data";
 import { getPatientAppointments, updateAppointmentStatus } from "../../shared/supabaseApi";
+
+/** ดึงเวลา "ปัจจุบัน" โดยรองรับ Time Travel mock time */
+function getNow(): Date {
+  const mockDatetime = localStorage.getItem("supat_mock_date");
+  if (mockDatetime) {
+    const parsed = new Date(mockDatetime);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
 
 const thDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
@@ -25,20 +35,76 @@ export default function AppointmentsView({
   const [appts, setAppts] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelId, setCancelId] = useState<number | null>(null);
+  const [expiringIds, setExpiringIds] = useState<Set<number>>(new Set());
+  const autoExpireRanRef = useRef(false);
 
   // Always fetch fresh data from DB when mounted or patientId changes
   // (ไม่พึ่ง globalAppointments เพราะอาจ [] หรือ RLS block ได้)
   useEffect(() => {
     if (!user.patientId) {
-      setLoading(false); // ไม่มี patientId → หยุด loading ทันที
+      setLoading(false);
       return;
     }
     setLoading(true);
+    autoExpireRanRef.current = false; // reset ทุกครั้งที่ reload data
     getPatientAppointments(user.patientId)
       .then(data => setAppts(data))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [user.patientId]);
+
+  /**
+   * Auto-cancel นัดหมายที่ "เลยเวลานัดแล้ว" และยังไม่ได้เช็คอิน / รักษา / ยกเลิก
+   * เงื่อนไข: สถานะเป็น "รอการยืนยัน" หรือ "ยืนยันการจอง" และเวลานัดผ่านไปแล้ว
+   * จะอัปเดตสถานะเป็น "ไม่มาตามนัด" และบันทึกใน appointment_log อัตโนมัติ
+   */
+  useEffect(() => {
+    if (loading || autoExpireRanRef.current || appts.length === 0) return;
+    autoExpireRanRef.current = true;
+
+    const now = getNow();
+    const expirableStatuses = ["รอการยืนยัน", "ยืนยันการจอง"];
+
+    const toExpire = appts.filter(a => {
+      if (!expirableStatuses.includes(a.status)) return false;
+      if (!a.date || !a.time) return false;
+      const apptDateTime = new Date(`${a.date}T${a.time}:00`);
+      return apptDateTime < now; // เลยเวลานัดแล้ว
+    });
+
+    if (toExpire.length === 0) return;
+
+    // แสดง loading indicator
+    setExpiringIds(new Set(toExpire.map(a => a.id)));
+
+    // Optimistic update → ซ่อนจากหน้าจอก่อน
+    setAppts(prev =>
+      prev.map(a =>
+        toExpire.find(e => e.id === a.id)
+          ? { ...a, status: "ไม่มาตามนัด" }
+          : a
+      )
+    );
+
+    // บันทึกลง DB ทีละรายการ
+    Promise.allSettled(
+      toExpire.map(a =>
+        updateAppointmentStatus(
+          a.id,
+          "ไม่มาตามนัด",
+          "ระบบยกเลิกอัตโนมัติ: คนไข้ไม่มาตามนัดหมายที่กำหนด"
+        ).catch(err => {
+          console.error(`Auto-expire failed for appt ${a.id}:`, err);
+          // roll back เฉพาะรายการที่ fail
+          setAppts(prev =>
+            prev.map(p => p.id === a.id ? { ...p, status: a.status } : p)
+          );
+        })
+      )
+    ).finally(() => {
+      setExpiringIds(new Set());
+    });
+  }, [loading, appts.length]);
 
   // Sync optimistic cancel updates from parent state
   useEffect(() => {
@@ -121,14 +187,22 @@ export default function AppointmentsView({
           let isWithin24Hours = false;
           if (a.date && a.time) {
             const apptDate = new Date(`${a.date}T${a.time}:00`);
-            const now = new Date();
+            const now = getNow(); // รองรับ mock time
             const diffMs = apptDate.getTime() - now.getTime();
             if (diffMs <= 24 * 60 * 60 * 1000) {
               isWithin24Hours = true;
             }
           }
+          const isExpiring = expiringIds.has(a.id);
           return (
-            <div key={a.id} className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
+            /* isExpiring = กำลัง auto-cancel อยู่ */
+            <div key={a.id} className={`rounded-2xl bg-white p-5 transition-all ${isExpiring ? "opacity-50 pointer-events-none" : ""}`} style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
+              {isExpiring && (
+                <div className="flex items-center gap-1.5 text-xs mb-2" style={{ color: "#E74C3C" }}>
+                  <RefreshCw size={11} className="animate-spin" />
+                  กำลังบันทึกว่า "ไม่มาตามนัด" อัตโนมัติ...
+                </div>
+              )}
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center flex-shrink-0"
