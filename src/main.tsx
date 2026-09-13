@@ -12,20 +12,22 @@
     const targetDate = new OriginalDate(mockDateStr + "T08:00:00");
     const offset = targetDate.getTime() - OriginalDate.now();
 
-    class MockDate extends OriginalDate {
-      constructor(...args: any[]) {
-        if (args.length === 0) {
-          super(OriginalDate.now() + offset);
-        } else {
-          super(...(args as [any]));
+    if (!Number.isNaN(offset)) {
+      class MockDate extends OriginalDate {
+        constructor(...args: any[]) {
+          if (args.length === 0) {
+            super(OriginalDate.now() + offset);
+          } else {
+            super(...(args as [any]));
+          }
+        }
+        static now() {
+          return OriginalDate.now() + offset;
         }
       }
-      static now() {
-        return OriginalDate.now() + offset;
-      }
+      globalThis.Date = MockDate as any;
+      console.log(`[Time Travel] System time mocked to: ${mockDateStr}`);
     }
-    globalThis.Date = MockDate as any;
-    console.log(`[Time Travel] System time mocked to: ${mockDateStr}`);
   }
   // ----------------------------
 

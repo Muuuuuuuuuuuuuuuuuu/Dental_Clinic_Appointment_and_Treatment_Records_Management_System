@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Settings, ArrowLeft, ChevronRight, Clock } from "lucide-react";
+import { Settings, ArrowLeft, ChevronRight, Clock, Package } from "lucide-react";
 import { getServices } from "../../shared/supabaseApi";
 import ServiceManagement from "../settings/ServiceManagement";
 import ClinicSettingsManagement from "../settings/ClinicSettingsManagement";
+import ProductManagement from "../settings/ProductManagement";
+import PackageManagement from "../users/PackageManagement";
 
-type ClinicSubView = null | "services" | "settings";
+type ClinicSubView = null | "services" | "settings" | "products" | "packages";
 
 const CARD_DEFS = [
   {
@@ -25,6 +27,24 @@ const CARD_DEFS = [
     bgLight: "#FEF3C7",
     countLabel: "ตั้งค่า",
   },
+  {
+    key: "products" as const,
+    icon: Package,
+    title: "สินค้าและยา",
+    desc: "จัดการรายการยาและสินค้าทั่วไป (เพิ่ม แก้ไข ราคา)",
+    gradient: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+    bgLight: "#D1FAE5",
+    countLabel: "รายการ",
+  },
+  {
+    key: "packages" as const,
+    icon: Package,
+    title: "แพ็กเกจจัดฟัน",
+    desc: "จัดการโปรโมชั่น ค่างวดแรกเข้า และรายเดือน",
+    gradient: "linear-gradient(135deg, #EC4899 0%, #BE185D 100%)",
+    bgLight: "#FCE7F3",
+    countLabel: "แพ็กเกจ",
+  },
 ];
 
 export default function ClinicHub() {
@@ -39,6 +59,8 @@ export default function ClinicHub() {
 
   if (subView === "services") return <SubViewWrapper onBack={() => setSubView(null)}><ServiceManagement /></SubViewWrapper>;
   if (subView === "settings") return <SubViewWrapper onBack={() => setSubView(null)}><ClinicSettingsManagement /></SubViewWrapper>;
+  if (subView === "products") return <SubViewWrapper onBack={() => setSubView(null)}><ProductManagement /></SubViewWrapper>;
+  if (subView === "packages") return <SubViewWrapper onBack={() => setSubView(null)}><PackageManagement /></SubViewWrapper>;
 
   return (
     <div>

@@ -11,6 +11,17 @@ import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 type ViewMode = "daily" | "weekly" | "monthly";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** ดึงวันที่ "ปัจจุบัน" โดยรองรับ Time Travel mock datetime จาก localStorage */
+function getNow(): Date {
+  const mockDatetime = localStorage.getItem("supat_mock_date");
+  if (mockDatetime) {
+    const parsed = new Date(mockDatetime);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
 const fmtDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -174,7 +185,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
 
         {inQueue.length === 0 ? (
           <div className="text-center py-10 rounded-2xl bg-white border border-dashed border-gray-200">
-            <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคิวในห้องตรวจ</p>
+            <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคิวรอ/กำลังรักษา</p>
           </div>
         ) : (
           inQueue.map(a => {
@@ -191,7 +202,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
                   </span>
                 </div>
                 <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
-                <p className="text-xs mb-3" style={{ color: "#4A6080" }}>ห้องตรวจ: ทพ. {a.doctorName}</p>
+                <p className="text-xs mb-3" style={{ color: "#4A6080" }}>แพทย์: ทพ. {a.doctorName}</p>
                 {a.status === "เช็คอินเรียบร้อย" && (
                   <button
                     onClick={() => onUpdate(a.id, { status: "กำลังรักษา" })}
@@ -203,7 +214,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
                 {a.status === "กำลังรักษา" && (
                   <div className="w-full flex justify-center items-center gap-2 py-2 rounded-xl text-xs font-bold"
                     style={{ backgroundColor: "#F3E8FF", color: "#7C3AED", border: "1px solid #D8B4FE" }}>
-                    <Play size={14} fill="currentColor" /> แพทย์เรียกเข้าห้องตรวจแล้ว
+                    <Play size={14} fill="currentColor" /> แพทย์เรียกเข้าพบแล้ว
                   </div>
                 )}
               </div>
@@ -291,7 +302,7 @@ function DailyView({
   onUpdateAppt: (id: number, s: Partial<Appointment>) => void;
 }) {
   const dateStr = fmtDate(selectedDate);
-  const todayStr = fmtDate(new Date());
+  const todayStr = fmtDate(getNow());
   const isToday = dateStr === todayStr;
   const closure = closures.find(c => c.date === dateStr);
   const isWeeklyOff = weeklyOffs.includes(selectedDate.getDay());
@@ -341,7 +352,7 @@ function DailyView({
 
         <div className="flex items-center gap-3">
           {!isToday && (
-            <button onClick={() => setSelectedDate(new Date())}
+            <button onClick={() => setSelectedDate(getNow())}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
               style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}>
               กลับวันนี้
@@ -452,7 +463,7 @@ function WeeklyView({
 }) {
   const monday = getMonday(selectedDate);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
-  const todayStr = fmtDate(new Date());
+  const todayStr = fmtDate(getNow());
 
   const handleDayClick = (d: Date) => {
     setSelectedDate(d);
@@ -585,7 +596,7 @@ function MonthlyView({
   const month = monthDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDow = new Date(year, month, 1).getDay();
-  const todayStr = fmtDate(new Date());
+  const todayStr = fmtDate(getNow());
 
   const handleDayClick = (d: number) => {
     setSelectedDate(new Date(year, month, d));
@@ -704,7 +715,7 @@ export default function QueueBoard({
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("daily");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(getNow);
 
 
   useEffect(() => {

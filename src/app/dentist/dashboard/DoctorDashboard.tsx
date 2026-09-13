@@ -36,7 +36,9 @@ export default function DoctorDashboard({
     ]).catch(console.error);
   }, []);
 
-  const today = new Date();
+  const mockDatetime = localStorage.getItem("supat_mock_date");
+  const today = mockDatetime ? new Date(mockDatetime) : new Date();
+  
   // คำนวณวันที่ใน timezone ไทย (UTC+7) อย่างถูกต้อง
   const todayString = today.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' }); // sv-SE ให้ YYYY-MM-DD format
   const formattedDate = today.toLocaleDateString("th-TH", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok' });
@@ -118,9 +120,6 @@ export default function DoctorDashboard({
             <p className="text-xs font-medium mb-1" style={{ color: "rgba(255,255,255,0.6)" }}>เวลาออกตรวจวันนี้</p>
             <p className="text-3xl font-bold text-white" style={{ fontFamily: "Playfair Display, serif" }}>09:00</p>
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>ถึง 17:00 น.</p>
-            <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-              <p className="text-xs" style={{ color: "#FFB3BC" }}>ห้องตรวจ 2A</p>
-            </div>
           </div>
 
           <div className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>

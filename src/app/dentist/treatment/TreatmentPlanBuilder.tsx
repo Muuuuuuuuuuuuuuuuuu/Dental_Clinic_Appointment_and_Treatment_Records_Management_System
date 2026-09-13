@@ -17,6 +17,7 @@ interface PlanDetail {
   notes: string;
   odontogram_data?: Record<number, ToothStatus>;
   status?: string;
+  expected_amount?: number;
 }
 
 export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan, lockedDentistId }: { patientId: number, onClose: (plan?: any) => void, existingPlan?: any, lockedDentistId?: number }) {
@@ -29,6 +30,8 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
   const [primaryDentist, setPrimaryDentist] = useState<number | "">("");
   
   // Financial state
+  const [packages, setPackages] = useState<any[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState<number | null>(existingPlan?.package_id || null);
   const [totalCost, setTotalCost] = useState<number>(40000);
   const [downPayment, setDownPayment] = useState<number>(3000);
   const [downPaymentMonths, setDownPaymentMonths] = useState<number>(3);
@@ -65,7 +68,58 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
         setPrimaryDentist(lockedDentistId);
       }
     });
+
+    supabase.from('treatment_package').select('*').eq('is_active', true).then(({ data }) => {
+      if (data) {
+        setPackages(data);
+        if (existingPlan?.package_id) {
+          const pkg = data.find(p => p.package_id === existingPlan.package_id);
+          if (pkg) {
+            setTotalCost(pkg.total_cost);
+            setDownPayment(pkg.down_payment);
+            setDownPaymentMonths(pkg.down_payment_months);
+          }
+        }
+      }
+    });
   }, [existingPlan, lockedDentistId]);
+
+  // Recalculate expected amounts whenever financial configuration changes
+  useEffect(() => {
+    setPlanDetails(prev => {
+      let hasChanges = false;
+      const next = prev.map((p, idx) => {
+        const monthNum = idx + 1;
+        let amount = 0;
+        
+        if (selectedPackageId) {
+           const pkg = packages.find(pkg => pkg.package_id === selectedPackageId);
+           if (pkg) {
+             if (pkg.down_payment_months && monthNum <= pkg.down_payment_months) {
+               amount = pkg.down_payment;
+             } else {
+               amount = pkg.monthly_payment;
+             }
+           }
+        } else {
+           if (downPaymentMonths > 0 && monthNum <= downPaymentMonths) {
+             amount = downPayment;
+           } else {
+             const remainingCost = totalCost - (downPayment * downPaymentMonths);
+             const remainingMonths = months - downPaymentMonths;
+             amount = remainingMonths > 0 ? Math.round(remainingCost / remainingMonths) : 0;
+           }
+        }
+        
+        if (p.expected_amount !== amount) {
+          hasChanges = true;
+          return { ...p, expected_amount: amount };
+        }
+        return p;
+      });
+      return hasChanges ? next : prev;
+    });
+  }, [selectedPackageId, packages, totalCost, downPayment, downPaymentMonths, months]);
 
   const fetchServices = async () => {
     const { data } = await supabase.from('service').select('service_id, service_name, category, apply_to').eq('is_active', true);
@@ -183,7 +237,9 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
         // Update existing plan
         const { data, error } = await supabase.from('treatment_plan').update({
           plan_name: `แผนการรักษาจัดฟัน (${months} เดือน)`,
-          dentist_id: dentistIdVal
+          dentist_id: dentistIdVal,
+          package_id: selectedPackageId,
+          total_cost: selectedPackageId ? packages.find(p => p.package_id === selectedPackageId)?.total_cost : totalCost
         }).eq('plan_id', planId).select();
         
         if (error) throw error;
@@ -209,7 +265,8 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
             const { error: updateError } = await supabase.from('treatment_plan_item').update({
               services_json: p.services,
               odontogram_data: p.odontogram_data || {},
-              notes: p.notes || ''
+              notes: p.notes || '',
+              expected_amount: p.expected_amount || 0
               // Do NOT update status here to preserve 'completed' state
             }).eq('item_id', existingItem.item_id);
             if (updateError) throw new Error("Failed to update month " + p.month + ": " + updateError.message);
@@ -220,7 +277,8 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
               services_json: p.services,
               odontogram_data: p.odontogram_data || {},
               notes: p.notes || '',
-              status: p.status || 'pending'
+              status: p.status || 'pending',
+              expected_amount: p.expected_amount || 0
             });
             if (insertItemError) throw new Error("Failed to insert month " + p.month + ": " + insertItemError.message);
           }
@@ -233,7 +291,8 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
           patient_id: patientId,
           plan_name: `แผนการรักษาจัดฟัน (${months} เดือน)`,
           dentist_id: dentistIdVal,
-          total_cost: totalCost
+          package_id: selectedPackageId,
+          total_cost: selectedPackageId ? packages.find(p => p.package_id === selectedPackageId)?.total_cost : totalCost
         }).select();
 
         if (error) throw error;
@@ -281,7 +340,8 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
           services_json: p.services,
           odontogram_data: p.odontogram_data || {},
           notes: p.notes || '',
-          status: p.status || 'pending'
+          status: p.status || 'pending',
+          expected_amount: p.expected_amount || 0
         }));
         
         const { error: itemError } = await supabase.from('treatment_plan_item').insert(itemsToInsert);
@@ -363,6 +423,23 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
                   <p className="mt-1 text-xs text-slate-500">ℹ️ ระบบเลือกจากบัญชีที่ login อยู่ — สามารถเปลี่ยนได้หากจำเป็น</p>
                 )}
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  แพ็กเกจจัดฟัน (โปรโมชั่น)
+                </label>
+                <select 
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-teal-50/30"
+                  value={selectedPackageId || ''}
+                  onChange={(e) => setSelectedPackageId(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">-- กำหนดค่าใช้จ่ายเอง --</option>
+                  {packages.map(p => (
+                    <option key={p.package_id} value={p.package_id}>{p.name} ({p.total_cost.toLocaleString()} ฿)</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">เลือกแพ็กเกจเพื่อคำนวณจำนวนเดือนและค่างวดอัตโนมัติ</p>
+              </div>
             </div>
           </div>
           
@@ -384,36 +461,39 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
               <label className="block text-sm font-medium text-slate-700 mb-1">ราคาแพ็กเกจเต็ม (บาท)</label>
               <input 
                 type="number" 
-                className="border border-slate-300 rounded-lg px-3 py-2 w-32 focus:ring-2 focus:ring-teal-500 focus:border-teal-500" 
+                className="border border-slate-300 rounded-lg px-3 py-2 w-32 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-slate-100 disabled:text-slate-500" 
                 value={totalCost}
                 onChange={(e) => setTotalCost(Number(e.target.value))}
                 min="0"
                 step="1000"
+                disabled={selectedPackageId !== null}
               />
             </div>
             
-            <div className="bg-orange-50 p-3 rounded-lg border border-orange-100 flex-1">
-              <label className="block text-xs font-semibold text-orange-800 mb-1">ตั้งค่าการจ่ายล่วงหน้า (ค่างวดแรกเข้า)</label>
+            <div className={`p-3 rounded-lg border flex-1 ${selectedPackageId ? 'bg-slate-50 border-slate-200' : 'bg-orange-50 border-orange-100'}`}>
+              <label className={`block text-xs font-semibold mb-1 ${selectedPackageId ? 'text-slate-500' : 'text-orange-800'}`}>ตั้งค่าการจ่ายล่วงหน้า (ค่างวดแรกเข้า)</label>
               <div className="flex items-center gap-2 text-sm">
                 <span>จ่ายเดือนละ</span>
                 <input 
                   type="number" 
-                  className="border border-orange-200 rounded px-2 py-1 w-24" 
+                  className="border border-slate-300 rounded px-2 py-1 w-24 disabled:bg-slate-100 disabled:text-slate-500" 
                   value={downPayment}
                   onChange={(e) => setDownPayment(Number(e.target.value))}
                   step="500"
+                  disabled={selectedPackageId !== null}
                 />
                 <span>เป็นเวลา</span>
                 <input 
                   type="number" 
-                  className="border border-orange-200 rounded px-2 py-1 w-16" 
+                  className="border border-slate-300 rounded px-2 py-1 w-16 disabled:bg-slate-100 disabled:text-slate-500" 
                   value={downPaymentMonths}
                   onChange={(e) => setDownPaymentMonths(Number(e.target.value))}
                   min="0"
+                  disabled={selectedPackageId !== null}
                 />
                 <span>เดือน</span>
               </div>
-              <p className="text-[10px] text-orange-600 mt-1">*ที่เหลือระบบจะหารเฉลี่ยให้เดือนถัดๆ ไปอัตโนมัติ</p>
+              <p className={`text-[10px] mt-1 ${selectedPackageId ? 'text-slate-400' : 'text-orange-600'}`}>*ที่เหลือระบบจะหารเฉลี่ยให้เดือนถัดๆ ไปอัตโนมัติ</p>
             </div>
             
             <div className="w-full h-px bg-slate-200 my-2"></div>
@@ -470,11 +550,16 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
             {planDetails.map((plan, index) => (
               <div key={index} className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm hover:border-teal-200 transition-colors">
                 <div className="flex flex-col md:flex-row gap-4">
-                  <div className="w-32 shrink-0">
+                  <div className="w-40 shrink-0">
                     <div className="font-bold text-slate-700 text-lg flex items-center gap-2">
                       <Calendar size={18} className="text-teal-600" />
                       เดือนที่ {plan.month}
                     </div>
+                    {plan.expected_amount !== undefined && plan.expected_amount > 0 && (
+                      <div className="text-sm font-medium text-amber-600 mt-1 bg-amber-50 px-2 py-0.5 rounded inline-block border border-amber-200">
+                        ค่างวด: ฿{plan.expected_amount.toLocaleString()}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex-1 space-y-3">

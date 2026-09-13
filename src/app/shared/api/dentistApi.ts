@@ -91,15 +91,7 @@ export async function uploadAvatar(file: File): Promise<string> {
   return data.publicUrl;
 }
 
-/**
- * อัปเดตห้องประจำของทันตแพทย์
- * @param id รหัสทันตแพทย์
- * @param roomName ชื่อห้อง
- */
-export async function updateDentistRoom(id: number, roomName: string): Promise<void> {
-  const { error } = await supabase.from('dentist').update({ default_room: roomName }).eq('dentist_id', id);
-  if (error) throw error;
-}
+
 
 /**
  * เพิ่มทันตแพทย์ใหม่ลงในระบบ (Auth -> Profile -> Users -> Dentist)

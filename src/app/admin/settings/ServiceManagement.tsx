@@ -24,12 +24,16 @@ export default function ServiceManagement() {
   const [applyTos, setApplyTos] = useState<Record<number, string>>({});
   const [srvTypes, setSrvTypes] = useState<Record<number, string>>({});
   const [fixedPrices, setFixedPrices] = useState<Record<number, boolean>>({});
+  const [benefitsMap, setBenefitsMap] = useState<Record<number, string>>({});
+  const [proceduresMap, setProceduresMap] = useState<Record<number, string>>({});
+  const [careMap, setCareMap] = useState<Record<number, string>>({});
 
   // Services Add States
   const [isAdding, setIsAdding] = useState(false);
   const [newService, setNewService] = useState({
     name: "", desc: "", price: "", time: "30", category: SERVICE_CATEGORIES[0] as string, 
-    requiresConfirmation: false, applyTo: "MOUTH", serviceType: "treatment", isFixedPrice: false
+    requiresConfirmation: false, applyTo: "MOUTH", serviceType: "treatment", isFixedPrice: false,
+    benefits: "", procedures: "", care: ""
   });
 
   useEffect(() => {
@@ -59,6 +63,9 @@ export default function ServiceManagement() {
     const at = applyTos[id];
     const st = srvTypes[id];
     const fp = fixedPrices[id];
+    const b = benefitsMap[id];
+    const p_arr = proceduresMap[id];
+    const c_arr = careMap[id];
 
     if (!isNaN(p) && !isNaN(t)) {
       try {
@@ -70,6 +77,14 @@ export default function ServiceManagement() {
         if (at !== undefined) payload.applyTo = at;
         if (st !== undefined) payload.serviceType = st;
         if (fp !== undefined) payload.isFixedPrice = fp;
+
+        if (b !== undefined || p_arr !== undefined || c_arr !== undefined) {
+          payload.details = {};
+          if (b !== undefined) payload.details.benefits = b.split('\n').map((x: string) => x.trim()).filter(Boolean);
+          if (p_arr !== undefined) payload.details.procedures = p_arr.split('\n').map((x: string) => x.trim()).filter(Boolean);
+          if (c_arr !== undefined) payload.details.care = c_arr.split('\n').map((x: string) => x.trim()).filter(Boolean);
+        }
+
         await updateService(id, payload);
         fetchData();
       } catch (err) {
@@ -128,11 +143,16 @@ export default function ServiceManagement() {
         requiresConfirmation: newService.requiresConfirmation,
         applyTo: newService.applyTo,
         serviceType: newService.serviceType,
-        isFixedPrice: newService.isFixedPrice
+        isFixedPrice: newService.isFixedPrice,
+        details: {
+          benefits: newService.benefits.split('\n').map(x => x.trim()).filter(Boolean),
+          procedures: newService.procedures.split('\n').map(x => x.trim()).filter(Boolean),
+          care: newService.care.split('\n').map(x => x.trim()).filter(Boolean)
+        }
       });
       fetchData();
       setIsAdding(false);
-      setNewService({ ...newService, name: "", desc: "", price: "", requiresConfirmation: false, isFixedPrice: false });
+      setNewService({ ...newService, name: "", desc: "", price: "", requiresConfirmation: false, isFixedPrice: false, benefits: "", procedures: "", care: "" });
     } catch (err) {
       console.error(err);
       alert("Failed to add service");
@@ -216,6 +236,21 @@ export default function ServiceManagement() {
                   <input type="text" value={newService.desc} onChange={e => setNewService({ ...newService, desc: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="คำอธิบายสั้นๆ" />
                 </div>
 
+                <div className="md:col-span-4 flex flex-col gap-3 mt-2">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">ข้อดี (บรรทัดละ 1 ข้อ)</label>
+                    <textarea value={newService.benefits} onChange={e => setNewService({ ...newService, benefits: e.target.value })} rows={2} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#FF8C9A]" placeholder="เช่น ช่วยให้ฟันขาวขึ้น"></textarea>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">ขั้นตอน (บรรทัดละ 1 ข้อ)</label>
+                    <textarea value={newService.procedures} onChange={e => setNewService({ ...newService, procedures: e.target.value })} rows={2} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#FF8C9A]" placeholder="เช่น 1. ตรวจประเมิน..."></textarea>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">การดูแลรักษา (บรรทัดละ 1 ข้อ)</label>
+                    <textarea value={newService.care} onChange={e => setNewService({ ...newService, care: e.target.value })} rows={2} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#FF8C9A]" placeholder="เช่น ก่อนทำ: งดน้ำ..."></textarea>
+                  </div>
+                </div>
+
                 <div className="md:col-span-4 flex flex-wrap gap-4 mt-1">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={newService.requiresConfirmation} onChange={e => setNewService({ ...newService, requiresConfirmation: e.target.checked })} className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]" />
@@ -246,9 +281,9 @@ export default function ServiceManagement() {
                 <div className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
                   {catServices.map((s, i, arr) => (
                     <div key={s.id} className="flex items-center gap-4 px-5 py-4" style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(26,54,93,0.05)" : "none" }}>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 pr-4">
                         {editId === s.id ? (
-                          <div className="flex flex-col gap-2 w-full max-w-sm">
+                          <div key={`edit-${s.id}`} className="flex flex-col gap-2 w-full">
                             <input
                               type="text"
                               defaultValue={s.name}
@@ -291,7 +326,40 @@ export default function ServiceManagement() {
                                 <option value="ARCH">ขากรรไกร (ARCH)</option>
                               </select>
                             </div>
-                            <div className="flex flex-col gap-1 mt-1">
+                            <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-slate-100">
+                              <p className="text-[11px] font-bold text-[#1A365D]">รายละเอียดเพิ่มเติม</p>
+                              <div>
+                                <label className="block text-[10px] font-medium text-slate-500 mb-1">ข้อดี (บรรทัดละ 1 ข้อ)</label>
+                                <textarea
+                                  defaultValue={s.details?.benefits?.join('\n') || ''}
+                                  onChange={e => setBenefitsMap(b => ({ ...b, [s.id]: e.target.value }))}
+                                  rows={2}
+                                  className="w-full px-2 py-1.5 rounded-lg text-xs outline-none border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#FF8C9A]"
+                                  placeholder="เช่น ช่วยให้ฟันขาวขึ้น"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-medium text-slate-500 mb-1">ขั้นตอน (บรรทัดละ 1 ข้อ)</label>
+                                <textarea
+                                  defaultValue={s.details?.procedures?.join('\n') || ''}
+                                  onChange={e => setProceduresMap(p => ({ ...p, [s.id]: e.target.value }))}
+                                  rows={2}
+                                  className="w-full px-2 py-1.5 rounded-lg text-xs outline-none border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#FF8C9A]"
+                                  placeholder="เช่น 1. ตรวจประเมิน..."
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-medium text-slate-500 mb-1">การดูแลรักษา (บรรทัดละ 1 ข้อ)</label>
+                                <textarea
+                                  defaultValue={s.details?.care?.join('\n') || ''}
+                                  onChange={e => setCareMap(c => ({ ...c, [s.id]: e.target.value }))}
+                                  rows={2}
+                                  className="w-full px-2 py-1.5 rounded-lg text-xs outline-none border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#FF8C9A]"
+                                  placeholder="เช่น ก่อนทำ: งดน้ำ..."
+                                />
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-slate-100">
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                   type="checkbox"

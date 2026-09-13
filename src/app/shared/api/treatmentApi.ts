@@ -28,7 +28,7 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     appointment!inner(start_time, appointment_status, dentist ( users ( profile (first_name, last_name) ) ), appointment_detail ( service (service_name) )),
     attending_dentist:dentist ( users ( profile (first_name, last_name) ) ),
     payment (total_amount),
-    treatment_detail ( service_id, location_code, quantity, actual_price, service (service_name) )
+    treatment_detail ( service_id, location_code, quantity, actual_price, service (service_name) ),\n    treatment_product ( product_id, quantity, actual_price, product (product_name) )
   `).eq('appointment.patient_id', targetPatientId)
     .in('appointment.appointment_status', ['เสร็จสิ้น', 'รอชำระเงิน', 'ชำระเงินแล้ว'])
     .order('treatment_date', { ascending: false });
@@ -45,12 +45,13 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     const pay = d.payment ? (Array.isArray(d.payment) ? d.payment[0] : d.payment) : undefined;
 
     const srvName = apptDetail?.service?.service_name || 'ไม่ระบุบริการ';
-    const costAmt = pay?.total_amount || 0;
+    const costAmt = pay ? pay.total_amount : null;
 
     let treatmentNotes = d.doctor_note || '';
     let recommendations = '';
     let treatmentServices: string[] = [];
     let detailedServices: any[] = [];
+    let extraProducts: any[] = [];
 
     if (d.doctor_note) {
       let rawNote = d.doctor_note;
@@ -75,15 +76,25 @@ export async function getPatientTreatmentRecords(patientId?: number) {
       }));
     }
 
+    if (d.treatment_product) {
+      extraProducts = d.treatment_product.map((tp: any) => ({
+        productId: tp.product_id,
+        name: tp.product?.product_name || 'ไม่ระบุ',
+        qty: tp.quantity,
+        price: tp.actual_price
+      }));
+    }
+
     return {
       id: d.treatment_id,
       service: srvName,
       treatmentServices,
       detailedServices,
+      extraProducts,
       doctor: dr ? `${dr.first_name} ${dr.last_name}` : 'ไม่ระบุแพทย์',
       date: d.treatment_date,
       time: d.appointment?.start_time?.slice(0, 5) || '00:00',
-      cost: costAmt.toLocaleString(),
+      cost: costAmt !== null ? costAmt.toLocaleString() : null,
       notes: treatmentNotes,
       teeth: '',
       recommendations: recommendations,
@@ -127,7 +138,7 @@ export async function getPatientLatestOdontogram(patientId: number) {
   return data?.odontogram_data || {};
 }
 
-export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>, doctorId?: number, planId?: number, planMonth?: number, detailedServices?: any[]) {
+export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>, doctorId?: number, planId?: number, planMonth?: number, detailedServices?: any[], medicines?: any[]) {
   // 1. Update appointment status
   await supabase.from('appointment').update({ appointment_status: 'รอชำระเงิน' }).eq('appointment_id', apptId);
 
@@ -179,21 +190,23 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
     if (tdErr) console.error("Error inserting treatment_detail:", tdErr);
   }
 
-  // 4. Update or Insert payment record
-  if (treatmentId) {
-    const { data: payData } = await supabase.from('payment').select('payment_id').eq('treatment_id', treatmentId).maybeSingle();
-    if (payData) {
-      await supabase.from('payment').update({ total_amount: cost }).eq('payment_id', payData.payment_id);
-    } else {
-      await supabase.from('payment').insert({
-        treatment_id: treatmentId,
-        total_amount: cost,
-        payment_status: 'ค้างชำระ'
-      });
-    }
+  // 3.5 Update or Insert treatment_product (medicines)
+  if (treatmentId && medicines && medicines.length > 0) {
+    await supabase.from('treatment_product').delete().eq('treatment_id', treatmentId);
+    
+    const tpInserts = medicines.map((m: any) => ({
+      treatment_id: treatmentId,
+      product_id: m.id,
+      quantity: m.qty || 1,
+      actual_price: m.price || 0
+    }));
+    const { error: tpErr } = await supabase.from('treatment_product').insert(tpInserts);
+    if (tpErr) console.error("Error inserting treatment_product:", tpErr);
   }
 
-  // 4. Update Treatment Plan Progress if provided
+  // 4. (Removed) Payment record is now ONLY created by the Staff during checkout.
+
+  // 5. Update Treatment Plan Progress if provided
   if (planId && planMonth) {
     // Update the new relational table
     await supabase.from('treatment_plan_item')
@@ -205,24 +218,36 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
   notifyAppointmentsUpdated();
 }
 
-export async function processPaymentApi(apptId: number, finalCost: number, method: string) {
+export async function processPaymentApi(apptId: number, finalCost: number, method: string, extraProducts?: any[], adjustedServices?: any[]) {
   // 1. Update appointment status to เสร็จสิ้น
   const { error: apptError } = await supabase.from('appointment').update({ appointment_status: 'เสร็จสิ้น' }).eq('appointment_id', apptId);
   if (apptError) throw apptError;
 
   // 2. Fetch treatment_record and patient_id
   const { data: apptData } = await supabase.from('appointment').select('patient_id, treatment_record(treatment_id)').eq('appointment_id', apptId).maybeSingle();
-  let treatmentId = apptData?.treatment_record?.[0]?.treatment_id;
+  const trData = apptData?.treatment_record;
+  let treatmentId = Array.isArray(trData) ? trData[0]?.treatment_id : (trData as any)?.treatment_id;
   let patientId = apptData?.patient_id;
 
   if (treatmentId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    let staffId = null;
+    if (user) {
+      // Find staff profile by joining with users or directly querying staff
+      const { data: staffData } = await supabase.from('staff').select('staff_id').eq('user_id', user.id).maybeSingle();
+      if (staffData) {
+        staffId = staffData.staff_id;
+      }
+    }
+
     const { data: payData } = await supabase.from('payment').select('payment_id').eq('treatment_id', treatmentId).maybeSingle();
     if (payData) {
       await supabase.from('payment').update({
         total_amount: finalCost,
         payment_method: method,
         payment_status: 'ชำระแล้ว',
-        paid_at: new Date().toISOString()
+        paid_at: new Date().toISOString(),
+        staff_id: staffId
       }).eq('payment_id', payData.payment_id);
     } else {
       await supabase.from('payment').insert({
@@ -230,46 +255,37 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
         total_amount: finalCost,
         payment_method: method,
         payment_status: 'ชำระแล้ว',
-        paid_at: new Date().toISOString()
+        paid_at: new Date().toISOString(),
+        staff_id: staffId
       });
     }
-  }
+    
+    // Update treatment_product if any
+    if (extraProducts && extraProducts.length > 0) {
+      await supabase.from('treatment_product').delete().eq('treatment_id', treatmentId);
+      const productInserts = extraProducts.map((p: any) => ({
+        treatment_id: treatmentId,
+        product_id: p.id,
+        quantity: p.qty || 1,
+        actual_price: p.price || 0
+      }));
+      await supabase.from('treatment_product').insert(productInserts);
+    }
 
-  // 4. Handle Installment payment
-  if (treatmentId && patientId) {
-    // Check if the doctor explicitly charged an installment in this treatment
-    const { data: details } = await supabase.from('treatment_detail').select('diagnosis').eq('treatment_id', treatmentId);
-    if (details) {
-      for (const d of details) {
-        if (d.diagnosis && d.diagnosis.includes("จัดฟัน งวดที่")) {
-          const match = d.diagnosis.match(/งวดที่ (\d+)/);
-          if (match && match[1]) {
-            const instNumber = parseInt(match[1], 10);
-            
-            // Find the active plan for this patient
-            const { data: plans } = await supabase.from('treatment_plan').select('plan_id').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(1);
-            if (plans && plans.length > 0) {
-              const planId = plans[0].plan_id;
-              
-              // Mark that specific installment as paid
-              await supabase.from('installment').update({ 
-                paid: true, 
-                paid_at: new Date().toISOString() 
-              }).eq('plan_id', planId).eq('installment_number', instNumber);
-            }
-          }
-        }
+    // Update treatment_detail if adjustedServices passed
+    if (adjustedServices && adjustedServices.length > 0) {
+      for (const s of adjustedServices) {
+        await supabase.from('treatment_detail')
+          .update({ actual_price: s.price })
+          .eq('treatment_id', treatmentId)
+          .eq('service_id', s.serviceId)
+          .eq('location_code', s.locationCode || 'NONE');
       }
     }
   }
 
   notifyAppointmentsUpdated();
-  return { status: 'เสร็จสิ้น' };
 }
-
-
-
-
 
 export async function getPatientHistory(patientId: number) {
   const { data, error } = await supabase.from('treatment_record').select(`
@@ -498,4 +514,95 @@ export async function sendAppointmentSlip(planItemId: number) {
   return true;
 }
 
-// --- Patient Registration ---
+// --- Patient Registration ---
+export async function getProducts(type?: string) {
+  let query = supabase.from('product').select('*').eq('is_active', true).order('product_name', { ascending: true });
+  if (type) query = query.eq('product_type', type);
+  
+  const { data, error } = await query;
+  if (error) {
+    console.error("getProducts error:", error);
+    return [];
+  }
+  return data.map((d: any) => ({
+    id: d.product_id,
+    name: d.product_name,
+    type: d.product_type,
+    price: Number(d.price),
+    unit: d.unit,
+    instruction: d.instruction,
+    isActive: d.is_active
+  }));
+}
+
+export async function addProduct(product: any) {
+  const { data, error } = await supabase.from('product').insert([{
+    product_name: product.name,
+    product_type: product.type,
+    price: product.price,
+    unit: product.unit,
+    instruction: product.instruction,
+    is_active: product.isActive
+  }]).select();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProduct(id: number, updates: any) {
+  const mappedUpdates: any = {};
+  if (updates.name !== undefined) mappedUpdates.product_name = updates.name;
+  if (updates.type !== undefined) mappedUpdates.product_type = updates.type;
+  if (updates.price !== undefined) mappedUpdates.price = updates.price;
+  if (updates.unit !== undefined) mappedUpdates.unit = updates.unit;
+  if (updates.instruction !== undefined) mappedUpdates.instruction = updates.instruction;
+  if (updates.isActive !== undefined) mappedUpdates.is_active = updates.isActive;
+
+  const { data, error } = await supabase.from('product').update(mappedUpdates).eq('product_id', id).select();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteProduct(id: number) {
+  const { data, error } = await supabase.from('product').update({ is_active: false }).eq('product_id', id);
+  if (error) throw error;
+  return data;
+}
+
+export async function getTreatmentPackages() {
+  const { data, error } = await supabase
+    .from('treatment_package')
+    .select('*')
+    .eq('is_active', true)
+    .order('package_name', { ascending: true });
+    
+  if (error) {
+    console.error("getTreatmentPackages error:", error);
+    return [];
+  }
+  return data;
+}
+
+export async function addTreatmentPackage(pkg: any) {
+  const { data, error } = await supabase.from('treatment_package').insert([{
+    package_name: pkg.package_name,
+    total_cost: pkg.total_cost,
+    down_payment: pkg.down_payment,
+    down_payment_months: pkg.down_payment_months,
+    monthly_payment: pkg.monthly_payment,
+    is_active: pkg.is_active !== undefined ? pkg.is_active : true
+  }]).select();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTreatmentPackage(id: number, updates: any) {
+  const { data, error } = await supabase.from('treatment_package').update(updates).eq('package_id', id).select();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteTreatmentPackage(id: number) {
+  const { data, error } = await supabase.from('treatment_package').update({ is_active: false }).eq('package_id', id);
+  if (error) throw error;
+  return data;
+}

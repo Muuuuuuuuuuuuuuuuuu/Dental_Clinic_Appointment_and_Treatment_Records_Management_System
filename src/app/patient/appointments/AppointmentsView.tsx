@@ -30,7 +30,7 @@ export default function AppointmentsView({
   setView: (v: View) => void;
   appointments?: Appointment[];
   onUpdateAppt?: (id: number, updates: Partial<Appointment>) => void;
-  onBookFollowUp?: (serviceId: number, doctorId: number) => void;
+  onBookFollowUp?: (serviceId: number, doctorId: number, openTicketId?: number) => void;
 }) {
   const [appts, setAppts] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,14 +106,11 @@ export default function AppointmentsView({
     });
   }, [loading, appts.length]);
 
-  // Sync optimistic cancel updates from parent state
+  // Sync updates from parent state (including newly created ones)
   useEffect(() => {
     if (!globalAppointments || !user.patientId) return;
     const parentAppts = globalAppointments.filter(a => a.patientId === user.patientId);
-    setAppts(prev => prev.map(a => {
-      const updated = parentAppts.find(p => p.id === a.id);
-      return updated ? { ...a, status: updated.status } : a;
-    }));
+    setAppts(parentAppts);
   }, [globalAppointments, user.patientId]);
 
   const doCancel = async (id: number) => {
@@ -237,29 +234,40 @@ export default function AppointmentsView({
                   {a.status}
                 </span>
               </div>
-              {canCancel && (
-                <div className="mt-4 pt-3 flex items-center gap-2" style={{ borderTop: "1px solid rgba(26,54,93,0.06)" }}>
-                  {isWithin24Hours ? (
-                    <p className="text-xs font-medium" style={{ color: "#94A3B8" }}>
-                      ยกเลิกไม่ได้ (น้อยกว่า 24 ชม.)
-                    </p>
-                  ) : cancelId === a.id ? (
-                    <>
-                      <p className="text-xs flex-1" style={{ color: "#E65100" }}>ยืนยันการยกเลิกนัดหมาย?</p>
-                      <button onClick={() => doCancel(a.id)} className="text-xs px-3 py-1.5 rounded-lg text-white" style={{ backgroundColor: "#E74C3C" }}>
-                        ยืนยันยกเลิก
+              <div className="mt-4 pt-3 flex items-center justify-between gap-2" style={{ borderTop: "1px solid rgba(26,54,93,0.06)" }}>
+                <div className="flex items-center gap-2">
+                  {canCancel && (
+                    isWithin24Hours ? (
+                      <p className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+                        ยกเลิกไม่ได้ (น้อยกว่า 24 ชม.)
+                      </p>
+                    ) : cancelId === a.id ? (
+                      <>
+                        <p className="text-xs flex-1" style={{ color: "#E65100" }}>ยืนยันการยกเลิกนัดหมาย?</p>
+                        <button onClick={() => doCancel(a.id)} className="text-xs px-3 py-1.5 rounded-lg text-white" style={{ backgroundColor: "#E74C3C" }}>
+                          ยืนยันยกเลิก
+                        </button>
+                        <button onClick={() => setCancelId(null)} className="text-xs px-3 py-1.5 rounded-lg" style={{ border: "1px solid rgba(26,54,93,0.15)", color: "#4A6080" }}>
+                          ไม่ยกเลิก
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => setCancelId(a.id)} className="text-xs font-medium hover:opacity-70" style={{ color: "#E74C3C" }}>
+                        ยกเลิกนัดหมาย
                       </button>
-                      <button onClick={() => setCancelId(null)} className="text-xs px-3 py-1.5 rounded-lg" style={{ border: "1px solid rgba(26,54,93,0.15)", color: "#4A6080" }}>
-                        ไม่ยกเลิก
-                      </button>
-                    </>
-                  ) : (
-                    <button onClick={() => setCancelId(a.id)} className="text-xs font-medium hover:opacity-70" style={{ color: "#E74C3C" }}>
-                      ยกเลิกนัดหมาย
-                    </button>
+                    )
                   )}
                 </div>
-              )}
+                {!a.date && onBookFollowUp && (
+                  <button onClick={() => {
+                    onBookFollowUp(a.serviceId, a.doctorId, a.id);
+                  }} 
+                    className="text-xs px-4 py-1.5 rounded-lg font-bold text-white transition-all hover:opacity-90 shadow-sm"
+                    style={{ background: "linear-gradient(135deg,#1D6FA4,#1A365D)" }}>
+                    ระบุวันนัดหมาย
+                  </button>
+                )}
+              </div>
 
             </div>
           );

@@ -45,7 +45,7 @@ export async function getAppointments(date?: string) {
     ),
     appointment_detail ( service (service_name) ),
     dentist ( users ( profile (first_name, last_name) ) ),
-    treatment_record ( attending_dentist_id, doctor_note, odontogram_data, payment (total_amount, payment_status), treatment_detail ( service_id, location_code, quantity, actual_price, service (service_name) ) )
+    treatment_record ( attending_dentist_id, doctor_note, odontogram_data, payment (total_amount, payment_status), treatment_detail ( service_id, location_code, quantity, actual_price, service (service_name) ), treatment_product ( product_id, quantity, actual_price, product (product_name, unit) ) )
   `);
 
   if (date) query = query.eq('appointment_date', date);
@@ -103,6 +103,15 @@ export async function getAppointments(date?: string) {
           price: td.actual_price
         }));
       }
+      if (tr && tr.treatment_product) {
+        const productServices = tr.treatment_product.map((tp: any) => ({
+          serviceId: `prod-${tp.product_id}`,
+          name: `💊 ${tp.product?.product_name || 'ไม่ระบุ'}`,
+          qty: tp.quantity,
+          price: tp.actual_price
+        }));
+        detailedServices = [...detailedServices, ...productServices];
+      }
     }
 
     return {
@@ -132,6 +141,7 @@ export async function getAppointments(date?: string) {
       cost,
       paid,
       note: d.note,
+      treatmentPlanId: d.treatment_plan_id,
       odontogramData: d.treatment_record ? (Array.isArray(d.treatment_record) ? d.treatment_record[0]?.odontogram_data : d.treatment_record.odontogram_data) : undefined
     };
   }) as Appointment[];
@@ -166,6 +176,7 @@ export async function getPatientAppointments(patientId?: number) {
       patient_disease (disease_name)
     ),
     appointment_detail ( service (service_name) ),
+    dentist ( users ( profile (first_name, last_name) ) ),
     treatment_record ( attending_dentist_id, doctor_note, payment (total_amount, payment_status), attending_dentist:dentist ( users ( profile (first_name, last_name) ) ), treatment_detail ( service_id, location_code, quantity, actual_price, service (service_name) ) )
   `).eq('patient_id', targetPatientId);
 
@@ -179,7 +190,11 @@ export async function getPatientAppointments(patientId?: number) {
     const services = d.appointment_detail?.map((ad: any) => ad.service?.service_name).join(', ') || 'ไม่ได้ระบุบริการ';
 
     let doctorName = 'รอระบุแพทย์';
-    let doctorId = 0;
+    let doctorId = d.dentist_id || 0;
+
+    if (d.dentist?.users?.profile) {
+      doctorName = `${d.dentist.users.profile.first_name} ${d.dentist.users.profile.last_name}`;
+    }
     let cost = 0;
     let paid = false;
     let treatmentNotes = '';
@@ -189,10 +204,10 @@ export async function getPatientAppointments(patientId?: number) {
     if (d.treatment_record) {
       const tr = Array.isArray(d.treatment_record) ? d.treatment_record[0] : d.treatment_record;
       if (tr) {
-        const docProf = tr.dentist?.users?.profile;
+        const docProf = tr.attending_dentist?.users?.profile;
         if (docProf) {
           doctorName = `${docProf.first_name} ${docProf.last_name}`;
-          doctorId = tr.dentist_id;
+          doctorId = tr.attending_dentist_id;
         }
         if (tr.doctor_note) {
           const parts = tr.doctor_note.split('\\nคำแนะนำ: ');
@@ -244,6 +259,7 @@ export async function getPatientAppointments(patientId?: number) {
       cost,
       paid,
       note: d.note,
+      treatmentPlanId: d.treatment_plan_id,
       odontogramData: d.treatment_record ? (Array.isArray(d.treatment_record) ? d.treatment_record[0]?.odontogram_data : d.treatment_record.odontogram_data) : undefined
     };
   }) as Appointment[];
@@ -251,7 +267,7 @@ export async function getPatientAppointments(patientId?: number) {
 
 // --- Patient-specific: ดึงเฉพาะประวัติการรักษาของคนไข้ที่ล็อกอินอยู่ ---
 
-export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
+export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id?: number }) {
   // 1. Conflict Check (Backend Level)
   if (appointment.doctorId && appointment.date) {
     const { data: overlapping } = await supabase.from('appointment')
@@ -546,10 +562,8 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
   const endMm = totalMins % 60;
   const endTimeStr = `${String(endHh).padStart(2, '0')}:${String(endMm).padStart(2, '0')}:00`;
 
-  // 4. Insert Appointment
-  const { data: newAppt, error: apptErr } = await supabase
-    .from('appointment')
-    .insert({
+  // 4. Insert or Update Appointment
+  const apptPayload = {
       patient_id: finalPatientId,
       dentist_id: finalDoctorId || null,
       appointment_date: appointment.date || null,
@@ -557,32 +571,52 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
       end_time_est: appointment.time ? endTimeStr : null,
       appointment_status: appointment.status,
       channel: appointment.source === 'doctor' ? 'Walk-in' : 'ออนไลน์',
+      treatment_plan_id: appointment.treatmentPlanId || null,
       note: appointment.note || null
-    })
-    .select()
-    .single();
+  };
+
+  let newAppt, apptErr;
+  if (appointment.id) {
+    const res = await supabase.from('appointment').update(apptPayload).eq('appointment_id', appointment.id).select().single();
+    newAppt = res.data;
+    apptErr = res.error;
+  } else {
+    const res = await supabase.from('appointment').insert(apptPayload).select().single();
+    newAppt = res.data;
+    apptErr = res.error;
+  }
 
   if (apptErr) throw apptErr;
 
-  // 5. Insert Appointment Detail
-  const { error: detailErr } = await supabase.from('appointment_detail').insert({
-    appointment_id: newAppt.appointment_id,
-    service_id: finalServiceId
-  });
-  if (detailErr) {
-    console.error("Error inserting appointment detail:", detailErr);
+  // 5. Insert or Update Appointment Detail
+  if (appointment.id) {
+    const { error: detailErr } = await supabase.from('appointment_detail').update({ service_id: finalServiceId }).eq('appointment_id', newAppt.appointment_id);
+    if (detailErr) console.error("Error updating appointment detail:", detailErr);
+  } else {
+    const { error: detailErr } = await supabase.from('appointment_detail').insert({
+      appointment_id: newAppt.appointment_id,
+      service_id: finalServiceId
+    });
+    if (detailErr) console.error("Error inserting appointment detail:", detailErr);
   }
 
-  // 6. Insert Treatment Record to map Doctor (if selected)
+  // 6. Insert or Update Treatment Record to map Doctor (if selected)
   if (finalDoctorId) {
-    const { error: trErr } = await supabase.from('treatment_record').insert({
-      appointment_id: newAppt.appointment_id,
-      attending_dentist_id: finalDoctorId,
-      treatment_date: appointment.date,
-      doctor_note: ''
-    });
-    if (trErr) {
-      console.error("Error inserting treatment record:", trErr);
+    const { data: existingTr } = await supabase.from('treatment_record').select('record_id').eq('appointment_id', newAppt.appointment_id).maybeSingle();
+    if (existingTr) {
+      const { error: trErr } = await supabase.from('treatment_record').update({
+        attending_dentist_id: finalDoctorId,
+        treatment_date: appointment.date
+      }).eq('record_id', existingTr.record_id);
+      if (trErr) console.error("Error updating treatment record:", trErr);
+    } else {
+      const { error: trErr } = await supabase.from('treatment_record').insert({
+        appointment_id: newAppt.appointment_id,
+        attending_dentist_id: finalDoctorId,
+        treatment_date: appointment.date,
+        doctor_note: ''
+      });
+      if (trErr) console.error("Error inserting treatment record:", trErr);
     }
   }
 
@@ -612,18 +646,7 @@ export async function updateAppointmentStatus(id: number, status: string, reason
     throw error;
   }
 
-  // Log if cancelled or no show
-  if (status === 'ยกเลิก' || status === 'ไม่มาตามนัด') {
-    const { data: userData } = await supabase.auth.getUser();
-    await supabase.from('appointment_log').insert({
-      appointment_id: id,
-      action_type: status === 'ยกเลิก' ? 'CANCEL' : 'NO_SHOW',
-      old_data: oldAppt,
-      new_data: { appointment_status: status },
-      reason: reason || (status === 'ยกเลิก' ? 'ยกเลิกการนัดหมาย' : 'คนไข้ไม่มาตามนัด'),
-      action_by: userData?.user?.id || null
-    });
-  }
+
 
   notifyAppointmentsUpdated();
   return { id: data.appointment_id, status: data.appointment_status } as any;
@@ -674,6 +697,7 @@ export async function updateAppointmentDetails(id: number, updates: any) {
 
   if (updates.date) payload.appointment_date = updates.date;
   if (updates.doctorId) payload.dentist_id = updates.doctorId;
+  if (updates.status) payload.status = updates.status;
   if (updates.time) {
     payload.start_time = updates.time;
     // Calculate end_time_est
@@ -694,18 +718,7 @@ export async function updateAppointmentDetails(id: number, updates: any) {
   const { error } = await supabase.from('appointment').update(payload).eq('appointment_id', id);
   if (error) throw error;
 
-  // Insert log
-  const { data: userData } = await supabase.auth.getUser();
-  if (oldAppt) {
-    await supabase.from('appointment_log').insert({
-      appointment_id: id,
-      action_type: actionType,
-      old_data: oldAppt,
-      new_data: payload,
-      reason: updates.reason || 'อัปเดตผ่านระบบจัดการโดยพนักงาน',
-      action_by: userData?.user?.id || null
-    });
-  }
+
 
   notifyAppointmentsUpdated();
   return true;

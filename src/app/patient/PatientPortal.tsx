@@ -59,7 +59,7 @@ export default function PatientPortal() {
   const [portalView, setPortalView] = useState<View>("dashboard");
   const [loginEmail, setLoginEmail] = useState("");
   const [clinicStatus, setClinicStatus] = useState<ClinicStatus | null>(null);
-  const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number, planItem?: number} | null>(null);
+  const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number, planItem?: number, openTicketId?: number} | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   
   const { appointments: sharedAppointments, setAppointments: setSharedAppointments } = useRealtimeAppointments();
@@ -116,7 +116,7 @@ export default function PatientPortal() {
               // Restore last view or go to dashboard
               const savedView = localStorage.getItem("supat_last_view") as View;
               const urlParams = new URLSearchParams(window.location.search);
-              if (urlParams.get('planItem') || urlParams.get('followUp')) {
+              if (urlParams.get('planItem') || urlParams.get('followUp') || urlParams.get('openTicketId')) {
                 updateView("booking");
               } else if (savedView && PORTAL_VIEWS.includes(savedView)) {
                 updateView(savedView);
@@ -149,8 +149,15 @@ export default function PatientPortal() {
     const planItem = urlParams.get('planItem');
     const doctorStr = urlParams.get('doctorId');
     const serviceStr = urlParams.get('serviceId');
+    const openTicketId = urlParams.get('openTicketId');
 
-    if (planItem) {
+    if (openTicketId) {
+      setFollowUpProps({
+        openTicketId: parseInt(openTicketId, 10),
+        service: 1, doctor: 1 // to be overwritten by BookingView fetch
+      });
+      setView("login");
+    } else if (planItem) {
       setFollowUpProps({
         planItem: parseInt(planItem, 10),
         doctor: doctorStr ? parseInt(doctorStr, 10) : 1, // fallback to any/1
@@ -278,6 +285,7 @@ export default function PatientPortal() {
             initialDoctor={followUpProps?.doctor}
             isFollowUp={followUpProps !== null}
             planItemId={followUpProps?.planItem}
+            openTicketId={followUpProps?.openTicketId}
             user={user}
             onAddAppt={addAppt}
           />
@@ -288,8 +296,8 @@ export default function PatientPortal() {
             setView={updateView}
             appointments={sharedAppointments}
             onUpdateAppt={updateAppt}
-            onBookFollowUp={(serviceId, doctorId) => {
-              setFollowUpProps({ service: serviceId, doctor: doctorId });
+            onBookFollowUp={(serviceId, doctorId, openTicketId) => {
+              setFollowUpProps({ service: serviceId, doctor: doctorId || 0, openTicketId });
               updateView("booking");
             }}
           />

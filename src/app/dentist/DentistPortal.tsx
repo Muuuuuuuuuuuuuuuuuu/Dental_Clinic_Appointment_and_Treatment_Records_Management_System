@@ -53,7 +53,6 @@ const DOC_NAV = [
   { key: "records"   as DocView, label: "เวชระเบียน",         icon: FileText },
   { key: "history"   as DocView, label: "ประวัติการทำงาน",      icon: ClipboardList },
   { key: "calendar"  as DocView, label: "ปฏิทินและการลางาน",   icon: Calendar },
-  { key: "tracking"  as DocView, label: "ติดตามเคส",         icon: AlertTriangle },
   { key: "profile"   as DocView, label: "ข้อมูลส่วนตัว",     icon: User },
 ];
 
@@ -179,10 +178,9 @@ export default function DoctorPortal({
         <main className="flex-1 p-5 lg:p-8">
           {view === "dashboard" && <DoctorDashboard setView={setView} doctor={doctor} appointments={appointments} />}
           {view === "queue"     && <TreatmentQueue doctor={doctor} appointments={appointments} />}
-          {view === "records"   && <PatientRecords />}
+          {view === "records"   && <PatientRecords doctorId={doctor?.id} />}
           {view === "history"   && <TreatmentHistory doctor={doctor} />}
           {view === "calendar"  && <DoctorCalendar doctor={doctor} />}
-          {view === "tracking"  && <TreatmentTrackingView />}
           {view === "profile"   && <DoctorProfile doctor={doctor} />}
         </main>
       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, Calendar, Bell, Send, CheckCircle, Clock, AlertTriangle, ArrowRight, User } from "lucide-react";
-import { getActiveTreatmentTrackings, sendAppointmentSlip } from "../../shared/supabaseApi";
+import { getActiveTreatmentTrackings, sendAppointmentSlip, addAppointment, getServices } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function TreatmentTrackingView() {
@@ -25,12 +25,40 @@ export default function TreatmentTrackingView() {
     loadData();
   }, [appointments]);
 
-  const handleSendSlip = async (id: number) => {
+  const handleSendSlip = async (t: any) => {
     if (!confirm("ยืนยันการส่งใบนัดแบบเปิด (Open Ticket) ให้คนไข้เลือกวันเวลาเอง?")) return;
     try {
-      await sendAppointmentSlip(id);
+      const services = await getServices();
+      const serviceName = t.nextService || t.planName;
+      let matchedServiceId = 1;
+      
+      if (services && services.length > 0) {
+        // Find by name containing or exact match
+        const match = services.find((s:any) => s.name === serviceName || s.name.includes(serviceName) || serviceName.includes(s.name));
+        if (match) matchedServiceId = match.id;
+      }
+
+      await addAppointment({
+        patientId: t.patientId,
+        hn: '',
+        patientName: t.patientName,
+        patientPhone: t.patientPhone,
+        service: serviceName,
+        serviceId: matchedServiceId,
+        doctorName: t.doctorName,
+        doctorId: t.doctorId,
+        date: '',
+        time: '',
+        status: 'รอการยืนยัน',
+        source: 'doctor',
+        treatmentPlanId: t.planId,
+        planItemId: t.planItemId,
+        note: `นัดหมายตามแผนการรักษา: ${t.planName} (เดือนที่ ${t.month})`
+      } as any);
+
+      await sendAppointmentSlip(t.id);
       loadData();
-      alert("ระบบได้ส่งลิงก์ใบนัดให้คนไข้ผ่าน LINE/SMS แล้ว");
+      alert("ระบบได้สร้างใบนัดแบบเปิดและอัปเดตสถานะแล้ว");
     } catch (e: any) {
       alert("Error: " + e.message);
     }
@@ -136,7 +164,7 @@ export default function TreatmentTrackingView() {
 
                 <div className="pt-4 border-t border-slate-100 flex gap-2">
                   {t.trackingStatus === 'รอติดตาม' && (
-                    <button onClick={() => handleSendSlip(t.id)} className="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                    <button onClick={() => handleSendSlip(t)} className="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
                       <Send size={16} /> ส่งใบนัดให้คนไข้
                     </button>
                   )}
