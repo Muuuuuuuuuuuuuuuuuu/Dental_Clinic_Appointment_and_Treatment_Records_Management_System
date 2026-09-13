@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { UserCheck, Clock, Users, CreditCard, AlertTriangle, ArrowRight } from "lucide-react";
 import { Appointment, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
-import {  updateAppointmentStatus } from "../../shared/supabaseApi";
+import { updateAppointmentStatus } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 const fmtDate = (d: Date) =>
@@ -34,7 +34,7 @@ export default function CheckInView() {
     .filter(a => a.date === todayStr)
     .sort((a, b) => a.time.localeCompare(b.time));
 
-  const toCheckIn = todayApps.filter(a => a.status === "ยืนยันการจอง");
+  const toCheckIn = todayApps.filter(a => a.status === "ยืนยันการจอง" || a.status === "รอการยืนยัน");
   const inQueue = todayApps.filter(a => a.status === "เช็คอินเรียบร้อย" || a.status === "กำลังรักษา");
   const toPay = todayApps.filter(a => a.status === "รอชำระเงิน");
 
@@ -67,7 +67,7 @@ export default function CheckInView() {
                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-sm font-bold" style={{ color: "#1D6FA4" }}>{a.time} น.</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}>ยืนยันแล้ว</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: a.status === "ยืนยันการจอง" ? "#E8F4FF" : "#FFF3E0", color: a.status === "ยืนยันการจอง" ? "#1D6FA4" : "#E65100" }}>{a.status === "ยืนยันการจอง" ? "ยืนยันแล้ว" : "รอยืนยัน"}</span>
                 </div>
                 <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
                 <p className="text-xs mb-3" style={{ color: "#4A6080" }}>{a.service} • ทพ. {a.doctorName}</p>

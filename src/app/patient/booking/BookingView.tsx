@@ -8,7 +8,7 @@ import { View, PatientUser } from "../types";
 import {
   addAppointment, getClinicClosures,
   getLandingServices, getLandingDoctors, getDentistsByService,
-  getPaymentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves, getMonthlyFullyBookedDates
+  getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves, getMonthlyFullyBookedDates
 } from "../../shared/supabaseApi";
 import { SpecialClosure, hasHealthAlert } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";
@@ -445,7 +445,7 @@ export default function BookingView({
           ...healthData.conditions.filter(c => c !== 'โรคอื่นๆ'),
           ...(healthData.conditions.includes('โรคอื่นๆ') && healthData.conditionOther ? [`อื่นๆ: ${healthData.conditionOther}`] : [])
         ].join(", ") || "ไม่มี"),
-        paymentPlanId: selPaymentPlan || undefined,
+        paymentPlanId: undefined,
         planItemId: planItemId || undefined,
       });
       let finalAssignedDoctorName = finalDoctorName;
@@ -914,7 +914,6 @@ export default function BookingView({
             {[
               { label: "บริการ", val: servicesData[selService!]?.title || "ไม่ระบุ" },
               { label: "ทันตแพทย์", val: (selDoctor === "any" || selDoctor === null) ? "จัดแพทย์ให้อัตโนมัติ" : (landingDoctors.find((d) => d.id === selDoctor)?.name || "ไม่ระบุ") },
-              { label: "แผนชำระเงิน", val: paymentPlans.length > 0 && selPaymentPlan ? (paymentPlans.find((p) => p.plan_id === selPaymentPlan)?.plan_name || "ชำระปกติ") : "ชำระปกติ" },
               { label: "วันที่", val: `${selDay} ${today.toLocaleDateString("th-TH", { month: "long", year: "numeric" })}` },
               { label: "เวลา", val: `${selTime} – ${endTimeStr} น.` },
               { label: "ราคาเริ่มต้น", val: servicesData[selService!]?.price || "-" },

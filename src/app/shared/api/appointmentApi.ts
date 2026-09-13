@@ -557,7 +557,6 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
       end_time_est: appointment.time ? endTimeStr : null,
       appointment_status: appointment.status,
       channel: appointment.source === 'doctor' ? 'Walk-in' : 'ออนไลน์',
-      plan_id: appointment.paymentPlanId || null,
       note: appointment.note || null
     })
     .select()

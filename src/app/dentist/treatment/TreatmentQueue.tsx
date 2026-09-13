@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTriangle, ChevronRight, Check, Send, ClipboardList } from "lucide-react";
+import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTriangle, ChevronRight, Check, Send, ClipboardList, Pill } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo, hasHealthAlert } from "../../shared/data";
 import { getAppointments, getServices, updateAppointmentStatus, saveTreatment, getPatientLatestOdontogram, getPatientActiveTreatmentPlan, supabase } from "../../shared/supabaseApi";
@@ -63,6 +63,8 @@ export default function TreatmentQueue({
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
   const [isEditingPlan, setIsEditingPlan] = useState(false);
   const [selectedToothForAction, setSelectedToothForAction] = useState<number | null>(null);
+  const [showMedModal, setShowMedModal] = useState<number | null>(null); // appointment id
+  const [medList, setMedList] = useState<{ name: string; dose: string; freq: string; days: string }[]>([]);
 
   const today = new Date();
   const todayString = today.toLocaleDateString('en-CA');
@@ -276,8 +278,94 @@ export default function TreatmentQueue({
     "กำลังรักษา": { label: "บันทึกการรักษา", next: "รอชำระเงิน", color: "#7C3AED" },
   };
 
+  // ─── Medicine Modal ───────────────────────────────────────────────────────────
+  const COMMON_MEDS = [
+    { name: "ยาแก้ปวด (Ibuprofen 400mg)", dose: "400mg", freq: "ทุก 6 ชั่วโมงเมื่อปวด", days: "3" },
+    { name: "ยาแก้ปวด (Paracetamol 500mg)", dose: "500mg", freq: "ทุก 4-6 ชั่วโมงเมื่อปวด", days: "3" },
+    { name: "ยาปฏิชีวนะ (Amoxicillin 500mg)", dose: "500mg", freq: "วันละ 3 ครั้ง หลังอาหาร", days: "5" },
+    { name: "ยาลดบวม (Dexamethasone 0.5mg)", dose: "0.5mg", freq: "วันละ 1 ครั้ง หลังอาหาร", days: "3" },
+    { name: "ยาบ้วยปาก (Chlorhexidine 0.2%)", dose: "บ้วนปาก", freq: "วันละ 2-3 ครั้ง หลังอาหาร", days: "7" },
+    { name: "ยาฟลูอไรด์ทา", dose: "ทาบางๆ", freq: "หลังแปรงฟันและก่อนนอน", days: "30" },
+  ];
+
+  const addMed = (med: typeof COMMON_MEDS[0]) => {
+    if (!medList.find(m => m.name === med.name)) {
+      setMedList(prev => [...prev, { ...med }]);
+    }
+  };
+
+  const removeMed = (idx: number) => setMedList(prev => prev.filter((_, i) => i !== idx));
+
+  const applyMedsToNotes = () => {
+    if (medList.length === 0) { setShowMedModal(null); return; }
+    const medText = "\n\n[สั่งยา]\n" + medList.map(m =>
+      `• ${m.name} | ขนาด: ${m.dose} | ${m.freq} | ${m.days} วัน`
+    ).join("\n");
+    setForm(f => ({ ...f, notes: (f.notes || "") + medText }));
+    setMedList([]);
+    setShowMedModal(null);
+  };
+
   return (
     <div>
+      {/* Medicine Modal */}
+      {showMedModal !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.45)" }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-base flex items-center gap-2" style={{ color: "#1A365D" }}>
+                <Pill size={16} className="text-purple-600" /> สั่งยาสำหรับคนไข้
+              </h3>
+              <button onClick={() => { setShowMedModal(null); setMedList([]); }} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100"><X size={14} /></button>
+            </div>
+
+            <p className="text-xs font-medium mb-2" style={{ color: "#4A6080" }}>เลือกยาที่ต้องการสั่ง (click เพื่อเพิ่ม)</p>
+            <div className="grid grid-cols-1 gap-2 mb-4">
+              {COMMON_MEDS.map((med, i) => {
+                const selected = !!medList.find(m => m.name === med.name);
+                return (
+                  <button key={i} onClick={() => selected ? removeMed(medList.findIndex(m => m.name === med.name)) : addMed(med)}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-sm transition-all border"
+                    style={{
+                      backgroundColor: selected ? "#F3E8FF" : "#F8FAFC",
+                      borderColor: selected ? "#A855F7" : "#E2E8F0",
+                      color: selected ? "#6B21A8" : "#1A365D",
+                    }}>
+                    <div>
+                      <p className="font-semibold text-xs">{med.name}</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: selected ? "#7E22CE" : "#4A6080" }}>{med.freq} • {med.days} วัน</p>
+                    </div>
+                    {selected ? <Check size={14} className="text-purple-600 shrink-0" /> : <Plus size={14} className="text-gray-400 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            {medList.length > 0 && (
+              <div className="bg-purple-50 rounded-xl p-3 mb-4 border border-purple-100">
+                <p className="text-xs font-bold text-purple-800 mb-2">ยาที่เลือกแล้ว ({medList.length} รายการ)</p>
+                {medList.map((m, i) => (
+                  <div key={i} className="flex justify-between items-center text-xs text-purple-700 py-1">
+                    <span>• {m.name}</span>
+                    <button onClick={() => removeMed(i)} className="text-red-400 hover:text-red-600 ml-2"><X size={11} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={applyMedsToNotes}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                style={{ background: "linear-gradient(135deg,#9333EA,#7C3AED)" }}>
+                ✅ ใส่ลงในบันทึกการรักษา
+              </button>
+              <button onClick={() => { setShowMedModal(null); setMedList([]); }}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-200" style={{ color: "#4A6080" }}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
       {selectedToothForAction && (
         <ToothActionModal 
           tooth={selectedToothForAction}
@@ -666,17 +754,25 @@ export default function TreatmentQueue({
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-medium block" style={{ color: "#4A6080" }}>บันทึกหัตถการ / สิ่งที่ทำ</label>
-                        <button 
-                          onClick={() => {
-                            const summary = generateToothSummary(toothData);
-                            if (summary) {
-                              setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n(${summary})` : `(${summary})` }));
-                            }
-                          }}
-                          className="text-[10px] text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 hover:bg-teal-100 transition-colors"
-                        >
-                          + แทรกซี่ฟันจากกราฟิก
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button 
+                            onClick={() => {
+                              const summary = generateToothSummary(toothData);
+                              if (summary) {
+                                setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n(${summary})` : `(${summary})` }));
+                              }
+                            }}
+                            className="text-[10px] text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 hover:bg-teal-100 transition-colors"
+                          >
+                            + แทรกซี่ฟันจากกราฟิก
+                          </button>
+                          <button
+                            onClick={() => { setMedList([]); setShowMedModal(a.id); }}
+                            className="text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 hover:bg-purple-100 transition-colors flex items-center gap-1"
+                          >
+                            <Pill size={10} /> + สั่งยา
+                          </button>
+                        </div>
                       </div>
                       <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                         rows={2} placeholder="อธิบายขั้นตอนการรักษาที่ดำเนินการ..."

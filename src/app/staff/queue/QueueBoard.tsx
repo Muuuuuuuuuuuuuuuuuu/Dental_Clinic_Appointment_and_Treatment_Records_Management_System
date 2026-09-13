@@ -33,7 +33,7 @@ function getMonday(d: Date) {
 
 // ─── Stat Cards ───────────────────────────────────────────────────────────────
 function StatCards({ appts, setView }: { appts: Appointment[]; setView: (v: StaffView) => void }) {
-  const waitCheckin = appts.filter(a => a.status === "ยืนยันการจอง").length;
+  const waitCheckin = appts.filter(a => a.status === "ยืนยันการจอง" || a.status === "รอการยืนยัน").length;
   const checkedIn = appts.filter(a => a.status === "เช็คอินเรียบร้อย").length;
   const pending = appts.filter(a => a.status === "รอชำระเงิน").length;
   const done = appts.filter(a => a.status === "เสร็จสิ้น").length;
@@ -111,7 +111,7 @@ function AppointmentList({ appts }: { appts: Appointment[] }) {
 
 // ─── Today's Kanban Board ─────────────────────────────────────────────────────
 function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], onUpdate: (id: number, s: Partial<Appointment>) => void, setView?: (v: StaffView) => void }) {
-  const toCheckIn = appts.filter(a => a.status === "ยืนยันการจอง");
+  const toCheckIn = appts.filter(a => a.status === "ยืนยันการจอง" || a.status === "รอการยืนยัน");
   const inQueue = appts.filter(a => a.status === "เช็คอินเรียบร้อย" || a.status === "กำลังรักษา");
   const toPay = appts.filter(a => a.status === "รอชำระเงิน");
 
