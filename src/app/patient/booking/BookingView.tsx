@@ -468,6 +468,7 @@ export default function BookingView({
         status: initialStatus,
         source: "patient", cost: 0, paid: false,
         treatmentNotes: "", treatmentServices: [], recommendations: "",
+        note: notes,
         emergencyName: healthData.hasChanges === false ? (user?.emergencyName || "") : healthData.emergencyName,
         emergencyPhone: healthData.hasChanges === false ? (user?.emergencyPhone || "") : healthData.emergencyPhone,
         emergencyRelationship: healthData.hasChanges === false ? (user?.emergencyRelationship || "") : healthData.emergencyRelationship,
@@ -916,6 +917,24 @@ export default function BookingView({
                 </div>
               )}
             </div>
+
+            {/* Notes Field */}
+            <div style={{ marginTop: 16 }}>
+              <label style={{ fontSize: 13, fontWeight: 700, color: "#1A365D", marginBottom: 8, display: "block" }}>
+                หมายเหตุ / อาการเบื้องต้น (ตัวเลือก)
+              </label>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="เช่น ปวดฟันซี่ในสุด, ต้องการปรึกษาเรื่องจัดฟัน..."
+                style={{
+                  width: "100%", height: 80, padding: "12px", borderRadius: 12,
+                  border: "1px solid rgba(26,54,93,0.1)", backgroundColor: "#F8FAFC",
+                  fontSize: 13, color: "#1A365D", resize: "none", outline: "none"
+                }}
+              />
+            </div>
+
 
             {/* Proceed button */}
             <button onClick={handleNext} disabled={!canNext()}

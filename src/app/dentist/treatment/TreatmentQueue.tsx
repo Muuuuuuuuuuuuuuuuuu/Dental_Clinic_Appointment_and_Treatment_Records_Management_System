@@ -20,10 +20,10 @@ function getNow(): Date {
 }
 
 
-export default function TreatmentQueue({ 
+export default function TreatmentQueue({
   doctor,
   appointments: initialAppointments
-}: { 
+}: {
   doctor: DentistInfo | null;
   appointments?: Appointment[];
 }) {
@@ -38,7 +38,7 @@ export default function TreatmentQueue({
 
   useEffect(() => {
     if (activePlan?.plan_id) {
-      supabase.from('installment').select('*').eq('plan_id', activePlan.plan_id).then(({data}) => {
+      supabase.from('installment').select('*').eq('plan_id', activePlan.plan_id).then(({ data }) => {
         if (data) setActiveInstallments(data);
       });
     } else {
@@ -65,17 +65,17 @@ export default function TreatmentQueue({
         setProducts(prods);
       }).catch(console.error).finally(() => setLoading(false));
     };
-    
+
     fetchData();
   }, []);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [recording, setRecording] = useState<number | null>(null);
-  const [form, setForm] = useState<{ 
-    notes: string; 
-    recommendations: string; 
-    services: { id: number; name: string; qty: number; price: number; locationCode?: string }[]; 
+  const [form, setForm] = useState<{
+    notes: string;
+    recommendations: string;
+    services: { id: number; name: string; qty: number; price: number; locationCode?: string }[];
     medicines: { id: number; name: string; qty: number; price: number; unit?: string; note?: string }[];
-    actualCost: number | "" 
+    actualCost: number | ""
   }>({ notes: "", recommendations: "", services: [], medicines: [], actualCost: "" });
   const [toothData, setToothData] = useState<Record<number, ToothStatus>>({});
   const [isChild, setIsChild] = useState(false);
@@ -129,15 +129,15 @@ export default function TreatmentQueue({
       if (existing) {
         return { ...f, services: f.services.filter(x => x !== existing) };
       }
-      
+
       let newNotes = f.notes;
       if (!tooth) {
         const noteText = `ทำ ${svc.name}`;
         newNotes = newNotes ? `${newNotes}\n- ${noteText}` : `- ${noteText}`;
       }
 
-      return { 
-        ...f, 
+      return {
+        ...f,
         services: [...f.services, { id: svc.id, name: svc.name, qty: 1, price: svc.basePrice || 0, locationCode: location }],
         notes: newNotes
       };
@@ -180,12 +180,12 @@ export default function TreatmentQueue({
     const red = Object.entries(data).filter(([_, s]) => s === 'red').map(([t]) => t);
     const blue = Object.entries(data).filter(([_, s]) => s === 'blue').map(([t]) => t);
     const cross = Object.entries(data).filter(([_, s]) => s === 'cross').map(([t]) => t);
-    
+
     const parts = [];
     if (red.length) parts.push(`พบปัญหา: ซี่ ${red.join(', ')}`);
     if (blue.length) parts.push(`รักษาแล้ว: ซี่ ${blue.join(', ')}`);
     if (cross.length) parts.push(`ถอน/สูญเสีย: ซี่ ${cross.join(', ')}`);
-    
+
     return parts.join(' | ');
   };
 
@@ -197,11 +197,11 @@ export default function TreatmentQueue({
       const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
       if (inst && inst.amount > 0) {
         baseInstallmentAmount = Number(inst.amount);
-        
+
         // Find extra services that are not in the plan for this month
         const monthData = (activePlan.plan_details || []).find((d: any) => d.month === selectedPlanMonth);
         const plannedServiceNames = new Set((monthData?.services || []).map((s: any) => s.service_name));
-        
+
         extraCost = form.services.reduce((sum, sItem) => {
           if (!plannedServiceNames.has(sItem.name)) {
             const svc = services.find(ms => ms.name === sItem.name);
@@ -211,10 +211,10 @@ export default function TreatmentQueue({
         }, 0);
       }
     }
-    
+
     if (baseInstallmentAmount > 0) {
-       setForm(f => ({ ...f, actualCost: baseInstallmentAmount + extraCost }));
-       return;
+      setForm(f => ({ ...f, actualCost: baseInstallmentAmount + extraCost }));
+      return;
     }
 
     const cost = form.services.reduce((sum, sItem) => {
@@ -222,12 +222,12 @@ export default function TreatmentQueue({
     }, 0) + form.medicines.reduce((sum, mItem) => {
       return sum + ((mItem.price ?? 0) * mItem.qty);
     }, 0);
-    
+
     const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
     const suggestedCost = cost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : cost;
-    
+
     setForm(f => ({ ...f, actualCost: suggestedCost > 0 ? suggestedCost : "" }));
-  }, [form.services, toothData, services, selectedPlanMonth, activePlan, activeInstallments]);
+  }, [form.services, form.medicines, toothData, services, selectedPlanMonth, activePlan, activeInstallments]);
 
   const onUpdateAppt = async (id: number, updates: Partial<Appointment>, detailedServices?: any[], medicines?: any[]) => {
     try {
@@ -263,7 +263,7 @@ export default function TreatmentQueue({
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
       const { wholeMouth, ...rest } = historyOdontogram;
       setToothData(rest as any);
-      
+
       const planData = await getPatientActiveTreatmentPlan(a.patientId);
       if (planData && planData.dentist_id === doctor?.id) {
         setActivePlan(planData);
@@ -286,14 +286,14 @@ export default function TreatmentQueue({
     const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
     const formattedMedicines = form.medicines.map(m => `💊 ${m.name} x${m.qty} ${m.unit || ''}`);
     formattedServices.push(...formattedMedicines);
-    
+
     const detailedServices = [...form.services];
 
     if (selectedPlanMonth && activePlan && activeInstallments.length > 0) {
       const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
       if (inst && Number(inst.amount) > 0) {
         formattedServices.unshift(`ชำระค่างวดจัดฟัน งวดที่ ${inst.installment_number} (รอบเดือนที่ ${selectedPlanMonth})`);
-        
+
         detailedServices.unshift({
           id: null, // Null to avoid foreign key violation
           name: `จัดฟัน งวดที่ ${inst.installment_number} (แผน: ${activePlan.plan_name})`,
@@ -311,7 +311,7 @@ export default function TreatmentQueue({
       cost: Number(form.actualCost) || 0,
       odontogramData: { ...toothData, wholeMouth: false } as any
     }, detailedServices, form.medicines);
-    
+
     setRecording(null);
     setForm({ notes: "", recommendations: "", services: [], medicines: [], actualCost: "" });
     setToothData({});
@@ -337,7 +337,7 @@ export default function TreatmentQueue({
   return (
     <div>
       {selectedToothForAction && (
-        <ToothActionModal 
+        <ToothActionModal
           tooth={selectedToothForAction}
           services={services}
           onClose={() => setSelectedToothForAction(null)}
@@ -353,10 +353,10 @@ export default function TreatmentQueue({
           }}
         />
       )}
-      
+
       {selectedPatientIdForPlan && (
-        <TreatmentPlanBuilder 
-          patientId={selectedPatientIdForPlan} 
+        <TreatmentPlanBuilder
+          patientId={selectedPatientIdForPlan}
           existingPlan={isEditingPlan ? activePlan : undefined}
           lockedDentistId={doctor?.id}
           onClose={(newPlan) => {
@@ -365,7 +365,7 @@ export default function TreatmentQueue({
             if (newPlan) {
               setActivePlan(newPlan);
               setSelectedPlanMonth(1);
-              
+
               // Auto pull month 1 data
               if (newPlan.plan_details && newPlan.plan_details.length > 0) {
                 const m1 = newPlan.plan_details.find((d: any) => d.month === 1) || newPlan.plan_details[0];
@@ -382,7 +382,7 @@ export default function TreatmentQueue({
                 }
               }
             }
-          }} 
+          }}
         />
       )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
@@ -402,9 +402,8 @@ export default function TreatmentQueue({
             <button
               key={f.id}
               onClick={() => setTimeFilter(f.id as any)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                timeFilter === f.id ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-50"
-              }`}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${timeFilter === f.id ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-50"
+                }`}
             >
               {f.label}
             </button>
@@ -414,7 +413,7 @@ export default function TreatmentQueue({
 
       <div className="space-y-4">
         {filteredAppts.map(a => {
-          const sc  = STATUS_COLORS[a.status] ?? { bg: "#F0F4F8", text: "#4A6080", dot: "#ccc" };
+          const sc = STATUS_COLORS[a.status] ?? { bg: "#F0F4F8", text: "#4A6080", dot: "#ccc" };
           const act = statusActions[a.status];
           const isExp = expanded === a.id;
           const isRec = recording === a.id;
@@ -445,7 +444,7 @@ export default function TreatmentQueue({
                   </div>
                   <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{a.service}</p>
                   {hasHealthAlert(undefined, a.conditions) && <p className="text-xs mt-1" style={{ color: "#E65100" }}>⚠ {a.conditions}</p>}
-                  {hasHealthAlert(a.allergies) && <p className="text-xs"    style={{ color: "#E65100" }}>💊 แพ้: {a.allergies}</p>}
+                  {hasHealthAlert(a.allergies) && <p className="text-xs" style={{ color: "#E65100" }}>💊 แพ้: {a.allergies}</p>}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>{a.status}</span>
@@ -485,12 +484,12 @@ export default function TreatmentQueue({
                       <p className="text-sm" style={{ color: "#1A365D" }}>{a.patientPhone}</p>
                     </div>
                   </div>
-                  
+
                   {(() => {
                     const history = appointments
                       .filter(x => x.patientId === a.patientId && x.id !== a.id && ["เสร็จสิ้น", "รอชำระเงิน", "ชำระเงินแล้ว"].includes(x.status))
-                      .sort((a,b) => b.date.localeCompare(a.date));
-                    
+                      .sort((a, b) => b.date.localeCompare(a.date));
+
                     if (history.length === 0) return null;
                     return (
                       <div className="mb-4 bg-slate-50/70 rounded-xl p-3 border border-slate-100">
@@ -516,7 +515,7 @@ export default function TreatmentQueue({
                       </div>
                     );
                   })()}
-                  
+
                   {activePlan && activePlan.plan_details && (
                     <div className="mb-4 bg-teal-50/50 rounded-xl p-3 border border-teal-100 mt-2">
                       <div className="flex justify-between items-center mb-2">
@@ -524,7 +523,7 @@ export default function TreatmentQueue({
                           แผนการรักษา: {activePlan.plan_name}
                         </p>
                         {activePlan.dentist_id === doctor?.id && (
-                          <button 
+                          <button
                             onClick={() => {
                               setIsEditingPlan(true);
                               setSelectedPatientIdForPlan(a.patientId);
@@ -541,10 +540,9 @@ export default function TreatmentQueue({
                           return (
                             <div
                               key={plan.month}
-                              className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${
-                                isCompleted ? "bg-teal-600 border-teal-600 text-white" :
-                                "bg-white border-slate-200 text-slate-600"
-                              }`}
+                              className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${isCompleted ? "bg-teal-600 border-teal-600 text-white" :
+                                  "bg-white border-slate-200 text-slate-600"
+                                }`}
                             >
                               <span className="text-sm font-bold">{plan.month}</span>
                               {!isCompleted && plan.services?.length > 0 && <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5"></div>}
@@ -567,7 +565,7 @@ export default function TreatmentQueue({
                       </button>
                     )}
                     {!activePlan && ["จัดฟัน", "รักษาราก", "เทียม", "ปลอม", "วีเนียร์", "ครอบฟัน"].some(kw => a.service.includes(kw)) && (
-                      <button 
+                      <button
                         onClick={() => setSelectedPatientIdForPlan(a.patientId)}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all text-teal-700 bg-teal-50 hover:bg-teal-100"
                       >
@@ -583,11 +581,11 @@ export default function TreatmentQueue({
                 <div className="px-5 pb-3 border-t" style={{ borderColor: "rgba(26,54,93,0.06)" }}>
                   <div className="flex items-center justify-between py-2">
                     <p className="text-sm font-semibold" style={{ color: "#1A365D" }}>บันทึกการรักษา — {a.patientName}</p>
-                    
+
                     {/* Toggle whole mouth */}
                     <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
                       {!activePlan && ["จัดฟัน", "รักษาราก", "เทียม", "ปลอม", "วีเนียร์", "ครอบฟัน"].some(kw => a.service.includes(kw)) && (
-                        <button 
+                        <button
                           onClick={() => setSelectedPatientIdForPlan(a.patientId)}
                           className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-teal-700 bg-teal-50 hover:bg-teal-100 mr-2"
                         >
@@ -596,7 +594,7 @@ export default function TreatmentQueue({
                       )}
                     </div>
                   </div>
-                  
+
                   {activePlan && activePlan.plan_details && (() => {
                     const currentMonthData = activePlan.plan_details.find((d: any) => d.month === selectedPlanMonth);
                     const totalMonths = activePlan.plan_details.length;
@@ -613,7 +611,7 @@ export default function TreatmentQueue({
                             </span>
                           </div>
                           {activePlan.dentist_id === doctor?.id && (
-                            <button 
+                            <button
                               onClick={() => { setIsEditingPlan(true); setSelectedPatientIdForPlan(a.patientId); }}
                               className="bg-teal-500 hover:bg-teal-400 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1 transition-colors"
                             >
@@ -640,7 +638,7 @@ export default function TreatmentQueue({
                               )}
                             </div>
                             {currentMonthData?.services?.length > 0 && (
-                              <button 
+                              <button
                                 onClick={() => {
                                   if (currentMonthData) {
                                     setForm(f => ({
@@ -683,12 +681,11 @@ export default function TreatmentQueue({
                                 <button
                                   key={plan.month}
                                   onClick={() => setSelectedPlanMonth(isSelected ? null : plan.month)}
-                                  title={isCompleted ? `ครั้งที่ ${plan.month} — เสร็จแล้ว` : `ครั้งที่ ${plan.month}${plan.services?.length > 0 ? ': ' + plan.services.map((s:any) => s.service_name).join(', ') : ''}`}
-                                  className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${
-                                    isCompleted ? "bg-teal-600 border-teal-600 text-white cursor-default" :
-                                    isSelected ? "bg-teal-100 border-teal-500 text-teal-800 shadow-sm ring-1 ring-teal-500" : 
-                                    "bg-white border-slate-200 text-slate-600 hover:border-teal-300"
-                                  }`}
+                                  title={isCompleted ? `ครั้งที่ ${plan.month} — เสร็จแล้ว` : `ครั้งที่ ${plan.month}${plan.services?.length > 0 ? ': ' + plan.services.map((s: any) => s.service_name).join(', ') : ''}`}
+                                  className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${isCompleted ? "bg-teal-600 border-teal-600 text-white cursor-default" :
+                                      isSelected ? "bg-teal-100 border-teal-500 text-teal-800 shadow-sm ring-1 ring-teal-500" :
+                                        "bg-white border-slate-200 text-slate-600 hover:border-teal-300"
+                                    }`}
                                 >
                                   <span className="text-sm font-bold">{plan.month}</span>
                                   {!isCompleted && plan.services?.length > 0 && <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5"></div>}
@@ -713,166 +710,166 @@ export default function TreatmentQueue({
                     </div>
 
                     <div className="space-y-3">
-                    <details className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
-                      <summary className="text-[12px] font-bold p-3 cursor-pointer hover:bg-slate-100 flex items-center justify-between text-slate-700">
-                        <span>➕ หัตถการอื่นๆ (ไม่ได้ระบุตำแหน่งซี่ฟัน)</span>
-                        <ChevronRight size={16} className="text-slate-400 group-open:rotate-90 transition-transform" />
-                      </summary>
-                      <div className="p-3 pt-0 border-t border-slate-100">
-                        <p className="text-[10px] mb-2 text-slate-500">ตัวเลือกด้านล่างนี้ใช้สำหรับหัตถการที่ไม่ได้ผูกกับซี่ฟันใดซี่ฟันหนึ่งโดยเฉพาะ เช่น ขูดหินปูน จัดฟัน ฟอกสีฟัน ฯลฯ</p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-                          {services.filter(s => s.active && s.applyTo !== 'TOOTH').map(s => {
-                            const existing = form.services.find(x => x.id === s.id);
-                            const isSelected = !!existing;
-                            return (
-                              <button key={s.id} onClick={() => incrementService(s)}
-                                className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] text-left transition-all leading-tight relative"
-                                style={{
-                                  backgroundColor: isSelected ? "#FFE8EC" : "#F0F4F8",
-                                  color: isSelected ? "#1A365D" : "#4A6080",
-                                  border: isSelected ? "1.5px solid #FF8C9A" : "1.5px solid transparent",
-                                }}>
-                                <div className="flex items-center gap-1.5 flex-1">
-                                  {isSelected ? (
-                                    <div className="flex-shrink-0 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center">
-                                      <CheckCircle size={10} />
-                                    </div>
-                                  ) : (
-                                    <div className="flex-shrink-0 w-4 h-4 rounded-full border border-gray-300"></div>
-                                  )}
-                                  <span className="leading-[1.2]">{s.name}</span>
-                                </div>
-                                </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </details>
-                    
-                    <details className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
-                      <summary className="text-[12px] font-bold p-3 cursor-pointer hover:bg-slate-100 flex items-center justify-between text-slate-700">
-                        <span>💊 สั่งจ่ายยา</span>
-                        <ChevronRight size={16} className="text-slate-400 group-open:rotate-90 transition-transform" />
-                      </summary>
-                      <div className="p-3 pt-0 border-t border-slate-100">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-                          {products.map(p => {
-                            const existing = form.medicines.find(x => x.id === p.id);
-                            const isSelected = !!existing;
-                            return (
-                              <button key={p.id} onClick={() => incrementMedicine(p)}
-                                className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] text-left transition-all leading-tight relative"
-                                style={{
-                                  backgroundColor: isSelected ? "#E0F2FE" : "#F0F4F8",
-                                  color: isSelected ? "#0369A1" : "#4A6080",
-                                  border: isSelected ? "1.5px solid #7DD3FC" : "1.5px solid transparent",
-                                }}>
-                                <div className="flex items-center gap-1.5 flex-1">
-                                  {isSelected ? (
-                                    <div className="flex-shrink-0 w-4 h-4 rounded-full bg-sky-500 text-white flex items-center justify-center">
-                                      <CheckCircle size={10} />
-                                    </div>
-                                  ) : (
-                                    <div className="flex-shrink-0 w-4 h-4 rounded-full border border-gray-300"></div>
-                                  )}
-                                  <div className="leading-[1.2] flex flex-col">
-                                    <span>{p.name}</span>
-                                    {isSelected && existing.qty > 0 && (
-                                      <span className="text-[9px] text-sky-600 font-bold">{existing.qty} {p.unit}</span>
+                      <details className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
+                        <summary className="text-[12px] font-bold p-3 cursor-pointer hover:bg-slate-100 flex items-center justify-between text-slate-700">
+                          <span>➕ หัตถการอื่นๆ (ไม่ได้ระบุตำแหน่งซี่ฟัน)</span>
+                          <ChevronRight size={16} className="text-slate-400 group-open:rotate-90 transition-transform" />
+                        </summary>
+                        <div className="p-3 pt-0 border-t border-slate-100">
+                          <p className="text-[10px] mb-2 text-slate-500">ตัวเลือกด้านล่างนี้ใช้สำหรับหัตถการที่ไม่ได้ผูกกับซี่ฟันใดซี่ฟันหนึ่งโดยเฉพาะ เช่น ขูดหินปูน จัดฟัน ฟอกสีฟัน ฯลฯ</p>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                            {services.filter(s => s.active && s.applyTo !== 'TOOTH').map(s => {
+                              const existing = form.services.find(x => x.id === s.id);
+                              const isSelected = !!existing;
+                              return (
+                                <button key={s.id} onClick={() => incrementService(s)}
+                                  className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] text-left transition-all leading-tight relative"
+                                  style={{
+                                    backgroundColor: isSelected ? "#FFE8EC" : "#F0F4F8",
+                                    color: isSelected ? "#1A365D" : "#4A6080",
+                                    border: isSelected ? "1.5px solid #FF8C9A" : "1.5px solid transparent",
+                                  }}>
+                                  <div className="flex items-center gap-1.5 flex-1">
+                                    {isSelected ? (
+                                      <div className="flex-shrink-0 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center">
+                                        <CheckCircle size={10} />
+                                      </div>
+                                    ) : (
+                                      <div className="flex-shrink-0 w-4 h-4 rounded-full border border-gray-300"></div>
                                     )}
+                                    <span className="leading-[1.2]">{s.name}</span>
                                   </div>
-                                </div>
-                                {isSelected && (
-                                  <div 
-                                    onClick={(e) => decrementMedicine(p.id, e)}
-                                    className="w-4 h-4 rounded-full bg-white border border-sky-300 flex items-center justify-center text-sky-500 hover:bg-sky-400 hover:border-sky-400 hover:text-white transition-colors"
-                                  >
-                                    <span className="text-[10px] leading-none font-bold mb-[1px]">-</span>
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                        {products.length === 0 && (
-                          <div className="text-center py-2 text-xs text-gray-500">ไม่มีรายการยาในระบบ (แจ้งแอดมินเพิ่มได้ที่จัดการคลินิก)</div>
-                        )}
-                      </div>
-                    </details>
-                    
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium block" style={{ color: "#4A6080" }}>บันทึกหัตถการ / สิ่งที่ทำ</label>
-                        <button 
-                          onClick={() => {
-                            const summary = generateToothSummary(toothData);
-                            if (summary) {
-                              setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n- ${summary}` : `- ${summary}` }));
-                            }
-                          }}
-                          className="text-[10px] text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 hover:bg-teal-100 transition-colors"
-                        >
-                          + แทรกซี่ฟันจากกราฟิก
-                        </button>
-                      </div>
-                      <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                        rows={2} placeholder="อธิบายขั้นตอนการรักษาที่ดำเนินการ..."
-                        className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-                        style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>คำแนะนำสำหรับคนไข้</label>
-                      <textarea value={form.recommendations} onChange={e => setForm(f => ({ ...f, recommendations: e.target.value }))}
-                        rows={1} placeholder="คำแนะนำการดูแลหลังรักษา..."
-                        className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-                        style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                    </div>
-                    
-                    {/* Bill Preview / Safety Net */}
-                    {(() => {
-                      let baseInstAmount = 0;
-                      if (selectedPlanMonth && activePlan && activeInstallments.length > 0) {
-                        const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
-                        if (inst && Number(inst.amount) > 0) baseInstAmount = Number(inst.amount);
-                      }
-                      
-                      const servicesCost = form.services.reduce((sum, s) => sum + ((s.price ?? 0) * s.qty), 0);
-                      const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
-                      const suggestedExtraCost = servicesCost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : servicesCost;
-                      const totalBill = baseInstAmount + suggestedExtraCost;
+                      </details>
 
-                      if (totalBill > 0) {
-                        return (
-                          <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm">
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-red-800 uppercase tracking-wide">บิลที่จะส่งให้พนักงานเก็บเงิน</span>
-                              <div className="flex items-center gap-1.5 text-xs text-red-600 mt-1">
-                                {baseInstAmount > 0 && <span>ค่างวด ({baseInstAmount.toLocaleString()})</span>}
-                                {baseInstAmount > 0 && suggestedExtraCost > 0 && <span>+</span>}
-                                {suggestedExtraCost > 0 && <span>ค่าหัตถการ ({suggestedExtraCost.toLocaleString()})</span>}
+                      <details className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
+                        <summary className="text-[12px] font-bold p-3 cursor-pointer hover:bg-slate-100 flex items-center justify-between text-slate-700">
+                          <span>💊 สั่งจ่ายยา</span>
+                          <ChevronRight size={16} className="text-slate-400 group-open:rotate-90 transition-transform" />
+                        </summary>
+                        <div className="p-3 pt-0 border-t border-slate-100">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                            {products.map(p => {
+                              const existing = form.medicines.find(x => x.id === p.id);
+                              const isSelected = !!existing;
+                              return (
+                                <button key={p.id} onClick={() => incrementMedicine(p)}
+                                  className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] text-left transition-all leading-tight relative"
+                                  style={{
+                                    backgroundColor: isSelected ? "#E0F2FE" : "#F0F4F8",
+                                    color: isSelected ? "#0369A1" : "#4A6080",
+                                    border: isSelected ? "1.5px solid #7DD3FC" : "1.5px solid transparent",
+                                  }}>
+                                  <div className="flex items-center gap-1.5 flex-1">
+                                    {isSelected ? (
+                                      <div className="flex-shrink-0 w-4 h-4 rounded-full bg-sky-500 text-white flex items-center justify-center">
+                                        <CheckCircle size={10} />
+                                      </div>
+                                    ) : (
+                                      <div className="flex-shrink-0 w-4 h-4 rounded-full border border-gray-300"></div>
+                                    )}
+                                    <div className="leading-[1.2] flex flex-col">
+                                      <span>{p.name}</span>
+                                      {isSelected && existing.qty > 0 && (
+                                        <span className="text-[9px] text-sky-600 font-bold">{existing.qty} {p.unit}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {isSelected && (
+                                    <div
+                                      onClick={(e) => decrementMedicine(p.id, e)}
+                                      className="w-4 h-4 rounded-full bg-white border border-sky-300 flex items-center justify-center text-sky-500 hover:bg-sky-400 hover:border-sky-400 hover:text-white transition-colors"
+                                    >
+                                      <span className="text-[10px] leading-none font-bold mb-[1px]">-</span>
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {products.length === 0 && (
+                            <div className="text-center py-2 text-xs text-gray-500">ไม่มีรายการยาในระบบ (แจ้งแอดมินเพิ่มได้ที่จัดการคลินิก)</div>
+                          )}
+                        </div>
+                      </details>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-medium block" style={{ color: "#4A6080" }}>บันทึกหัตถการ / สิ่งที่ทำ</label>
+                          <button
+                            onClick={() => {
+                              const summary = generateToothSummary(toothData);
+                              if (summary) {
+                                setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n- ${summary}` : `- ${summary}` }));
+                              }
+                            }}
+                            className="text-[10px] text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 hover:bg-teal-100 transition-colors"
+                          >
+                            + แทรกซี่ฟันจากกราฟิก
+                          </button>
+                        </div>
+                        <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                          rows={2} placeholder="อธิบายขั้นตอนการรักษาที่ดำเนินการ..."
+                          className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
+                          style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>คำแนะนำสำหรับคนไข้</label>
+                        <textarea value={form.recommendations} onChange={e => setForm(f => ({ ...f, recommendations: e.target.value }))}
+                          rows={1} placeholder="คำแนะนำการดูแลหลังรักษา..."
+                          className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
+                          style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                      </div>
+
+                      {/* Bill Preview / Safety Net */}
+                      {(() => {
+                        let baseInstAmount = 0;
+                        if (selectedPlanMonth && activePlan && activeInstallments.length > 0) {
+                          const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
+                          if (inst && Number(inst.amount) > 0) baseInstAmount = Number(inst.amount);
+                        }
+
+                        const servicesCost = form.services.reduce((sum, s) => sum + ((s.price ?? 0) * s.qty), 0);
+                        const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
+                        const suggestedExtraCost = servicesCost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : servicesCost;
+                        const totalBill = baseInstAmount + suggestedExtraCost;
+
+                        if (totalBill > 0) {
+                          return (
+                            <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm">
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-red-800 uppercase tracking-wide">บิลที่จะส่งให้พนักงานเก็บเงิน</span>
+                                <div className="flex items-center gap-1.5 text-xs text-red-600 mt-1">
+                                  {baseInstAmount > 0 && <span>ค่างวด ({baseInstAmount.toLocaleString()})</span>}
+                                  {baseInstAmount > 0 && suggestedExtraCost > 0 && <span>+</span>}
+                                  {suggestedExtraCost > 0 && <span>ค่าหัตถการ ({suggestedExtraCost.toLocaleString()})</span>}
+                                </div>
+                              </div>
+                              <div className="text-lg font-black text-red-700">
+                                ฿{totalBill.toLocaleString()}
                               </div>
                             </div>
-                            <div className="text-lg font-black text-red-700">
-                              ฿{totalBill.toLocaleString()}
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                          );
+                        }
+                        return null;
+                      })()}
 
-                    <div className="flex justify-end gap-2 pt-1">
-                      <button onClick={() => submitTreatment(a)}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 shadow-sm hover:shadow"
-                        style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-                        <Send size={14} /> ส่งข้อมูลให้พนักงาน
-                      </button>
-                      <button onClick={() => setRecording(null)}
-                        className="px-5 py-2.5 rounded-xl text-sm font-medium"
-                        style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
-                        ยกเลิก
-                      </button>
-                    </div>
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button onClick={() => submitTreatment(a)}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 shadow-sm hover:shadow"
+                          style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
+                          <Send size={14} /> ส่งข้อมูลให้พนักงาน
+                        </button>
+                        <button onClick={() => setRecording(null)}
+                          className="px-5 py-2.5 rounded-xl text-sm font-medium"
+                          style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
+                          ยกเลิก
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

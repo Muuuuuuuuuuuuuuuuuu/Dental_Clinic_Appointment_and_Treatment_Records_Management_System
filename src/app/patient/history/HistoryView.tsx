@@ -34,7 +34,16 @@ export default function HistoryView({ user }: { user: PatientUser }) {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const total = history.reduce((sum, h) => sum + parseInt(String(h.cost).replace(/,/g, "") || "0", 10), 0);
+  const getItemTotal = (h: any) => {
+    if (h.cost !== null && h.cost !== undefined) {
+      return parseInt(String(h.cost).replace(/,/g, "") || "0", 10);
+    }
+    const sCost = h.detailedServices?.reduce((s: number, svc: any) => s + (svc.price * (svc.qty || 1)), 0) || 0;
+    const pCost = h.extraProducts?.reduce((s: number, prod: any) => s + (prod.price * (prod.qty || 1)), 0) || 0;
+    return sCost + pCost;
+  };
+  
+  const total = history.reduce((sum, h) => sum + getItemTotal(h), 0);
 
   return (
     <div>
@@ -69,7 +78,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                <div className="text-base font-bold" style={{ color: "#1A365D" }}>฿{h.cost}</div>
+                <div className="text-base font-bold" style={{ color: "#1A365D" }}>฿{getItemTotal(h).toLocaleString()}</div>
                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E8FFF0", color: "#1B7A3E" }}>เสร็จสิ้น</span>
                 <span className="text-xs flex items-center gap-0.5" style={{ color: "#FF8C9A" }}>ดูรายละเอียด <ChevronRight size={10} /></span>
               </div>
@@ -104,7 +113,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
               </div>
               <div className="mt-4 pt-4 flex items-center justify-between" style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }}>
                 <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: "#E8FFF0", color: "#1B7A3E" }}>เสร็จสิ้น</span>
-                <span className="text-xl font-bold text-white" style={{ fontFamily: "Playfair Display, serif" }}>฿{selected.cost}</span>
+                <span className="text-xl font-bold text-white" style={{ fontFamily: "Playfair Display, serif" }}>฿{getItemTotal(selected).toLocaleString()}</span>
               </div>
             </div>
 
@@ -139,7 +148,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
 
                   <div className="flex justify-between text-sm font-bold pt-2 border-t border-gray-200 mt-2" style={{ color: "#1A365D" }}>
                     <span>ยอดรวมสุทธิ</span>
-                    <span style={{ color: "#1B7A3E" }}>฿{(selected.cost || 0).toLocaleString()}</span>
+                    <span style={{ color: "#1B7A3E" }}>฿{getItemTotal(selected).toLocaleString()}</span>
                   </div>
                 </div>
               </Section>

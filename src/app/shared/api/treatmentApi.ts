@@ -45,7 +45,7 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     const pay = d.payment ? (Array.isArray(d.payment) ? d.payment[0] : d.payment) : undefined;
 
     const srvName = apptDetail?.service?.service_name || 'ไม่ระบุบริการ';
-    const costAmt = pay?.total_amount || 0;
+    const costAmt = pay ? pay.total_amount : null;
 
     let treatmentNotes = d.doctor_note || '';
     let recommendations = '';
@@ -94,7 +94,7 @@ export async function getPatientTreatmentRecords(patientId?: number) {
       doctor: dr ? `${dr.first_name} ${dr.last_name}` : 'ไม่ระบุแพทย์',
       date: d.treatment_date,
       time: d.appointment?.start_time?.slice(0, 5) || '00:00',
-      cost: costAmt.toLocaleString(),
+      cost: costAmt !== null ? costAmt.toLocaleString() : null,
       notes: treatmentNotes,
       teeth: '',
       recommendations: recommendations,
@@ -204,22 +204,9 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
     if (tpErr) console.error("Error inserting treatment_product:", tpErr);
   }
 
+  // 4. (Removed) Payment record is now ONLY created by the Staff during checkout.
 
-  // 4. Update or Insert payment record
-  if (treatmentId) {
-    const { data: payData } = await supabase.from('payment').select('payment_id').eq('treatment_id', treatmentId).maybeSingle();
-    if (payData) {
-      await supabase.from('payment').update({ total_amount: cost }).eq('payment_id', payData.payment_id);
-    } else {
-      await supabase.from('payment').insert({
-        treatment_id: treatmentId,
-        total_amount: cost,
-        payment_status: 'ค้างชำระ'
-      });
-    }
-  }
-
-  // 4. Update Treatment Plan Progress if provided
+  // 5. Update Treatment Plan Progress if provided
   if (planId && planMonth) {
     // Update the new relational table
     await supabase.from('treatment_plan_item')
@@ -238,17 +225,29 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
 
   // 2. Fetch treatment_record and patient_id
   const { data: apptData } = await supabase.from('appointment').select('patient_id, treatment_record(treatment_id)').eq('appointment_id', apptId).maybeSingle();
-  let treatmentId = apptData?.treatment_record?.[0]?.treatment_id;
+  const trData = apptData?.treatment_record;
+  let treatmentId = Array.isArray(trData) ? trData[0]?.treatment_id : (trData as any)?.treatment_id;
   let patientId = apptData?.patient_id;
 
   if (treatmentId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    let staffId = null;
+    if (user) {
+      // Find staff profile by joining with users or directly querying staff
+      const { data: staffData } = await supabase.from('staff').select('staff_id').eq('user_id', user.id).maybeSingle();
+      if (staffData) {
+        staffId = staffData.staff_id;
+      }
+    }
+
     const { data: payData } = await supabase.from('payment').select('payment_id').eq('treatment_id', treatmentId).maybeSingle();
     if (payData) {
       await supabase.from('payment').update({
         total_amount: finalCost,
         payment_method: method,
         payment_status: 'ชำระแล้ว',
-        paid_at: new Date().toISOString()
+        paid_at: new Date().toISOString(),
+        staff_id: staffId
       }).eq('payment_id', payData.payment_id);
     } else {
       await supabase.from('payment').insert({
@@ -256,12 +255,12 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
         total_amount: finalCost,
         payment_method: method,
         payment_status: 'ชำระแล้ว',
-        paid_at: new Date().toISOString()
+        paid_at: new Date().toISOString(),
+        staff_id: staffId
       });
     }
-  }
-
     
+    // Update treatment_product if any
     if (extraProducts && extraProducts.length > 0) {
       await supabase.from('treatment_product').delete().eq('treatment_id', treatmentId);
       const productInserts = extraProducts.map((p: any) => ({
@@ -272,57 +271,21 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
       }));
       await supabase.from('treatment_product').insert(productInserts);
     }
-    
+
+    // Update treatment_detail if adjustedServices passed
     if (adjustedServices && adjustedServices.length > 0) {
-      // Update actual_price for each service
-      for (const svc of adjustedServices) {
-        if (svc.serviceId && !String(svc.serviceId).startsWith('prod-')) {
-          let query = supabase.from('treatment_detail').update({ actual_price: svc.price }).eq('treatment_id', treatmentId).eq('service_id', svc.serviceId);
-          if (svc.locationCode) {
-             query = query.eq('location_code', svc.locationCode);
-          }
-          await query;
-        }
-      }
-    }
-
-
-
-  // 4. Handle Installment payment
-  if (treatmentId && patientId) {
-    // Check if the doctor explicitly charged an installment in this treatment
-    const { data: details } = await supabase.from('treatment_detail').select('diagnosis').eq('treatment_id', treatmentId);
-    if (details) {
-      for (const d of details) {
-        if (d.diagnosis && d.diagnosis.includes("จัดฟัน งวดที่")) {
-          const match = d.diagnosis.match(/งวดที่ (\d+)/);
-          if (match && match[1]) {
-            const instNumber = parseInt(match[1], 10);
-            
-            // Find the active plan for this patient
-            const { data: plans } = await supabase.from('treatment_plan').select('plan_id').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(1);
-            if (plans && plans.length > 0) {
-              const planId = plans[0].plan_id;
-              
-              // Mark that specific installment as paid
-              await supabase.from('installment').update({ 
-                paid: true, 
-                paid_at: new Date().toISOString() 
-              }).eq('plan_id', planId).eq('installment_number', instNumber);
-            }
-          }
-        }
+      for (const s of adjustedServices) {
+        await supabase.from('treatment_detail')
+          .update({ actual_price: s.price })
+          .eq('treatment_id', treatmentId)
+          .eq('service_id', s.serviceId)
+          .eq('location_code', s.locationCode || 'NONE');
       }
     }
   }
 
   notifyAppointmentsUpdated();
-  return { status: 'เสร็จสิ้น' };
 }
-
-
-
-
 
 export async function getPatientHistory(patientId: number) {
   const { data, error } = await supabase.from('treatment_record').select(`
@@ -568,7 +531,6 @@ export async function getProducts(type?: string) {
     price: Number(d.price),
     unit: d.unit,
     instruction: d.instruction,
-    stockQuantity: d.stock_quantity,
     isActive: d.is_active
   }));
 }
@@ -580,7 +542,6 @@ export async function addProduct(product: any) {
     price: product.price,
     unit: product.unit,
     instruction: product.instruction,
-    stock_quantity: product.stockQuantity,
     is_active: product.isActive
   }]).select();
   if (error) throw error;
@@ -594,7 +555,6 @@ export async function updateProduct(id: number, updates: any) {
   if (updates.price !== undefined) mappedUpdates.price = updates.price;
   if (updates.unit !== undefined) mappedUpdates.unit = updates.unit;
   if (updates.instruction !== undefined) mappedUpdates.instruction = updates.instruction;
-  if (updates.stockQuantity !== undefined) mappedUpdates.stock_quantity = updates.stockQuantity;
   if (updates.isActive !== undefined) mappedUpdates.is_active = updates.isActive;
 
   const { data, error } = await supabase.from('product').update(mappedUpdates).eq('product_id', id).select();

@@ -24,7 +24,6 @@ export default function ProductManagement() {
     price: "",
     unit: "เม็ด",
     instruction: "",
-    stockQuantity: "0",
     isActive: true
   });
 
@@ -46,7 +45,6 @@ export default function ProductManagement() {
           price: Number(d.price),
           unit: d.unit,
           instruction: d.instruction,
-          stockQuantity: d.stock_quantity,
           isActive: d.is_active
         })));
       }
@@ -77,11 +75,10 @@ export default function ProductManagement() {
         price: parseFloat(newProduct.price),
         unit: newProduct.unit,
         instruction: newProduct.type === 'ยา' ? newProduct.instruction : '',
-        stockQuantity: parseInt(newProduct.stockQuantity, 10) || 0,
         isActive: true
       });
       setIsAdding(false);
-      setNewProduct({ name: "", type: "ยา", price: "", unit: "เม็ด", instruction: "", stockQuantity: "0", isActive: true });
+      setNewProduct({ name: "", type: "ยา", price: "", unit: "เม็ด", instruction: "", isActive: true });
       fetchData();
     } catch (err) {
       console.error(err);

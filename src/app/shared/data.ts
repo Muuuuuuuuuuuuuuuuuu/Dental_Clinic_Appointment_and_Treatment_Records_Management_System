@@ -210,7 +210,6 @@ export interface Product {
   price: number;
   unit?: string;
   instruction?: string;
-  stockQuantity: number;
   isActive: boolean;
 }
 
