@@ -2,11 +2,22 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTriangle, ChevronRight, Check, Send, ClipboardList } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo, hasHealthAlert } from "../../shared/data";
-import { getAppointments, getServices, updateAppointmentStatus, saveTreatment, getPatientLatestOdontogram, getPatientActiveTreatmentPlan, supabase } from "../../shared/supabaseApi";
+import { getAppointments, getServices, updateAppointmentStatus, supabase } from "../../shared/supabaseApi";
+import { saveTreatment, getPatientLatestOdontogram, getPatientActiveTreatmentPlan, getProducts } from "../../shared/api/treatmentApi";
 import Odontogram, { ToothStatus } from "./Odontogram";
 import TreatmentPlanBuilder from "./TreatmentPlanBuilder";
 
 import ToothActionModal from "./ToothActionModal";
+
+/** ดึงวันที่ "ปัจจุบัน" โดยรองรับ Time Travel mock datetime จาก localStorage */
+function getNow(): Date {
+  const mockDatetime = localStorage.getItem("supat_mock_date");
+  if (mockDatetime) {
+    const parsed = new Date(mockDatetime);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
 
 
 export default function TreatmentQueue({ 
@@ -18,6 +29,7 @@ export default function TreatmentQueue({
 }) {
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments || []);
   const [services, setServices] = useState<ServiceInfo[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPatientIdForPlan, setSelectedPatientIdForPlan] = useState<number | null>(null);
   const [activePlan, setActivePlan] = useState<any | null>(null);
@@ -45,7 +57,13 @@ export default function TreatmentQueue({
       if (!initialAppointments) {
         getAppointments().then(apps => setAppointments(apps)).catch(console.error);
       }
-      getServices().then(svcs => setServices(svcs)).catch(console.error).finally(() => setLoading(false));
+      Promise.all([
+        getServices(),
+        getProducts('ยา')
+      ]).then(([svcs, prods]) => {
+        setServices(svcs);
+        setProducts(prods);
+      }).catch(console.error).finally(() => setLoading(false));
     };
     
     fetchData();
@@ -56,20 +74,21 @@ export default function TreatmentQueue({
     notes: string; 
     recommendations: string; 
     services: { id: number; name: string; qty: number; price: number; locationCode?: string }[]; 
+    medicines: { id: number; name: string; qty: number; price: number; unit?: string; note?: string }[];
     actualCost: number | "" 
-  }>({ notes: "", recommendations: "", services: [], actualCost: "" });
+  }>({ notes: "", recommendations: "", services: [], medicines: [], actualCost: "" });
   const [toothData, setToothData] = useState<Record<number, ToothStatus>>({});
   const [isChild, setIsChild] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
   const [isEditingPlan, setIsEditingPlan] = useState(false);
   const [selectedToothForAction, setSelectedToothForAction] = useState<number | null>(null);
 
-  const today = new Date();
+  const today = getNow();
   const todayString = today.toLocaleDateString('en-CA');
   const formattedDate = today.toLocaleDateString("th-TH", { year: 'numeric', month: 'long', day: 'numeric' });
 
   const getWeekRange = () => {
-    const d = new Date();
+    const d = getNow();
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     const start = new Date(d.setDate(diff));
@@ -78,7 +97,7 @@ export default function TreatmentQueue({
   };
 
   const getMonthRange = () => {
-    const d = new Date();
+    const d = getNow();
     const start = new Date(d.getFullYear(), d.getMonth(), 1);
     const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
     return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
@@ -108,9 +127,20 @@ export default function TreatmentQueue({
       const location = tooth ? String(tooth) : (svc.applyTo === 'MOUTH' || svc.applyTo === 'ทั้งปาก' ? 'MOUTH' : undefined);
       const existing = f.services.find(x => x.id === svc.id && x.locationCode === location);
       if (existing) {
-        return { ...f, services: f.services.map(x => x === existing ? { ...x, qty: x.qty + 1 } : x) };
+        return { ...f, services: f.services.filter(x => x !== existing) };
       }
-      return { ...f, services: [...f.services, { id: svc.id, name: svc.name, qty: 1, price: svc.basePrice || 0, locationCode: location }] };
+      
+      let newNotes = f.notes;
+      if (!tooth) {
+        const noteText = `ทำ ${svc.name}`;
+        newNotes = newNotes ? `${newNotes}\n- ${noteText}` : `- ${noteText}`;
+      }
+
+      return { 
+        ...f, 
+        services: [...f.services, { id: svc.id, name: svc.name, qty: 1, price: svc.basePrice || 0, locationCode: location }],
+        notes: newNotes
+      };
     });
   };
 
@@ -122,6 +152,27 @@ export default function TreatmentQueue({
         return { ...f, services: f.services.map(x => x === existing ? { ...x, qty: x.qty - 1 } : x) };
       }
       return { ...f, services: f.services.filter(x => x !== existing) };
+    });
+  };
+
+  const incrementMedicine = (prod: any) => {
+    setForm(f => {
+      const existing = f.medicines.find(x => x.id === prod.id);
+      if (existing) {
+        return { ...f, medicines: f.medicines.map(x => x === existing ? { ...x, qty: x.qty + 1 } : x) };
+      }
+      return { ...f, medicines: [...f.medicines, { id: prod.id, name: prod.name, qty: 1, price: prod.price || 0, unit: prod.unit, note: prod.instruction }] };
+    });
+  };
+
+  const decrementMedicine = (prodId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setForm(f => {
+      const existing = f.medicines.find(x => x.id === prodId);
+      if (existing && existing.qty > 1) {
+        return { ...f, medicines: f.medicines.map(x => x === existing ? { ...x, qty: x.qty - 1 } : x) };
+      }
+      return { ...f, medicines: f.medicines.filter(x => x !== existing) };
     });
   };
 
@@ -148,7 +199,7 @@ export default function TreatmentQueue({
         baseInstallmentAmount = Number(inst.amount);
         
         // Find extra services that are not in the plan for this month
-        const monthData = activePlan.plan_details.find((d: any) => d.month === selectedPlanMonth);
+        const monthData = (activePlan.plan_details || []).find((d: any) => d.month === selectedPlanMonth);
         const plannedServiceNames = new Set((monthData?.services || []).map((s: any) => s.service_name));
         
         extraCost = form.services.reduce((sum, sItem) => {
@@ -168,6 +219,8 @@ export default function TreatmentQueue({
 
     const cost = form.services.reduce((sum, sItem) => {
       return sum + ((sItem.price ?? 0) * sItem.qty);
+    }, 0) + form.medicines.reduce((sum, mItem) => {
+      return sum + ((mItem.price ?? 0) * mItem.qty);
     }, 0);
     
     const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
@@ -176,12 +229,12 @@ export default function TreatmentQueue({
     setForm(f => ({ ...f, actualCost: suggestedCost > 0 ? suggestedCost : "" }));
   }, [form.services, toothData, services, selectedPlanMonth, activePlan, activeInstallments]);
 
-  const onUpdateAppt = async (id: number, updates: Partial<Appointment>, detailedServices?: any[]) => {
+  const onUpdateAppt = async (id: number, updates: Partial<Appointment>, detailedServices?: any[], medicines?: any[]) => {
     try {
       if (updates.status) {
         if (updates.status === "รอชำระเงิน" && updates.treatmentNotes !== undefined) {
           // บันทึก Supabase ก่อน แล้วค่อยอัปเดต UI
-          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id, activePlan?.plan_id, selectedPlanMonth || undefined, detailedServices);
+          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id, activePlan?.plan_id, selectedPlanMonth || undefined, detailedServices, medicines);
         } else {
           await updateAppointmentStatus(id, updates.status);
         }
@@ -212,7 +265,7 @@ export default function TreatmentQueue({
       setToothData(rest as any);
       
       const planData = await getPatientActiveTreatmentPlan(a.patientId);
-      if (planData) {
+      if (planData && planData.dentist_id === doctor?.id) {
         setActivePlan(planData);
         if (planData.plan_details && planData.plan_details.length > 0) {
           const nextMonth = planData.plan_details.find((d: any) => d.status !== 'completed');
@@ -220,6 +273,9 @@ export default function TreatmentQueue({
             setSelectedPlanMonth(nextMonth.month);
           }
         }
+      } else {
+        setActivePlan(null);
+        setSelectedPlanMonth(null);
       }
     } else {
       setToothData({});
@@ -228,6 +284,8 @@ export default function TreatmentQueue({
 
   const submitTreatment = async (appt: Appointment) => {
     const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
+    const formattedMedicines = form.medicines.map(m => `💊 ${m.name} x${m.qty} ${m.unit || ''}`);
+    formattedServices.push(...formattedMedicines);
     
     const detailedServices = [...form.services];
 
@@ -252,10 +310,10 @@ export default function TreatmentQueue({
       recommendations: form.recommendations,
       cost: Number(form.actualCost) || 0,
       odontogramData: { ...toothData, wholeMouth: false } as any
-    }, detailedServices);
+    }, detailedServices, form.medicines);
     
     setRecording(null);
-    setForm({ notes: "", recommendations: "", services: [], actualCost: "" });
+    setForm({ notes: "", recommendations: "", services: [], medicines: [], actualCost: "" });
     setToothData({});
   };
 
@@ -272,7 +330,7 @@ export default function TreatmentQueue({
   };
 
   const statusActions: Record<string, { label: string; next: AppointmentStatus; color: string }> = {
-    "เช็คอินเรียบร้อย": { label: "เรียกเข้าห้องตรวจ", next: "กำลังรักษา", color: "#A21CAF" },
+    "เช็คอินเรียบร้อย": { label: "เรียกเข้าพบ", next: "กำลังรักษา", color: "#A21CAF" },
     "กำลังรักษา": { label: "บันทึกการรักษา", next: "รอชำระเงิน", color: "#7C3AED" },
   };
 
@@ -289,7 +347,7 @@ export default function TreatmentQueue({
               incrementService(service, selectedToothForAction);
             }
             if (notes) {
-              setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n(${notes})` : `(${notes})` }));
+              setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n- ${notes}` : `- ${notes}` }));
             }
             setSelectedToothForAction(null);
           }}
@@ -428,21 +486,54 @@ export default function TreatmentQueue({
                     </div>
                   </div>
                   
+                  {(() => {
+                    const history = appointments
+                      .filter(x => x.patientId === a.patientId && x.id !== a.id && ["เสร็จสิ้น", "รอชำระเงิน", "ชำระเงินแล้ว"].includes(x.status))
+                      .sort((a,b) => b.date.localeCompare(a.date));
+                    
+                    if (history.length === 0) return null;
+                    return (
+                      <div className="mb-4 bg-slate-50/70 rounded-xl p-3 border border-slate-100">
+                        <p className="text-xs font-semibold mb-2" style={{ color: "#1A365D" }}>ประวัติการรักษาล่าสุด</p>
+                        <div className="space-y-2">
+                          {history.slice(0, 3).map(h => (
+                            <div key={h.id} className="text-xs p-2.5 bg-white rounded-lg border border-slate-100/50 flex justify-between items-start shadow-sm">
+                              <div>
+                                <p className="font-medium mb-0.5" style={{ color: "#1A365D" }}>{h.date} • โดย {h.doctorName}</p>
+                                <p style={{ color: "#4A6080" }}>บริการ: {h.service}</p>
+                                {h.treatmentNotes && (
+                                  <div className="mt-1.5 pt-1.5 border-t border-slate-50">
+                                    <p className="text-[11px] font-medium text-slate-500 mb-0.5">บันทึกจากแพทย์:</p>
+                                    <p className="text-[11px]" style={{ color: "#64748B", whiteSpace: "pre-line" }}>
+                                      {h.treatmentNotes}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  
                   {activePlan && activePlan.plan_details && (
                     <div className="mb-4 bg-teal-50/50 rounded-xl p-3 border border-teal-100 mt-2">
                       <div className="flex justify-between items-center mb-2">
                         <p className="text-xs font-semibold text-teal-800">
                           แผนการรักษา: {activePlan.plan_name}
                         </p>
-                        <button 
-                          onClick={() => {
-                            setIsEditingPlan(true);
-                            setSelectedPatientIdForPlan(a.patientId);
-                          }}
-                          className="bg-white border border-teal-200 text-teal-600 text-[10px] px-2.5 py-1 rounded-md hover:bg-teal-50 transition-colors flex items-center gap-1 shadow-sm"
-                        >
-                          ✏️ แก้ไขแผน
-                        </button>
+                        {activePlan.dentist_id === doctor?.id && (
+                          <button 
+                            onClick={() => {
+                              setIsEditingPlan(true);
+                              setSelectedPatientIdForPlan(a.patientId);
+                            }}
+                            className="bg-white border border-teal-200 text-teal-600 text-[10px] px-2.5 py-1 rounded-md hover:bg-teal-50 transition-colors flex items-center gap-1 shadow-sm"
+                          >
+                            ✏️ แก้ไขแผน
+                          </button>
+                        )}
                       </div>
                       <div className="flex gap-2 flex-wrap pb-2">
                         {activePlan.plan_details.map((plan: any) => {
@@ -495,7 +586,7 @@ export default function TreatmentQueue({
                     
                     {/* Toggle whole mouth */}
                     <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
-                      {!activePlan && (
+                      {!activePlan && ["จัดฟัน", "รักษาราก", "เทียม", "ปลอม", "วีเนียร์", "ครอบฟัน"].some(kw => a.service.includes(kw)) && (
                         <button 
                           onClick={() => setSelectedPatientIdForPlan(a.patientId)}
                           className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-teal-700 bg-teal-50 hover:bg-teal-100 mr-2"
@@ -521,12 +612,14 @@ export default function TreatmentQueue({
                               ทำไปแล้ว {completedMonths}/{totalMonths} ครั้ง
                             </span>
                           </div>
-                          <button 
-                            onClick={() => { setIsEditingPlan(true); setSelectedPatientIdForPlan(a.patientId); }}
-                            className="bg-teal-500 hover:bg-teal-400 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1 transition-colors"
-                          >
-                            ✏️ แก้ไขแผน
-                          </button>
+                          {activePlan.dentist_id === doctor?.id && (
+                            <button 
+                              onClick={() => { setIsEditingPlan(true); setSelectedPatientIdForPlan(a.patientId); }}
+                              className="bg-teal-500 hover:bg-teal-400 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                            >
+                              ✏️ แก้ไขแผน
+                            </button>
+                          )}
                         </div>
 
                         {/* Context banner — บอกหมอว่ากำลังบันทึกอะไร */}
@@ -649,10 +742,50 @@ export default function TreatmentQueue({
                                   )}
                                   <span className="leading-[1.2]">{s.name}</span>
                                 </div>
+                                </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </details>
+                    
+                    <details className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
+                      <summary className="text-[12px] font-bold p-3 cursor-pointer hover:bg-slate-100 flex items-center justify-between text-slate-700">
+                        <span>💊 สั่งจ่ายยา</span>
+                        <ChevronRight size={16} className="text-slate-400 group-open:rotate-90 transition-transform" />
+                      </summary>
+                      <div className="p-3 pt-0 border-t border-slate-100">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                          {products.map(p => {
+                            const existing = form.medicines.find(x => x.id === p.id);
+                            const isSelected = !!existing;
+                            return (
+                              <button key={p.id} onClick={() => incrementMedicine(p)}
+                                className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] text-left transition-all leading-tight relative"
+                                style={{
+                                  backgroundColor: isSelected ? "#E0F2FE" : "#F0F4F8",
+                                  color: isSelected ? "#0369A1" : "#4A6080",
+                                  border: isSelected ? "1.5px solid #7DD3FC" : "1.5px solid transparent",
+                                }}>
+                                <div className="flex items-center gap-1.5 flex-1">
+                                  {isSelected ? (
+                                    <div className="flex-shrink-0 w-4 h-4 rounded-full bg-sky-500 text-white flex items-center justify-center">
+                                      <CheckCircle size={10} />
+                                    </div>
+                                  ) : (
+                                    <div className="flex-shrink-0 w-4 h-4 rounded-full border border-gray-300"></div>
+                                  )}
+                                  <div className="leading-[1.2] flex flex-col">
+                                    <span>{p.name}</span>
+                                    {isSelected && existing.qty > 0 && (
+                                      <span className="text-[9px] text-sky-600 font-bold">{existing.qty} {p.unit}</span>
+                                    )}
+                                  </div>
+                                </div>
                                 {isSelected && (
                                   <div 
-                                    onClick={(e) => decrementService(s.id, undefined, e)}
-                                    className="w-4 h-4 rounded-full bg-white border border-[#FF8C9A] flex items-center justify-center text-[#FF6B7E] hover:bg-[#FF8C9A] hover:text-white transition-colors"
+                                    onClick={(e) => decrementMedicine(p.id, e)}
+                                    className="w-4 h-4 rounded-full bg-white border border-sky-300 flex items-center justify-center text-sky-500 hover:bg-sky-400 hover:border-sky-400 hover:text-white transition-colors"
                                   >
                                     <span className="text-[10px] leading-none font-bold mb-[1px]">-</span>
                                   </div>
@@ -661,8 +794,12 @@ export default function TreatmentQueue({
                             );
                           })}
                         </div>
+                        {products.length === 0 && (
+                          <div className="text-center py-2 text-xs text-gray-500">ไม่มีรายการยาในระบบ (แจ้งแอดมินเพิ่มได้ที่จัดการคลินิก)</div>
+                        )}
                       </div>
                     </details>
+                    
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-medium block" style={{ color: "#4A6080" }}>บันทึกหัตถการ / สิ่งที่ทำ</label>
@@ -670,7 +807,7 @@ export default function TreatmentQueue({
                           onClick={() => {
                             const summary = generateToothSummary(toothData);
                             if (summary) {
-                              setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n(${summary})` : `(${summary})` }));
+                              setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n- ${summary}` : `- ${summary}` }));
                             }
                           }}
                           className="text-[10px] text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 hover:bg-teal-100 transition-colors"

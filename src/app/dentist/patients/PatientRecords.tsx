@@ -5,13 +5,20 @@ import { Appointment, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 import TreatmentPlanBuilder from "../treatment/TreatmentPlanBuilder";
 
-export default function PatientRecords() {
+export default function PatientRecords({ doctorId }: { doctorId?: number }) {
   const { appointments, loading } = useRealtimeAppointments();
   const [q, setQ] = useState("");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
 
+  // Get all unique patient HNs that have had an appointment with this doctor
+  const myPatientHNs = new Set(
+    appointments
+      .filter(a => doctorId === undefined || a.doctorId === doctorId)
+      .map(a => a.hn)
+  );
+
   const results = appointments.filter(a =>
-    a.patientName.includes(q) || a.hn.includes(q)
+    (a.patientName.includes(q) || a.hn.includes(q)) && myPatientHNs.has(a.hn)
   );
   const unique = Array.from(new Map(results.map(a => [a.hn, a])).values());
 
@@ -44,12 +51,7 @@ export default function PatientRecords() {
                   <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>{a.patientName}</p>
                   <p className="text-xs" style={{ color: "#4A6080" }}>{a.hn} • {a.patientPhone}</p>
                 </div>
-                <button 
-                  onClick={() => setSelectedPatientId(a.patientId)}
-                  className="ml-auto bg-teal-50 text-teal-700 hover:bg-teal-100 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border border-teal-200"
-                >
-                  + สร้างแผนการรักษา
-                </button>
+
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex gap-2 flex-wrap">

@@ -105,7 +105,7 @@ export default function CheckInView() {
 
           {inQueue.length === 0 ? (
             <div className="text-center py-10 rounded-2xl bg-white border border-dashed border-gray-200">
-              <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคิวในห้องตรวจ</p>
+              <p className="text-sm font-medium" style={{ color: "#94A3B8" }}>ไม่มีคิวรอ/กำลังรักษา</p>
             </div>
           ) : (
             inQueue.map(a => {
@@ -123,7 +123,7 @@ export default function CheckInView() {
                     </span>
                   </div>
                   <p className="font-bold mb-1" style={{ color: "#1A365D" }}>{a.patientName}</p>
-                  <p className="text-xs mb-3" style={{ color: "#4A6080" }}>ห้องตรวจ: ทพ. {a.doctorName}</p>
+                  <p className="text-xs mb-3" style={{ color: "#4A6080" }}>แพทย์: ทพ. {a.doctorName}</p>
 
                   {(a.conditions?.includes("Walk-in") || a.allergies?.includes("Walk-in")) && (
                     <div className="flex items-center gap-1 mb-2 bg-red-50 p-1.5 rounded-lg border border-red-100">
@@ -139,7 +139,7 @@ export default function CheckInView() {
                       onClick={() => onUpdate(a.id, { status: "กำลังรักษา" })}
                       className="w-full mt-2 flex justify-center items-center gap-2 py-2 rounded-xl text-sm font-semibold text-white transition-all"
                       style={{ backgroundColor: "#A21CAF" }}>
-                      เรียกเข้าห้องตรวจ
+                      เรียกเข้าพบ
                     </button>
                   )}
                 </div>

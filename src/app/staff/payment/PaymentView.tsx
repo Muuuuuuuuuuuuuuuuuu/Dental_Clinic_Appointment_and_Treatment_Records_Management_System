@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt, AlertTriangle } from "lucide-react";
+import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt, AlertTriangle, Package } from "lucide-react";
 
 import { Appointment, STATUS_COLORS, AppointmentStatus } from "../../shared/data";
-import { supabase, processPaymentApi, addAppointment, getClinicTimeSlots, TimeSlotStatus } from "../../shared/supabaseApi";
+import { supabase, processPaymentApi, addAppointment, getClinicTimeSlots, TimeSlotStatus, getServices } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function PaymentView({ 
@@ -23,9 +23,23 @@ export default function PaymentView({
   const [discount, setDiscount] = useState<string>("0");
   const [paymentMethod, setPaymentMethod] = useState<string>("เงินสด");
 
+  // Pricing states
+  const [servicesData, setServicesData] = useState<Record<number, any>>({});
+  const [adjustedPrices, setAdjustedPrices] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    getServices().then(data => {
+      const map: Record<number, any> = {};
+      data.forEach((s: any) => { map[s.service_id || s.id] = s; });
+      setServicesData(map);
+    });
+  }, []);
+
+
   // Installment info
   const [installmentInfo, setInstallmentInfo] = useState<{ id: number; amount: number; installment_number: number } | null>(null);
   const [activePlan, setActivePlan] = useState<any | null>(null);
+  const [showFinancialBuilder, setShowFinancialBuilder] = useState(false);
   const [hasFutureAppointment, setHasFutureAppointment] = useState<boolean>(false);
 
   // Modals
@@ -33,6 +47,7 @@ export default function PaymentView({
   const [followUp, setFollowUp] = useState<Appointment | null>(null);
   const [isOpenTicket, setIsOpenTicket] = useState(false);
   const [showLink, setShowLink] = useState(false);
+  const [openTicketId, setOpenTicketId] = useState<number | null>(null);
   const [isBound, setIsBound] = useState(false);
   
   const [followUpDate, setFollowUpDate] = useState("");
@@ -75,15 +90,27 @@ export default function PaymentView({
 
   const selectedAppt = appointments.find(a => a.id === selectedApptId);
 
-    // Reset dashboard when selecting new patient
-    useEffect(() => {
-      if (!selectedAppt) return;
-      setDiscount("0");
-      setPaymentMethod("เงินสด");
-      setInstallmentInfo(null);
-      setActivePlan(null);
+    
+      // Reset dashboard when selecting new patient
+      useEffect(() => {
+        if (!selectedAppt) return;
+        setDiscount("0");
+        setPaymentMethod("เงินสด");
+        setInstallmentInfo(null);
+        setActivePlan(null);
+        
+        // Initialize adjustedPrices from detailedServices
+        const initialPrices: Record<string, string> = {};
+        if (selectedAppt.detailedServices) {
+          selectedAppt.detailedServices.forEach((s: any, idx: number) => {
+            const key = `${s.serviceId}-${idx}`;
+            initialPrices[key] = String(s.price);
+          });
+        }
+        setAdjustedPrices(initialPrices);
 
-      if (selectedAppt.patientId) {
+        if (selectedAppt.patientId) {
+
         import('../../shared/supabaseApi').then(({ getPatientActiveTreatmentPlan, getPatientAppointments }) => {
           getPatientActiveTreatmentPlan(selectedAppt.patientId!).then(plan => {
             setActivePlan(plan);
@@ -101,44 +128,75 @@ export default function PaymentView({
       }
 
       // Set base cost from the appointment directly, without auto-adding installments
-      setBaseCost(String(selectedAppt.cost || "0"));
+      // setBaseCost(String(selectedAppt.cost || "0"));
     }, [selectedApptId]);
 
-  const netTotal = useMemo(() => {
-    const base = parseInt(baseCost || "0", 10);
-    const disc = parseInt(discount || "0", 10);
-    return Math.max(0, base - disc);
-  }, [baseCost, discount]);
+  
+  const totalBaseCost = useMemo(() => {
+    if (!selectedAppt || !selectedAppt.detailedServices) return parseInt(baseCost || "0", 10);
+    return selectedAppt.detailedServices.reduce((sum: number, s: any, idx: number) => {
+      const key = `${s.serviceId}-${idx}`;
+      const priceStr = adjustedPrices[key];
+      const price = priceStr !== undefined ? (parseInt(priceStr, 10) || 0) : s.price;
+      return sum + (price * s.qty);
+    }, 0);
+  }, [selectedAppt, adjustedPrices, baseCost]);
 
-  const processPayment = async () => {
+  const netTotal = useMemo(() => {
+    const disc = parseInt(discount || "0", 10);
+    return Math.max(0, totalBaseCost - disc);
+  }, [totalBaseCost, discount]);
+
+
+  
+  const handlePriceChange = (key: string, value: string, srvData: any) => {
+    // Allow empty string to let user delete the value completely while typing
+    // Remove strict clamping so they can type freely
+    setAdjustedPrices(prev => ({ ...prev, [key]: value }));
+  };
+
+  const prepareReceipt = () => {
     if (!selectedAppt) return;
     
+    const finalDetailedServices = selectedAppt.detailedServices?.map((s: any, idx: number) => {
+      const key = `${s.serviceId}-${idx}`;
+      return {
+        ...s,
+        price: adjustedPrices[key] !== undefined ? (parseInt(adjustedPrices[key], 10) || 0) : s.price
+      };
+    }) || [];
+
+    setReceiptData({
+      ...selectedAppt,
+      detailedServices: finalDetailedServices,
+      baseCost: totalBaseCost,
+      discount: parseInt(discount || "0", 10),
+      netTotal,
+      paymentMethod
+    });
+  };
+
+  const confirmAndCompletePayment = async () => {
+    if (!receiptData) return;
+    
     try {
-      await processPaymentApi(selectedAppt.id, netTotal, paymentMethod);
+      await processPaymentApi(receiptData.id, receiptData.netTotal, receiptData.paymentMethod, receiptData.extraProducts, receiptData.detailedServices);
       
-      const newApptData = { status: "เสร็จสิ้น" as AppointmentStatus, cost: netTotal, paid: true };
-      
-      setAppointments(apps => apps.map(a => a.id === selectedAppt.id ? { ...a, ...newApptData } : a));
+      const newApptData = { status: "เสร็จสิ้น" as AppointmentStatus, cost: receiptData.netTotal, paid: true };
+      setAppointments(apps => apps.map(a => a.id === receiptData.id ? { ...a, ...newApptData } : a));
       
       if (onUpdateAppt) {
-        onUpdateAppt(selectedAppt.id, newApptData);
+        onUpdateAppt(receiptData.id, newApptData);
       }
       
-      // Prepare receipt data
-      setReceiptData({
-        ...selectedAppt,
-        baseCost: parseInt(baseCost || "0", 10),
-        discount: parseInt(discount || "0", 10),
-        netTotal,
-        paymentMethod
-      });
-      
+      setReceiptData(null);
       setSelectedApptId(null);
     } catch (err) {
       console.error(err);
       alert("Failed to process payment");
     }
   };
+
 
   return (
     <div className="flex h-[calc(100vh-100px)] gap-6">
@@ -309,21 +367,49 @@ export default function PaymentView({
               <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>ใบสรุปการรักษาจากแพทย์</h3>
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
                 <div>
+                  
                   <p className="font-semibold text-sm mb-2" style={{ color: "#1A365D" }}>หัตถการ / บริการที่ทำ</p>
                   {(selectedAppt.detailedServices && selectedAppt.detailedServices.length > 0) ? (
                     <div className="space-y-1.5">
-                      {selectedAppt.detailedServices.map((s, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-sm py-1.5 px-3 rounded-lg bg-white border border-gray-100">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium" style={{ color: "#1D6FA4" }}>{s.name}</span>
-                            {s.locationCode && <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">ซี่ {s.locationCode}</span>}
-                            {s.qty > 1 && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">x{s.qty}</span>}
+                      {selectedAppt.detailedServices.map((s: any, idx: number) => {
+                        const key = `${s.serviceId}-${idx}`;
+                        const isProduct = String(s.serviceId).startsWith('prod-');
+                        const srvData = isProduct ? null : servicesData[s.serviceId];
+                        const currentPriceStr = adjustedPrices[key] !== undefined ? adjustedPrices[key] : String(s.price);
+                        
+                        let priceRangeStr = "";
+                        if (srvData && !srvData.is_fixed_price) {
+                          const base = srvData.basePrice ? srvData.basePrice.toLocaleString() : "0";
+                          const max = srvData.maxPrice ? srvData.maxPrice.toLocaleString() : "ไม่จำกัด";
+                          priceRangeStr = ` (฿${base} - ${max})`;
+                        }
+
+                        return (
+                          <div key={key} className="flex justify-between items-center text-sm py-1.5 px-3 rounded-lg bg-white border border-gray-100">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium" style={{ color: "#1D6FA4" }}>
+                                {s.name}
+                                <span className="text-[10px] font-normal text-gray-400 ml-1">{priceRangeStr}</span>
+                              </span>
+                              {s.locationCode && <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">ซี่ {s.locationCode}</span>}
+                              {s.qty > 1 && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">x{s.qty}</span>}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold" style={{ color: "#1A365D" }}>฿</span>
+                              <input
+                                type="number"
+                                value={currentPriceStr}
+                                onChange={e => handlePriceChange(key, e.target.value, srvData)}
+                                disabled={isProduct || (srvData && srvData.is_fixed_price)}
+                                className={`w-24 px-2 py-1 rounded-lg text-right text-sm font-bold outline-none border transition-colors ${isProduct || (srvData && srvData.is_fixed_price) ? 'bg-transparent border-transparent text-[#1A365D]' : 'border-gray-200 focus:border-blue-500 bg-white shadow-sm'}`}
+                              />
+                            </div>
                           </div>
-                          <span className="font-semibold" style={{ color: "#1A365D" }}>฿{(s.price * s.qty).toLocaleString()}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (selectedAppt.treatmentServices && selectedAppt.treatmentServices.length > 0) ? (
+
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {selectedAppt.treatmentServices.map(s => (
                         <span key={s} className="text-[11px] px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: "white", color: "#1D6FA4", border: "1px solid #E8F4FF" }}>
@@ -356,26 +442,18 @@ export default function PaymentView({
               </div>
             </div>
 
+            
+            
             {/* Billing Calculator */}
             <div className="mb-4 space-y-2">
               <h3 className="text-xs font-bold mb-1" style={{ color: "#4A6080" }}>สรุปยอดค่าใช้จ่าย</h3>
               
-
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium" style={{ color: "#1A365D" }}>ค่ารักษา (Base Cost)</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold" style={{ color: "#4A6080" }}>฿</span>
-                  <input
-                    type="number"
-                    value={baseCost}
-                    onChange={e => setBaseCost(e.target.value)}
-                    placeholder="0"
-                    className="w-28 px-2 py-1.5 rounded-lg text-right text-sm font-bold outline-none border border-gray-200 focus:border-blue-500 transition-colors"
-                  />
-                </div>
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-medium" style={{ color: "#1A365D" }}>รวมยอดบริการและสินค้า</span>
+                <span className="text-sm font-semibold" style={{ color: "#4A6080" }}>฿{totalBaseCost.toLocaleString()}</span>
               </div>
               
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-medium text-red-500">ส่วนลด (Discount)</span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-semibold text-red-500">- ฿</span>
@@ -384,18 +462,18 @@ export default function PaymentView({
                     value={discount}
                     onChange={e => setDiscount(e.target.value)}
                     placeholder="0"
-                    className="w-28 px-2 py-1.5 rounded-lg text-right text-sm font-bold text-red-500 outline-none border border-red-100 bg-red-50 focus:border-red-400 transition-colors"
+                    className="w-24 px-2 py-1.5 rounded-lg text-right text-xs font-bold text-red-500 outline-none border border-red-100 bg-red-50 focus:border-red-400 transition-colors"
                   />
                 </div>
               </div>
               
-              <div className="pt-2 flex items-center justify-between" style={{ borderTop: "1px dashed rgba(26,54,93,0.1)" }}>
+              <div className="pt-2 mt-2 flex items-center justify-between px-1" style={{ borderTop: "1px dashed rgba(26,54,93,0.1)" }}>
                 <span className="text-sm font-bold" style={{ color: "#1A365D" }}>ยอดชำระสุทธิ (Net Total)</span>
                 <span className="text-2xl font-black" style={{ color: "#1B7A3E" }}>฿{netTotal.toLocaleString()}</span>
               </div>
             </div>
 
-            {/* Payment Methods */}
+
             <div className="mb-auto">
               <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>ช่องทางการชำระเงิน</h3>
               <div className="grid grid-cols-3 gap-2">
@@ -432,7 +510,7 @@ export default function PaymentView({
                 ยกเลิก
               </button>
               <button
-                onClick={processPayment}
+                onClick={prepareReceipt}
                 disabled={netTotal < 0}
                 className="flex-[2] py-3 rounded-xl font-bold text-white text-base transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: "linear-gradient(135deg,#22C55E,#16A34A)" }}>
@@ -487,43 +565,64 @@ export default function PaymentView({
                 ))}
               </div>
 
-              <div className="space-y-1 mb-6">
-                <div className="flex justify-between text-xs">
-                  <span style={{ color: "#64748B" }}>ค่ารักษา (Base)</span>
-                  <span style={{ color: "#1A365D" }}>฿{receiptData.baseCost.toLocaleString()}</span>
-                </div>
-                {receiptData.discount > 0 && (
+              <div className="space-y-2 mb-6 border-y border-dashed border-gray-200 py-3">
+                <p className="text-xs font-bold" style={{ color: "#1A365D" }}>รายละเอียดค่าใช้จ่าย</p>
+                
+                {/* Services */}
+                {receiptData.detailedServices?.map((s: any, i: number) => (
+                  <div key={`svc-${i}`} className="flex justify-between text-xs">
+                    <span style={{ color: "#64748B" }}>{s.name} {s.qty > 1 ? `x${s.qty}` : ''}</span>
+                    <span style={{ color: "#1A365D" }}>฿{(s.price * s.qty).toLocaleString()}</span>
+                  </div>
+                ))}
+                
+                {/* Fallback if no detailedServices */}
+                {(!receiptData.detailedServices || receiptData.detailedServices.length === 0) && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-red-500">ส่วนลด (Discount)</span>
-                    <span className="text-red-500">- ฿{receiptData.discount.toLocaleString()}</span>
+                    <span style={{ color: "#64748B" }}>รวมยอดชำระ</span>
+                    <span style={{ color: "#1A365D" }}>฿{receiptData.baseCost.toLocaleString()}</span>
                   </div>
                 )}
+                
+                {/* Extra Products */}
+                {receiptData.extraProducts?.map((p: any, i: number) => (
+                  <div key={`prod-${i}`} className="flex justify-between text-xs">
+                    <span style={{ color: "#64748B" }}>{p.name} {p.qty > 1 ? `x${p.qty}` : ''}</span>
+                    <span style={{ color: "#1A365D" }}>฿{(p.price * p.qty).toLocaleString()}</span>
+                  </div>
+                ))}
+
+                {/* Discount */}
+                {receiptData.discount > 0 && (
+                  <div className="flex justify-between text-xs pt-2">
+                    <span className="text-red-500 font-medium">ส่วนลด (Discount)</span>
+                    <span className="text-red-500 font-medium">- ฿{receiptData.discount.toLocaleString()}</span>
+                  </div>
+                )}
+                
                 <div className="flex justify-between text-sm font-bold pt-2 border-t border-gray-200 mt-2">
                   <span style={{ color: "#1A365D" }}>ยอดรวมสุทธิ</span>
                   <span style={{ color: "#1B7A3E" }}>฿{receiptData.netTotal.toLocaleString()}</span>
                 </div>
               </div>
 
+              
               <div className="flex gap-2">
                 <button onClick={() => { 
                     setFollowUp(receiptData); 
-                    setReceiptData(null); 
-                    setIsOpenTicket(false); 
-                    setShowLink(false); 
-                    setIsBound(false); 
-                    setFollowUpDate("");
-                    setFollowUpTime("");
+                    // DO NOT CLEAR RECEIPT DATA HERE, we need it to return to receipt if follow-up is cancelled
                   }}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all hover:opacity-90"
                   style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}>
                   <CalendarPlus size={14} /> นัดครั้งถัดไป
                 </button>
-                <button onClick={() => setReceiptData(null)}
+                <button onClick={confirmAndCompletePayment}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 shadow-md"
-                  style={{ backgroundColor: "#1A365D" }}>
-                  <Printer size={14} /> พิมพ์ใบเสร็จ
+                  style={{ backgroundColor: "#1B7A3E" }}>
+                  <Printer size={14} /> พิมพ์ใบเสร็จ & ยืนยันรับเงิน
                 </button>
               </div>
+
             </div>
           </div>
         </div>
@@ -549,14 +648,16 @@ export default function PaymentView({
                     ระบบได้บันทึก {isBound ? "(พร้อมตั้งเป็นหมอประจำเคส) " : ""}และสร้างลิงก์สำหรับเลือกวันเวลาแล้ว
                   </p>
                   <div className="p-3 bg-gray-50 border rounded-xl flex items-center justify-between mb-6">
-                    <span className="text-xs text-gray-500 truncate mr-3">https://suphat.clinic/booking?followUp=123</span>
+                    <span className="text-xs text-gray-500 truncate mr-3">{`https://suphat.clinic/booking?openTicketId=${openTicketId}`}</span>
                     <button className="px-4 py-1.5 rounded-lg text-xs font-bold text-white transition-all hover:opacity-90" style={{ backgroundColor: "#1D6FA4" }}>
                       คัดลอกลิงก์
                     </button>
                   </div>
-                  <button onClick={() => setFollowUp(null)} className="w-full py-3 rounded-xl font-bold text-white transition-all hover:opacity-90" style={{ backgroundColor: "#1A365D" }}>
-                    ปิดหน้าต่าง
+                  
+                  <button onClick={() => { setFollowUp(null); setFollowUpDate(""); setFollowUpTime(""); setIsOpenTicket(false); setShowLink(false); }} className="w-full py-3 rounded-xl font-bold text-white transition-all hover:opacity-90" style={{ backgroundColor: "#1A365D" }}>
+                    กลับไปหน้าใบเสร็จ
                   </button>
+
                 </div>
               ) : (
                 <>
@@ -629,12 +730,14 @@ export default function PaymentView({
                     </div>
                   </div>
 
+                  
                   <div className="flex gap-3">
                     <button onClick={() => setFollowUp(null)}
                       disabled={isSubmitting}
                       className="w-1/3 py-4 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all text-sm disabled:opacity-50">
-                      ยกเลิก
+                      กลับไปหน้าใบเสร็จ
                     </button>
+
                     <button onClick={async () => {
                         if (!isOpenTicket && (!followUpDate || !followUpTime)) {
                           alert('กรุณาระบุวันและเวลา หรือเลือกใบนัดแบบเปิด');
@@ -642,7 +745,7 @@ export default function PaymentView({
                         }
                         setIsSubmitting(true);
                         try {
-                          await addAppointment({
+                          const newAppt: any = await addAppointment({
                             patientId: followUp.patientId,
                             hn: '',
                             patientName: followUp.patientName,
@@ -657,6 +760,9 @@ export default function PaymentView({
                             source: 'doctor',
                             note: isBound ? `แพทย์ประจำเคส: ${followUp.doctorName}` : ''
                           } as any);
+                          if (newAppt && (newAppt.appointment_id || newAppt.id)) {
+                            setOpenTicketId(newAppt.appointment_id || newAppt.id);
+                          }
                           
                           if (isOpenTicket) {
                             setShowLink(true);

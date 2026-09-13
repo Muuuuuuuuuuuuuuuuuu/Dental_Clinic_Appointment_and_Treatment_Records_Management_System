@@ -9,6 +9,7 @@ export * from './api/authApi';
 export * from './api/appointmentApi';
 export * from './api/treatmentApi';
 import { notifyAppointmentsUpdated, checkAppointmentConflicts } from './api/appointmentApi';
+import { TreatmentPackage } from './data';
 
 // ============================================================================
 // REALTIME HELPERS
@@ -23,23 +24,7 @@ import { notifyAppointmentsUpdated, checkAppointmentConflicts } from './api/appo
 
 
 
-export async function getClinicRooms(): Promise<string[]> {
-  const { data, error } = await supabase.from('clinic_settings').select('*').eq('setting_key', 'clinic_rooms').single();
-  if (error || !data) return ['ห้อง A-101', 'ห้อง B-202', 'ห้อง C-303'];
-  try {
-    return typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;
-  } catch (e) {
-    return ['ห้อง A-101', 'ห้อง B-202', 'ห้อง C-303'];
-  }
-}
 
-export async function updateClinicRooms(rooms: string[]): Promise<void> {
-  const { error } = await supabase.from('clinic_settings').upsert({
-    setting_key: 'clinic_rooms',
-    setting_value: JSON.stringify(rooms)
-  }, { onConflict: 'setting_key' });
-  if (error) throw error;
-}
 
 
 // --- Admins ---
@@ -319,6 +304,9 @@ export async function getServices() {
     name: d.service_name,
     description: d.description || `ใช้เวลาประมาณ ${d.estimated_time} นาที`,
     basePrice: d.base_price,
+    maxPrice: d.max_price,
+    base_price: d.base_price,
+    max_price: d.max_price,
     category: d.category || 'ทันตกรรมทั่วไป (General Dentistry)',
     newCategoryIcon: 'Smile',
     newCategoryColor: '#F0F4F8',
@@ -328,7 +316,8 @@ export async function getServices() {
     active: d.is_active,
     isPublic: !disabledIds.includes(d.service_id),
     applyTo: d.apply_to,
-    serviceType: d.service_type
+    serviceType: d.service_type,
+    details: { benefits: d.benefits || [], procedures: d.procedures || [], care: d.care || [] }
   })) as ServiceInfo[];
 }
 
@@ -344,7 +333,10 @@ export async function addService(service: Omit<ServiceInfo, 'id'>) {
     requires_confirmation: service.requiresConfirmation || false,
     service_type: service.serviceType,
     apply_to: service.applyTo || 'MOUTH',
-    is_fixed_price: service.isFixedPrice || false
+    is_fixed_price: service.isFixedPrice || false,
+    benefits: service.details?.benefits || [],
+    procedures: service.details?.procedures || [],
+    care: service.details?.care || []
   }).select().single();
   if (error) throw error;
   return { ...service, id: data.service_id, estimatedTime, description: data.description || `ใช้เวลาประมาณ ${estimatedTime} นาที` } as ServiceInfo;
@@ -361,6 +353,11 @@ export async function updateService(id: number, updates: Partial<ServiceInfo>): 
   if (updates.serviceType !== undefined) serviceUpdates.service_type = updates.serviceType;
   if (updates.applyTo !== undefined) serviceUpdates.apply_to = updates.applyTo;
   if (updates.isFixedPrice !== undefined) serviceUpdates.is_fixed_price = updates.isFixedPrice;
+  if (updates.details !== undefined) {
+    if (updates.details.benefits) serviceUpdates.benefits = updates.details.benefits;
+    if (updates.details.procedures) serviceUpdates.procedures = updates.details.procedures;
+    if (updates.details.care) serviceUpdates.care = updates.details.care;
+  }
 
   const { error } = await supabase.from('service').update(serviceUpdates).eq('service_id', id);
   if (error) throw error;
@@ -418,7 +415,8 @@ export async function getLandingServices() {
       color: '#FFE8EC',
       type: d.service_type || 'general',
       baseTimeMins: d.estimated_time || 30,
-      requiresConfirmation: d.requires_confirmation || false
+      requiresConfirmation: d.requires_confirmation || false,
+      details: { benefits: d.benefits || [], procedures: d.procedures || [], care: d.care || [] }
     }));
 }
 

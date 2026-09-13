@@ -51,8 +51,8 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
 
   const saveEmail = async () => {
     setEmailErr("");
-    if (!emailForm.oldPw) { setEmailErr("��سҡ�͡���ʼ�ҹ�����׹�ѹ"); return; }
-    if (!emailForm.newEmail || !emailForm.newEmail.includes('@')) { setEmailErr("��������١��ͧ"); return; }
+    if (!emailForm.oldPw) { setEmailErr("กรุณากรอกรหัสผ่านเพื่อยืนยัน"); return; }
+    if (!emailForm.newEmail || !emailForm.newEmail.includes('@')) { setEmailErr("อีเมลไม่ถูกต้อง"); return; }
 
     setEmailLoading(true);
     try {
@@ -63,9 +63,9 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
       setEmailForm({ oldPw: "", newEmail: "" });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-      alert("����¹���������� ��سҵ�Ǩ�ͺ��������������׹�ѹ (�����)");
+      alert("เปลี่ยนอีเมลสำเร็จ กรุณาตรวจสอบอีเมลใหม่เพื่อยืนยัน (ถ้ามี)");
     } catch (err: any) {
-      setEmailErr(err.message || "�Դ��ͼԴ��Ҵ㹡������¹�����");
+      setEmailErr(err.message || "เกิดข้อผิดพลาดในการเปลี่ยนอีเมล");
     } finally {
       setEmailLoading(false);
     }
@@ -198,15 +198,15 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
           {/* Security */}
           <div className="rounded-2xl bg-white p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-sm" style={{ color: "#1A365D" }}>��èѴ��ä�����ʹ��� (Security)</h3>
+              <h3 className="font-semibold text-sm" style={{ color: "#1A365D" }}>การจัดการความปลอดภัย (Security)</h3>
             </div>
             
             {/* Email Edit */}
             <div className="py-3 border-b border-gray-100">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium" style={{ color: "#4A6080" }}>����� (Email)</span>
+                <span className="text-sm font-medium" style={{ color: "#4A6080" }}>อีเมล (Email)</span>
                 <button onClick={() => { setEmailMode(!emailMode); setPwMode(false); }} className="flex items-center gap-1.5 text-xs font-medium hover:opacity-70" style={{ color: "#FF8C9A" }}>
-                  <Edit3 size={12} /> {emailMode ? "¡��ԡ" : "����¹�����"}
+                  <Edit3 size={12} /> {emailMode ? "ยกเลิก" : "เปลี่ยนอีเมล"}
                 </button>
               </div>
               {!emailMode ? (
@@ -215,12 +215,12 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
                 <div className="space-y-3 mt-3">
                   {emailErr && <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}><AlertCircle size={13} /> {emailErr}</div>}
                   <div>
-                    <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>���������</label>
+                    <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>อีเมลใหม่</label>
                     <input type="email" value={emailForm.newEmail} onChange={e => setEmailForm(p => ({ ...p, newEmail: e.target.value }))}
                       className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                   </div>
                   <div>
-                    <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>���ʼ�ҹ�Ѩ�غѹ (�����׹�ѹ��ǵ�)</label>
+                    <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>รหัสผ่านปัจจุบัน (เพื่อยืนยันตัวตน)</label>
                     <input type="password" value={emailForm.oldPw} onChange={e => setEmailForm(p => ({ ...p, oldPw: e.target.value }))}
                       className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                   </div>
@@ -228,7 +228,7 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
                     <button onClick={saveEmail} disabled={emailLoading}
                       className="text-sm px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50 transition-all"
                       style={{ backgroundColor: "#FF8C9A" }}>
-                      {emailLoading ? "���ѧ�ѹ�֡..." : "�׹�ѹ����¹�����"}
+                      {emailLoading ? "กำลังบันทึก..." : "ยืนยันเปลี่ยนอีเมล"}
                     </button>
                   </div>
                 </div>
@@ -238,9 +238,9 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
             {/* Password Edit */}
             <div className="py-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium" style={{ color: "#4A6080" }}>���ʼ�ҹ (Password)</span>
+                <span className="text-sm font-medium" style={{ color: "#4A6080" }}>รหัสผ่าน (Password)</span>
                 <button onClick={() => { setPwMode(!pwMode); setEmailMode(false); }} className="flex items-center gap-1.5 text-xs font-medium hover:opacity-70" style={{ color: "#FF8C9A" }}>
-                  <Lock size={12} /> {pwMode ? "¡��ԡ" : "����¹���ʼ�ҹ"}
+                  <Lock size={12} /> {pwMode ? "ยกเลิก" : "เปลี่ยนรหัสผ่าน"}
                 </button>
               </div>
               {!pwMode ? (
@@ -249,9 +249,9 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
                 <div className="space-y-3 mt-3">
                   {pwErr && <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}><AlertCircle size={13} /> {pwErr}</div>}
                   {[
-                    { k: "old",    label: "���ʼ�ҹ���" },
-                    { k: "newPw",  label: "���ʼ�ҹ���� (���ҧ���� 8 ����ѡ��)" },
-                    { k: "confirm",label: "�׹�ѹ���ʼ�ҹ����" },
+                    { k: "old",    label: "รหัสผ่านเดิม" },
+                    { k: "newPw",  label: "รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)" },
+                    { k: "confirm",label: "ยืนยันรหัสผ่านใหม่" },
                   ].map(f => (
                     <div key={f.k}>
                       <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>{f.label}</label>
@@ -263,7 +263,7 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
                     <button onClick={savePw} disabled={pwLoading}
                       className="text-sm px-5 py-2 rounded-xl text-white font-medium disabled:opacity-50 transition-all"
                       style={{ backgroundColor: "#FF8C9A" }}>
-                      {pwLoading ? "���ѧ�ѹ�֡..." : "�ѹ�֡���ʼ�ҹ����"}
+                      {pwLoading ? "กำลังบันทึก..." : "บันทึกรหัสผ่านใหม่"}
                     </button>
                   </div>
                 </div>

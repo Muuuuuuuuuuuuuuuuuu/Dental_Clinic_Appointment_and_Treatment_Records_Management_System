@@ -27,7 +27,8 @@ export interface Appointment {
   patientPhone: string;
   service: string;
   serviceId?: number;
-  paymentPlanId?: number;
+
+  treatmentPlanId?: number;
   planItemId?: number;
   doctorName: string;
   doctorId?: number;
@@ -171,6 +172,11 @@ export interface ServiceInfo {
   isFixedPrice?: boolean;
   requiresConfirmation?: boolean;
   applyTo?: string;
+  details?: {
+    benefits: string[];
+    procedures: string[];
+    care: string[];
+  };
 }
 
 export interface LeaveRequest {
@@ -197,6 +203,26 @@ export interface TreatmentPlan {
   installments: { id?: number; dueDate: string; amount: number; paid: boolean; }[];
 }
 
+export interface Product {
+  id: number;
+  name: string;
+  type: 'ยา' | 'สินค้าทั่วไป';
+  price: number;
+  unit?: string;
+  instruction?: string;
+  stockQuantity: number;
+  isActive: boolean;
+}
+
+export interface TreatmentProduct {
+  id: number;
+  treatmentId: number;
+  productId: number;
+  quantity: number;
+  actualPrice: number;
+  doctorNote?: string;
+  product?: Product;
+}
 
 export interface Announcement {
   id: number;
