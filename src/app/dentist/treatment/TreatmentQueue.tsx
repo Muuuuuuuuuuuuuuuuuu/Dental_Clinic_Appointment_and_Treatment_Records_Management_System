@@ -3,9 +3,8 @@ import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTrian
 
 import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo, hasHealthAlert } from "../../shared/data";
 import { getAppointments, getServices, updateAppointmentStatus, supabase } from "../../shared/supabaseApi";
-import { saveTreatment, getPatientLatestOdontogram, getPatientActiveTreatmentPlan, getProducts } from "../../shared/api/treatmentApi";
+import { saveTreatment, getPatientLatestOdontogram, getProducts } from "../../shared/api/treatmentApi";
 import Odontogram, { ToothStatus } from "./Odontogram";
-import TreatmentPlanBuilder from "./TreatmentPlanBuilder";
 
 import ToothActionModal from "./ToothActionModal";
 
@@ -31,21 +30,6 @@ export default function TreatmentQueue({
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPatientIdForPlan, setSelectedPatientIdForPlan] = useState<number | null>(null);
-  const [activePlan, setActivePlan] = useState<any | null>(null);
-  const [selectedPlanMonth, setSelectedPlanMonth] = useState<number | null>(null);
-  const [activeInstallments, setActiveInstallments] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (activePlan?.plan_id) {
-      supabase.from('installment').select('*').eq('plan_id', activePlan.plan_id).then(({ data }) => {
-        if (data) setActiveInstallments(data);
-      });
-    } else {
-      setActiveInstallments([]);
-    }
-  }, [activePlan]);
-
   useEffect(() => {
     if (initialAppointments) {
       setAppointments(initialAppointments);
@@ -80,7 +64,6 @@ export default function TreatmentQueue({
   const [toothData, setToothData] = useState<Record<number, ToothStatus>>({});
   const [isChild, setIsChild] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
-  const [isEditingPlan, setIsEditingPlan] = useState(false);
   const [selectedToothForAction, setSelectedToothForAction] = useState<number | null>(null);
   const [showMedModal, setShowMedModal] = useState<number | null>(null); // appointment id
   const [medList, setMedList] = useState<{ name: string; dose: string; freq: string; days: string }[]>([]);
@@ -192,33 +175,6 @@ export default function TreatmentQueue({
   };
 
   useEffect(() => {
-    let baseInstallmentAmount = 0;
-    let extraCost = 0;
-
-    if (selectedPlanMonth && activePlan && activeInstallments.length > 0) {
-      const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
-      if (inst && inst.amount > 0) {
-        baseInstallmentAmount = Number(inst.amount);
-
-        // Find extra services that are not in the plan for this month
-        const monthData = (activePlan.plan_details || []).find((d: any) => d.month === selectedPlanMonth);
-        const plannedServiceNames = new Set((monthData?.services || []).map((s: any) => s.service_name));
-
-        extraCost = form.services.reduce((sum, sItem) => {
-          if (!plannedServiceNames.has(sItem.name)) {
-            const svc = services.find(ms => ms.name === sItem.name);
-            return sum + ((svc?.basePrice ?? 0) * sItem.qty);
-          }
-          return sum;
-        }, 0);
-      }
-    }
-
-    if (baseInstallmentAmount > 0) {
-      setForm(f => ({ ...f, actualCost: baseInstallmentAmount + extraCost }));
-      return;
-    }
-
     const cost = form.services.reduce((sum, sItem) => {
       return sum + ((sItem.price ?? 0) * sItem.qty);
     }, 0) + form.medicines.reduce((sum, mItem) => {
@@ -229,14 +185,14 @@ export default function TreatmentQueue({
     const suggestedCost = cost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : cost;
 
     setForm(f => ({ ...f, actualCost: suggestedCost > 0 ? suggestedCost : "" }));
-  }, [form.services, form.medicines, toothData, services, selectedPlanMonth, activePlan, activeInstallments]);
+  }, [form.services, form.medicines, toothData, services]);
 
   const onUpdateAppt = async (id: number, updates: Partial<Appointment>, detailedServices?: any[], medicines?: any[]) => {
     try {
       if (updates.status) {
         if (updates.status === "รอชำระเงิน" && updates.treatmentNotes !== undefined) {
           // บันทึก Supabase ก่อน แล้วค่อยอัปเดต UI
-          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id, activePlan?.plan_id, selectedPlanMonth || undefined, detailedServices, medicines);
+          await saveTreatment(id, updates.treatmentNotes, updates.recommendations || "", updates.treatmentServices || [], updates.cost || 0, updates.odontogramData, doctor?.id, detailedServices, medicines);
         } else {
           await updateAppointmentStatus(id, updates.status);
         }
@@ -259,26 +215,10 @@ export default function TreatmentQueue({
 
   const handleStartRecording = async (a: Appointment) => {
     setRecording(a.id);
-    setActivePlan(null);
-    setSelectedPlanMonth(null);
     if (a.patientId) {
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
       const { wholeMouth, ...rest } = historyOdontogram;
       setToothData(rest as any);
-
-      const planData = await getPatientActiveTreatmentPlan(a.patientId);
-      if (planData && planData.dentist_id === doctor?.id) {
-        setActivePlan(planData);
-        if (planData.plan_details && planData.plan_details.length > 0) {
-          const nextMonth = planData.plan_details.find((d: any) => d.status !== 'completed');
-          if (nextMonth) {
-            setSelectedPlanMonth(nextMonth.month);
-          }
-        }
-      } else {
-        setActivePlan(null);
-        setSelectedPlanMonth(null);
-      }
     } else {
       setToothData({});
     }
@@ -289,12 +229,7 @@ export default function TreatmentQueue({
       alert("กรุณาบันทึกหัตถการ / สิ่งที่ทำ ก่อนส่งข้อมูล");
       return;
     }
-    
-    if (Object.keys(toothData).length === 0) {
-      if (!window.confirm("คุณยังไม่ได้บันทึกข้อมูลฟัน (Odontogram) ยืนยันที่จะบันทึกการรักษาใช่หรือไม่?")) {
-        return;
-      }
-    }
+
 
     const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
     const formattedMedicines = form.medicines.map(m => `💊 ${m.name} x${m.qty} ${m.unit || ''}`);
@@ -302,19 +237,7 @@ export default function TreatmentQueue({
 
     const detailedServices = [...form.services];
 
-    if (selectedPlanMonth && activePlan && activeInstallments.length > 0) {
-      const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
-      if (inst && Number(inst.amount) > 0) {
-        formattedServices.unshift(`ชำระค่างวดจัดฟัน งวดที่ ${inst.installment_number} (รอบเดือนที่ ${selectedPlanMonth})`);
 
-        detailedServices.unshift({
-          id: null, // Null to avoid foreign key violation
-          name: `จัดฟัน งวดที่ ${inst.installment_number} (แผน: ${activePlan.plan_name})`,
-          qty: 1,
-          price: Number(inst.amount)
-        } as any);
-      }
-    }
 
     await onUpdateAppt(appt.id, {
       status: "รอชำระเงิน",
@@ -453,37 +376,7 @@ export default function TreatmentQueue({
         />
       )}
 
-      {selectedPatientIdForPlan && (
-        <TreatmentPlanBuilder
-          patientId={selectedPatientIdForPlan}
-          existingPlan={isEditingPlan ? activePlan : undefined}
-          lockedDentistId={doctor?.id}
-          onClose={(newPlan) => {
-            setSelectedPatientIdForPlan(null);
-            setIsEditingPlan(false);
-            if (newPlan) {
-              setActivePlan(newPlan);
-              setSelectedPlanMonth(1);
 
-              // Auto pull month 1 data
-              if (newPlan.plan_details && newPlan.plan_details.length > 0) {
-                const m1 = newPlan.plan_details.find((d: any) => d.month === 1) || newPlan.plan_details[0];
-                if (m1) {
-                  setForm(f => ({
-                    ...f,
-                    notes: m1.notes || f.notes,
-                    services: (() => {
-                      const existingNames = new Set(f.services.map(s => s.name));
-                      const newS = (m1.services || []).filter((s: any) => !existingNames.has(s.service_name)).map((s: any) => ({ name: s.service_name, qty: 1 }));
-                      return [...f.services, ...newS];
-                    })()
-                  }));
-                }
-              }
-            }
-          }}
-        />
-      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>คิวการรักษา</h1>
@@ -551,10 +444,6 @@ export default function TreatmentQueue({
                     if (isExp) setExpanded(null);
                     else {
                       setExpanded(a.id);
-                      if (a.patientId) {
-                        const planData = await getPatientActiveTreatmentPlan(a.patientId);
-                        setActivePlan(planData || null);
-                      }
                     }
                   }} style={{ color: "#4A6080" }}>
                     <ChevronRight size={16} className="transition-transform" style={{ transform: isExp ? "rotate(90deg)" : "none" }} />
@@ -615,42 +504,7 @@ export default function TreatmentQueue({
                     );
                   })()}
 
-                  {activePlan && activePlan.plan_details && (
-                    <div className="mb-4 bg-teal-50/50 rounded-xl p-3 border border-teal-100 mt-2">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="text-xs font-semibold text-teal-800">
-                          แผนการรักษา: {activePlan.plan_name}
-                        </p>
-                        {activePlan.dentist_id === doctor?.id && (
-                          <button
-                            onClick={() => {
-                              setIsEditingPlan(true);
-                              setSelectedPatientIdForPlan(a.patientId);
-                            }}
-                            className="bg-white border border-teal-200 text-teal-600 text-[10px] px-2.5 py-1 rounded-md hover:bg-teal-50 transition-colors flex items-center gap-1 shadow-sm"
-                          >
-                            ✏️ แก้ไขแผน
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex gap-2 flex-wrap pb-2">
-                        {activePlan.plan_details.map((plan: any) => {
-                          const isCompleted = plan.status === 'completed';
-                          return (
-                            <div
-                              key={plan.month}
-                              className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${isCompleted ? "bg-teal-600 border-teal-600 text-white" :
-                                "bg-white border-slate-200 text-slate-600"
-                                }`}
-                            >
-                              <span className="text-sm font-bold">{plan.month}</span>
-                              {!isCompleted && plan.services?.length > 0 && <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5"></div>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+
 
                   <div className="flex gap-2 mt-4">
                     {act && (
@@ -663,14 +517,6 @@ export default function TreatmentQueue({
                         {act.next === "รอชำระเงิน" ? <><ClipboardList size={14} /> {act.label}</> : <><Clock size={14} /> {act.label}</>}
                       </button>
                     )}
-                    {!activePlan && ["จัดฟัน", "รักษาราก", "เทียม", "ปลอม", "วีเนียร์", "ครอบฟัน"].some(kw => a.service.includes(kw)) && (
-                      <button
-                        onClick={() => setSelectedPatientIdForPlan(a.patientId)}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all text-teal-700 bg-teal-50 hover:bg-teal-100"
-                      >
-                        + สร้างแผนการรักษา
-                      </button>
-                    )}
                   </div>
                 </div>
               )}
@@ -680,123 +526,7 @@ export default function TreatmentQueue({
                 <div className="px-5 pb-3 border-t" style={{ borderColor: "rgba(26,54,93,0.06)" }}>
                   <div className="flex items-center justify-between py-2">
                     <p className="text-sm font-semibold" style={{ color: "#1A365D" }}>บันทึกการรักษา — {a.patientName}</p>
-
-                    {/* Toggle whole mouth */}
-                    <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
-                      {!activePlan && ["จัดฟัน", "รักษาราก", "เทียม", "ปลอม", "วีเนียร์", "ครอบฟัน"].some(kw => a.service.includes(kw)) && (
-                        <button
-                          onClick={() => setSelectedPatientIdForPlan(a.patientId)}
-                          className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all text-teal-700 bg-teal-50 hover:bg-teal-100 mr-2"
-                        >
-                          + สร้างแผนการรักษา
-                        </button>
-                      )}
-                    </div>
                   </div>
-
-                  {activePlan && activePlan.plan_details && (() => {
-                    const currentMonthData = activePlan.plan_details.find((d: any) => d.month === selectedPlanMonth);
-                    const totalMonths = activePlan.plan_details.length;
-                    const completedMonths = activePlan.plan_details.filter((d: any) => d.status === 'completed').length;
-                    return (
-                      <div className="mb-4 rounded-xl border border-teal-200 overflow-hidden">
-                        {/* Header - Plan context */}
-                        <div className="bg-teal-600 text-white px-3 py-2 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <ClipboardList size={14} />
-                            <span className="text-xs font-semibold">{activePlan.plan_name}</span>
-                            <span className="bg-teal-500 text-teal-100 text-[10px] px-2 py-0.5 rounded-full">
-                              ทำไปแล้ว {completedMonths}/{totalMonths} ครั้ง
-                            </span>
-                          </div>
-                          {activePlan.dentist_id === doctor?.id && (
-                            <button
-                              onClick={() => { setIsEditingPlan(true); setSelectedPatientIdForPlan(a.patientId); }}
-                              className="bg-teal-500 hover:bg-teal-400 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1 transition-colors"
-                            >
-                              ✏️ แก้ไขแผน
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Context banner — บอกหมอว่ากำลังบันทึกอะไร */}
-                        {selectedPlanMonth ? (
-                          <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex items-start gap-2">
-                            <span className="text-amber-500 mt-0.5 shrink-0">📋</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-amber-800">
-                                กำลังบันทึกการรักษา — ครั้งที่ {selectedPlanMonth} ตามแผน
-                              </p>
-                              {currentMonthData?.services?.length > 0 ? (
-                                <p className="text-[11px] text-amber-700 mt-0.5">
-                                  แผนวางไว้: {currentMonthData.services.map((s: any) => s.service_name).join(', ')}
-                                  {' '}— บันทึกสิ่งที่ทำจริงด้านล่าง (อาจต่างจากแผนได้)
-                                </p>
-                              ) : (
-                                <p className="text-[11px] text-amber-700 mt-0.5">ไม่มีหัตถการระบุไว้ล่วงหน้าในครั้งนี้ — บันทึกสิ่งที่ทำจริงด้านล่าง</p>
-                              )}
-                            </div>
-                            {currentMonthData?.services?.length > 0 && (
-                              <button
-                                onClick={() => {
-                                  if (currentMonthData) {
-                                    setForm(f => ({
-                                      ...f,
-                                      notes: currentMonthData.notes || f.notes,
-                                      services: (() => {
-                                        const existingNames = new Set(f.services.map(s => s.name));
-                                        const newS = (currentMonthData.services || []).filter((s: any) => !existingNames.has(s.service_name)).map((s: any) => ({ name: s.service_name, qty: 1 }));
-                                        return [...f.services, ...newS];
-                                      })()
-                                    }));
-                                    if (currentMonthData.odontogram_data) {
-                                      setToothData(prev => ({ ...prev, ...currentMonthData.odontogram_data }));
-                                    }
-                                  }
-                                }}
-                                className="shrink-0 bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] px-2 py-1 rounded border border-amber-300 transition-colors whitespace-nowrap"
-                              >
-                                ↓ ดึงมาใส่
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center gap-2">
-                            <span className="text-slate-400 shrink-0">👆</span>
-                            <p className="text-[11px] text-slate-600">
-                              เลือกครั้งที่ด้านล่างเพื่อระบุว่าวันนี้ทำตาม<strong>ครั้งที่เท่าไหร่</strong>ในแผน — หรือไม่เลือกก็ได้ถ้าเป็นการรักษาที่ไม่ใช่ส่วนของแผนนี้
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Month selector */}
-                        <div className="bg-white px-3 py-2.5">
-                          <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">เลือกครั้งที่ในแผน</p>
-                          <div className="flex gap-1.5 flex-wrap">
-                            {activePlan.plan_details.map((plan: any) => {
-                              const isSelected = selectedPlanMonth === plan.month;
-                              const isCompleted = plan.status === 'completed';
-                              return (
-                                <button
-                                  key={plan.month}
-                                  onClick={() => setSelectedPlanMonth(isSelected ? null : plan.month)}
-                                  title={isCompleted ? `ครั้งที่ ${plan.month} — เสร็จแล้ว` : `ครั้งที่ ${plan.month}${plan.services?.length > 0 ? ': ' + plan.services.map((s: any) => s.service_name).join(', ') : ''}`}
-                                  className={`flex flex-col items-center justify-center w-9 h-9 rounded-md border transition-all ${isCompleted ? "bg-teal-600 border-teal-600 text-white cursor-default" :
-                                    isSelected ? "bg-teal-100 border-teal-500 text-teal-800 shadow-sm ring-1 ring-teal-500" :
-                                      "bg-white border-slate-200 text-slate-600 hover:border-teal-300"
-                                    }`}
-                                >
-                                  <span className="text-sm font-bold">{plan.month}</span>
-                                  {!isCompleted && plan.services?.length > 0 && <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5"></div>}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <div>
                       <Odontogram
@@ -925,17 +655,7 @@ export default function TreatmentQueue({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="text-xs font-medium block" style={{ color: "#4A6080" }}>บันทึกหัตถการ / สิ่งที่ทำ</label>
-                          <button
-                            onClick={() => {
-                              const summary = generateToothSummary(toothData);
-                              if (summary) {
-                                setForm(f => ({ ...f, notes: f.notes ? `${f.notes}\n- ${summary}` : `- ${summary}` }));
-                              }
-                            }}
-                            className="text-[10px] text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 hover:bg-teal-100 transition-colors"
-                          >
-                            + แทรกซี่ฟันจากกราฟิก
-                          </button>
+
                         </div>
                         <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                           rows={2} placeholder="อธิบายขั้นตอนการรักษาที่ดำเนินการ..."
@@ -952,16 +672,10 @@ export default function TreatmentQueue({
 
                       {/* Bill Preview / Safety Net */}
                       {(() => {
-                        let baseInstAmount = 0;
-                        if (selectedPlanMonth && activePlan && activeInstallments.length > 0) {
-                          const inst = activeInstallments.find(i => i.installment_number === selectedPlanMonth);
-                          if (inst && Number(inst.amount) > 0) baseInstAmount = Number(inst.amount);
-                        }
-
                         const servicesCost = form.services.reduce((sum, s) => sum + ((s.price ?? 0) * s.qty), 0);
                         const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
                         const suggestedExtraCost = servicesCost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : servicesCost;
-                        const totalBill = baseInstAmount + suggestedExtraCost;
+                        const totalBill = suggestedExtraCost;
 
                         if (totalBill > 0) {
                           return (
@@ -969,8 +683,6 @@ export default function TreatmentQueue({
                               <div className="flex flex-col">
                                 <span className="text-[10px] font-bold text-red-800 uppercase tracking-wide">บิลที่จะส่งให้พนักงานเก็บเงิน</span>
                                 <div className="flex items-center gap-1.5 text-xs text-red-600 mt-1">
-                                  {baseInstAmount > 0 && <span>ค่างวด ({baseInstAmount.toLocaleString()})</span>}
-                                  {baseInstAmount > 0 && suggestedExtraCost > 0 && <span>+</span>}
                                   {suggestedExtraCost > 0 && <span>ค่าหัตถการ ({suggestedExtraCost.toLocaleString()})</span>}
                                 </div>
                               </div>

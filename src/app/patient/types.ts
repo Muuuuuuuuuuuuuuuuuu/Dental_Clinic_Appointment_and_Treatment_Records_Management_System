@@ -24,13 +24,7 @@ export interface PatientAppointment {
   durationMins?: number;
 }
 
-export interface TreatmentPlan {
-  id: number;
-  name: string;
-  totalCost: number;
-  paidAmount: number;
-  installments: { dueDate: string; amount: number; paid: boolean; }[];
-}
+
 
 export interface TreatmentRecord {
   id: number; service: string; doctor: string; date: string; time: string;
@@ -39,7 +33,6 @@ export interface TreatmentRecord {
   medications?: string[];
   recommendations?: string;
   nextApptId?: number;
-  treatmentPlanId?: number;
   odontogramData?: Record<number, string>;
 }
 

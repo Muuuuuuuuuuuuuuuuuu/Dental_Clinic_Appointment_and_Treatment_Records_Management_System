@@ -4,9 +4,8 @@ import { getServices } from "../../shared/supabaseApi";
 import ServiceManagement from "../settings/ServiceManagement";
 import ClinicSettingsManagement from "../settings/ClinicSettingsManagement";
 import ProductManagement from "../settings/ProductManagement";
-import PackageManagement from "../users/PackageManagement";
 
-type ClinicSubView = null | "services" | "settings" | "products" | "packages";
+type ClinicSubView = null | "services" | "settings" | "products";
 
 const CARD_DEFS = [
   {
@@ -36,15 +35,6 @@ const CARD_DEFS = [
     bgLight: "#D1FAE5",
     countLabel: "รายการ",
   },
-  {
-    key: "packages" as const,
-    icon: Package,
-    title: "แพ็กเกจจัดฟัน",
-    desc: "จัดการโปรโมชั่น ค่างวดแรกเข้า และรายเดือน",
-    gradient: "linear-gradient(135deg, #EC4899 0%, #BE185D 100%)",
-    bgLight: "#FCE7F3",
-    countLabel: "แพ็กเกจ",
-  },
 ];
 
 export default function ClinicHub() {
@@ -60,7 +50,6 @@ export default function ClinicHub() {
   if (subView === "services") return <SubViewWrapper onBack={() => setSubView(null)}><ServiceManagement /></SubViewWrapper>;
   if (subView === "settings") return <SubViewWrapper onBack={() => setSubView(null)}><ClinicSettingsManagement /></SubViewWrapper>;
   if (subView === "products") return <SubViewWrapper onBack={() => setSubView(null)}><ProductManagement /></SubViewWrapper>;
-  if (subView === "packages") return <SubViewWrapper onBack={() => setSubView(null)}><PackageManagement /></SubViewWrapper>;
 
   return (
     <div>

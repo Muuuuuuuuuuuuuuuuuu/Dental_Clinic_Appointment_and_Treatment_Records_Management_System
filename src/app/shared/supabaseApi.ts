@@ -3,13 +3,13 @@ import { supabase } from './utils/supabaseClient';
 import { sendOTPEmail } from './utils/emailService';
 export { supabase };
 import { RegForm } from '../patient/types';
-import { Appointment, DentistInfo, PatientInfo, StaffInfo, AdminInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, TreatmentPlan, ServiceCategoryType } from './data';
+import { Appointment, DentistInfo, PatientInfo, StaffInfo, AdminInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, ServiceCategoryType } from './data';
 export * from './api/dentistApi';
 export * from './api/authApi';
 export * from './api/appointmentApi';
 export * from './api/treatmentApi';
 import { notifyAppointmentsUpdated, checkAppointmentConflicts } from './api/appointmentApi';
-import { TreatmentPackage } from './data';
+
 
 // ============================================================================
 // REALTIME HELPERS

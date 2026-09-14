@@ -8,7 +8,7 @@ import { View, PatientUser } from "../types";
 import {
   addAppointment, getClinicClosures,
   getLandingServices, getLandingDoctors, getDentistsByService,
-  getTreatmentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves, getMonthlyFullyBookedDates, supabase
+  getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves, getMonthlyFullyBookedDates, supabase
 } from "../../shared/supabaseApi";
 import { SpecialClosure, hasHealthAlert } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";

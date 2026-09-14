@@ -103,30 +103,6 @@ export async function getPatientTreatmentRecords(patientId?: number) {
   });
 }
 
-export async function getPatientActiveTreatmentPlan(patientId: number) {
-  const { data: plan } = await supabase.from('treatment_plan')
-    .select('*')
-    .eq('patient_id', patientId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-    
-  if (plan) {
-    const { data: items } = await supabase.from('treatment_plan_item').select('*').eq('plan_id', plan.plan_id);
-    const planDetails = (items || []).map(item => ({
-      month: item.month_number,
-      services: item.services_json || [],
-      odontogram_data: item.odontogram_data || {},
-      notes: item.notes || '',
-      status: item.status
-    })).sort((a, b) => a.month - b.month);
-    
-    plan.plan_details = planDetails;
-  }
-  
-  return plan;
-}
-
 export async function getPatientLatestOdontogram(patientId: number) {
   const { data } = await supabase.from('treatment_record')
     .select('odontogram_data, appointment!inner(patient_id)')
@@ -138,9 +114,8 @@ export async function getPatientLatestOdontogram(patientId: number) {
   return data?.odontogram_data || {};
 }
 
-export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>, doctorId?: number, planId?: number, planMonth?: number, detailedServices?: any[], medicines?: any[]) {
-  // 1. Update appointment status
-  await supabase.from('appointment').update({ appointment_status: 'รอชำระเงิน' }).eq('appointment_id', apptId);
+export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>, doctorId?: number, detailedServices?: any[], medicines?: any[]) {
+
 
   // 2. Fetch treatment_record
   const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).maybeSingle();
@@ -210,13 +185,11 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
 
   // 4. (Removed) Payment record is now ONLY created by the Staff during checkout.
 
-  // 5. Update Treatment Plan Progress if provided
-  if (planId && planMonth) {
-    // Update the new relational table
-    await supabase.from('treatment_plan_item')
-      .update({ status: 'completed' })
-      .eq('plan_id', planId)
-      .eq('month_number', planMonth);
+  // 4. Update appointment status (moved to end to prevent Realtime fetching incomplete records)
+  const { data: updatedAppt, error: apptErr } = await supabase.from('appointment').update({ appointment_status: 'รอชำระเงิน' }).eq('appointment_id', apptId).select().single();
+  if (apptErr || !updatedAppt) {
+    console.error("Error updating appointment status:", apptErr);
+    throw new Error("Failed to update appointment status to รอชำระเงิน: " + (apptErr?.message || "No rows updated (RLS?)"));
   }
 
   notifyAppointmentsUpdated();
@@ -341,88 +314,6 @@ export async function getPatientHistory(patientId: number) {
 }
 
 
-export async function getTreatmentPlans(hn?: string) {
-  let query = supabase.from('treatment_plan').select(`
-    plan_id, patient_id, plan_name, total_cost, dentist_id, package_id,
-    installment (installment_id, installment_number, amount, due_date, paid),
-    patient (users (profile (first_name, last_name)))
-  `);
-
-  if (hn) {
-    const patientId = parseInt(hn.replace('HN', ''), 10);
-    if (!isNaN(patientId)) {
-      query = query.eq('patient_id', patientId);
-    }
-  }
-
-  const { data, error } = await query;
-  if (error) {
-    console.error("getTreatmentPlans error:", error);
-    return [];
-  }
-
-  // Fetch normalized items from the new table
-  const planIds = data.map((d: any) => d.plan_id);
-  let itemsByPlan: Record<number, any[]> = {};
-  if (planIds.length > 0) {
-    const { data: itemsData } = await supabase.from('treatment_plan_item').select('*').in('plan_id', planIds);
-    if (itemsData) {
-      itemsData.forEach((item: any) => {
-        if (!itemsByPlan[item.plan_id]) itemsByPlan[item.plan_id] = [];
-        itemsByPlan[item.plan_id].push({
-          month: item.month_number,
-          services: item.services_json || [],
-          odontogram_data: item.odontogram_data || {},
-          notes: item.notes || '',
-          status: item.status
-        });
-      });
-    }
-  }
-
-  return data.map((d: any) => {
-    const prof = d.patient?.users?.profile;
-    const installments = (d.installment || []).map((inst: any) => ({
-      id: inst.installment_id,
-      installment_number: inst.installment_number,
-      dueDate: inst.due_date,
-      amount: inst.amount,
-      paid: inst.paid
-    })).sort((a: any, b: any) => a.installment_number - b.installment_number);
-    
-    let planDetails = itemsByPlan[d.plan_id] || [];
-    if (planDetails.length > 0) {
-      planDetails.sort((a: any, b: any) => a.month - b.month);
-    }
-
-    const paidAmount = installments.filter((i: any) => i.paid).reduce((sum: number, i: any) => sum + Number(i.amount || 0), 0);
-    const totalCost = Number(d.total_cost || 0);
-
-    return {
-      id: d.plan_id,
-      hn: `HN${String(d.patient_id).padStart(3, '0')}`,
-      name: prof ? `${prof.first_name} ${prof.last_name}` : 'ไม่ระบุชื่อ',
-      planName: d.plan_name || 'แผนการรักษา',
-      totalCost: totalCost,
-      paidAmount: paidAmount,
-      remainingAmount: totalCost - paidAmount,
-      packageId: d.package_id,
-      plan_details: planDetails,
-      installments: installments
-    };
-  });
-}
-
-export async function updateInstallmentPaid(installmentId: number, paid: boolean) {
-  const { error } = await supabase.from('installment').update({
-    paid,
-    paid_at: paid ? new Date().toISOString() : null
-  }).eq('installment_id', installmentId);
-  if (error) throw error;
-}
-// updateTreatmentPlanPaidAmount ถูกลบออกแล้ว
-// paid_amount คำนวณอัตโนมัติจาก View treatment_plan_summary (SUM จากตาราง payment)
-// ไม่จำเป็นต้อง update ด้วยมืออีกต่อไป
 
 export async function getTreatmentRecords(patientName?: string) {
   let query = supabase.from('treatment_record').select(`
@@ -462,81 +353,7 @@ export async function getTreatmentRecords(patientName?: string) {
   });
 }
 
-// --- Proactive Long-Term Treatment Tracking ---
 
-export async function getActiveTreatmentTrackings() {
-  // Fetch treatment plans that are not fully completed
-  const { data: plans, error } = await supabase.from('treatment_plan').select(`
-    plan_id, patient_id, plan_name, total_cost, dentist_id,
-    dentist (users(profile(first_name, last_name))),
-    patient (users(profile(first_name, last_name, phone_number)))
-  `);
-  
-  if (error || !plans) return [];
-
-  const planIds = plans.map(p => p.plan_id);
-  
-  if (planIds.length === 0) return [];
-
-  // Fetch items for these plans
-  const { data: items } = await supabase.from('treatment_plan_item')
-    .select('item_id, plan_id, month_number, services_json, status')
-    .in('plan_id', planIds)
-    .order('month_number', { ascending: true });
-
-  if (!items) return [];
-
-  const trackings: any[] = [];
-  
-  plans.forEach(plan => {
-    const planItems = items.filter(i => i.plan_id === plan.plan_id);
-    // Find the next incomplete month
-    const nextItem = planItems.find(i => i.status !== 'completed');
-    
-    if (nextItem) {
-      const patientProf = (plan as any).patient?.users?.profile || {};
-      const doctorProf = (plan as any).dentist?.users?.profile || {};
-      const doctorName = doctorProf.first_name ? `${doctorProf.first_name} ${doctorProf.last_name}` : 'ไม่ระบุ';
-      
-      // We interpret 'pending' as waiting for booking, 'sent_slip' as slip sent, 'booked' as booked.
-      let trackingStatus = 'รอติดตาม';
-      if (nextItem.status === 'sent_slip') trackingStatus = 'ส่งใบนัดแล้ว';
-      if (nextItem.status === 'booked') trackingStatus = 'นัดหมายแล้ว';
-      
-      let nextService = '';
-      if (nextItem.services_json && nextItem.services_json.length > 0) {
-         nextService = nextItem.services_json.map((s:any) => s.service_name || s.name).join(', ');
-      }
-      
-      trackings.push({
-        id: nextItem.item_id,
-        planId: plan.plan_id,
-        patientId: plan.patient_id,
-        patientName: `${patientProf.first_name || ''} ${patientProf.last_name || ''}`.trim(),
-        patientPhone: patientProf.phone_number || '',
-        planName: plan.plan_name,
-        doctorId: plan.dentist_id,
-        doctorName: doctorName,
-        month: nextItem.month_number,
-        nextService: nextService,
-        trackingStatus: trackingStatus,
-        dueDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0], // Mock Due Date based on today for simplicity in UI, ideally from schedule
-      });
-    }
-  });
-
-  return trackings;
-}
-
-export async function sendAppointmentSlip(planItemId: number) {
-  // We just update the item status to 'sent_slip'
-  const { error } = await supabase.from('treatment_plan_item')
-    .update({ status: 'sent_slip' })
-    .eq('item_id', planItemId);
-    
-  if (error) throw error;
-  return true;
-}
 
 // --- Patient Registration ---
 export async function getProducts(type?: string) {
@@ -592,41 +409,4 @@ export async function deleteProduct(id: number) {
   return data;
 }
 
-export async function getTreatmentPackages() {
-  const { data, error } = await supabase
-    .from('treatment_package')
-    .select('*')
-    .eq('is_active', true)
-    .order('package_name', { ascending: true });
-    
-  if (error) {
-    console.error("getTreatmentPackages error:", error);
-    return [];
-  }
-  return data;
-}
 
-export async function addTreatmentPackage(pkg: any) {
-  const { data, error } = await supabase.from('treatment_package').insert([{
-    package_name: pkg.package_name,
-    total_cost: pkg.total_cost,
-    down_payment: pkg.down_payment,
-    down_payment_months: pkg.down_payment_months,
-    monthly_payment: pkg.monthly_payment,
-    is_active: pkg.is_active !== undefined ? pkg.is_active : true
-  }]).select();
-  if (error) throw error;
-  return data;
-}
-
-export async function updateTreatmentPackage(id: number, updates: any) {
-  const { data, error } = await supabase.from('treatment_package').update(updates).eq('package_id', id).select();
-  if (error) throw error;
-  return data;
-}
-
-export async function deleteTreatmentPackage(id: number) {
-  const { data, error } = await supabase.from('treatment_package').update({ is_active: false }).eq('package_id', id);
-  if (error) throw error;
-  return data;
-}

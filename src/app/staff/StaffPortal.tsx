@@ -8,8 +8,6 @@ import PatientManagementView from "./patients/PatientManagementView";
 
 import QueueBoard from "./queue/QueueBoard";
 import StaffLeaveView from "./leave/StaffLeaveView";
-import TreatmentTrackingView from "./tracking/TreatmentTrackingView";
-
 import {
   Home, Search, Calendar, Users, FileText, LogOut, Smile,
   CheckCircle, Clock, CreditCard, Menu, UserCheck,
@@ -47,7 +45,6 @@ const STAFF_NAV = [
   { key: "queue" as StaffView, label: "คิวงาน", icon: Home, isOperational: true },
   { key: "appointments" as StaffView, label: "จัดการนัดหมาย", icon: CheckCircle, isOperational: true },
   { key: "patients" as StaffView, label: "จัดการคนไข้", icon: Users, isOperational: true },
-  { key: "tracking" as StaffView, label: "ติดตามเคส", icon: AlertTriangle, isOperational: true },
   { key: "walkin" as StaffView, label: "จองคิว Walk-in", icon: Plus, isOperational: true },
   { key: "payment" as StaffView, label: "รับชำระเงิน", icon: CreditCard, isOperational: true },
   { key: "leave" as StaffView, label: "ปฏิทินและขอลางาน", icon: CalendarX, isOperational: false },
@@ -321,7 +318,6 @@ export default function StaffPortal({
               {view === "queue" && <QueueBoard setView={setView} appointments={appointments} />}
               {view === "appointments" && <AppointmentManagementView appointments={appointments} />}
               {view === "patients" && <PatientManagementView />}
-              {view === "tracking" && <TreatmentTrackingView />}
               {view === "walkin" && <WalkInBooking onAddAppt={onAddAppt} />}
               {view === "payment" && <PaymentView appointments={appointments} onUpdateAppt={onUpdateAppt} />}
               {view === "leave" && <StaffLeaveView staff={staffInfo} />}

@@ -156,7 +156,6 @@ export async function getAppointments(date?: string) {
       cost,
       paid,
       note: d.note,
-      treatmentPlanId: d.treatment_plan_id,
       odontogramData: d.treatment_record ? (Array.isArray(d.treatment_record) ? d.treatment_record[0]?.odontogram_data : d.treatment_record.odontogram_data) : undefined
     };
   }) as Appointment[];
@@ -274,7 +273,6 @@ export async function getPatientAppointments(patientId?: number) {
       cost,
       paid,
       note: d.note,
-      treatmentPlanId: d.treatment_plan_id,
       odontogramData: d.treatment_record ? (Array.isArray(d.treatment_record) ? d.treatment_record[0]?.odontogram_data : d.treatment_record.odontogram_data) : undefined
     };
   }) as Appointment[];
@@ -586,7 +584,6 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
       end_time_est: appointment.time ? endTimeStr : null,
       appointment_status: appointment.status,
       channel: appointment.source === 'doctor' ? 'Walk-in' : 'ออนไลน์',
-      treatment_plan_id: appointment.treatmentPlanId || null,
       note: appointment.note || null
   };
 
@@ -642,17 +639,6 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
       });
       if (trErr) console.error("Error inserting treatment record:", trErr);
     }
-  }
-
-  // 7. If this appointment is linked to a treatment plan item (long-term tracking)
-  if (appointment.planItemId) {
-    // Assuming status can be set to 'นัดหมายแล้ว' or similar in our tracking logic
-    // But since the actual column is `status` (which only takes pending/completed natively in TreatmentPlanBuilder)
-    // we'll update it to 'booked' or update a notes field, or if we rely on appointment_id, we could store it in notes for now
-    // Let's just update the status to 'booked'
-    await supabase.from('treatment_plan_item')
-      .update({ status: 'booked' })
-      .eq('item_id', appointment.planItemId);
   }
 
   notifyAppointmentsUpdated();

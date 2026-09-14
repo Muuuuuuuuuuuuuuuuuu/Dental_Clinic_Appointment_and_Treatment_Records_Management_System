@@ -1,25 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { Search, Filter, History, FileText , Users } from "lucide-react";
 
-import { Appointment, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
+import { Appointment, STATUS_COLORS, hasHealthAlert, PatientInfo } from "../../shared/data";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
-import TreatmentPlanBuilder from "../treatment/TreatmentPlanBuilder";
+import { getPatients } from "../../shared/supabaseApi";
 
 export default function PatientRecords({ doctorId }: { doctorId?: number }) {
   const { appointments, loading } = useRealtimeAppointments();
   const [q, setQ] = useState("");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+  const [allPatients, setAllPatients] = useState<PatientInfo[]>([]);
 
-  const results = appointments.filter(a =>
-    a.patientName.includes(q) || a.hn.includes(q)
+  useEffect(() => {
+    getPatients().then(setAllPatients).catch(console.error);
+  }, []);
+
+  const results = allPatients.filter(p =>
+    p.name.includes(q) || p.hn.includes(q)
   );
-  const unique = Array.from(new Map(results.map(a => [a.hn, a])).values());
 
   return (
     <div>
-      {selectedPatientId && (
-        <TreatmentPlanBuilder patientId={selectedPatientId} onClose={() => setSelectedPatientId(null)} />
-      )}
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>เวชระเบียนคนไข้</h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>ค้นหาข้อมูลและประวัติสุขภาพคนไข้</p>
@@ -31,34 +32,34 @@ export default function PatientRecords({ doctorId }: { doctorId?: number }) {
           style={{ backgroundColor: "white", border: "1.5px solid rgba(26,54,93,0.12)", color: "#1A365D", boxShadow: "0 2px 8px rgba(26,54,93,0.06)" }} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {unique.map(a => {
-          const history = appointments.filter(x => x.hn === a.hn && ["เสร็จสิ้น","รอชำระเงิน","ชำระเงินแล้ว"].includes(x.status));
+        {results.map(p => {
+          const history = appointments.filter(x => x.hn === p.hn && ["เสร็จสิ้น","รอชำระเงิน","ชำระเงินแล้ว"].includes(x.status));
           return (
-            <div key={a.hn} className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
+            <div key={p.hn} className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
                   style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-                  {a.patientName[2] ?? "?"}
+                  {p.name[2] ?? "?"}
                 </div>
                 <div>
-                  <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>{a.patientName}</p>
-                  <p className="text-xs" style={{ color: "#4A6080" }}>{a.hn} • {a.patientPhone}</p>
+                  <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>{p.name}</p>
+                  <p className="text-xs" style={{ color: "#4A6080" }}>{p.hn} • {p.phone}</p>
                 </div>
 
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex gap-2 flex-wrap">
-                  {hasHealthAlert(a.conditions) && (
+                  {hasHealthAlert(undefined, p.underlyingDisease) && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E0", color: "#E65100" }}>
-                      โรคประจำตัว: {a.conditions}
+                      โรคประจำตัว: {p.underlyingDisease}
                     </span>
                   )}
-                  {hasHealthAlert(a.allergies) && (
+                  {hasHealthAlert(p.allergyHistory) && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FEF2F2", color: "#B91C1C" }}>
-                      แพ้: {a.allergies}
+                      แพ้: {p.allergyHistory}
                     </span>
                   )}
-                  {!hasHealthAlert(a.conditions) && !hasHealthAlert(a.allergies) && (
+                  {!hasHealthAlert(p.allergyHistory, p.underlyingDisease) && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E8FFF0", color: "#1B7A3E" }}>ปกติ</span>
                   )}
                 </div>
@@ -77,7 +78,7 @@ export default function PatientRecords({ doctorId }: { doctorId?: number }) {
             </div>
           );
         })}
-        {q && unique.length === 0 && (
+        {q && results.length === 0 && (
           <div className="col-span-2 text-center py-12" style={{ color: "#4A6080" }}>
             <Users size={32} className="mx-auto mb-2 opacity-20" />
             <p className="text-sm">ไม่พบข้อมูลคนไข้</p>

@@ -10,7 +10,6 @@ import TreatmentQueue from "./treatment/TreatmentQueue";
 import DoctorDashboard from "./dashboard/DoctorDashboard";
 
 import TreatmentHistory from "./treatment/TreatmentHistory";
-import TreatmentTrackingView from "../staff/tracking/TreatmentTrackingView";
 
 import {
   Home, Calendar, Users, FileText, LogOut, Smile, ChevronRight,

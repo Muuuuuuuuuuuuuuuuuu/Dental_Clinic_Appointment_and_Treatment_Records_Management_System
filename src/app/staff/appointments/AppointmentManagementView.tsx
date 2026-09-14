@@ -277,11 +277,9 @@ export default function AppointmentManagementView({
                   </button>
                 )}
                 
-                {activeTab === "all" && (
-                  <button className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-gray-100 border border-gray-200 text-gray-600">
-                    ดูรายละเอียด
-                  </button>
-                )}
+                {/* {activeTab === "all" && (
+                  // Removed 'View Details' button as requested
+                )} */}
               </div>
             </div>
           ))

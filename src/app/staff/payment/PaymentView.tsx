@@ -39,10 +39,6 @@ export default function PaymentView({
   }, []);
 
 
-  // Installment info
-  const [installmentInfo, setInstallmentInfo] = useState<{ id: number; amount: number; installment_number: number } | null>(null);
-  const [activePlan, setActivePlan] = useState<any | null>(null);
-  const [showFinancialBuilder, setShowFinancialBuilder] = useState(false);
   const [hasFutureAppointment, setHasFutureAppointment] = useState<boolean>(false);
 
   // Modals
@@ -102,9 +98,6 @@ export default function PaymentView({
         if (!selectedAppt) return;
         setDiscount("0");
         setPaymentMethod("เงินสด");
-        setInstallmentInfo(null);
-        setActivePlan(null);
-        
         // Initialize adjustedPrices from detailedServices
         const initialPrices: Record<string, string> = {};
           const initialQuantities: Record<string, number> = {};
@@ -120,10 +113,7 @@ export default function PaymentView({
 
         if (selectedAppt.patientId) {
 
-        import('../../shared/supabaseApi').then(({ getPatientActiveTreatmentPlan, getPatientAppointments }) => {
-          getPatientActiveTreatmentPlan(selectedAppt.patientId!).then(plan => {
-            setActivePlan(plan);
-          });
+        import('../../shared/supabaseApi').then(({ getPatientAppointments }) => {
           getPatientAppointments(selectedAppt.patientId!).then(appts => {
             // Check if there are any appointments in the future or "open tickets" (รอการยืนยัน)
             const today = new Date().toISOString().split('T')[0];
@@ -332,57 +322,6 @@ export default function PaymentView({
               </div>
             </div>
 
-            {/* Treatment Plan Summary (Informational) */}
-            {activePlan && (
-              <div className="mb-4">
-                <h3 className="text-xs font-bold mb-2" style={{ color: "#4A6080" }}>ข้อมูลแผนการรักษาระยะยาว</h3>
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 flex flex-col gap-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-sm" style={{ color: "#1D6FA4" }}>{activePlan.plan_name}</span>
-                    <span className="text-xs font-medium px-2 py-1 bg-white rounded-md text-blue-700 border border-blue-200">
-                      ยอดรวม ฿{(activePlan.total_cost || 0).toLocaleString()}
-                    </span>
-                  </div>
-                  
-                  {(() => {
-                    if (activePlan.plan_details && activePlan.plan_details.length > 0) {
-                      const completedCount = activePlan.plan_details.filter((d: any) => d.status === 'completed').length;
-                      const nextMonth = activePlan.plan_details.find((d: any) => d.status !== 'completed');
-                      return (
-                        <div className="text-xs" style={{ color: "#4A6080" }}>
-                          <p>ดำเนินการแล้ว: <span className="font-bold text-green-600">{completedCount}</span> / {activePlan.plan_details.length} เดือน</p>
-                          {nextMonth && (
-                            <p className="mt-1">
-                              นัดหมายครั้งถัดไปควรเป็น: <span className="font-bold" style={{ color: "#1A365D" }}>รอบเดือนที่ {nextMonth.month}</span>
-                            </p>
-                          )}
-                          
-                          {/* Future Appointment Status Indicator */}
-                          <div className={`mt-2 p-2 rounded-lg border text-xs flex items-center gap-2 ${
-                            hasFutureAppointment 
-                              ? "bg-green-50 border-green-200 text-green-700" 
-                              : "bg-orange-50 border-orange-200 text-orange-700"
-                          }`}>
-                            {hasFutureAppointment ? (
-                              <>
-                                <CheckCircle size={14} className="text-green-600" />
-                                <span>คนไข้มี <strong>ใบนัดหมายล่วงหน้า</strong> สำหรับรอบถัดไปแล้ว</span>
-                              </>
-                            ) : (
-                              <>
-                                <AlertTriangle size={14} className="text-orange-600" />
-                                <span>คนไข้ <strong>ยังไม่มี</strong> ใบนัดหมายล่วงหน้า (กรุณาสร้างใบนัดก่อนให้คนไข้กลับ)</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              </div>
-            )}
 
             {/* Treatment Summary */}
             <div className="mb-4">
