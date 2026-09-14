@@ -121,22 +121,6 @@ export default function DoctorDashboard({
             <p className="text-3xl font-bold text-white" style={{ fontFamily: "Playfair Display, serif" }}>09:00</p>
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>ถึง 17:00 น.</p>
           </div>
-
-          <div className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
-            <h3 className="font-semibold text-sm mb-3" style={{ color: "#1A365D" }}>แจ้งเตือนสำคัญ</h3>
-            <div className="space-y-2.5">
-              {myAppts.filter(a => hasHealthAlert(a.allergies, a.conditions)).map(a => (
-                <div key={a.id} className="flex items-start gap-2 p-2.5 rounded-lg" style={{ backgroundColor: "#FFF3E0" }}>
-                  <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" style={{ color: "#E65100" }} />
-                  <div>
-                    <p className="text-xs font-medium" style={{ color: "#1A365D" }}>{a.patientName} ({a.time})</p>
-                    {hasHealthAlert(a.conditions) && <p className="text-xs" style={{ color: "#E65100" }}>โรคประจำตัว: {a.conditions}</p>}
-                    {hasHealthAlert(a.allergies) && <p className="text-xs" style={{ color: "#E65100" }}>แพ้ยา: {a.allergies}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

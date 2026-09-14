@@ -181,13 +181,13 @@ export default function AppointmentsView({
           const isDone = a.status === "เสร็จสิ้น" || a.status === "ยกเลิก" || a.status === "ไม่มาตามนัด";
           const isPending = !isDone;
 
-          let isWithin24Hours = false;
+          let isWithin12Hours = false;
           if (a.date && a.time) {
             const apptDate = new Date(`${a.date}T${a.time}:00`);
             const now = getNow(); // รองรับ mock time
             const diffMs = apptDate.getTime() - now.getTime();
-            if (diffMs <= 24 * 60 * 60 * 1000) {
-              isWithin24Hours = true;
+            if (diffMs <= 12 * 60 * 60 * 1000) {
+              isWithin12Hours = true;
             }
           }
           const isExpiring = expiringIds.has(a.id);
@@ -237,9 +237,9 @@ export default function AppointmentsView({
               <div className="mt-4 pt-3 flex items-center justify-between gap-2" style={{ borderTop: "1px solid rgba(26,54,93,0.06)" }}>
                 <div className="flex items-center gap-2">
                   {canCancel && (
-                    isWithin24Hours ? (
+                    isWithin12Hours ? (
                       <p className="text-xs font-medium" style={{ color: "#94A3B8" }}>
-                        ยกเลิกไม่ได้ (น้อยกว่า 24 ชม.)
+                        ยกเลิกไม่ได้ (น้อยกว่า 12 ชม.)
                       </p>
                     ) : cancelId === a.id ? (
                       <>

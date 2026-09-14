@@ -10,15 +10,8 @@ export default function PatientRecords({ doctorId }: { doctorId?: number }) {
   const [q, setQ] = useState("");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
 
-  // Get all unique patient HNs that have had an appointment with this doctor
-  const myPatientHNs = new Set(
-    appointments
-      .filter(a => doctorId === undefined || a.doctorId === doctorId)
-      .map(a => a.hn)
-  );
-
   const results = appointments.filter(a =>
-    (a.patientName.includes(q) || a.hn.includes(q)) && myPatientHNs.has(a.hn)
+    a.patientName.includes(q) || a.hn.includes(q)
   );
   const unique = Array.from(new Map(results.map(a => [a.hn, a])).values());
 
