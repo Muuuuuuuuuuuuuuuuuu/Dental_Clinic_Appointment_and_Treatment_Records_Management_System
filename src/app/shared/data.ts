@@ -144,6 +144,16 @@ export interface AdminInfo {
   salary?: string;
 }
 
+export interface TreatmentPackage {
+  package_id?: number;
+  package_name: string;
+  total_cost: number;
+  down_payment: number;
+  down_payment_months: number;
+  monthly_payment: number;
+  is_active: boolean;
+}
+
 export const SERVICE_CATEGORIES = [
   'ทันตกรรมทั่วไป (General Dentistry)',
   'ศัลยกรรมช่องปาก (Oral Surgery)',

@@ -463,16 +463,24 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
 
   // 3. Resolve Service ID
   let finalServiceId = appointment.serviceId;
+  let basePrice = 0;
   if (!finalServiceId) {
-    const { data: svcData } = await supabase.from('service').select('service_id, service_name');
+    const { data: svcData } = await supabase.from('service').select('service_id, service_name, base_price');
     if (svcData) {
       const matchedSvc = svcData.find((s: any) => appointment.service.includes(s.service_name) || s.service_name.includes(appointment.service));
       if (matchedSvc) {
         finalServiceId = matchedSvc.service_id;
+        basePrice = matchedSvc.base_price || 0;
       } else {
         // Fallback safely only if absolutely necessary, but preferably throw error
         finalServiceId = svcData[0]?.service_id || 1;
+        basePrice = svcData[0]?.base_price || 0;
       }
+    }
+  } else {
+    const { data: svcData } = await supabase.from('service').select('base_price').eq('service_id', finalServiceId).maybeSingle();
+    if (svcData) {
+      basePrice = svcData.base_price || 0;
     }
   }
 
@@ -707,7 +715,7 @@ export async function updateAppointmentDetails(id: number, updates: any) {
 
   if (updates.date) payload.appointment_date = updates.date;
   if (updates.doctorId) payload.dentist_id = updates.doctorId;
-  if (updates.status) payload.status = updates.status;
+  if (updates.status) payload.appointment_status = updates.status;
   if (updates.time) {
     payload.start_time = updates.time;
     // Calculate end_time_est
