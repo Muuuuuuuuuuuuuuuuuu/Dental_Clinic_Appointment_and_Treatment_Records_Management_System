@@ -832,7 +832,6 @@ export default function TreatmentQueue({
                             })}
                           </div>
                         </div>
-<<<<<<< HEAD
                       </div>
                     </details>
                     <div>
@@ -883,9 +882,6 @@ export default function TreatmentQueue({
                       const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
                       const suggestedExtraCost = servicesCost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : servicesCost;
                       const totalBill = baseInstAmount + suggestedExtraCost;
-=======
-                      </details>
->>>>>>> 554da0343df557ed885ce020a256adafc5166e60
 
                       <details className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
                         <summary className="text-[12px] font-bold p-3 cursor-pointer hover:bg-slate-100 flex items-center justify-between text-slate-700">
