@@ -311,12 +311,9 @@ export async function getServices() {
     newCategoryIcon: 'Smile',
     newCategoryColor: '#F0F4F8',
     estimatedTime: d.estimated_time,
-    requiresConfirmation: d.requires_confirmation,
-    isFixedPrice: d.is_fixed_price,
     active: d.is_active,
     isPublic: !disabledIds.includes(d.service_id),
     applyTo: d.apply_to,
-    serviceType: d.service_type,
     details: { benefits: d.benefits || [], procedures: d.procedures || [], care: d.care || [] }
   })) as ServiceInfo[];
 }
@@ -330,10 +327,7 @@ export async function addService(service: Omit<ServiceInfo, 'id'>) {
     category: service.category,
     estimated_time: estimatedTime,
     is_active: service.active !== false,
-    requires_confirmation: service.requiresConfirmation || false,
-    service_type: service.serviceType,
     apply_to: service.applyTo || 'MOUTH',
-    is_fixed_price: service.isFixedPrice || false,
     benefits: service.details?.benefits || [],
     procedures: service.details?.procedures || [],
     care: service.details?.care || []
@@ -348,11 +342,8 @@ export async function updateService(id: number, updates: Partial<ServiceInfo>): 
   if (updates.basePrice !== undefined) serviceUpdates.base_price = updates.basePrice;
   if (updates.category !== undefined) serviceUpdates.category = updates.category;
   if (updates.estimatedTime !== undefined) serviceUpdates.estimated_time = updates.estimatedTime;
-  if (updates.requiresConfirmation !== undefined) serviceUpdates.requires_confirmation = updates.requiresConfirmation;
   if (updates.active !== undefined) serviceUpdates.is_active = updates.active;
-  if (updates.serviceType !== undefined) serviceUpdates.service_type = updates.serviceType;
   if (updates.applyTo !== undefined) serviceUpdates.apply_to = updates.applyTo;
-  if (updates.isFixedPrice !== undefined) serviceUpdates.is_fixed_price = updates.isFixedPrice;
   if (updates.details !== undefined) {
     if (updates.details.benefits) serviceUpdates.benefits = updates.details.benefits;
     if (updates.details.procedures) serviceUpdates.procedures = updates.details.procedures;
@@ -413,9 +404,7 @@ export async function getLandingServices() {
       desc: d.description || `บริการระดับมืออาชีพ ใช้เวลาประมาณ ${d.estimated_time} นาที`,
       price: d.base_price ? `เริ่มต้น ${d.base_price.toLocaleString()} บาท` : 'แจ้งราคาหลังตรวจ',
       color: '#FFE8EC',
-      type: d.service_type || 'general',
       baseTimeMins: d.estimated_time || 30,
-      requiresConfirmation: d.requires_confirmation || false,
       details: { benefits: d.benefits || [], procedures: d.procedures || [], care: d.care || [] }
     }));
 }

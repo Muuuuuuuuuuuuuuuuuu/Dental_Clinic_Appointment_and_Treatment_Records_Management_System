@@ -8,7 +8,7 @@ import { View, PatientUser } from "../types";
 import {
   addAppointment, getClinicClosures,
   getLandingServices, getLandingDoctors, getDentistsByService,
-  getPaymentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves, getMonthlyFullyBookedDates
+  getTreatmentPlans, getWeeklyOffDays, getClinicTimeSlots, getDoctorSchedules, TimeSlotStatus, getUpcomingLeaves, getMonthlyFullyBookedDates, supabase
 } from "../../shared/supabaseApi";
 import { SpecialClosure, hasHealthAlert } from "../../shared/data";
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity } from "lucide-react";
@@ -436,7 +436,6 @@ export default function BookingView({
     }
     
     const serviceData = servicesData[selService!];
-    const isComplex = serviceData?.requiresConfirmation || false;
     
     // Check health risk for routing
     const isReturning = Boolean(user && (
@@ -444,11 +443,12 @@ export default function BookingView({
       (user.emergencyName && user.emergencyName.trim() !== '')
     ));
     const hasExistingCondition = user && hasHealthAlert(user.allergies, user.conditions);
-    const newRiskSelected = healthData.hasCondition === true && healthData.conditions.length > 0;
+    const newRiskSelected = (healthData.hasCondition === true && healthData.conditions.length > 0) || 
+                            (healthData.hasAllergy === true && healthData.allergies.length > 0);
     
     const finalHealthRisk = (isReturning && healthData.hasChanges === false) ? hasExistingCondition : newRiskSelected;
     
-    const initialStatus = (isComplex || finalHealthRisk) ? "รอการยืนยัน" : "ยืนยันการจอง";
+    const initialStatus = finalHealthRisk ? "รอการยืนยัน" : "ยืนยันการจอง";
 
     try {
       let finalServiceTitle = serviceTitle;

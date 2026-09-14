@@ -45,10 +45,9 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
       const hasEmergency = formData.emergencyName.trim() !== '' && formData.emergencyPhone.trim() !== '' && formData.emergencyRelationship.trim() !== '';
       const validAllergy = formData.hasAllergy === false || (formData.hasAllergy === true && formData.allergies.length > 0 && (!formData.allergies.includes('แพ้อื่นๆ') || formData.allergyOther.trim() !== ''));
       const validCondition = formData.hasCondition === false || (formData.hasCondition === true && formData.conditions.length > 0 && (!formData.conditions.includes('โรคอื่นๆ') || formData.conditionOther.trim() !== ''));
-      const validMedication = formData.hasMedications !== null;
       const validConsent = formData.consent;
       
-      valid = hasEmergency && validAllergy && validCondition && validMedication && validConsent;
+      valid = hasEmergency && validAllergy && validCondition && validConsent;
     }
     
     onChange(formData, valid);
@@ -269,42 +268,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
         {/* Section 4 */}
         <section className="space-y-4">
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
-            <ShieldAlert size={18} className="text-[#FF8C9A]" /> ส่วนที่ 4: การใช้ยาประจำตัว
-          </h4>
-          
-          <div className="space-y-3 md:pl-7">
-            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-transparent hover:bg-[#F8FAFC] transition-all">
-              <input type="radio" checked={formData.hasMedications === false} onChange={() => setFormData({...formData, hasMedications: false})} className="w-5 h-5 accent-[#FF8C9A]" />
-              <span className="font-semibold text-[#1A365D]">ปัจจุบัน ไม่มี ยาที่ต้องทานเป็นประจำ</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-transparent hover:bg-[#F8FAFC] transition-all">
-              <input type="radio" checked={formData.hasMedications === true} onChange={() => setFormData({...formData, hasMedications: true})} className="w-5 h-5 accent-[#FF8C9A]" />
-              <span className="font-semibold text-[#1A365D]">มี ยาที่ทานเป็นประจำ</span>
-            </label>
-
-            {formData.hasMedications === true && (
-              <div className="ml-8 mt-2 space-y-3 p-4 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] animate-fade-in">
-                <button type="button" className="flex items-center justify-center gap-2 w-full py-3 bg-white border-2 border-dashed border-[#CBD5E1] hover:border-[#FF8C9A] hover:bg-[#FFF0F2] rounded-xl text-[#4A6080] font-medium transition-all">
-                  <UploadCloud size={20} /> ถ่ายรูปหรืออัปโหลดรูปซองยา (แนะนำ)
-                </button>
-                <div className="text-center text-xs text-[#94A3B8]">หรือระบุชื่อยาด้วยตนเอง</div>
-                <textarea 
-                  className={`${inputStyle} resize-none h-20`} 
-                  placeholder="ระบุชื่อยาที่คุณทานประจำ หรืออาหารเสริมที่ทาน..."
-                  value={formData.medicationNote}
-                  onChange={e => setFormData({...formData, medicationNote: e.target.value})}
-                ></textarea>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <hr className="border-[#E2E8F0]" />
-
-        {/* Section 5 */}
-        <section className="space-y-4">
-          <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
-            <CheckSquare size={18} className="text-[#FF8C9A]" /> ส่วนที่ 5: การยินยอมรับการรักษา (E-Consent)
+            <CheckSquare size={18} className="text-[#FF8C9A]" /> ส่วนที่ 4: ความยินยอม (E-Consent)
           </h4>
           
           <label className={`flex items-start gap-3 cursor-pointer p-4 rounded-xl border-2 transition-all ${formData.consent ? 'border-[#1B7A3E] bg-[#E8FFF0]' : 'border-[#E2E8F0] hover:border-[#FF8C9A] bg-[#F8FAFC]'}`}>

@@ -70,7 +70,7 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
     });
 
     supabase.from('treatment_package').select('*').eq('is_active', true).then(({ data }) => {
-      if (data) {
+      if (data && data.length > 0) {
         setPackages(data);
         if (existingPlan?.package_id) {
           const pkg = data.find(p => p.package_id === existingPlan.package_id);
@@ -79,6 +79,12 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
             setDownPayment(pkg.down_payment);
             setDownPaymentMonths(pkg.down_payment_months);
           }
+        } else {
+          // Force select first package to prevent custom pricing
+          setSelectedPackageId(data[0].package_id);
+          setTotalCost(data[0].total_cost);
+          setDownPayment(data[0].down_payment);
+          setDownPaymentMonths(data[0].down_payment_months);
         }
       }
     });
@@ -433,7 +439,6 @@ export default function TreatmentPlanBuilder({ patientId, onClose, existingPlan,
                   value={selectedPackageId || ''}
                   onChange={(e) => setSelectedPackageId(e.target.value ? Number(e.target.value) : null)}
                 >
-                  <option value="">-- กำหนดค่าใช้จ่ายเอง --</option>
                   {packages.map(p => (
                     <option key={p.package_id} value={p.package_id}>{p.name} ({p.total_cost.toLocaleString()} ฿)</option>
                   ))}

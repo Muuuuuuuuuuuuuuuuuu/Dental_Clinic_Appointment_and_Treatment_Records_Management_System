@@ -67,7 +67,7 @@ export async function getAppointments(date?: string) {
       doctorName = `${d.dentist.users.profile.first_name} ${d.dentist.users.profile.last_name}`;
     }
 
-    let cost = d.appointment_detail?.[0]?.service?.base_price || 0;
+    let cost = d.appointment_detail?.[0]?.price_at_booking || d.appointment_detail?.[0]?.service?.base_price || 0;
     let paid = false;
     let treatmentNotes = '';
     let recommendations = '';
@@ -76,33 +76,35 @@ export async function getAppointments(date?: string) {
 
     if (d.treatment_record) {
       const tr = Array.isArray(d.treatment_record) ? d.treatment_record[0] : d.treatment_record;
-      if (tr && tr.doctor_note) {
-        let rawNote = tr.doctor_note;
-        if (rawNote.includes("|||")) {
+      if (tr) {
+        treatmentNotes = tr.doctor_note || '';
+        recommendations = tr.recommendations || '';
+        treatmentServices = tr.treatment_services || [];
+
+        if (tr.doctor_note && tr.doctor_note.includes("|||")) {
+          let rawNote = tr.doctor_note;
           const parts = rawNote.split("|||");
-          try { treatmentServices = JSON.parse(parts[0]); } catch (e) { }
+          if (treatmentServices.length === 0) {
+            try { treatmentServices = JSON.parse(parts[0]); } catch (e) { }
+          }
           rawNote = parts.slice(1).join("|||");
-        }
-        const noteParts = rawNote.split('\\nคำแนะนำ: ');
-        treatmentNotes = noteParts[0];
-        if (noteParts.length > 1) recommendations = noteParts[1];
-      }
-      if (tr && tr.payment) {
-        const pay = Array.isArray(tr.payment) ? tr.payment[0] : tr.payment;
-        if (pay) {
-          cost = pay.total_amount || 0;
-          paid = pay.payment_status === 'ชำระแล้ว';
+          const noteParts = rawNote.split('\\nคำแนะนำ: ');
+          treatmentNotes = noteParts[0];
+          if (!recommendations && noteParts.length > 1) recommendations = noteParts[1];
         }
       }
+
       if (tr && tr.treatment_detail) {
-        detailedServices = tr.treatment_detail.map((td: any) => ({
+        const servicesData = tr.treatment_detail.map((td: any) => ({
           serviceId: td.service_id,
           name: td.service?.service_name || td.diagnosis || 'ไม่ระบุ',
           locationCode: td.location_code,
           qty: td.quantity,
           price: td.actual_price
         }));
+        detailedServices = [...detailedServices, ...servicesData];
       }
+      
       if (tr && tr.treatment_product) {
         const productServices = tr.treatment_product.map((tp: any) => ({
           serviceId: `prod-${tp.product_id}`,
@@ -111,6 +113,19 @@ export async function getAppointments(date?: string) {
           price: tp.actual_price
         }));
         detailedServices = [...detailedServices, ...productServices];
+      }
+
+      // Calculate true cost from treatment records if they exist
+      if (detailedServices.length > 0) {
+        cost = detailedServices.reduce((sum, s) => sum + (s.price * s.qty), 0);
+      }
+
+      if (tr && tr.payment) {
+        const pay = Array.isArray(tr.payment) ? tr.payment[0] : tr.payment;
+        if (pay) {
+          cost = pay.total_amount !== undefined && pay.total_amount !== null ? pay.total_amount : cost;
+          paid = pay.payment_status === 'ชำระแล้ว';
+        }
       }
     }
 
@@ -589,25 +604,34 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
   if (apptErr) throw apptErr;
 
   // 5. Insert or Update Appointment Detail
+  let priceAtBooking = null;
+  if (finalServiceId) {
+    const { data: svcData } = await supabase.from('service').select('base_price').eq('service_id', finalServiceId).maybeSingle();
+    if (svcData && svcData.base_price !== undefined) {
+      priceAtBooking = svcData.base_price;
+    }
+  }
+
   if (appointment.id) {
-    const { error: detailErr } = await supabase.from('appointment_detail').update({ service_id: finalServiceId }).eq('appointment_id', newAppt.appointment_id);
+    const { error: detailErr } = await supabase.from('appointment_detail').update({ service_id: finalServiceId, price_at_booking: priceAtBooking || 0 }).eq('appointment_id', newAppt.appointment_id);
     if (detailErr) console.error("Error updating appointment detail:", detailErr);
   } else {
     const { error: detailErr } = await supabase.from('appointment_detail').insert({
       appointment_id: newAppt.appointment_id,
-      service_id: finalServiceId
+      service_id: finalServiceId,
+      price_at_booking: priceAtBooking || 0
     });
     if (detailErr) console.error("Error inserting appointment detail:", detailErr);
   }
 
   // 6. Insert or Update Treatment Record to map Doctor (if selected)
   if (finalDoctorId) {
-    const { data: existingTr } = await supabase.from('treatment_record').select('record_id').eq('appointment_id', newAppt.appointment_id).maybeSingle();
+    const { data: existingTr } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', newAppt.appointment_id).maybeSingle();
     if (existingTr) {
       const { error: trErr } = await supabase.from('treatment_record').update({
         attending_dentist_id: finalDoctorId,
         treatment_date: appointment.date
-      }).eq('record_id', existingTr.record_id);
+      }).eq('treatment_id', existingTr.treatment_id);
       if (trErr) console.error("Error updating treatment record:", trErr);
     } else {
       const { error: trErr } = await supabase.from('treatment_record').insert({

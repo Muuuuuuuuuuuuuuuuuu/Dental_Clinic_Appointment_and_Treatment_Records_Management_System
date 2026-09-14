@@ -140,7 +140,7 @@ export default function AppointmentManagementView({
       <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการนัดหมาย</h1>
-          <p className="text-sm" style={{ color: "#4A6080" }}>ยืนยันเคสพิเศษ, ย้ายเคส, เลื่อนคิว และยกเลิกนัดหมาย</p>
+          <p className="text-sm" style={{ color: "#4A6080" }}>ยืนยันเคสที่มีความเสี่ยง, ย้ายเคส, เลื่อนคิว และยกเลิกนัดหมาย</p>
         </div>
         {(activeTab === "all" || activeTab === "transfer" || activeTab === "reschedule") && (
           <div className="relative w-full md:w-80">
@@ -206,9 +206,9 @@ export default function AppointmentManagementView({
                         {a.status}
                       </span>
                     )}
-                    {activeTab === "confirm" && (
+                    {activeTab === "confirm" && (hasHealthAlert(a.conditions) || hasHealthAlert(a.allergies)) && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
-                        {(hasHealthAlert(a.conditions) || hasHealthAlert(a.allergies)) ? "ผู้ป่วยมีความเสี่ยงสุขภาพ" : "บริการต้องให้แพทย์ประเมิน"}
+                        มีความเสี่ยงสุขภาพ
                       </span>
                     )}
                   </div>

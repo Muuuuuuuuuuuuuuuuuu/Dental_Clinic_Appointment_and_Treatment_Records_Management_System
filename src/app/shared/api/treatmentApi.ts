@@ -48,22 +48,22 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     const costAmt = pay ? pay.total_amount : null;
 
     let treatmentNotes = d.doctor_note || '';
-    let recommendations = '';
-    let treatmentServices: string[] = [];
+    let recommendations = d.recommendations || '';
+    let treatmentServices: string[] = d.treatment_services || [];
     let detailedServices: any[] = [];
     let extraProducts: any[] = [];
 
-    if (d.doctor_note) {
+    if (d.doctor_note && d.doctor_note.includes("|||")) {
       let rawNote = d.doctor_note;
-      if (rawNote.includes("|||")) {
-        const parts = rawNote.split("|||");
+      const parts = rawNote.split("|||");
+      if (treatmentServices.length === 0) {
         try { treatmentServices = JSON.parse(parts[0]); } catch (e) { }
-        rawNote = parts.slice(1).join("|||");
       }
+      rawNote = parts.slice(1).join("|||");
       
       const noteParts = rawNote.split('\\nคำแนะนำ: ');
       treatmentNotes = noteParts[0];
-      if (noteParts.length > 1) recommendations = noteParts[1];
+      if (!recommendations && noteParts.length > 1) recommendations = noteParts[1];
     }
     
     if (d.treatment_detail) {
@@ -147,10 +147,11 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
   let treatmentId = trData?.treatment_id;
 
   // Update or insert treatment record
-  const fullNote = JSON.stringify(services || []) + "|||" + notes + (recommendations ? "\\nคำแนะนำ: " + recommendations : "");
   if (treatmentId) {
     const updatePayload: any = {
-      doctor_note: fullNote,
+      doctor_note: notes,
+      recommendations: recommendations || null,
+      treatment_services: services || [],
       odontogram_data: toothData || null
     };
     if (doctorId) updatePayload.attending_dentist_id = doctorId;
@@ -164,7 +165,9 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
         appointment_id: apptId,
         attending_dentist_id: doctorId || apptData.treatment_record?.[0]?.attending_dentist_id || apptData.dentist_id || null,
         treatment_date: new Date().toISOString().split('T')[0],
-        doctor_note: fullNote,
+        doctor_note: notes,
+        recommendations: recommendations || null,
+        treatment_services: services || [],
         odontogram_data: toothData || null
       }).select().single();
       if (insertErr) console.error("Error inserting treatment_record:", insertErr);
@@ -198,7 +201,8 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
       treatment_id: treatmentId,
       product_id: m.id,
       quantity: m.qty || 1,
-      actual_price: m.price || 0
+      actual_price: m.price || 0,
+      dosage_instruction: m.instruction || null
     }));
     const { error: tpErr } = await supabase.from('treatment_product').insert(tpInserts);
     if (tpErr) console.error("Error inserting treatment_product:", tpErr);
@@ -260,26 +264,46 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
       });
     }
     
-    // Update treatment_product if any
-    if (extraProducts && extraProducts.length > 0) {
-      await supabase.from('treatment_product').delete().eq('treatment_id', treatmentId);
-      const productInserts = extraProducts.map((p: any) => ({
-        treatment_id: treatmentId,
-        product_id: p.id,
-        quantity: p.qty || 1,
-        actual_price: p.price || 0
-      }));
-      await supabase.from('treatment_product').insert(productInserts);
-    }
-
-    // Update treatment_detail if adjustedServices passed
+    // Update treatment_detail for services and treatment_product for prescribed products
     if (adjustedServices && adjustedServices.length > 0) {
       for (const s of adjustedServices) {
-        await supabase.from('treatment_detail')
-          .update({ actual_price: s.price })
-          .eq('treatment_id', treatmentId)
-          .eq('service_id', s.serviceId)
-          .eq('location_code', s.locationCode || 'NONE');
+        if (String(s.serviceId).startsWith('prod-')) {
+          const pId = parseInt(String(s.serviceId).replace('prod-', ''), 10);
+          await supabase.from('treatment_product')
+            .update({ actual_price: s.price, quantity: s.qty })
+            .eq('treatment_id', treatmentId)
+            .eq('product_id', pId);
+        } else {
+          await supabase.from('treatment_detail')
+            .update({ actual_price: s.price })
+            .eq('treatment_id', treatmentId)
+            .eq('service_id', s.serviceId || s.id)
+            .eq('location_code', s.locationCode || 'NONE');
+        }
+      }
+    }
+
+    // Insert extraProducts safely (only new ones)
+    if (extraProducts && extraProducts.length > 0) {
+      // First, get existing products to avoid inserting duplicates if somehow passed
+      const { data: existingProds } = await supabase.from('treatment_product')
+        .select('product_id')
+        .eq('treatment_id', treatmentId);
+      
+      const existingProdIds = existingProds ? existingProds.map((ep: any) => ep.product_id) : [];
+      
+      const productInserts = extraProducts
+        .filter((p: any) => !existingProdIds.includes(p.id))
+        .map((p: any) => ({
+          treatment_id: treatmentId,
+          product_id: p.id,
+          quantity: p.qty || 1,
+          actual_price: p.price || 0,
+          dosage_instruction: p.instruction || null
+        }));
+        
+      if (productInserts.length > 0) {
+        await supabase.from('treatment_product').insert(productInserts);
       }
     }
   }

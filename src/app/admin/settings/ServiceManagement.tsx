@@ -16,14 +16,12 @@ export default function ServiceManagement() {
   // Services Edit States
   const [editId, setEditId] = useState<number | null>(null);
   const [prices, setPrices] = useState<Record<number, string>>({});
+  const [maxPrices, setMaxPrices] = useState<Record<number, string>>({});
   const [times, setTimes] = useState<Record<number, string>>({});
   const [names, setNames] = useState<Record<number, string>>({});
   const [descs, setDescs] = useState<Record<number, string>>({});
   const [cats, setCats] = useState<Record<number, string>>({});
-  const [reqConfs, setReqConfs] = useState<Record<number, boolean>>({});
   const [applyTos, setApplyTos] = useState<Record<number, string>>({});
-  const [srvTypes, setSrvTypes] = useState<Record<number, string>>({});
-  const [fixedPrices, setFixedPrices] = useState<Record<number, boolean>>({});
   const [benefitsMap, setBenefitsMap] = useState<Record<number, string>>({});
   const [proceduresMap, setProceduresMap] = useState<Record<number, string>>({});
   const [careMap, setCareMap] = useState<Record<number, string>>({});
@@ -31,8 +29,8 @@ export default function ServiceManagement() {
   // Services Add States
   const [isAdding, setIsAdding] = useState(false);
   const [newService, setNewService] = useState({
-    name: "", desc: "", price: "", time: "30", category: SERVICE_CATEGORIES[0] as string, 
-    requiresConfirmation: false, applyTo: "MOUTH", serviceType: "treatment", isFixedPrice: false,
+    name: "", desc: "", price: "", maxPrice: "", time: "30", category: SERVICE_CATEGORIES[0] as string, 
+    applyTo: "MOUTH",
     benefits: "", procedures: "", care: ""
   });
 
@@ -55,28 +53,22 @@ export default function ServiceManagement() {
   // --- SERVICE LOGIC ---
   const saveServiceChanges = async (id: number) => {
     const p = parseInt(prices[id] ?? "0", 10);
+    const mpStr = maxPrices[id];
+    const mp = mpStr !== undefined && mpStr !== "" ? parseInt(mpStr, 10) : p;
     const t = parseInt(times[id] ?? "30", 10);
     const n = names[id];
     const d = descs[id];
-    const c = cats[id];
-    const rc = reqConfs[id];
     const at = applyTos[id];
-    const st = srvTypes[id];
-    const fp = fixedPrices[id];
     const b = benefitsMap[id];
     const p_arr = proceduresMap[id];
     const c_arr = careMap[id];
 
     if (!isNaN(p) && !isNaN(t)) {
       try {
-        const payload: any = { basePrice: p, estimatedTime: t };
+        const payload: any = { basePrice: p, maxPrice: mp, estimatedTime: t };
         if (n !== undefined) payload.name = n;
         if (d !== undefined) payload.description = d;
-        if (c !== undefined) payload.category = c;
-        if (rc !== undefined) payload.requiresConfirmation = rc;
         if (at !== undefined) payload.applyTo = at;
-        if (st !== undefined) payload.serviceType = st;
-        if (fp !== undefined) payload.isFixedPrice = fp;
 
         if (b !== undefined || p_arr !== undefined || c_arr !== undefined) {
           payload.details = {};
@@ -129,6 +121,7 @@ export default function ServiceManagement() {
   const handleAddService = async () => {
     if (!newService.name || !newService.price || !newService.time || !newService.category) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
     const p = parseInt(newService.price, 10);
+    const mp = newService.maxPrice ? parseInt(newService.maxPrice, 10) : p;
     const t = parseInt(newService.time, 10);
     if (isNaN(p) || isNaN(t)) return alert("ราคาและเวลาต้องเป็นตัวเลข");
 
@@ -137,13 +130,11 @@ export default function ServiceManagement() {
         name: newService.name,
         description: newService.desc,
         basePrice: p,
+        maxPrice: mp,
         category: newService.category,
         estimatedTime: t,
         active: true,
-        requiresConfirmation: newService.requiresConfirmation,
         applyTo: newService.applyTo,
-        serviceType: newService.serviceType,
-        isFixedPrice: newService.isFixedPrice,
         details: {
           benefits: newService.benefits.split('\n').map(x => x.trim()).filter(Boolean),
           procedures: newService.procedures.split('\n').map(x => x.trim()).filter(Boolean),
@@ -152,7 +143,7 @@ export default function ServiceManagement() {
       });
       fetchData();
       setIsAdding(false);
-      setNewService({ ...newService, name: "", desc: "", price: "", requiresConfirmation: false, isFixedPrice: false, benefits: "", procedures: "", care: "" });
+      setNewService({ ...newService, name: "", desc: "", price: "", maxPrice: "", benefits: "", procedures: "", care: "" });
     } catch (err) {
       console.error(err);
       alert("Failed to add service");
@@ -198,27 +189,18 @@ export default function ServiceManagement() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">ราคา (บาท)</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">ราคาเริ่มต้น (บาท)</label>
                   <input type="number" value={newService.price} onChange={e => setNewService({ ...newService, price: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">ราคาสูงสุด (บาท)</label>
+                  <input type="number" value={newService.maxPrice} onChange={e => setNewService({ ...newService, maxPrice: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="เว้นว่างถ้าเท่ากับราคาเริ่มต้น" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">เวลา (นาที)</label>
                   <input type="number" value={newService.time} onChange={e => setNewService({ ...newService, time: e.target.value })} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]" placeholder="30" />
                 </div>
                 
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">ประเภทบริการ</label>
-                  <select
-                    value={newService.serviceType}
-                    onChange={e => setNewService({ ...newService, serviceType: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#FF8C9A]"
-                  >
-                    <option value="treatment">รักษา (Treatment)</option>
-                    <option value="consultation">ปรึกษา (Consultation)</option>
-                    <option value="surgery">ศัลยกรรม (Surgery)</option>
-                    <option value="product">สินค้า/ยา (Product)</option>
-                  </select>
-                </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">บริเวณที่ทำ (Odontogram)</label>
                   <select
@@ -249,17 +231,6 @@ export default function ServiceManagement() {
                     <label className="block text-xs font-medium text-slate-500 mb-1">การดูแลรักษา (บรรทัดละ 1 ข้อ)</label>
                     <textarea value={newService.care} onChange={e => setNewService({ ...newService, care: e.target.value })} rows={2} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#FF8C9A]" placeholder="เช่น ก่อนทำ: งดน้ำ..."></textarea>
                   </div>
-                </div>
-
-                <div className="md:col-span-4 flex flex-wrap gap-4 mt-1">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={newService.requiresConfirmation} onChange={e => setNewService({ ...newService, requiresConfirmation: e.target.checked })} className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]" />
-                    <span className="text-xs font-medium text-slate-700">เคสยาก (ต้องยืนยัน)</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={newService.isFixedPrice} onChange={e => setNewService({ ...newService, isFixedPrice: e.target.checked })} className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]" />
-                    <span className="text-xs font-medium text-slate-700">ราคาคงที่ (แก้ราคาตอนคิดเงินไม่ได้)</span>
-                  </label>
                 </div>
               </div>
               <div className="flex gap-2 justify-end">
@@ -305,17 +276,7 @@ export default function ServiceManagement() {
                               className="w-full px-2 py-1 rounded-lg text-sm outline-none border border-slate-200"
                               placeholder="คำอธิบาย"
                             />
-                            <div className="grid grid-cols-2 gap-2 mt-1">
-                              <select
-                                defaultValue={s.serviceType || 'treatment'}
-                                onChange={e => setSrvTypes(st => ({ ...st, [s.id]: e.target.value }))}
-                                className="w-full px-2 py-1 rounded-lg text-xs outline-none border border-slate-200"
-                              >
-                                <option value="treatment">รักษา (Treatment)</option>
-                                <option value="consultation">ปรึกษา (Consultation)</option>
-                                <option value="surgery">ศัลยกรรม (Surgery)</option>
-                                <option value="product">สินค้า/ยา (Product)</option>
-                              </select>
+                            <div className="mt-1">
                               <select
                                 defaultValue={s.applyTo || 'MOUTH'}
                                 onChange={e => setApplyTos(at => ({ ...at, [s.id]: e.target.value }))}
@@ -359,34 +320,12 @@ export default function ServiceManagement() {
                                 />
                               </div>
                             </div>
-                            <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-slate-100">
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  defaultChecked={s.requiresConfirmation}
-                                  onChange={e => setReqConfs(rc => ({ ...rc, [s.id]: e.target.checked }))}
-                                  className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]"
-                                />
-                                <span className="text-xs font-medium text-slate-700">เคสยาก (รอการยืนยัน)</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  defaultChecked={s.isFixedPrice}
-                                  onChange={e => setFixedPrices(fp => ({ ...fp, [s.id]: e.target.checked }))}
-                                  className="rounded text-[#FF8C9A] focus:ring-[#FF8C9A]"
-                                />
-                                <span className="text-xs font-medium text-slate-700">ราคาคงที่</span>
-                              </label>
-                            </div>
+
                           </div>
                         ) : (
                           <>
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-sm" style={{ color: "#1A365D" }}>{s.name}</p>
-                              {s.requiresConfirmation && (
-                                <span className="px-2 py-0.5 text-[10px] font-bold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A] rounded-full">เคสยาก</span>
-                              )}
                             </div>
                             <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{s.description}</p>
                           </>
@@ -395,8 +334,8 @@ export default function ServiceManagement() {
                       <div className="flex items-center gap-5 flex-shrink-0">
                         {editId === s.id ? (
                           <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-slate-500">฿</span>
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs text-slate-500">ราคาเริ่มต้น</span>
                               <input
                                 type="number"
                                 defaultValue={s.basePrice}
@@ -404,8 +343,20 @@ export default function ServiceManagement() {
                                 className="w-20 px-2 py-1.5 rounded-lg text-sm outline-none border border-slate-200"
                               />
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Clock size={14} className="text-slate-400" />
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs text-slate-500">ราคาสูงสุด</span>
+                              <input
+                                type="number"
+                                defaultValue={s.maxPrice || s.basePrice}
+                                onChange={e => setMaxPrices(p => ({ ...p, [s.id]: e.target.value }))}
+                                className="w-20 px-2 py-1.5 rounded-lg text-sm outline-none border border-slate-200"
+                              />
+                            </div>
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="flex items-center gap-1 text-xs text-slate-500">
+                                <Clock size={14} className="text-slate-400" />
+                                <span>เวลา</span>
+                              </div>
                               <input
                                 type="number"
                                 defaultValue={s.estimatedTime || 30}
@@ -422,7 +373,7 @@ export default function ServiceManagement() {
                         ) : (
                           <div className="flex items-center gap-4">
                             <div className="flex flex-col items-end">
-                              <span className="text-sm font-semibold" style={{ color: "#FF8C9A" }}>฿{s.basePrice.toLocaleString()}</span>
+                              <span className="text-sm font-semibold" style={{ color: "#FF8C9A" }}>฿{s.basePrice.toLocaleString()}{s.maxPrice && s.maxPrice > s.basePrice ? ` - ${s.maxPrice.toLocaleString()}` : ''}</span>
                               <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
                                 <Clock size={12} />
                                 {s.estimatedTime || 30} นาที
@@ -431,6 +382,7 @@ export default function ServiceManagement() {
                             <button onClick={() => {
                               setEditId(s.id);
                               setPrices(p => ({ ...p, [s.id]: String(s.basePrice) }));
+                              setMaxPrices(p => ({ ...p, [s.id]: String(s.maxPrice || s.basePrice) }));
                               setTimes(t => ({ ...t, [s.id]: String(s.estimatedTime || 30) }));
                               setNames(n => ({ ...n, [s.id]: s.name }));
                               setDescs(d => ({ ...d, [s.id]: s.description }));

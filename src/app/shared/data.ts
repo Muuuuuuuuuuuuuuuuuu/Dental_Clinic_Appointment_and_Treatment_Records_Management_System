@@ -162,15 +162,13 @@ export interface ServiceInfo {
   name: string;
   description: string;
   basePrice: number;
+  maxPrice?: number;
   category: string;
   newCategoryIcon?: string;
   newCategoryColor?: string;
   estimatedTime?: number; // Duration in minutes
   active: boolean;
   isPublic?: boolean;
-  serviceType?: string;
-  isFixedPrice?: boolean;
-  requiresConfirmation?: boolean;
   applyTo?: string;
   details?: {
     benefits: string[];
@@ -201,6 +199,18 @@ export interface TreatmentPlan {
   packageId?: number | null;
   planDetails?: any[];
   installments: { id?: number; dueDate: string; amount: number; paid: boolean; }[];
+}
+
+export interface TreatmentPackage {
+  package_id: number;
+  package_name: string;
+  total_cost: number;
+  down_payment: number;
+  down_payment_months: number;
+  monthly_payment: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Product {

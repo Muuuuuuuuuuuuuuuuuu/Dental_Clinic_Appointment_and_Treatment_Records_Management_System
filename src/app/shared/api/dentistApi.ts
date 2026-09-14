@@ -317,7 +317,7 @@ export async function getDentistTreatmentHistory(dentistId: number) {
     const serviceName = Array.isArray(apptDetails) ? apptDetails[0]?.service?.service_name : apptDetails?.service?.service_name;
 
     let parsedNote = record.doctor_note || '';
-    let parsedDiagnosis = '-';
+    let parsedDiagnosis = record.recommendations || '-';
     
     if (parsedNote.includes("|||")) {
       const parts = parsedNote.split("|||");
@@ -327,7 +327,7 @@ export async function getDentistTreatmentHistory(dentistId: number) {
     if (parsedNote.includes('\\nคำแนะนำ: ')) {
       const noteParts = parsedNote.split('\\nคำแนะนำ: ');
       parsedNote = noteParts[0];
-      if (noteParts.length > 1) parsedDiagnosis = noteParts[1];
+      if (parsedDiagnosis === '-' && noteParts.length > 1) parsedDiagnosis = noteParts[1];
     }
 
     history.push({

@@ -4,7 +4,6 @@ import UserProfile from "../shared/components/UserProfile";
 import ScheduleHub from "./hubs/ScheduleHub";
 import ClinicHub from "./hubs/ClinicHub";
 import UsersHub from "./hubs/UsersHub";
-import UserManual from "./help/UserManual";
 
 import {
   Home, LogOut, Smile, Menu, Calendar, Clipboard, Users, BookOpen, Bell
@@ -47,8 +46,7 @@ const ADMIN_NAV: { key: AdminView; label: string; icon: any }[] = [
   { key: "dashboard",    label: "แดชบอร์ด",           icon: Home },
   { key: "schedule-hub", label: "ตารางเวรและการลา",    icon: Calendar },
   { key: "clinic-hub",   label: "จัดการคลินิก",        icon: Clipboard },
-  { key: "users-hub",    label: "จัดการผู้ใช้งาน",      icon: Users },
-  { key: "manual",       label: "คู่มือการใช้งาน",       icon: BookOpen },
+  { key: "users-hub",    label: "จัดการผู้ใช้งาน",      icon: Users }
 ];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -185,7 +183,6 @@ export default function AdminPortal({
           {view === "schedule-hub" && <ScheduleHub />}
           {view === "clinic-hub"   && <ClinicHub />}
           { view === "users-hub"    && <UsersHub />}
-          { view === "manual"       && <UserManual />}
           { view === "profile"      && <UserProfile user={adminInfo} type="admin" />}
         </main>
       </div>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, FileText, CheckCircle, CreditCard, X, Smile, Printer, CalendarPlus, ChevronRight, Banknote, Smartphone, Receipt, AlertTriangle, Package } from "lucide-react";
 
-import { Appointment, STATUS_COLORS, AppointmentStatus } from "../../shared/data";
-import { supabase, processPaymentApi, addAppointment, getClinicTimeSlots, TimeSlotStatus, getServices } from "../../shared/supabaseApi";
+import { Appointment, STATUS_COLORS, AppointmentStatus, Product } from "../../shared/data";
+import { supabase, addAppointment, getClinicTimeSlots, TimeSlotStatus, getServices } from "../../shared/supabaseApi"; 
+import { getProducts, processPaymentApi } from "../../shared/api/treatmentApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 export default function PaymentView({ 
@@ -26,8 +27,10 @@ export default function PaymentView({
   // Pricing states
   const [servicesData, setServicesData] = useState<Record<number, any>>({});
   const [adjustedPrices, setAdjustedPrices] = useState<Record<string, string>>({});
+  const [adjustedQuantities, setAdjustedQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    getProducts().then(prods => setAllProducts(prods || []));
     getServices().then(data => {
       const map: Record<number, any> = {};
       data.forEach((s: any) => { map[s.service_id || s.id] = s; });
@@ -55,6 +58,9 @@ export default function PaymentView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeSlots, setTimeSlots] = useState<TimeSlotStatus[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [extraProducts, setExtraProducts] = useState<{product: Product, qty: number}[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [showProductSelect, setShowProductSelect] = useState(false);
 
   useEffect(() => {
     if (!followUp || isOpenTicket || !followUpDate) {
@@ -101,13 +107,16 @@ export default function PaymentView({
         
         // Initialize adjustedPrices from detailedServices
         const initialPrices: Record<string, string> = {};
+          const initialQuantities: Record<string, number> = {};
         if (selectedAppt.detailedServices) {
           selectedAppt.detailedServices.forEach((s: any, idx: number) => {
             const key = `${s.serviceId}-${idx}`;
             initialPrices[key] = String(s.price);
+              initialQuantities[key] = s.qty;
           });
         }
         setAdjustedPrices(initialPrices);
+          setAdjustedQuantities(initialQuantities);
 
         if (selectedAppt.patientId) {
 
@@ -133,14 +142,19 @@ export default function PaymentView({
 
   
   const totalBaseCost = useMemo(() => {
-    if (!selectedAppt || !selectedAppt.detailedServices) return parseInt(baseCost || "0", 10);
-    return selectedAppt.detailedServices.reduce((sum: number, s: any, idx: number) => {
-      const key = `${s.serviceId}-${idx}`;
-      const priceStr = adjustedPrices[key];
-      const price = priceStr !== undefined ? (parseInt(priceStr, 10) || 0) : s.price;
-      return sum + (price * s.qty);
-    }, 0);
-  }, [selectedAppt, adjustedPrices, baseCost]);
+    let srvTotal = parseInt(baseCost || "0", 10);
+    if (selectedAppt && selectedAppt.detailedServices) {
+      srvTotal = selectedAppt.detailedServices.reduce((sum: number, s: any, idx: number) => {
+        const key = `${s.serviceId}-${idx}`;
+        const priceStr = adjustedPrices[key];
+        const price = priceStr !== undefined ? (parseInt(priceStr, 10) || 0) : s.price;
+        const qty = adjustedQuantities[key] !== undefined ? adjustedQuantities[key] : s.qty;
+        return sum + (price * qty);
+      }, 0);
+    }
+    const extraTotal = extraProducts.reduce((sum, item) => sum + (item.product.price * item.qty), 0);
+    return srvTotal + extraTotal;
+  }, [selectedAppt, adjustedPrices, adjustedQuantities, baseCost, extraProducts]);
 
   const netTotal = useMemo(() => {
     const disc = parseInt(discount || "0", 10);
@@ -149,6 +163,12 @@ export default function PaymentView({
 
 
   
+  
+  const handleQtyChange = (key: string, newQty: number) => {
+    if (newQty < 1) return;
+    setAdjustedQuantities(prev => ({ ...prev, [key]: newQty }));
+  };
+
   const handlePriceChange = (key: string, value: string, srvData: any) => {
     // Allow empty string to let user delete the value completely while typing
     // Remove strict clamping so they can type freely
@@ -162,7 +182,8 @@ export default function PaymentView({
       const key = `${s.serviceId}-${idx}`;
       return {
         ...s,
-        price: adjustedPrices[key] !== undefined ? (parseInt(adjustedPrices[key], 10) || 0) : s.price
+        price: adjustedPrices[key] !== undefined ? (parseInt(adjustedPrices[key], 10) || 0) : s.price,
+        qty: adjustedQuantities[key] !== undefined ? adjustedQuantities[key] : s.qty
       };
     }) || [];
 
@@ -172,7 +193,8 @@ export default function PaymentView({
       baseCost: totalBaseCost,
       discount: parseInt(discount || "0", 10),
       netTotal,
-      paymentMethod
+      paymentMethod,
+      extraProducts: extraProducts.map(ep => ({ id: ep.product.id, name: ep.product.name, price: ep.product.price, qty: ep.qty }))
     });
   };
 
@@ -392,7 +414,25 @@ export default function PaymentView({
                                 <span className="text-[10px] font-normal text-gray-400 ml-1">{priceRangeStr}</span>
                               </span>
                               {s.locationCode && <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">ซี่ {s.locationCode}</span>}
-                              {s.qty > 1 && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">x{s.qty}</span>}
+                              {isProduct ? (
+                                <div className="flex items-center gap-2 ml-2">
+                                  <button 
+                                    onClick={() => handleQtyChange(key, (adjustedQuantities[key] || s.qty) - 1)}
+                                    className="w-5 h-5 rounded border flex items-center justify-center hover:bg-gray-50 transition-colors text-xs"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="font-semibold text-gray-700 w-3 text-center text-xs">{adjustedQuantities[key] || s.qty}</span>
+                                  <button 
+                                    onClick={() => handleQtyChange(key, (adjustedQuantities[key] || s.qty) + 1)}
+                                    className="w-5 h-5 rounded border flex items-center justify-center hover:bg-gray-50 transition-colors text-xs"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              ) : (
+                                (adjustedQuantities[key] || s.qty) > 1 && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">x{adjustedQuantities[key] || s.qty}</span>
+                              )}
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className="font-semibold" style={{ color: "#1A365D" }}>฿</span>
@@ -444,6 +484,76 @@ export default function PaymentView({
 
             
             
+            
+                {/* --- Extra Products Section --- */}
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="font-semibold text-xs" style={{ color: "#1A365D" }}>สินค้าเพิ่มเติมจากหน้าร้าน:</p>
+                    <button 
+                      onClick={() => setShowProductSelect(!showProductSelect)}
+                      className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-full hover:bg-blue-100 transition-colors"
+                    >
+                      + เพิ่มสินค้า
+                    </button>
+                  </div>
+                  
+                  {showProductSelect && (
+                    <div className="mb-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                      <select 
+                        className="w-full text-xs p-1.5 rounded border border-gray-300 outline-none focus:border-blue-500 mb-2"
+                        onChange={(e) => {
+                          if(!e.target.value) return;
+                          const p = allProducts.find(x => String(x.id) === e.target.value);
+                          if(p) {
+                            const exists = extraProducts.find(ep => ep.product.id === p.id);
+                            if(exists) {
+                              setExtraProducts(extraProducts.map(ep => ep.product.id === p.id ? {...ep, qty: ep.qty + 1} : ep));
+                            } else {
+                              setExtraProducts([...extraProducts, {product: p, qty: 1}]);
+                            }
+                          }
+                          e.target.value = "";
+                        }}
+                      >
+                        <option value="">-- เลือกสินค้า --</option>
+                        {allProducts.map(p => (
+                          <option key={p.id} value={p.id}>{p.name} (฿{p.price})</option>
+                        ))}
+                      </select>
+                      <button onClick={() => setShowProductSelect(false)} className="text-[10px] text-gray-500 w-full text-center hover:text-gray-700">ปิด</button>
+                    </div>
+                  )}
+
+                  {extraProducts.length > 0 && (
+                    <div className="space-y-1.5 mt-2">
+                      {extraProducts.map((ep, idx) => (
+                        <div key={`ep-${idx}`} className="flex justify-between items-center text-sm py-1.5 px-3 rounded-lg bg-orange-50 border border-orange-100">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-orange-800">{ep.product.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 bg-white rounded border border-orange-200 px-1">
+                              <button onClick={() => {
+                                if(ep.qty > 1) {
+                                  setExtraProducts(extraProducts.map(x => x.product.id === ep.product.id ? {...x, qty: x.qty - 1} : x));
+                                } else {
+                                  setExtraProducts(extraProducts.filter(x => x.product.id !== ep.product.id));
+                                }
+                              }} className="text-orange-600 px-1 font-bold">-</button>
+                              <span className="text-xs font-bold w-4 text-center">{ep.qty}</span>
+                              <button onClick={() => {
+                                setExtraProducts(extraProducts.map(x => x.product.id === ep.product.id ? {...x, qty: x.qty + 1} : x));
+                              }} className="text-orange-600 px-1 font-bold">+</button>
+                            </div>
+                            <span className="font-semibold text-orange-900 w-12 text-right">฿{ep.product.price * ep.qty}</span>
+                            <button onClick={() => setExtraProducts(extraProducts.filter(x => x.product.id !== ep.product.id))} className="text-red-500 hover:text-red-700 ml-1">✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
             {/* Billing Calculator */}
             <div className="mb-4 space-y-2">
               <h3 className="text-xs font-bold mb-1" style={{ color: "#4A6080" }}>สรุปยอดค่าใช้จ่าย</h3>

@@ -162,7 +162,8 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
 
   const confirm = async () => {
     const doctorName = dentists.find(d => d.id === form.doctorId)?.name ?? "ท่านใดก็ได้";
-    const isComplex = services.find(s => s.name === form.service)?.requiresConfirmation || false;
+    const hasHealthRisk = (patientInfo?.underlyingDisease && patientInfo.underlyingDisease !== "ไม่มี" && patientInfo.underlyingDisease !== "ไม่มีโรคประจำตัว") || 
+                          (patientInfo?.allergyHistory && patientInfo.allergyHistory !== "ไม่มี");
     const newAppt: Omit<Appointment, "id"> = {
       hn: patientInfo?.hn || `HN${Date.now().toString().slice(-3)}`,
       patientId: patientInfo?.id,
@@ -172,7 +173,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
       doctorId: form.doctorId,
       date: form.openAppt ? "" : form.date,
       time: form.openAppt ? "" : form.time, 
-      status: form.openAppt ? (isComplex ? "รอการยืนยัน" : "ยืนยันการจอง") : "เช็คอินเรียบร้อย",
+      status: form.openAppt ? (hasHealthRisk ? "รอการยืนยัน" : "ยืนยันการจอง") : "เช็คอินเรียบร้อย",
       conditions: patientInfo?.underlyingDisease || "ไม่มี", 
       allergies: patientInfo?.allergyHistory || "ไม่มี",
       note: form.note

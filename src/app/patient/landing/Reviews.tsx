@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { Star, CheckCircle } from "lucide-react";
-import { getReviews } from "../../shared/supabaseApi";
 
 export default function Reviews() {
   const [reviews, setReviews] = useState<any[]>([]);
 
   useEffect(() => {
-    getReviews().then(setReviews);
+    setReviews([
+      { name: "คุณสมหญิง ใจดี", text: "คุณหมอมือเบามาก คลินิกสะอาด พนักงานบริการดีเยี่ยม ประทับใจมากค่ะ", stars: 5, service: "ขูดหินปูน" },
+      { name: "คุณสมชาย รักฟัน", text: "จัดฟันที่นี่เข้าที่ไวมาก คุณหมอให้คำแนะนำดีมากครับ", stars: 5, service: "จัดฟัน" },
+      { name: "คุณแพรวา ยิ้มสวย", text: "ฟอกสีฟันเห็นผลตั้งแต่ครั้งแรกเลยค่ะ ไม่เสียวฟันเลย", stars: 5, service: "ฟอกสีฟัน" }
+    ]);
   }, []);
   return (
     <section style={{ backgroundColor: "#1A365D" }}>
