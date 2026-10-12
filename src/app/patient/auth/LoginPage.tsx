@@ -34,6 +34,10 @@ export default function LoginPage({
     e.preventDefault();
     setError("");
     if (!email || !pass) { setError("กรุณากรอกอีเมลและรหัสผ่าน"); return; }
+    if (/^[0-9+\s-]{6,}$/.test(email.trim())) {
+      setError("การเข้าสู่ระบบต้องใช้อีเมลเท่านั้น (เช่น example@email.com) ไม่สามารถใช้เบอร์โทรศัพท์ได้");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -117,12 +121,17 @@ export default function LoginPage({
             <AlertCircle size={15} /> {error}
           </div>
         )}
-        <Field label="อีเมล">
+        <Field label="อีเมล (สำหรับเข้าสู่ระบบ)">
           <div className="relative">
             <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
             <input type="email" placeholder="example@email.com" value={email} onChange={e => setEmail(e.target.value)}
               className={`${inputCls} pl-10`} style={inputStyle} />
           </div>
+          {/^[0-9+\s-]{4,}$/.test(email.trim()) && (
+            <p className="text-xs mt-1.5 flex items-center gap-1 text-amber-600 font-medium">
+              <AlertCircle size={13} className="flex-shrink-0" /> เข้าสู่ระบบด้วยอีเมลเท่านั้น ไม่สามารถใช้เบอร์โทรศัพท์ได้
+            </p>
+          )}
         </Field>
         <Field label="รหัสผ่าน">
           <div className="relative">
@@ -187,15 +196,13 @@ export default function LoginPage({
         </div>
       </form>
 
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center"><div className="w-full border-t" style={{ borderColor: "rgba(26,54,93,0.1)" }} /></div>
-        <div className="relative flex justify-center"><span className="text-xs px-3 bg-white" style={{ color: "#4A6080" }}>ยังไม่มีบัญชี?</span></div>
+      <div className="mt-6 p-4 rounded-xl flex items-start gap-3" style={{ backgroundColor: "#F0F4F8", border: "1px solid rgba(26,54,93,0.1)" }}>
+        <UserPlus size={16} className="flex-shrink-0 mt-0.5" style={{ color: "#4A6080" }} />
+        <p className="text-xs leading-relaxed" style={{ color: "#4A6080" }}>
+          <span className="font-semibold" style={{ color: "#1A365D" }}>ยังไม่มีบัญชีในระบบ?</span><br />
+          กรุณาติดต่อพนักงานที่เคาน์เตอร์คลินิก เพื่อให้พนักงานลงทะเบียนข้อมูลให้คุณในครั้งแรก
+        </p>
       </div>
-      <button onClick={onRegister}
-        className="w-full py-3.5 rounded-xl font-semibold transition-all hover:opacity-80"
-        style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#1A365D" }}>
-        <span className="flex items-center justify-center gap-2"><UserPlus size={16} /> สมัครสมาชิกใหม่ (สำหรับคนไข้)</span>
-      </button>
 
       <button onClick={onBack} className="flex items-center gap-1.5 text-sm mt-6 hover:opacity-70 transition-opacity mx-auto" style={{ color: "#4A6080" }}>
         <ChevronLeft size={14} /> กลับหน้าหลัก

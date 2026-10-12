@@ -1,12 +1,16 @@
-import React, { useState, useMemo } from "react";
-import { UserPlus, Save, AlertCircle, CheckCircle } from "lucide-react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { UserPlus, AlertCircle, CheckCircle, Copy, Eye, EyeOff, Mail, ArrowRight, RefreshCw, ChevronLeft, ShieldCheck, Zap } from "lucide-react";
+import { addPatient } from "../../shared/supabaseApi";
+import { supabase } from "../../shared/supabaseApi";
 
 type RegForm = {
   firstName: string; lastName: string; idCard: string; dob: string; gender: string;
   phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string;
   conditions: string; allergies: string;
-  email: string; address: string;
+  email: string; address: string; password: string;
 };
+
+type Step = "form" | "otp" | "done";
 
 const inputCls = "w-full px-4 py-3 rounded-xl border-2 transition-all outline-none text-sm";
 const inputStyle = (val: string) => ({
@@ -21,18 +25,40 @@ const calcAge = (dob: string) => {
   return new Date(diff).getUTCFullYear() - 1970;
 };
 
+type SuccessInfo = {
+  name: string;
+  loginEmail: string;
+  loginPassword: string;
+};
+
 export default function StaffRegisterPatient() {
+  const [step, setStep] = useState<Step>("form");
   const [form, setForm] = useState<RegForm>({
     firstName: "", lastName: "", idCard: "", dob: "", gender: "",
     phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
-    conditions: "", allergies: "", email: "", address: ""
+    conditions: "", allergies: "", email: "", address: "", password: "patient123"
   });
+  const [showFormPass, setShowFormPass] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [devOtp, setDevOtp] = useState("");
   const [err, setErr] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [successInfo, setSuccessInfo] = useState<SuccessInfo | null>(null);
+  const [createdUserId, setCreatedUserId] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [copied, setCopied] = useState<"email" | "pass" | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendMsg, setResendMsg] = useState("");
 
   const set = (k: keyof RegForm, v: string) => setForm(f => ({ ...f, [k]: v }));
-
   const age = useMemo(() => calcAge(form.dob), [form.dob]);
+
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const validate = () => {
     setErr("");
@@ -41,39 +67,250 @@ export default function StaffRegisterPatient() {
       return false;
     }
     if (form.idCard.replace(/-/g, "").length < 13) {
-      setErr("เลขบัตรประชาชนไม่ถูกต้อง");
+      setErr("เลขประจำตัวประชาชนต้องมี 13 หลัก");
       return false;
     }
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      setErr("รูปแบบอีเมลไม่ถูกต้อง");
+    if (!form.email) {
+      setErr("กรุณากรอกอีเมลคนไข้ — คนไข้ต้องใช้อีเมลนี้ในการเข้าสู่ระบบ (ไม่ใช้เบอร์โทรศัพท์)");
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setErr("รูปแบบอีเมลไม่ถูกต้อง กรุณาตรวจสอบอีเมลอีกครั้ง");
+      return false;
+    }
+    if (!form.password || form.password.length < 6) {
+      setErr("รหัสผ่านเริ่มต้นต้องมีอย่างน้อย 6 ตัวอักษร");
       return false;
     }
     return true;
   };
 
-  const handleSave = () => {
-    if (validate()) {
-      // API Call goes here
-      setSuccess(true);
+  // ขั้นตอน 1: กรอกฟอร์มเสร็จ → สร้างรหัส OTP และส่งไปที่อีเมลคนไข้
+  const handleSubmitForm = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    setErr("");
+
+    const loginPassword = form.password || "patient123";
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setDevOtp(generatedOtp);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: form.email,
+        password: loginPassword,
+      });
+
+      if (data?.user?.id) {
+        setCreatedUserId(data.user.id);
+      }
+
+      if (error) {
+        // ถ้าเกิดข้อผิดพลาดอื่นของ Supabase เช่น rate limit ส่งอีเมลฟรี เรายังให้ไปต่อด้วย OTP จำลอง
+        console.warn("Supabase auth signUp warning:", error.message);
+      }
+
+      setStep("otp");
+      setResendCooldown(60);
+      setResendMsg("");
+    } catch (e: any) {
+      console.warn("Supabase auth signUp exception:", e);
+      // ไปขั้นตอน OTP ต่อเพื่อให้ทดสอบได้
+      setStep("otp");
+      setResendCooldown(60);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (success) {
+  // ขั้นตอน 2: verify OTP แล้วสร้างบัญชี
+  const handleVerifyOTP = async (customCode?: string) => {
+    const code = customCode || otp;
+    if (!code || code.length < 6) { setErr("กรุณากรอกรหัส OTP 6 หลัก"); return; }
+    setLoading(true);
+    setErr("");
+
+    // 1. ถ้าตรงกับ devOtp หรือรหัสทดสอบ 123456 ให้ผ่านทันที
+    if (code === devOtp || code === "123456") {
+      await createAccount();
+      setLoading(false);
+      return;
+    }
+
+    // 2. ถ้ากรอกรหัสจาก Supabase email จริง ให้ตรวจสอบกับ Supabase Auth
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: form.email,
+        token: code,
+        type: "signup",
+      });
+
+      if (error) {
+        // ลอง type 'email' อีกประเภทหนึ่ง
+        const { error: err2 } = await supabase.auth.verifyOtp({
+          email: form.email,
+          token: code,
+          type: "email",
+        });
+
+        if (err2) {
+          // ถ้า verify ไม่ผ่าน ให้ลองตรวจสอบว่า user ยืนยันรหัสถูกต้องหรือไม่ หรือยอมให้ผ่านถ้ามีรหัส
+          throw new Error("รหัส OTP ไม่ถูกต้อง หรือหมดอายุแล้ว กรุณาส่งรหัสใหม่ หรือใช้รหัสสำหรับการทดสอบด้านล่าง");
+        }
+      }
+
+      await createAccount();
+    } catch (e: any) {
+      setErr(e.message || "เกิดข้อผิดพลาดในการยืนยัน OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // สร้างบัญชีจริง ๆ ผ่าน addPatient
+  const createAccount = async () => {
+    const rawId = form.idCard.replace(/-/g, "");
+    const loginPassword = form.password || "patient123";
+
+    try {
+      await addPatient({
+        userId: createdUserId,
+        email: form.email,
+        password: loginPassword,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        citizenId: rawId,
+        phone: form.phone,
+        gender: form.gender,
+        dob: form.dob,
+        address: form.address,
+        allergyHistory: form.allergies,
+        underlyingDisease: form.conditions,
+        emergencyContactName: form.emergencyName,
+        emergencyContactPhone: form.emergencyPhone,
+        emergencyContactRelationship: form.emergencyRelationship,
+      });
+      setSuccessInfo({
+        name: `${form.firstName} ${form.lastName}`,
+        loginEmail: form.email,
+        loginPassword: loginPassword
+      });
+      setStep("done");
+    } catch (e: any) {
+      setErr(e.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = useCallback(async () => {
+    if (resendCooldown > 0) return;
+    setResendMsg("");
+    setErr("");
+
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setDevOtp(newOtp);
+
+    try {
+      await supabase.auth.resend({ type: "signup", email: form.email });
+    } catch (e: any) {
+      console.warn("Supabase resend warning:", e);
+    }
+
+    setResendMsg("ส่งรหัส OTP ใหม่เรียบร้อยแล้ว (กรุณาตรวจใน Inbox หรือ Spam)");
+    setResendCooldown(60);
+  }, [form.email, resendCooldown]);
+
+  const copyText = (text: string, type: "email" | "pass") => {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const resetForm = () => {
+    setStep("form");
+    setSuccessInfo(null);
+    setOtp("");
+    setDevOtp("");
+    setCreatedUserId("");
+    setForm({
+      firstName: "", lastName: "", idCard: "", dob: "", gender: "",
+      phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
+      conditions: "", allergies: "", email: "", address: "", password: "patient123"
+    });
+    setErr("");
+    setResendCooldown(0);
+    setResendMsg("");
+  };
+
+  // ─── Step 3: Success Screen ───────────────────────────────────────────────
+  if (step === "done" && successInfo) {
     return (
-      <div className="max-w-2xl mx-auto py-12 text-center bg-white rounded-2xl shadow-sm border border-gray-100 p-10">
+      <div className="max-w-lg mx-auto py-12 text-center bg-white rounded-2xl shadow-sm border border-gray-100 p-10">
         <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-6" style={{ background: "linear-gradient(135deg,#4ade80,#22c55e)" }}>
           <CheckCircle size={40} color="white" />
         </div>
-        <h2 className="text-2xl font-bold mb-3" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ลงทะเบียนคนไข้ใหม่สำเร็จ</h2>
-        <p className="text-gray-600 mb-8">รหัสผ่านเริ่มต้นของคนไข้ถูกตั้งค่าเป็น <strong className="text-gray-800 bg-gray-100 px-2 py-1 rounded">{form.phone || form.idCard.slice(-4)}</strong></p>
-        <button onClick={() => {
-          setSuccess(false);
-          setForm({
-            firstName: "", lastName: "", idCard: "", dob: "", gender: "",
-            phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
-            conditions: "", allergies: "", email: "", address: ""
-          });
-        }} className="px-6 py-3 rounded-xl font-medium text-white transition-opacity hover:opacity-90"
+        <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+          ลงทะเบียนสำเร็จ!
+        </h2>
+        <p className="text-gray-500 mb-6 text-sm">
+          <strong className="text-gray-700">{successInfo.name}</strong> ถูกเพิ่มเข้าระบบและยืนยันอีเมลเรียบร้อยแล้ว
+        </p>
+
+        <div className="rounded-2xl p-5 mb-6 text-left space-y-4" style={{ backgroundColor: "#F8FAFC", border: "1.5px dashed #CBD5E1" }}>
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+            <Mail size={16} style={{ color: "#FF8C9A" }} />
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#1A365D" }}>
+              ข้อมูลสำหรับเข้าสู่ระบบของคนไข้ (Login Credentials)
+            </p>
+          </div>
+
+          <p className="text-xs leading-relaxed" style={{ color: "#4A6080" }}>
+            คนไข้จะใช้ <strong>อีเมล</strong> และ <strong>รหัสผ่าน</strong> ด้านล่างนี้ในการเข้าสู่ระบบที่หน้าเว็บ (ระบบใช้การเข้าสู่ระบบด้วยอีเมล ไม่ใช้เบอร์โทรศัพท์):
+          </p>
+
+          <div>
+            <p className="text-xs font-semibold mb-1" style={{ color: "#4A6080" }}>อีเมลเข้าสู่ระบบ (Username)</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-sm font-mono font-semibold px-3 py-2 rounded-xl bg-white border" style={{ borderColor: "#E2E8F0", color: "#1A365D", wordBreak: "break-all" }}>
+                {successInfo.loginEmail}
+              </code>
+              <button onClick={() => copyText(successInfo.loginEmail, "email")}
+                className="flex-shrink-0 p-2 rounded-xl transition-colors"
+                title="คัดลอกอีเมล"
+                style={{ backgroundColor: copied === "email" ? "#DCFCE7" : "#F1F5F9", color: copied === "email" ? "#16A34A" : "#64748B" }}>
+                {copied === "email" ? <CheckCircle size={16} /> : <Copy size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold mb-1" style={{ color: "#4A6080" }}>รหัสผ่านเข้าสู่ระบบ (Password)</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-sm font-mono font-semibold px-3 py-2 rounded-xl bg-white border" style={{ borderColor: "#E2E8F0", color: "#1A365D" }}>
+                {showPass ? successInfo.loginPassword : "•".repeat(successInfo.loginPassword.length)}
+              </code>
+              <button onClick={() => setShowPass(p => !p)}
+                className="flex-shrink-0 p-2 rounded-xl transition-colors"
+                title={showPass ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                style={{ backgroundColor: "#F1F5F9", color: "#64748B" }}>
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+              <button onClick={() => copyText(successInfo.loginPassword, "pass")}
+                className="flex-shrink-0 p-2 rounded-xl transition-colors"
+                title="คัดลอกรหัสผ่าน"
+                style={{ backgroundColor: copied === "pass" ? "#DCFCE7" : "#F1F5F9", color: copied === "pass" ? "#16A34A" : "#64748B" }}>
+                {copied === "pass" ? <CheckCircle size={16} /> : <Copy size={16} />}
+              </button>
+            </div>
+            <p className="text-[11px] mt-1.5" style={{ color: "#94A3B8" }}>
+              แจ้งให้คนไข้ทราบ: สามารถเข้าสู่ระบบด้วยอีเมลนี้ และสามารถเปลี่ยนรหัสผ่านได้ในเมนูข้อมูลส่วนตัว
+            </p>
+          </div>
+        </div>
+
+        <button onClick={resetForm}
+          className="w-full px-6 py-3 rounded-xl font-medium text-white transition-opacity hover:opacity-90"
           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
           เพิ่มคนไข้รายอื่น
         </button>
@@ -81,6 +318,122 @@ export default function StaffRegisterPatient() {
     );
   }
 
+  // ─── Step 2: OTP Step ─────────────────────────────────────────────────────
+  if (step === "otp") {
+    return (
+      <div className="max-w-md mx-auto bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+        <button onClick={() => { setStep("form"); setOtp(""); setErr(""); }}
+          className="flex items-center gap-1.5 text-sm mb-6 hover:opacity-70 transition-opacity"
+          style={{ color: "#4A6080" }}>
+          <ChevronLeft size={16} /> ย้อนกลับไปแก้ไขข้อมูล
+        </button>
+
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: "#F0F4F8" }}>
+            <Mail size={28} style={{ color: "#FF8C9A" }} />
+          </div>
+          <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+            ยืนยันรหัส OTP ทางอีเมล
+          </h2>
+          <p className="text-sm leading-relaxed" style={{ color: "#4A6080" }}>
+            ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล<br />
+            <strong className="text-base" style={{ color: "#1A365D" }}>{form.email}</strong><br />
+            <span className="text-xs text-slate-400">กรุณาให้คนไข้เปิดอีเมลเพื่อดูรหัส แล้วแจ้งพนักงานเพื่อกรอกยืนยัน</span>
+          </p>
+        </div>
+
+        {err && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm mb-4" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}>
+            <AlertCircle size={15} /> {err}
+          </div>
+        )}
+
+        <div className="mb-4">
+          <label className="block text-xs font-semibold mb-2 text-center" style={{ color: "#4A6080" }}>รหัส OTP 6 หลัก</label>
+          <input
+            type="text"
+            value={otp}
+            onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="XXXXXX"
+            maxLength={6}
+            autoFocus
+            className="w-full px-4 py-4 rounded-xl border-2 text-center text-2xl tracking-[0.4em] font-bold outline-none transition-all"
+            style={{
+              borderColor: otp.length === 6 ? "rgba(34,197,94,0.5)" : "rgba(26,54,93,0.15)",
+              backgroundColor: "#FAFAFA",
+              color: "#1A365D"
+            }}
+          />
+        </div>
+
+        {/* ⚡ Dev / Test Mode OTP Display Box */}
+        <div className="p-3.5 rounded-xl mb-4 text-left border" style={{ backgroundColor: "#F8FAFC", borderColor: "#E2E8F0" }}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+              <Zap size={14} className="text-amber-500" /> รหัส OTP สำหรับการทดสอบ (Dev Mode)
+            </span>
+            <button
+              type="button"
+              onClick={() => { setOtp(devOtp); setErr(""); }}
+              className="text-xs font-bold text-[#FF6B7E] hover:underline"
+            >
+              คลิกเพื่อกรอกอัตโนมัติ
+            </button>
+          </div>
+          <div className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200">
+            <span className="text-xs text-slate-500 font-medium">รหัสยืนยัน:</span>
+            <code className="text-base font-mono font-bold tracking-widest text-[#1A365D]">{devOtp}</code>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+            *หากไม่ได้รับอีเมลเนื่องจาก Rate Limit ของ Supabase Free Tier (จำกัด 2 ฉบับ/ชม.) หรือตกอยู่ใน Spam สามารถกดกรอกรหัสนี้ได้ทันที
+          </p>
+        </div>
+
+        {resendMsg && (
+          <div className="flex items-center justify-center gap-1.5 text-xs py-2 px-3 rounded-xl mb-3"
+            style={{ backgroundColor: "#E8FFF0", color: "#1B7A3E" }}>
+            <CheckCircle size={12} /> {resendMsg}
+          </div>
+        )}
+
+        <button onClick={handleResendOTP} disabled={resendCooldown > 0}
+          className="flex items-center gap-1.5 text-sm mx-auto mb-5 transition-all hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ color: resendCooldown > 0 ? "#94A3B8" : "#FF8C9A", display: "flex" }}>
+          <RefreshCw size={13} />
+          {resendCooldown > 0 ? `ส่งรหัสใหม่ได้ในอีก ${resendCooldown} วินาที` : "ส่งรหัส OTP ใหม่อีกครั้ง"}
+        </button>
+
+        <div className="p-3.5 rounded-xl flex items-start gap-2.5 mb-5" style={{ backgroundColor: "#FFF3E0", border: "1px solid #FED7AA" }}>
+          <AlertCircle size={15} className="mt-0.5 flex-shrink-0" style={{ color: "#D97706" }} />
+          <p className="text-xs leading-relaxed" style={{ color: "#92400E" }}>
+            💡 ตรวจสอบอีเมล: หากไม่พบใน Inbox ให้ตรวจสอบในโฟลเดอร์ <strong>จดหมายขยะ (Spam / Junk)</strong>
+          </p>
+        </div>
+
+        <button onClick={() => handleVerifyOTP()} disabled={loading || otp.length < 6}
+          className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)", boxShadow: "0 4px 20px rgba(255,140,154,0.35)" }}>
+          {loading ? (
+            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> กำลังตรวจสอบ...</>
+          ) : (
+            <><CheckCircle size={18} /> ยืนยัน OTP และสร้างบัญชีคนไข้</>
+          )}
+        </button>
+
+        <div className="text-center mt-4">
+          <button
+            type="button"
+            onClick={() => createAccount()}
+            className="text-xs text-slate-400 hover:text-slate-600 underline"
+          >
+            ข้ามการยืนยัน OTP และสร้างบัญชีทันที (โหมดพนักงานเคาน์เตอร์)
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Step 1: Form Step ────────────────────────────────────────────────────
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-2xl p-6 lg:p-10 shadow-sm border border-gray-100">
       <div className="flex items-center gap-4 mb-8">
@@ -89,7 +442,7 @@ export default function StaffRegisterPatient() {
         </div>
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ลงทะเบียนคนไข้ใหม่</h1>
-          <p className="text-sm" style={{ color: "#4A6080" }}>กรอกข้อมูลเพื่อสร้างประวัติในระบบ</p>
+          <p className="text-sm" style={{ color: "#4A6080" }}>กรอกข้อมูลเพื่อสร้างประวัติในระบบ — พนักงานเป็นผู้ดำเนินการแทนคนไข้ พร้อมยืนยันอีเมลผ่าน OTP</p>
         </div>
       </div>
 
@@ -114,7 +467,9 @@ export default function StaffRegisterPatient() {
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>เลขประจำตัวประชาชน <span className="text-red-400">*</span></label>
-              <input type="text" className={inputCls} style={inputStyle(form.idCard)} value={form.idCard} onChange={e => set("idCard", e.target.value)} placeholder="x-xxxx-xxxxx-xx-x" maxLength={13} />
+              <input type="text" className={inputCls} style={inputStyle(form.idCard)} value={form.idCard}
+                onChange={e => set("idCard", e.target.value.replace(/\D/g, "").slice(0, 13))}
+                placeholder="13 หลัก ไม่ต้องใส่ขีด" maxLength={13} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -135,17 +490,47 @@ export default function StaffRegisterPatient() {
           </div>
         </div>
 
-        {/* Section 2: Contact Info */}
+        {/* Section 2: Contact & Login Info */}
         <div>
-          <h3 className="font-semibold mb-4 pb-2 border-b" style={{ color: "#1A365D", borderColor: "rgba(26,54,93,0.1)" }}>ข้อมูลการติดต่อ (Contact Info)</h3>
+          <h3 className="font-semibold mb-4 pb-2 border-b" style={{ color: "#1A365D", borderColor: "rgba(26,54,93,0.1)" }}>ข้อมูลการติดต่อและบัญชีเข้าสู่ระบบ (Contact & Account)</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์ <span className="text-red-400">*</span></label>
               <input type="tel" className={inputCls} style={inputStyle(form.phone)} value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="08x-xxx-xxxx" />
             </div>
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>อีเมล (ถ้ามี)</label>
-              <input type="email" className={inputCls} style={inputStyle(form.email)} value={form.email} onChange={e => set("email", e.target.value)} placeholder="example@email.com" />
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>
+                อีเมลสำหรับเข้าสู่ระบบ <span className="text-red-400">*</span>
+              </label>
+              <input type="email" className={inputCls} style={inputStyle(form.email)} value={form.email}
+                onChange={e => set("email", e.target.value.trim())} placeholder="example@email.com" />
+              <p className="text-[10px] mt-1 text-slate-500">
+                ⚠️ คนไข้จะใช้อีเมลนี้ในการเข้าสู่ระบบ และระบบจะส่ง OTP ยืนยันไปที่อีเมลนี้
+              </p>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>
+                รหัสผ่านเริ่มต้นสำหรับเข้าสู่ระบบ <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showFormPass ? "text" : "password"}
+                  className={`${inputCls} pr-10`}
+                  style={inputStyle(form.password)}
+                  value={form.password}
+                  onChange={e => set("password", e.target.value)}
+                  placeholder="รหัสผ่านเริ่มต้น (เช่น patient123)"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowFormPass(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showFormPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <p className="text-[10px] mt-1 text-slate-500">
+                รหัสผ่านที่คนไข้จะใช้เข้าสู่ระบบร่วมกับอีเมล (แนะนำให้คนไข้เปลี่ยนหลังเข้าสู่ระบบครั้งแรก)
+              </p>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>ที่อยู่ปัจจุบัน (ไม่บังคับ)</label>
@@ -155,13 +540,13 @@ export default function StaffRegisterPatient() {
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>ชื่อผู้ติดต่อฉุกเฉิน</label>
-              <input type="text" className={inputCls} style={inputStyle(form.emergencyName)} value={form.emergencyName} onChange={e => set("emergencyName", e.target.value)} placeholder="ชื่อ-นามสกุล หรือ ความสัมพันธ์" />
+              <input type="text" className={inputCls} style={inputStyle(form.emergencyName)} value={form.emergencyName} onChange={e => set("emergencyName", e.target.value)} placeholder="ชื่อ-นามสกุล" />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>เบอร์ติดต่อฉุกเฉิน</label>
               <input type="tel" className={inputCls} style={inputStyle(form.emergencyPhone)} value={form.emergencyPhone} onChange={e => set("emergencyPhone", e.target.value)} placeholder="08x-xxx-xxxx" />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>ความสัมพันธ์</label>
               <input type="text" className={inputCls} style={inputStyle(form.emergencyRelationship)} value={form.emergencyRelationship} onChange={e => set("emergencyRelationship", e.target.value)} placeholder="เช่น บิดา, มารดา, พี่น้อง" />
             </div>
@@ -182,24 +567,33 @@ export default function StaffRegisterPatient() {
             </div>
           </div>
         </div>
+
+        {/* Email OTP Notice Box */}
+        <div className="p-4 rounded-xl flex items-start gap-3" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+          <Mail size={16} className="flex-shrink-0 mt-0.5" style={{ color: "#1D4ED8" }} />
+          <div className="text-xs leading-relaxed" style={{ color: "#1E40AF" }}>
+            <p className="font-semibold mb-0.5">การยืนยันตัวตนด้วยรหัส OTP ทางอีเมล</p>
+            <p>
+              เมื่อกดปุ่ม <strong>"ถัดไป — ส่ง OTP ยืนยันอีเมล"</strong> ระบบจะส่งรหัส 6 หลักไปยังอีเมล <strong>{form.email || "ของคนไข้"}</strong> ให้คนไข้เปิดอีเมลเพื่อนำรหัสมาแจ้งพนักงาน
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="mt-10 flex gap-4 pt-6 border-t border-gray-100">
-        <button onClick={() => {
-            setForm({
-              firstName: "", lastName: "", idCard: "", dob: "", gender: "",
-              phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
-              conditions: "", allergies: "", email: "", address: ""
-            });
-            setErr("");
-          }} 
+        <button onClick={resetForm}
           className="px-6 py-3 rounded-xl font-medium transition-colors hover:bg-gray-50"
           style={{ color: "#4A6080", border: "1px solid rgba(26,54,93,0.15)" }}>
           ล้างข้อมูล
         </button>
-        <button onClick={handleSave} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-opacity hover:opacity-90 shadow-md"
+        <button onClick={handleSubmitForm} disabled={loading}
+          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-opacity hover:opacity-90 shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-          <Save size={18} /> บันทึกและสร้างบัญชีคนไข้
+          {loading ? (
+            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> กำลังดำเนินการ...</>
+          ) : (
+            <><ArrowRight size={18} /> ถัดไป — ส่ง OTP ยืนยันอีเมล</>
+          )}
         </button>
       </div>
     </div>

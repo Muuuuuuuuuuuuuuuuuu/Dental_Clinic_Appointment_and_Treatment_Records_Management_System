@@ -2,16 +2,13 @@ import { useState, useEffect } from "react";
 import { Info } from "lucide-react";
 import { View, UserRole, PatientUser } from "./types";
 import { Appointment, getClinicStatus, ClinicStatus } from "../shared/data";
-import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours, savePatientData } from "../shared/supabaseApi";
+import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
 import { supabase } from "../shared/utils/supabaseClient";
 import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
 
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 import LoginPage from "./auth/LoginPage";
-import RegisterPage from "./auth/RegisterPage";
-import ConsentPage from "./auth/ConsentPage";
 import ForgotPasswordPage from "./auth/ForgotPasswordPage";
-import type { RegForm } from "./types";
 
 // ─── Portal layout ───────────────────────────────────────────────────────────
 import PortalLayout from "./layout/PortalLayout";
@@ -52,10 +49,6 @@ export default function PatientPortal() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [role, setRole] = useState<UserRole>(null);
   const [user, setUser] = useState<PatientUser | null>(null);
-  const [otpEmail, setOtpEmail] = useState("");
-  const [regFormData, setRegFormData] = useState<RegForm | null>(null);
-  const [consentLoading, setConsentLoading] = useState(false);
-  const [consentError, setConsentError] = useState("");
   const [portalView, setPortalView] = useState<View>("dashboard");
   const [loginEmail, setLoginEmail] = useState("");
   const [clinicStatus, setClinicStatus] = useState<ClinicStatus | null>(null);
@@ -173,21 +166,7 @@ export default function PatientPortal() {
   const addAppt = (a: Appointment) =>
     setSharedAppointments(prev => [...prev, a]);
 
-  const handleConsentAccept = async () => {
-    if (!regFormData) return;
-    setConsentLoading(true);
-    setConsentError("");
-    try {
-      // Create auth user (in real app, this creates Supabase auth user)
-      const mockPassword = "password123"; 
-      const patientId = await savePatientData(regFormData);
-      handleRegisterSuccess(regFormData.email, regFormData, patientId);
-    } catch (err: any) {
-      setConsentError(err.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-    } finally {
-      setConsentLoading(false);
-    }
-  };
+
 
   const handleLogin = (u: PatientUser) => {
     setUser(u);
@@ -209,34 +188,6 @@ export default function PatientPortal() {
     setView("landing");
     localStorage.removeItem("supat_last_view");
     supabase.auth.signOut();
-  };
-
-  const handleRegisterSuccess = (email: string, formData?: RegForm, patientId?: number) => {
-    if (formData) {
-      setUser({
-        patientId,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        idCard: formData.idCard,
-        dob: formData.dob,
-        gender: formData.gender,
-        phone: formData.phone,
-        email: formData.email,
-        emergencyName: formData.emergencyName,
-        emergencyPhone: formData.emergencyPhone,
-        emergencyRelationship: formData.emergencyRelationship,
-        conditions: formData.conditions,
-        allergies: formData.allergies
-      });
-      setRole("patient");
-      setIsLoggedIn(true);
-      updateView("dashboard");
-    }
-  };
-
-  const handleConsent = () => {
-    // After consent, go to registration form
-    setView("register");
   };
 
   const goLogin = () => {
@@ -315,9 +266,7 @@ export default function PatientPortal() {
   }
 
   // ─── Auth pages ───────────────────────────────────────────────────────────
-  if (view === "login")           return <LoginPage onLogin={handleLogin} onLoginRole={handleLoginRole} onRegister={() => { setPrevView("login"); setView("consent"); }} onForgotPassword={() => { setPrevView("login"); setView("forgot-password"); }} onBack={() => setView(prevView)} />;
-  if (view === "consent")         return <ConsentPage onAccept={handleConsent} onBack={() => setView(prevView)} />;
-  if (view === "register")        return <RegisterPage onSuccess={handleRegisterSuccess} onLogin={goLogin} onBack={() => setView(prevView)} />;
+  if (view === "login")           return <LoginPage onLogin={handleLogin} onLoginRole={handleLoginRole} onRegister={() => setView("login")} onForgotPassword={() => { setPrevView("login"); setView("forgot-password"); }} onBack={() => setView(prevView)} />;
   if (view === "forgot-password") return <ForgotPasswordPage onBack={() => setView(prevView)} onSuccess={() => setView('login')} />;
 
   // ─── Landing page ─────────────────────────────────────────────────────────

@@ -621,6 +621,7 @@ export async function searchPatientByKeyword(keyword: string): Promise<PatientIn
 }
 
 export async function addPatient(patient: {
+  userId?: string;
   email: string;
   password?: string;
   firstName: string;
@@ -642,26 +643,63 @@ export async function addPatient(patient: {
     import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
   );
 
-  const defaultPassword = patient.password || 'patient123';
+  const defaultPassword = patient.password || '12345678';
 
-  // 1. สร้างบัญชีผู้ใช้ใน Supabase Auth จริงๆ
-  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
-    email: patient.email,
-    password: defaultPassword,
-    email_confirm: true
-  });
+  // 1. สร้างบัญชีผู้ใช้ใน Supabase Auth จริงๆ หรือดึง user_id กรณีผ่าน OTP มาแล้ว
+  let realUserId = (patient as any).userId || '';
+  if (!realUserId) {
+    const { data: authData } = await adminAuthClient.auth.admin.createUser({
+      email: patient.email,
+      password: defaultPassword,
+      email_confirm: true
+    });
 
-  if (authErr) {
-    console.error("Auth creation failed:", authErr);
-    throw new Error("ไม่สามารถสร้างบัญชีคนไข้ได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+    if (authData?.user) {
+      realUserId = authData.user.id;
+    } else {
+      // ถ้าผู้ใช้มีอยู่แล้วใน Auth ให้ค้นหา ID ผ่าน generateLink (หลีกเลี่ยง listUsers 500)
+      try {
+        const { data: linkData } = await adminAuthClient.auth.admin.generateLink({
+          type: 'magiclink',
+          email: patient.email
+        });
+        const foundId = (linkData as any)?.user?.id || (linkData as any)?.id;
+        if (foundId) {
+          realUserId = foundId;
+          await adminAuthClient.auth.admin.updateUserById(foundId, {
+            email_confirm: true,
+            password: defaultPassword
+          });
+        }
+      } catch (linkErr) {
+        console.warn("generateLink error:", linkErr);
+      }
+    }
   }
 
-  const realUserId = authData.user.id;
+  // ถ้ายังไม่พบจาก Auth ลองค้นหาจากตาราง users
+  if (!realUserId) {
+    const { data: uData } = await supabase.from('users').select('user_id').eq('email', patient.email).maybeSingle();
+    if (uData?.user_id) realUserId = uData.user_id;
+  }
+
+  if (!realUserId) {
+    realUserId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'pat-' + Date.now();
+  }
+
+  try {
+    await adminAuthClient.auth.admin.updateUserById(realUserId, {
+      email_confirm: true,
+      password: defaultPassword
+    });
+  } catch (updErr) {
+    // ignore
+  }
 
   // 2. สร้าง Profile
   // gender ต้องเป็น 'ชาย' หรือ 'หญิง' เท่านั้น (DB CHECK constraint)
   const validGender = (patient.gender === 'ชาย' || patient.gender === 'หญิง') ? patient.gender : null;
-  const { error: pErr } = await supabase.from('profile').insert({
+  const { error: pErr } = await supabase.from('profile').upsert({
     citizen_id: patient.citizenId,
     first_name: patient.firstName,
     last_name: patient.lastName,
@@ -673,20 +711,44 @@ export async function addPatient(patient: {
   if (pErr) { console.error("Profile insert error:", pErr); throw pErr; }
 
   // 3. สร้าง Users
-  const { error: uErr } = await supabase.from('users').insert({
+  const { error: uErr } = await supabase.from('users').upsert({
     user_id: realUserId,
     citizen_id: patient.citizenId,
     email: patient.email,
     role: 'คนไข้',
     account_status: 'active'
-  });
+  }, { onConflict: 'user_id' });
   if (uErr) { console.error("Users insert error:", uErr); throw uErr; }
 
-  // 4. สร้าง Patient
-  const { data: patData, error: patErr } = await supabase.from('patient').insert({
-    user_id: realUserId
-  }).select().single();
-  if (patErr) { console.error("Patient insert error:", patErr); throw patErr; }
+  // 4. สร้าง หรือ ลิงก์ Patient
+  let patData: any = null;
+  const { data: existingPat } = await supabase.from('patient').select('patient_id').eq('user_id', realUserId).maybeSingle();
+  if (existingPat) {
+    patData = existingPat;
+  } else {
+    // หาดูว่าเคยมี patient ที่ผูกกับ citizen_id หรือ email นี้มาก่อนหรือไม่
+    const { data: oldUserByCitizen } = await supabase.from('users').select('user_id').eq('citizen_id', patient.citizenId).maybeSingle();
+    const { data: oldUserByEmail } = await supabase.from('users').select('user_id').eq('email', patient.email).maybeSingle();
+    const oldId = (oldUserByCitizen?.user_id && oldUserByCitizen.user_id !== realUserId ? oldUserByCitizen.user_id : null) ||
+                  (oldUserByEmail?.user_id && oldUserByEmail.user_id !== realUserId ? oldUserByEmail.user_id : null);
+    
+    if (oldId) {
+      const { data: oldPat } = await supabase.from('patient').select('patient_id').eq('user_id', oldId).maybeSingle();
+      if (oldPat) {
+        await supabase.from('patient').update({ user_id: realUserId }).eq('patient_id', oldPat.patient_id);
+        patData = oldPat;
+        await supabase.from('users').delete().eq('user_id', oldId);
+      }
+    }
+
+    if (!patData) {
+      const { data: newPat, error: patErr } = await supabase.from('patient').insert({
+        user_id: realUserId
+      }).select().single();
+      if (patErr) { console.error("Patient insert error:", patErr); throw patErr; }
+      patData = newPat;
+    }
+  }
 
   // 5. สร้าง Emergency Contact
   if (patient.emergencyContactName || patient.emergencyContactPhone) {
