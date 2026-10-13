@@ -9,6 +9,7 @@ import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
 // ─── Auth pages ───────────────────────────────────────────────────────────────
 import LoginPage from "./auth/LoginPage";
 import ForgotPasswordPage from "./auth/ForgotPasswordPage";
+import ConsentPage from "./auth/ConsentPage";
 
 // ─── Portal layout ───────────────────────────────────────────────────────────
 import PortalLayout from "./layout/PortalLayout";
@@ -54,6 +55,14 @@ export default function PatientPortal() {
   const [clinicStatus, setClinicStatus] = useState<ClinicStatus | null>(null);
   const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number, planItem?: number, openTicketId?: number} | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [needsConsent, setNeedsConsent] = useState(false);
+
+  // ─── ตรวจสอบว่าคนไข้คนนี้เคยยินยอมนโยบายแล้วหรือยัง ────────────────────
+  const hasAcceptedConsent = (identifier: string) =>
+    localStorage.getItem(`supat_consent_${identifier}`) === "accepted";
+
+  const markConsentAccepted = (identifier: string) =>
+    localStorage.setItem(`supat_consent_${identifier}`, "accepted");
   
   const { appointments: sharedAppointments, setAppointments: setSharedAppointments } = useRealtimeAppointments();
 
@@ -105,7 +114,14 @@ export default function PatientPortal() {
               });
               setRole("patient");
               setIsLoggedIn(true);
-              
+
+              // ─── ตรวจ consent ก่อนเข้า Portal (session restore) ───────────
+              const identifier = profile.email || session.user.email || session.user.id;
+              if (!hasAcceptedConsent(identifier)) {
+                setNeedsConsent(true);
+                return;
+              }
+
               // Restore last view or go to dashboard
               const savedView = localStorage.getItem("supat_last_view") as View;
               const urlParams = new URLSearchParams(window.location.search);
@@ -172,6 +188,20 @@ export default function PatientPortal() {
     setUser(u);
     setRole("patient");
     setIsLoggedIn(true);
+    // ─── ตรวจ consent ก่อนเข้า Dashboard ─────────────────────────────────
+    const identifier = u.email || String(u.patientId || "");
+    if (!hasAcceptedConsent(identifier)) {
+      setNeedsConsent(true);
+    } else {
+      updateView("dashboard");
+    }
+  };
+
+  const handleConsentAccepted = () => {
+    if (!user) return;
+    const identifier = user.email || String(user.patientId || "");
+    markConsentAccepted(identifier);
+    setNeedsConsent(false);
     updateView("dashboard");
   };
 
@@ -216,6 +246,20 @@ export default function PatientPortal() {
 
   if (isInitializing) {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400">กำลังโหลดข้อมูล...</div>;
+  }
+
+  // ─── First-Time Consent Gate ─────────────────────────────────────────────
+  if (needsConsent && isLoggedIn && role === "patient") {
+    return (
+      <ConsentPage
+        onAccept={handleConsentAccepted}
+        onBack={() => {
+          // ยกเลิก → logout กลับ landing
+          setNeedsConsent(false);
+          handleLogout();
+        }}
+      />
+    );
   }
 
   if (isPortalView && isLoggedIn && role === "patient" && user) {
