@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { UserPlus, AlertCircle, CheckCircle, Copy, Eye, EyeOff, Mail, ArrowRight, RefreshCw, ChevronLeft, ShieldCheck, Zap } from "lucide-react";
+import { UserPlus, AlertCircle, CheckCircle, Copy, Eye, EyeOff, Mail, ArrowRight, RefreshCw, ChevronLeft, ShieldCheck } from "lucide-react";
 import { addPatient } from "../../shared/supabaseApi";
 import { supabase } from "../../shared/supabaseApi";
 
@@ -154,8 +154,7 @@ export default function StaffRegisterPatient() {
         });
 
         if (err2) {
-          // ถ้า verify ไม่ผ่าน ให้ลองตรวจสอบว่า user ยืนยันรหัสถูกต้องหรือไม่ หรือยอมให้ผ่านถ้ามีรหัส
-          throw new Error("รหัส OTP ไม่ถูกต้อง หรือหมดอายุแล้ว กรุณาส่งรหัสใหม่ หรือใช้รหัสสำหรับการทดสอบด้านล่าง");
+          throw new Error("รหัส OTP ไม่ถูกต้อง หรือหมดอายุแล้ว กรุณาส่งรหัสใหม่");
         }
       }
 
@@ -366,28 +365,6 @@ export default function StaffRegisterPatient() {
           />
         </div>
 
-        {/* ⚡ Dev / Test Mode OTP Display Box */}
-        <div className="p-3.5 rounded-xl mb-4 text-left border" style={{ backgroundColor: "#F8FAFC", borderColor: "#E2E8F0" }}>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-              <Zap size={14} className="text-amber-500" /> รหัส OTP สำหรับการทดสอบ (Dev Mode)
-            </span>
-            <button
-              type="button"
-              onClick={() => { setOtp(devOtp); setErr(""); }}
-              className="text-xs font-bold text-[#FF6B7E] hover:underline"
-            >
-              คลิกเพื่อกรอกอัตโนมัติ
-            </button>
-          </div>
-          <div className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200">
-            <span className="text-xs text-slate-500 font-medium">รหัสยืนยัน:</span>
-            <code className="text-base font-mono font-bold tracking-widest text-[#1A365D]">{devOtp}</code>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
-            *หากไม่ได้รับอีเมลเนื่องจาก Rate Limit ของ Supabase Free Tier (จำกัด 2 ฉบับ/ชม.) หรือตกอยู่ใน Spam สามารถกดกรอกรหัสนี้ได้ทันที
-          </p>
-        </div>
 
         {resendMsg && (
           <div className="flex items-center justify-center gap-1.5 text-xs py-2 px-3 rounded-xl mb-3"

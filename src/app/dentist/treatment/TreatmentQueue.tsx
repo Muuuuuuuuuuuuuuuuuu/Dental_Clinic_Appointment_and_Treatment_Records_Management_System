@@ -215,7 +215,10 @@ export default function TreatmentQueue({
 
   const handleStartRecording = async (a: Appointment) => {
     setRecording(a.id);
-    if (a.patientId) {
+    if (a.odontogramData && Object.keys(a.odontogramData).length > 0) {
+      const { wholeMouth, ...rest } = a.odontogramData as any;
+      setToothData(rest as any);
+    } else if (a.patientId) {
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
       const { wholeMouth, ...rest } = historyOdontogram;
       setToothData(rest as any);
@@ -258,8 +261,20 @@ export default function TreatmentQueue({
       setToothData(prev => {
         const current = prev[tooth] || "normal";
         const next = current === status ? "normal" : status;
+        if (next === "normal") {
+          const updated = { ...prev };
+          delete updated[tooth];
+          return updated;
+        }
         return { ...prev, [tooth]: next };
       });
+      if (status === "cross") {
+        setForm(f => {
+          const noteText = `- ประวัติเดิม: เคยถอน/ผ่าคุด ซี่ ${tooth}`;
+          if (f.notes?.includes(`ซี่ ${tooth}`)) return f;
+          return { ...f, notes: f.notes ? `${f.notes}\n${noteText}` : noteText };
+        });
+      }
     } else {
       setSelectedToothForAction(tooth);
     }
@@ -361,10 +376,18 @@ export default function TreatmentQueue({
       {selectedToothForAction && (
         <ToothActionModal
           tooth={selectedToothForAction}
+          currentStatus={toothData[selectedToothForAction]}
           services={services}
           onClose={() => setSelectedToothForAction(null)}
           onAction={(status, service, notes) => {
-            setToothData(prev => ({ ...prev, [selectedToothForAction]: status }));
+            setToothData(prev => {
+              if (status === "normal") {
+                const next = { ...prev };
+                delete next[selectedToothForAction];
+                return next;
+              }
+              return { ...prev, [selectedToothForAction]: status };
+            });
             if (service) {
               incrementService(service, selectedToothForAction);
             }

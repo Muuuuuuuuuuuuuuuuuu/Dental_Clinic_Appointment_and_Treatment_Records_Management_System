@@ -1,14 +1,16 @@
 import React, { useState } from "react";
-import { X, ChevronRight } from "lucide-react";
+import { X, ChevronRight, AlertCircle, Sparkles, Ban, RotateCcw, Trash2 } from "lucide-react";
 import { ToothStatus } from "./Odontogram";
 
 export default function ToothActionModal({ 
   tooth, 
+  currentStatus,
   onClose, 
   onAction,
   services = []
 }: { 
   tooth: number, 
+  currentStatus?: ToothStatus,
   onClose: () => void, 
   onAction: (status: ToothStatus, service?: any, notes?: string) => void,
   services?: any[] 
@@ -35,28 +37,88 @@ export default function ToothActionModal({
     onAction(status, service, `ทำ ${service.name} ซี่ ${tooth}`);
   };
 
+  const getStatusBadge = () => {
+    if (currentStatus === "red") {
+      return <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-200 border border-red-400/30">สถานะ: พบปัญหา</span>;
+    }
+    if (currentStatus === "blue") {
+      return <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30">สถานะ: รักษาแล้ว</span>;
+    }
+    if (currentStatus === "cross") {
+      return <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-500/30 text-slate-200 border border-slate-400/30">สถานะ: ถอน/สูญเสียฟัน</span>;
+    }
+    return <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">สถานะ: ฟันปกติ</span>;
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
         <div className="bg-slate-800 text-white px-5 py-3.5 flex justify-between items-center">
-          <span className="font-bold text-lg">จัดการซี่ฟัน: {tooth}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-lg">จัดการซี่ฟัน: {tooth}</span>
+            {getStatusBadge()}
+          </div>
           <button onClick={onClose} className="text-slate-300 hover:text-white transition-colors"><X size={20} /></button>
         </div>
         
         <div className="p-5">
           {step === "main" && (
-            <div className="space-y-3">
-              <button onClick={() => onAction("red", undefined, `พบผุ/มีปัญหา ซี่ ${tooth}`)} className="w-full p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors text-center font-medium">
-                ตรวจพบฟันผุ / มีปัญหา
+            <div className="space-y-2.5">
+              {/* Option 1: พบปัญหา / มีรอยผุ */}
+              <button 
+                onClick={() => onAction("red", undefined, `พบผุ/มีปัญหา ซี่ ${tooth}`)} 
+                className="w-full p-3 rounded-xl border border-red-200 bg-red-50/70 hover:bg-red-100/80 text-red-700 transition-all text-left flex items-start gap-3 group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0 text-red-600 mt-0.5 group-hover:scale-105 transition-transform">
+                  <AlertCircle size={18} />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">ตรวจพบฟันผุ / มีปัญหา</div>
+                  <div className="text-xs text-red-600/80">ระบุปัญหาที่ต้องรักษาในอนาคต (สีแดง)</div>
+                </div>
               </button>
               
-              <button onClick={() => setStep("select_service")} className="w-full flex items-center justify-between p-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100 transition-colors text-left font-medium">
-                <span>บันทึกการทำหัตถการ</span>
-                <ChevronRight size={18} className="text-blue-400" />
+              {/* Option 2: บันทึกหัตถการในคลินิกนี้ */}
+              <button 
+                onClick={() => setStep("select_service")} 
+                className="w-full p-3 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-blue-800 transition-all text-left flex items-start justify-between group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 text-blue-600 mt-0.5 group-hover:scale-105 transition-transform">
+                    <Sparkles size={18} />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">บันทึกการทำหัตถการ (คลินิกนี้)</div>
+                    <div className="text-xs text-blue-600/80">อุดฟัน, ครอบฟัน, หรือถอนฟันรอบนี้ (มีค่าบริการ)</div>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-blue-400 mt-2 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              {/* Option 3: ลบฟันที่เคยทำจากที่อื่น (Missing Tooth) */}
+              <button 
+                onClick={() => onAction("cross", undefined, `ประวัติเดิม: เคยถอน/ผ่าคุด ซี่ ${tooth}`)} 
+                className="w-full p-3 rounded-xl border-2 border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-slate-800 transition-all text-left flex items-start gap-3 group shadow-sm"
+              >
+                <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center shrink-0 text-rose-600 mt-0.5 group-hover:scale-105 transition-transform">
+                  <Trash2 size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-sm text-rose-900">ลบฟันซี่นี้ออก (เคยทำมาจากที่อื่น)</span>
+                    <span className="text-[10px] bg-rose-200/80 text-rose-800 px-1.5 py-0.2 rounded font-semibold">0 บาท</span>
+                  </div>
+                  <div className="text-xs text-rose-700/80">คนไข้เคยถอน / ผ่าฟันคุดมาก่อนแล้ว (ไม่คิดค่าบริการ)</div>
+                </div>
               </button>
               
-              <button onClick={() => onAction("normal")} className="w-full p-3 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors text-center font-medium mt-6">
-                ยกเลิกสถานะเป็นปกติ
+              {/* Option 4: ยกเลิก / คืนค่าเป็นปกติ */}
+              <button 
+                onClick={() => onAction("normal")} 
+                className="w-full p-2.5 rounded-xl border border-dashed border-gray-300 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors text-center text-xs font-medium flex items-center justify-center gap-1.5 mt-4"
+              >
+                <RotateCcw size={14} />
+                <span>คืนค่าสถานะเป็นฟันปกติ (Clear Status)</span>
               </button>
             </div>
           )}

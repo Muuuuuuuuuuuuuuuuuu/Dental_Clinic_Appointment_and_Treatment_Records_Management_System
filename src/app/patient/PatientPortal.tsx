@@ -58,11 +58,38 @@ export default function PatientPortal() {
   const [needsConsent, setNeedsConsent] = useState(false);
 
   // ─── ตรวจสอบว่าคนไข้คนนี้เคยยินยอมนโยบายแล้วหรือยัง ────────────────────
-  const hasAcceptedConsent = (identifier: string) =>
-    localStorage.getItem(`supat_consent_${identifier}`) === "accepted";
+  const hasAcceptedConsent = (identifiers: (string | number | undefined | null)[], sessionUser?: any) => {
+    // 1. ตรวจสอบจาก Supabase Auth metadata ถ้ามี (จำถาวรใน Cloud)
+    if (sessionUser?.user_metadata?.pdpa_consent === true) return true;
 
-  const markConsentAccepted = (identifier: string) =>
-    localStorage.setItem(`supat_consent_${identifier}`, "accepted");
+    // 2. ตรวจสอบจาก LocalStorage (ตรวจสอบทุกรูปแบบ เช่น ID, email, เลขบัตร, เบอร์โทร ทั้งตัวพิมพ์เล็ก/ใหญ่)
+    for (const id of identifiers) {
+      if (!id) continue;
+      const clean = String(id).trim().toLowerCase();
+      if (localStorage.getItem(`supat_consent_${clean}`) === "accepted") return true;
+      if (localStorage.getItem(`supat_consent_${id}`) === "accepted") return true;
+    }
+    return false;
+  };
+
+  const markConsentAccepted = async (identifiers: (string | number | undefined | null)[]) => {
+    // 1. บันทึก LocalStorage สำหรับทุก Identifier ของผู้ใช้คนนี้
+    for (const id of identifiers) {
+      if (!id) continue;
+      const clean = String(id).trim().toLowerCase();
+      localStorage.setItem(`supat_consent_${clean}`, "accepted");
+      localStorage.setItem(`supat_consent_${id}`, "accepted");
+    }
+
+    // 2. บันทึกลง Supabase Auth metadata ให้จำถาวรข้ามอุปกรณ์/ข้ามเบราว์เซอร์
+    try {
+      await supabase.auth.updateUser({
+        data: { pdpa_consent: true, pdpa_consent_date: new Date().toISOString() }
+      });
+    } catch (e) {
+      console.warn("Failed to update pdpa_consent in auth metadata:", e);
+    }
+  };
   
   const { appointments: sharedAppointments, setAppointments: setSharedAppointments } = useRealtimeAppointments();
 
@@ -105,7 +132,7 @@ export default function PatientPortal() {
                 dob: profile.dob || "",
                 gender: profile.gender || "",
                 phone: profile.phone || "",
-                email: session.user.email || "",
+                email: session.user.email || profile.email || "",
                 emergencyName: profile.emergencyName || "",
                 emergencyPhone: profile.emergencyPhone || "",
                 emergencyRelationship: profile.emergencyRelationship || "",
@@ -116,8 +143,15 @@ export default function PatientPortal() {
               setIsLoggedIn(true);
 
               // ─── ตรวจ consent ก่อนเข้า Portal (session restore) ───────────
-              const identifier = profile.email || session.user.email || session.user.id;
-              if (!hasAcceptedConsent(identifier)) {
+              const identifiers = [
+                session.user.id,
+                session.user.email,
+                profile.email,
+                profile.patientId,
+                profile.idCard,
+                profile.phone
+              ];
+              if (!hasAcceptedConsent(identifiers, session.user)) {
                 setNeedsConsent(true);
                 return;
               }
@@ -184,23 +218,50 @@ export default function PatientPortal() {
 
 
 
-  const handleLogin = (u: PatientUser) => {
+  const handleLogin = async (u: PatientUser) => {
     setUser(u);
     setRole("patient");
     setIsLoggedIn(true);
     // ─── ตรวจ consent ก่อนเข้า Dashboard ─────────────────────────────────
-    const identifier = u.email || String(u.patientId || "");
-    if (!hasAcceptedConsent(identifier)) {
+    let authUser: any = null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      authUser = data?.user;
+    } catch (e) {
+      // ignore
+    }
+    const identifiers = [
+      u.email,
+      u.patientId,
+      u.idCard,
+      u.phone,
+      authUser?.id,
+      authUser?.email
+    ];
+    if (!hasAcceptedConsent(identifiers, authUser)) {
       setNeedsConsent(true);
     } else {
       updateView("dashboard");
     }
   };
 
-  const handleConsentAccepted = () => {
-    if (!user) return;
-    const identifier = user.email || String(user.patientId || "");
-    markConsentAccepted(identifier);
+  const handleConsentAccepted = async () => {
+    let authUser: any = null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      authUser = data?.user;
+    } catch (e) {
+      // ignore
+    }
+    const identifiers = [
+      user?.email,
+      user?.patientId,
+      user?.idCard,
+      user?.phone,
+      authUser?.id,
+      authUser?.email
+    ];
+    await markConsentAccepted(identifiers);
     setNeedsConsent(false);
     updateView("dashboard");
   };
