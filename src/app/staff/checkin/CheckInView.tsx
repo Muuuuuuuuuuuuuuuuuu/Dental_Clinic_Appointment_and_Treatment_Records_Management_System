@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserCheck, Clock, Users, CreditCard, AlertTriangle, ArrowRight } from "lucide-react";
-import { Appointment, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
+import { Appointment, STATUS_COLORS, hasHealthAlert, ACTIVE_APPOINTMENT_STATUSES } from "../../shared/data";
 import { updateAppointmentStatus } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 

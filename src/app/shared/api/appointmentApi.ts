@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { getDailyHours } from '../supabaseApi';
 import { supabase } from '../utils/supabaseClient';
-import { Appointment } from '../../shared/data';
+import { Appointment, ACTIVE_APPOINTMENT_STATUSES } from '../../shared/data';
 
 /**
  * 📅 Appointment API Module
@@ -686,7 +686,7 @@ export async function checkAppointmentConflicts(userId: string, date: string, st
     .select('appointment_id', { count: 'exact' })
     .eq('dentist_id', dentistId)
     .eq('appointment_date', date)
-    .in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']); // Active statuses
+    .in('appointment_status', ACTIVE_APPOINTMENT_STATUSES); // Active statuses
 
   if (startTime && endTime) {
     // Overlap condition: (existing_start < new_end) AND (existing_end > new_start)
@@ -790,7 +790,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
   const { data: appointments } = await supabase.from('appointment')
     .select('dentist_id, patient_id, start_time, end_time_est')
     .eq('appointment_date', date)
-    .in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']);
+    .in('appointment_status', ACTIVE_APPOINTMENT_STATUSES);
 
   const availableSlots = new Set<string>();
 
@@ -931,7 +931,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
   const { data: appointments } = await supabase.from('appointment')
     .select('dentist_id, patient_id, start_time, end_time_est')
     .eq('appointment_date', date)
-    .in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']);
+    .in('appointment_status', ACTIVE_APPOINTMENT_STATUSES);
 
   const isToday = new Date().toISOString().split('T')[0] === date;
   const now = new Date();

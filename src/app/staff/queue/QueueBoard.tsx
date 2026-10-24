@@ -4,7 +4,7 @@ import {
   Clock, ChevronLeft, ChevronRight, CalendarDays, CalendarRange, Calendar as CalendarIcon, UserCheck
 } from "lucide-react";
 
-import { Appointment, SpecialClosure, STATUS_COLORS, StaffView, LeaveRequest, Shift, hasHealthAlert } from "../../shared/data";
+import { Appointment, SpecialClosure, STATUS_COLORS, StaffView, LeaveRequest, Shift, hasHealthAlert, ACTIVE_APPOINTMENT_STATUSES } from "../../shared/data";
 import {  getClinicClosures, updateAppointmentStatus, getDentists, getLeaveRequests, getShifts, getWeeklyOffDays } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
@@ -48,6 +48,7 @@ function StatCards({ appts, setView }: { appts: Appointment[]; setView: (v: Staf
   const checkedIn = appts.filter(a => a.status === "เช็คอินเรียบร้อย").length;
   const pending = appts.filter(a => a.status === "รอชำระเงิน").length;
   const done = appts.filter(a => a.status === "เสร็จสิ้น").length;
+  const activeTotal = appts.filter(a => ACTIVE_APPOINTMENT_STATUSES.includes(a.status)).length;
 
   const stats = [
     { label: "รอเช็คอิน", val: waitCheckin, icon: UserCheck, bg: "#E8F4FF", ic: "#1D6FA4", action: null },

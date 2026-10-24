@@ -3,7 +3,7 @@ import { supabase } from './utils/supabaseClient';
 import { sendOTPEmail } from './utils/emailService';
 export { supabase };
 import { RegForm } from '../patient/types';
-import { Appointment, DentistInfo, PatientInfo, StaffInfo, AdminInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, ServiceCategoryType } from './data';
+import { Appointment, DentistInfo, PatientInfo, StaffInfo, AdminInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, ServiceCategoryType, ACTIVE_APPOINTMENT_STATUSES } from './data';
 export * from './api/dentistApi';
 export * from './api/authApi';
 export * from './api/appointmentApi';
@@ -1431,7 +1431,7 @@ export async function getMonthlyFullyBookedDates(
     supabase.from('dentist').select('dentist_id, user_id'),
     supabase.from('leave_record').select('user_id, leave_period, leave_date').gte('leave_date', startDateStr).lte('leave_date', endDateStr).eq('is_approved', true),
     supabase.from('schedule').select('users!inner(dentist(dentist_id)), start_shift, end_shift, is_off, day_of_week'),
-    supabase.from('appointment').select('appointment_date, dentist_id, start_time, end_time_est').gte('appointment_date', startDateStr).lte('appointment_date', endDateStr).in('appointment_status', ['รอการยืนยัน', 'ยืนยันการจอง', 'เช็คอินเรียบร้อย', 'กำลังรักษา', 'รอชำระเงิน']),
+    supabase.from('appointment').select('appointment_date, dentist_id, start_time, end_time_est').gte('appointment_date', startDateStr).lte('appointment_date', endDateStr).in('appointment_status', ACTIVE_APPOINTMENT_STATUSES),
   ]);
 
   const holidaySet = new Set((holidaysRes.data || []).map((h: any) => h.holiday_date));

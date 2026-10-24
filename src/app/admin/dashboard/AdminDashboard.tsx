@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Users, UserPlus, FileText, Settings, Calendar, Play, TrendingUp, UserCheck, AlertCircle, RefreshCw, X, ChevronRight, List } from "lucide-react";
 
-import { Appointment, AppointmentStatus, DentistInfo, LeaveRequest, STATUS_COLORS, AdminView } from "../../shared/data";
+import { Appointment, AppointmentStatus, DentistInfo, LeaveRequest, STATUS_COLORS, AdminView, getAppointmentBreakdown } from "../../shared/data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { getDentists, getLeaveRequests, getDoctorSchedules } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
@@ -142,11 +142,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   };
 
   // Status Breakdown
-  const completedCnt = filteredAppts.filter(a => a.status === "เสร็จสิ้น").length;
-  const scheduledCnt = filteredAppts.filter(a => ["รอการยืนยัน", "ยืนยันการจอง", "เช็คอินเรียบร้อย", "กำลังรักษา", "รอชำระเงิน"].includes(a.status)).length;
-  const cancelledCnt = filteredAppts.filter(a => a.status === "ยกเลิก").length;
-  const noShowCnt = filteredAppts.filter(a => a.status === "ไม่มาตามนัด").length;
-  const totalCnt = filteredAppts.length || 1;
+  const { completed: completedCnt, scheduled: scheduledCnt, cancelled: cancelledCnt, noShow: noShowCnt, total: totalCnt } = getAppointmentBreakdown(filteredAppts);
 
   // Continuous Cases
   const activeOrtho = appointments.filter(a => (a.service.includes("จัดฟัน") || a.service.includes("รากเทียม")) && !["ยกเลิก", "เสร็จสิ้น"].includes(a.status)).length;

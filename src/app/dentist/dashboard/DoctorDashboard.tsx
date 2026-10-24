@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Users, FileText, Calendar, Clock, CheckCircle, AlertTriangle, ClipboardList, CreditCard } from "lucide-react";
 
-import { Appointment, STATUS_COLORS, DocView, DentistInfo, hasHealthAlert } from "../../shared/data";
+import { Appointment, STATUS_COLORS, DocView, DentistInfo, hasHealthAlert, ACTIVE_APPOINTMENT_STATUSES } from "../../shared/data";
 import { getAppointments, getDailyHours, getWeeklyOffDays, DayHours } from "../../shared/supabaseApi";
 
 export default function DoctorDashboard({

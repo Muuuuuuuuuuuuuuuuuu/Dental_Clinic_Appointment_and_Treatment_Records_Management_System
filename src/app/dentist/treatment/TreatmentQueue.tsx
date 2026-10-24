@@ -3,8 +3,9 @@ import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTrian
 
 import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo, hasHealthAlert } from "../../shared/data";
 import { getAppointments, getServices, updateAppointmentStatus, supabase } from "../../shared/supabaseApi";
-import { saveTreatment, getPatientLatestOdontogram, getProducts } from "../../shared/api/treatmentApi";
+import { saveTreatment, getPatientLatestOdontogram, getProducts, savePatientOdontogram } from "../../shared/api/treatmentApi";
 import Odontogram, { ToothStatus } from "./Odontogram";
+import { SupernumeraryTooth, getExtraToothLocation } from "./ToothGeometry";
 
 import ToothActionModal from "./ToothActionModal";
 
@@ -61,10 +62,11 @@ export default function TreatmentQueue({
     medicines: { id: number; name: string; qty: number; price: number; unit?: string; note?: string; instruction?: string }[];
     actualCost: number | ""
   }>({ notes: "", recommendations: "", services: [], medicines: [], actualCost: "" });
-  const [toothData, setToothData] = useState<Record<number, ToothStatus>>({});
+  const [toothData, setToothData] = useState<Record<number | string, ToothStatus>>({});
+  const [extraTeeth, setExtraTeeth] = useState<SupernumeraryTooth[]>([]);
   const [isChild, setIsChild] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
-  const [selectedToothForAction, setSelectedToothForAction] = useState<number | null>(null);
+  const [selectedToothForAction, setSelectedToothForAction] = useState<number | string | null>(null);
   const [showMedModal, setShowMedModal] = useState<number | null>(null); // appointment id
   const [medList, setMedList] = useState<{ name: string; dose: string; freq: string; days: string }[]>([]);
 
@@ -107,7 +109,7 @@ export default function TreatmentQueue({
       return a.time.localeCompare(b.time);
     });
 
-  const incrementService = (svc: any, tooth?: number) => {
+  const incrementService = (svc: any, tooth?: number | string) => {
     setForm(f => {
       const location = tooth ? String(tooth) : (svc.applyTo === 'MOUTH' || svc.applyTo === 'ทั้งปาก' ? 'MOUTH' : undefined);
       const existing = f.services.find(x => x.id === svc.id && x.locationCode === location);
@@ -161,7 +163,7 @@ export default function TreatmentQueue({
     });
   };
 
-  const generateToothSummary = (data: Record<number, ToothStatus>) => {
+  const generateToothSummary = (data: Record<number | string, ToothStatus>) => {
     const red = Object.entries(data).filter(([_, s]) => s === 'red').map(([t]) => t);
     const blue = Object.entries(data).filter(([_, s]) => s === 'blue').map(([t]) => t);
     const cross = Object.entries(data).filter(([_, s]) => s === 'cross').map(([t]) => t);
@@ -175,17 +177,16 @@ export default function TreatmentQueue({
   };
 
   useEffect(() => {
-    const cost = form.services.reduce((sum, sItem) => {
+    const servicesCost = form.services.reduce((sum, sItem) => {
       return sum + ((sItem.price ?? 0) * sItem.qty);
-    }, 0) + form.medicines.reduce((sum, mItem) => {
+    }, 0);
+    const medicinesCost = form.medicines.reduce((sum, mItem) => {
       return sum + ((mItem.price ?? 0) * mItem.qty);
     }, 0);
+    const totalCost = servicesCost + medicinesCost;
 
-    const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
-    const suggestedCost = cost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : cost;
-
-    setForm(f => ({ ...f, actualCost: suggestedCost > 0 ? suggestedCost : "" }));
-  }, [form.services, form.medicines, toothData, services]);
+    setForm(f => ({ ...f, actualCost: totalCost > 0 ? totalCost : "" }));
+  }, [form.services, form.medicines]);
 
   const onUpdateAppt = async (id: number, updates: Partial<Appointment>, detailedServices?: any[], medicines?: any[]) => {
     try {
@@ -201,29 +202,87 @@ export default function TreatmentQueue({
         setAppointments(apps => apps.map(a => a.id === id ? {
           ...a,
           status: updates.status!,
-          treatmentNotes: updates.treatmentNotes || a.treatmentNotes,
+          treatmentNotes: updates.treatmentNotes !== undefined ? updates.treatmentNotes : a.treatmentNotes,
           treatmentServices: updates.treatmentServices || a.treatmentServices,
-          recommendations: updates.recommendations || a.recommendations,
-          cost: updates.cost || a.cost
+          recommendations: updates.recommendations !== undefined ? updates.recommendations : a.recommendations,
+          cost: updates.cost !== undefined ? updates.cost : a.cost,
+          odontogramData: updates.odontogramData || a.odontogramData
         } : a));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to update appointment");
+      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + (err?.message || "Failed to update appointment"));
     }
   };
 
   const handleStartRecording = async (a: Appointment) => {
     setRecording(a.id);
+    
+    // ตั้งค่า form ตามประวัติเดิมของนัดหมายนี้ถ้ามี
+    setForm({
+      notes: a.treatmentNotes || "",
+      recommendations: a.recommendations || "",
+      services: a.detailedServices ? a.detailedServices.map(s => ({
+        id: s.serviceId,
+        name: s.name,
+        qty: s.qty,
+        price: s.price,
+        locationCode: s.locationCode
+      })) : [],
+      medicines: [],
+      actualCost: a.cost ? (Number(a.cost) || "") : ""
+    });
+
     if (a.odontogramData && Object.keys(a.odontogramData).length > 0) {
-      const { wholeMouth, ...rest } = a.odontogramData as any;
+      const { wholeMouth, extraTeeth: savedExtra, ...rest } = a.odontogramData as any;
       setToothData(rest as any);
+      setExtraTeeth(Array.isArray(savedExtra) ? savedExtra : []);
     } else if (a.patientId) {
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
-      const { wholeMouth, ...rest } = historyOdontogram;
+      const { wholeMouth, extraTeeth: savedExtra, ...rest } = historyOdontogram as any;
       setToothData(rest as any);
+      setExtraTeeth(Array.isArray(savedExtra) ? savedExtra : []);
     } else {
       setToothData({});
+      setExtraTeeth([]);
+    }
+  };
+
+  const saveDraftTreatment = async (appt: Appointment) => {
+    try {
+      const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
+      const formattedMedicines = form.medicines.map(m => `💊 ${m.name} x${m.qty} ${m.unit || ''}`);
+      formattedServices.push(...formattedMedicines);
+
+      const detailedServices = [...form.services];
+      const fullOdontogram = { ...toothData, extraTeeth, wholeMouth: false };
+
+      await saveTreatment(
+        appt.id,
+        form.notes,
+        form.recommendations,
+        formattedServices,
+        Number(form.actualCost) || 0,
+        fullOdontogram as any,
+        doctor?.id,
+        detailedServices,
+        form.medicines,
+        false // ไม่เปลี่ยนสถานะเป็นรอชำระเงิน เก็บเป็นร่างในฐานข้อมูล
+      );
+
+      setAppointments(apps => apps.map(a => a.id === appt.id ? {
+        ...a,
+        treatmentNotes: form.notes,
+        treatmentServices: formattedServices,
+        recommendations: form.recommendations,
+        cost: Number(form.actualCost) || 0,
+        odontogramData: fullOdontogram as any
+      } : a));
+
+      alert("✅ บันทึกร่างข้อมูลการรักษาและผังฟันลงฐานข้อมูลเรียบร้อยแล้ว");
+    } catch (err: any) {
+      console.error("Save draft error:", err);
+      alert("เกิดข้อผิดพลาดในการบันทึกร่าง: " + (err?.message || "ไม่สามารถบันทึกได้"));
     }
   };
 
@@ -233,14 +292,11 @@ export default function TreatmentQueue({
       return;
     }
 
-
     const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
     const formattedMedicines = form.medicines.map(m => `💊 ${m.name} x${m.qty} ${m.unit || ''}`);
     formattedServices.push(...formattedMedicines);
 
     const detailedServices = [...form.services];
-
-
 
     await onUpdateAppt(appt.id, {
       status: "รอชำระเงิน",
@@ -248,36 +304,91 @@ export default function TreatmentQueue({
       treatmentServices: formattedServices,
       recommendations: form.recommendations,
       cost: Number(form.actualCost) || 0,
-      odontogramData: { ...toothData, wholeMouth: false } as any
+      odontogramData: { ...toothData, extraTeeth, wholeMouth: false } as any
     }, detailedServices, form.medicines);
 
+    alert("✅ บันทึกการรักษาและส่งข้อมูลไปรอชำระเงินเรียบร้อยแล้ว");
     setRecording(null);
     setForm({ notes: "", recommendations: "", services: [], medicines: [], actualCost: "" });
     setToothData({});
+    setExtraTeeth([]);
   };
 
-  const handleToothClick = (tooth: number, status?: ToothStatus) => {
+  const handleToothClick = (tooth: number | string, status?: ToothStatus) => {
     if (status) {
       setToothData(prev => {
         const current = prev[tooth] || "normal";
         const next = current === status ? "normal" : status;
+        const updated = { ...prev };
         if (next === "normal") {
-          const updated = { ...prev };
           delete updated[tooth];
-          return updated;
+        } else {
+          updated[tooth] = next;
         }
-        return { ...prev, [tooth]: next };
-      });
-      if (status === "cross") {
+
+        // If a history line already exists in notes and someone cancelled a deleted tooth outside modal:
+        const remainingMissing = Object.entries(updated)
+          .filter(([_, s]) => s === "cross")
+          .map(([id]) => id)
+          .sort((a, b) => Number(a) - Number(b));
+
         setForm(f => {
-          const noteText = `- ประวัติเดิม: เคยถอน/ผ่าคุด ซี่ ${tooth}`;
-          if (f.notes?.includes(`ซี่ ${tooth}`)) return f;
-          return { ...f, notes: f.notes ? `${f.notes}\n${noteText}` : noteText };
+          if (!f.notes?.includes("เคยถอน/ผ่าคุด")) return f;
+          const lines = f.notes.split("\n");
+          const preservedLines = lines.filter(line => !line.startsWith("- ประวัติเดิม: เคยถอน/ผ่าคุด"));
+          if (remainingMissing.length > 0) {
+            preservedLines.push(`- ประวัติเดิม: เคยถอน/ผ่าคุด ซี่ ${remainingMissing.join(", ")}`);
+          }
+          return { ...f, notes: preservedLines.join("\n") };
         });
-      }
+
+        return updated;
+      });
     } else {
       setSelectedToothForAction(tooth);
     }
+  };
+
+  const handleSaveToothManager = (
+    updatedToothData: Record<number | string, ToothStatus>,
+    updatedExtraTeeth: SupernumeraryTooth[]
+  ) => {
+    setToothData(updatedToothData);
+    setExtraTeeth(updatedExtraTeeth);
+
+    // Auto-save odontogram to database immediately for current appointment
+    if (recording) {
+      savePatientOdontogram(recording, updatedToothData, updatedExtraTeeth, doctor?.id);
+    }
+
+    const missing = Object.entries(updatedToothData)
+      .filter(([_, s]) => s === "cross")
+      .map(([id]) => id)
+      .sort((a, b) => Number(a) - Number(b));
+
+    const extras = updatedExtraTeeth.map(t => {
+      const loc = getExtraToothLocation(t.id);
+      return `${t.label || t.id}${loc ? ` (${loc})` : ''}`;
+    });
+
+    setForm(f => {
+      const lines = (f.notes || "").split("\n");
+      const preservedLines = lines.filter(line => 
+        !line.startsWith("- ประวัติเดิม: เคยถอน/ผ่าคุด") &&
+        !line.startsWith("- ตรวจพบฟันเกิน/ฟันซ้อน:")
+      );
+
+      const managerNotes: string[] = [];
+      if (missing.length > 0) {
+        managerNotes.push(`- ประวัติเดิม: เคยถอน/ผ่าคุด ซี่ ${missing.join(", ")}`);
+      }
+      if (extras.length > 0) {
+        managerNotes.push(`- ตรวจพบฟันเกิน/ฟันซ้อน: ${extras.join(", ")}`);
+      }
+
+      const newNotes = [...preservedLines, ...managerNotes].filter(Boolean).join("\n");
+      return { ...f, notes: newNotes };
+    });
   };
 
   const statusActions: Record<string, { label: string; next: AppointmentStatus; color: string }> = {
@@ -376,9 +487,40 @@ export default function TreatmentQueue({
       {selectedToothForAction && (
         <ToothActionModal
           tooth={selectedToothForAction}
+          toothLabel={
+            typeof selectedToothForAction === "string"
+              ? extraTeeth.find(x => x.id === selectedToothForAction)?.label || `ฟันพิเศษ ${selectedToothForAction}`
+              : `ซี่ ${selectedToothForAction}`
+          }
           currentStatus={toothData[selectedToothForAction]}
           services={services}
           onClose={() => setSelectedToothForAction(null)}
+          onRemoveExtraTooth={
+            typeof selectedToothForAction === "string"
+              ? () => {
+                  setExtraTeeth(prev => prev.filter(x => x.id !== selectedToothForAction));
+                  setToothData(prev => {
+                    const next = { ...prev };
+                    delete next[selectedToothForAction];
+                    return next;
+                  });
+                  setSelectedToothForAction(null);
+                }
+              : undefined
+          }
+          onAddExtraTooth={(newTooth) => {
+            setExtraTeeth(prev => [...prev.filter(x => x.id !== newTooth.id), newTooth]);
+          }}
+          hasExtraTooth={extraTeeth.some(x => x.id === `${selectedToothForAction}S`)}
+          initialNotes={
+            form.notes
+              ? form.notes
+                  .split('\n')
+                  .find(l => l.includes(`ซี่ ${selectedToothForAction}`) || l.includes(` ${selectedToothForAction}:`))
+                  ?.replace(/^-\s*(?:พบปัญหา|พบผุ\/มีปัญหา)\s*[^:]*:\s*/, '')
+                  .replace(/^-\s*/, '')
+              : ""
+          }
           onAction={(status, service, notes) => {
             setToothData(prev => {
               if (status === "normal") {
@@ -558,6 +700,22 @@ export default function TreatmentQueue({
                         onToothClick={handleToothClick}
                         isChild={isChild}
                         setIsChild={setIsChild}
+                        extraTeeth={extraTeeth}
+                        onAddExtraTooth={(newTooth) => {
+                          setExtraTeeth(prev => {
+                            if (prev.find(x => x.id === newTooth.id)) return prev;
+                            return [...prev, newTooth];
+                          });
+                        }}
+                        onRemoveExtraTooth={(id) => {
+                          setExtraTeeth(prev => prev.filter(x => x.id !== id));
+                          setToothData(prev => {
+                            const next = { ...prev };
+                            delete next[id];
+                            return next;
+                          });
+                        }}
+                        onSaveToothManager={handleSaveToothManager}
                       />
                     </div>
 
@@ -693,23 +851,23 @@ export default function TreatmentQueue({
                           style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                       </div>
 
-                      {/* Bill Preview / Safety Net */}
+                      {/* Bill Preview */}
                       {(() => {
                         const servicesCost = form.services.reduce((sum, s) => sum + ((s.price ?? 0) * s.qty), 0);
-                        const treatedTeeth = Object.values(toothData).filter(s => s !== "normal").length;
-                        const suggestedExtraCost = servicesCost === 0 && treatedTeeth > 0 ? treatedTeeth * 800 : servicesCost;
-                        const totalBill = suggestedExtraCost;
+                        const medicinesCost = form.medicines.reduce((sum, m) => sum + ((m.price ?? 0) * m.qty), 0);
+                        const totalBill = servicesCost + medicinesCost;
 
                         if (totalBill > 0) {
                           return (
-                            <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm">
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm">
                               <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-red-800 uppercase tracking-wide">บิลที่จะส่งให้พนักงานเก็บเงิน</span>
-                                <div className="flex items-center gap-1.5 text-xs text-red-600 mt-1">
-                                  {suggestedExtraCost > 0 && <span>ค่าหัตถการ ({suggestedExtraCost.toLocaleString()})</span>}
+                                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">บิลที่จะส่งให้พนักงานเก็บเงิน</span>
+                                <div className="flex items-center gap-2 text-xs text-emerald-700 mt-1">
+                                  {servicesCost > 0 && <span>ค่าหัตถการ ({servicesCost.toLocaleString()} บ.)</span>}
+                                  {medicinesCost > 0 && <span>ค่ายา ({medicinesCost.toLocaleString()} บ.)</span>}
                                 </div>
                               </div>
-                              <div className="text-lg font-black text-red-700">
+                              <div className="text-lg font-black text-emerald-700">
                                 ฿{totalBill.toLocaleString()}
                               </div>
                             </div>
@@ -718,16 +876,25 @@ export default function TreatmentQueue({
                         return null;
                       })()}
 
-                      <div className="flex justify-end gap-2 pt-1">
+                      <div className="flex justify-end gap-2 pt-1 flex-wrap">
+                        <button 
+                          type="button"
+                          onClick={() => saveDraftTreatment(a)}
+                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all border border-slate-300 shadow-2xs"
+                          title="บันทึกข้อมูลการรักษาและผังฟันลงฐานข้อมูลทันที (เก็บเป็นร่าง ยังไม่ส่งไปแคชเชียร์)"
+                        >
+                          <FileText size={14} className="text-slate-500" /> 
+                          <span>บันทึกร่าง</span>
+                        </button>
                         <button onClick={() => submitTreatment(a)}
                           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 shadow-sm hover:shadow"
                           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-                          <Send size={14} /> ส่งข้อมูลให้พนักงาน
+                          <Send size={14} /> ส่งข้อมูลให้พนักงาน (รอชำระเงิน)
                         </button>
                         <button onClick={() => setRecording(null)}
                           className="px-5 py-2.5 rounded-xl text-sm font-medium"
                           style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>
-                          ยกเลิก
+                          ปิด
                         </button>
                       </div>
                     </div>

@@ -114,10 +114,68 @@ export async function getPatientLatestOdontogram(patientId: number) {
   return data?.odontogram_data || {};
 }
 
-export async function saveTreatment(apptId: number, notes: string, recommendations: string, services: string[], cost: number, toothData?: Record<number, string>, doctorId?: number, detailedServices?: any[], medicines?: any[]) {
+export async function savePatientOdontogram(
+  apptId: number,
+  toothData: Record<number | string, any>,
+  extraTeeth: any[],
+  doctorId?: number
+) {
+  const fullOdontogram = { ...toothData, extraTeeth, wholeMouth: false };
+  const { data: trData } = await supabase
+    .from('treatment_record')
+    .select('treatment_id')
+    .eq('appointment_id', apptId)
+    .maybeSingle();
 
+  if (trData) {
+    const updatePayload: any = { odontogram_data: fullOdontogram };
+    if (doctorId) updatePayload.attending_dentist_id = doctorId;
+    const { error } = await supabase
+      .from('treatment_record')
+      .update(updatePayload)
+      .eq('treatment_id', trData.treatment_id);
+    if (error) {
+      console.error("Error updating odontogram_data:", error);
+      return false;
+    }
+    return true;
+  } else {
+    const { data: apptData } = await supabase
+      .from('appointment')
+      .select('patient_id, dentist_id')
+      .eq('appointment_id', apptId)
+      .maybeSingle();
 
-  // 2. Fetch treatment_record
+    const { error } = await supabase
+      .from('treatment_record')
+      .insert({
+        appointment_id: apptId,
+        attending_dentist_id: doctorId || apptData?.dentist_id || null,
+        treatment_date: new Date().toISOString().split('T')[0],
+        doctor_note: '',
+        odontogram_data: fullOdontogram
+      });
+    if (error) {
+      console.error("Error inserting odontogram_data:", error);
+      return false;
+    }
+    return true;
+  }
+}
+
+export async function saveTreatment(
+  apptId: number, 
+  notes: string, 
+  recommendations: string, 
+  services: string[], 
+  cost: number, 
+  toothData?: Record<number | string, any>, 
+  doctorId?: number, 
+  detailedServices?: any[], 
+  medicines?: any[],
+  updateStatusToWaitPayment: boolean = true
+) {
+  // 1. Fetch treatment_record
   const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).maybeSingle();
   let treatmentId = trData?.treatment_id;
 
@@ -132,33 +190,45 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
     if (doctorId) updatePayload.attending_dentist_id = doctorId;
 
     const { error: updateErr } = await supabase.from('treatment_record').update(updatePayload).eq('treatment_id', treatmentId);
-    if (updateErr) console.error("Error updating treatment_record:", updateErr);
-  } else {
-    const { data: apptData } = await supabase.from('appointment').select('patient_id, dentist_id, treatment_record(attending_dentist_id)').eq('appointment_id', apptId).single();
-    if (apptData) {
-      const { data: newTr, error: insertErr } = await supabase.from('treatment_record').insert({
-        appointment_id: apptId,
-        attending_dentist_id: doctorId || apptData.treatment_record?.[0]?.attending_dentist_id || apptData.dentist_id || null,
-        treatment_date: new Date().toISOString().split('T')[0],
-        doctor_note: notes,
-        recommendations: recommendations || null,
-        treatment_services: services || [],
-        odontogram_data: toothData || null
-      }).select().single();
-      if (insertErr) console.error("Error inserting treatment_record:", insertErr);
-      if (newTr) treatmentId = newTr.treatment_id;
+    if (updateErr) {
+      console.error("Error updating treatment_record:", updateErr);
+      throw new Error("เกิดข้อผิดพลาดในการอัปเดตบันทึกการรักษา: " + updateErr.message);
     }
+  } else {
+    const { data: apptData, error: apptFetchErr } = await supabase
+      .from('appointment')
+      .select('patient_id, dentist_id')
+      .eq('appointment_id', apptId)
+      .maybeSingle();
+
+    if (apptFetchErr) {
+      console.error("Error fetching appointment for treatment_record:", apptFetchErr);
+    }
+
+    const { data: newTr, error: insertErr } = await supabase.from('treatment_record').insert({
+      appointment_id: apptId,
+      attending_dentist_id: doctorId || apptData?.dentist_id || null,
+      treatment_date: new Date().toISOString().split('T')[0],
+      doctor_note: notes,
+      recommendations: recommendations || null,
+      treatment_services: services || [],
+      odontogram_data: toothData || null
+    }).select().single();
+
+    if (insertErr) {
+      console.error("Error inserting treatment_record:", insertErr);
+      throw new Error("เกิดข้อผิดพลาดในการบันทึกประวัติการรักษา: " + insertErr.message);
+    }
+    if (newTr) treatmentId = newTr.treatment_id;
   }
 
-  // 3. Update or Insert treatment_detail
+  // 2. Update or Insert treatment_detail
   if (treatmentId && detailedServices && detailedServices.length > 0) {
-    // Delete existing details for this treatment to avoid duplicates if re-saving
     await supabase.from('treatment_detail').delete().eq('treatment_id', treatmentId);
     
-    // Insert new details
     const tdInserts = detailedServices.map(s => ({
       treatment_id: treatmentId,
-      service_id: s.id,
+      service_id: s.id || s.serviceId,
       location_code: s.locationCode || null,
       diagnosis: s.name || null,
       quantity: s.qty || 1,
@@ -168,13 +238,13 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
     if (tdErr) console.error("Error inserting treatment_detail:", tdErr);
   }
 
-  // 3.5 Update or Insert treatment_product (medicines)
+  // 3. Update or Insert treatment_product (medicines)
   if (treatmentId && medicines && medicines.length > 0) {
     await supabase.from('treatment_product').delete().eq('treatment_id', treatmentId);
     
     const tpInserts = medicines.map((m: any) => ({
       treatment_id: treatmentId,
-      product_id: m.id,
+      product_id: m.id || m.productId,
       quantity: m.qty || 1,
       actual_price: m.price || 0,
       dosage_instruction: m.instruction || null
@@ -183,13 +253,19 @@ export async function saveTreatment(apptId: number, notes: string, recommendatio
     if (tpErr) console.error("Error inserting treatment_product:", tpErr);
   }
 
-  // 4. (Removed) Payment record is now ONLY created by the Staff during checkout.
+  // 4. Update appointment status (only if requested)
+  if (updateStatusToWaitPayment) {
+    const { data: updatedAppt, error: apptErr } = await supabase
+      .from('appointment')
+      .update({ appointment_status: 'รอชำระเงิน' })
+      .eq('appointment_id', apptId)
+      .select()
+      .single();
 
-  // 4. Update appointment status (moved to end to prevent Realtime fetching incomplete records)
-  const { data: updatedAppt, error: apptErr } = await supabase.from('appointment').update({ appointment_status: 'รอชำระเงิน' }).eq('appointment_id', apptId).select().single();
-  if (apptErr || !updatedAppt) {
-    console.error("Error updating appointment status:", apptErr);
-    throw new Error("Failed to update appointment status to รอชำระเงิน: " + (apptErr?.message || "No rows updated (RLS?)"));
+    if (apptErr || !updatedAppt) {
+      console.error("Error updating appointment status:", apptErr);
+      throw new Error("Failed to update appointment status to รอชำระเงิน: " + (apptErr?.message || "No rows updated"));
+    }
   }
 
   notifyAppointmentsUpdated();

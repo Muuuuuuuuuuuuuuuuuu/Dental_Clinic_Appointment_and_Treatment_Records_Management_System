@@ -19,6 +19,37 @@ export type AppointmentStatus =
   | "ยกเลิก"
   | "ไม่มาตามนัด";
 
+/** สถานะนัดหมายที่ยังดำเนินอยู่ (Active / Scheduled / In-Progress) */
+export const ACTIVE_APPOINTMENT_STATUSES: AppointmentStatus[] = [
+  "รอการยืนยัน",
+  "ยืนยันการจอง",
+  "เช็คอินเรียบร้อย",
+  "กำลังรักษา",
+  "รอชำระเงิน"
+];
+
+export interface AppointmentBreakdown {
+  completed: number;
+  scheduled: number;
+  cancelled: number;
+  noShow: number;
+  total: number;
+}
+
+export function getAppointmentBreakdown(appts: Appointment[]): AppointmentBreakdown {
+  const completed = appts.filter(a => a.status === "เสร็จสิ้น").length;
+  const scheduled = appts.filter(a => ACTIVE_APPOINTMENT_STATUSES.includes(a.status)).length;
+  const cancelled = appts.filter(a => a.status === "ยกเลิก").length;
+  const noShow = appts.filter(a => a.status === "ไม่มาตามนัด").length;
+  return {
+    completed,
+    scheduled,
+    cancelled,
+    noShow,
+    total: appts.length || 1,
+  };
+}
+
 export interface Appointment {
   id: number;
   hn: string;

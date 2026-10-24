@@ -1,21 +1,34 @@
 import React, { useState } from "react";
 import { X, ChevronRight, AlertCircle, Sparkles, Ban, RotateCcw, Trash2 } from "lucide-react";
 import { ToothStatus } from "./Odontogram";
+import { SupernumeraryTooth } from "./ToothGeometry";
 
 export default function ToothActionModal({ 
   tooth, 
+  toothLabel,
   currentStatus,
   onClose, 
   onAction,
-  services = []
+  services = [],
+  onRemoveExtraTooth,
+  onAddExtraTooth,
+  hasExtraTooth,
+  initialNotes
 }: { 
-  tooth: number, 
+  tooth: number | string, 
+  toothLabel?: string,
   currentStatus?: ToothStatus,
   onClose: () => void, 
   onAction: (status: ToothStatus, service?: any, notes?: string) => void,
-  services?: any[] 
+  services?: any[],
+  onRemoveExtraTooth?: (id: string) => void,
+  onAddExtraTooth?: (newTooth: SupernumeraryTooth) => void,
+  hasExtraTooth?: boolean,
+  initialNotes?: string
 }) {
-  const [step, setStep] = useState<"main" | "select_service">("main");
+  const [step, setStep] = useState<"main" | "specify_problem" | "select_service">("main");
+  const [problemDetail, setProblemDetail] = useState(initialNotes || "");
+  const displayName = toothLabel || (typeof tooth === "string" ? tooth : `ซี่ ${tooth}`);
   // Filter out services that apply to the whole mouth (not specific to a tooth)
   const filteredServices = services.filter(s => {
     const applyType = s.applyTo?.toLowerCase();
@@ -32,9 +45,9 @@ export default function ToothActionModal({
   const categories = Array.from(new Set(filteredServices.map(s => s.category || "อื่นๆ")));
   
   const handleServiceClick = (service: any) => {
-    const isExtraction = service.name.includes("ถอน") || service.name.includes("ผ่าคุด") || service.category?.includes("ศัลยกรรม");
+    const isExtraction = service.name.includes("ถอน") || service.name.includes("ผ่าคุด") || service.name.includes("ผ่าฟัน") || service.category?.includes("ศัลยกรรม");
     const status = isExtraction ? "cross" : "blue";
-    onAction(status, service, `ทำ ${service.name} ซี่ ${tooth}`);
+    onAction(status, service, `ทำ ${service.name} ${displayName}`);
   };
 
   const getStatusBadge = () => {
@@ -52,10 +65,10 @@ export default function ToothActionModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div className="bg-slate-800 text-white px-5 py-3.5 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-lg">จัดการซี่ฟัน: {tooth}</span>
+            <span className="font-bold text-lg">{displayName}</span>
             {getStatusBadge()}
           </div>
           <button onClick={onClose} className="text-slate-300 hover:text-white transition-colors"><X size={20} /></button>
@@ -66,16 +79,20 @@ export default function ToothActionModal({
             <div className="space-y-2.5">
               {/* Option 1: พบปัญหา / มีรอยผุ */}
               <button 
-                onClick={() => onAction("red", undefined, `พบผุ/มีปัญหา ซี่ ${tooth}`)} 
-                className="w-full p-3 rounded-xl border border-red-200 bg-red-50/70 hover:bg-red-100/80 text-red-700 transition-all text-left flex items-start gap-3 group"
+                type="button"
+                onClick={() => setStep("specify_problem")} 
+                className="w-full p-3 rounded-xl border border-red-200 bg-red-50/70 hover:bg-red-100/80 text-red-700 transition-all text-left flex items-start justify-between group"
               >
-                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0 text-red-600 mt-0.5 group-hover:scale-105 transition-transform">
-                  <AlertCircle size={18} />
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0 text-red-600 mt-0.5 group-hover:scale-105 transition-transform">
+                    <AlertCircle size={18} />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">ตรวจพบฟันผุ / มีปัญหา</div>
+                    <div className="text-xs text-red-600/80">พิมพ์ระบุปัญหาที่ต้องรักษา (สีแดง)</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-semibold text-sm">ตรวจพบฟันผุ / มีปัญหา</div>
-                  <div className="text-xs text-red-600/80">ระบุปัญหาที่ต้องรักษาในอนาคต (สีแดง)</div>
-                </div>
+                <ChevronRight size={18} className="text-red-400 mt-2 shrink-0 group-hover:translate-x-0.5 transition-transform" />
               </button>
               
               {/* Option 2: บันทึกหัตถการในคลินิกนี้ */}
@@ -95,22 +112,7 @@ export default function ToothActionModal({
                 <ChevronRight size={18} className="text-blue-400 mt-2 shrink-0 group-hover:translate-x-0.5 transition-transform" />
               </button>
 
-              {/* Option 3: ลบฟันที่เคยทำจากที่อื่น (Missing Tooth) */}
-              <button 
-                onClick={() => onAction("cross", undefined, `ประวัติเดิม: เคยถอน/ผ่าคุด ซี่ ${tooth}`)} 
-                className="w-full p-3 rounded-xl border-2 border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-slate-800 transition-all text-left flex items-start gap-3 group shadow-sm"
-              >
-                <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center shrink-0 text-rose-600 mt-0.5 group-hover:scale-105 transition-transform">
-                  <Trash2 size={18} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-sm text-rose-900">ลบฟันซี่นี้ออก (เคยทำมาจากที่อื่น)</span>
-                    <span className="text-[10px] bg-rose-200/80 text-rose-800 px-1.5 py-0.2 rounded font-semibold">0 บาท</span>
-                  </div>
-                  <div className="text-xs text-rose-700/80">คนไข้เคยถอน / ผ่าฟันคุดมาก่อนแล้ว (ไม่คิดค่าบริการ)</div>
-                </div>
-              </button>
+
               
               {/* Option 4: ยกเลิก / คืนค่าเป็นปกติ */}
               <button 
@@ -120,6 +122,81 @@ export default function ToothActionModal({
                 <RotateCcw size={14} />
                 <span>คืนค่าสถานะเป็นฟันปกติ (Clear Status)</span>
               </button>
+
+              {/* Option 5: สำหรับฟันเกิน/ฟันซ้อน - ลบออกจากแผนผัง */}
+              {onRemoveExtraTooth && (
+                <button
+                  type="button"
+                  onClick={() => onRemoveExtraTooth(String(tooth))}
+                  className="w-full p-2.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors text-center text-xs font-semibold flex items-center justify-center gap-1.5 mt-2"
+                >
+                  <Trash2 size={14} className="text-rose-600" />
+                  <span>ลบฟันเกิน/ฟันซ้อนซี่นี้ออกจากแผนผัง</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {step === "specify_problem" && (
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-2 text-slate-600 font-medium">
+                <button 
+                  type="button" 
+                  onClick={() => setStep("main")} 
+                  className="hover:text-slate-900 text-xs font-semibold flex items-center gap-1"
+                >
+                  ◀ ย้อนกลับ
+                </button>
+                <span>/</span>
+                <span className="text-red-700 text-xs font-bold">ระบุปัญหาที่ตรวจพบ</span>
+              </div>
+
+              <div className="p-3.5 bg-red-50/80 border border-red-200 rounded-xl space-y-2.5">
+                <div className="flex items-center gap-2 text-red-950 font-bold text-xs">
+                  <AlertCircle size={16} className="text-red-600 shrink-0" />
+                  <span>ระบุปัญหาสำหรับ {displayName}</span>
+                </div>
+                
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    กรอกรายละเอียดปัญหา / อาการที่ตรวจพบ:
+                  </label>
+                  <textarea
+                    value={problemDetail}
+                    onChange={e => setProblemDetail(e.target.value)}
+                    placeholder="พิมพ์ระบุปัญหาได้อย่างอิสระ เช่น ฟันผุลึกด้าน Occlusal, วัสดุอุดเดิมแตกบิ่น, ฟันร้าวเสียวเวลาเคี้ยว, มีหนองปลายราก..."
+                    rows={3}
+                    className="w-full text-xs p-2.5 rounded-lg border border-red-300 focus:outline-none focus:ring-1 focus:ring-red-500 bg-white text-slate-800 resize-none shadow-2xs"
+                    autoFocus
+                  />
+                  <div className="text-[10px] text-slate-500 mt-1">
+                    * ข้อความนี้จะถูกบันทึกลงในช่องบันทึกการรักษา/อาการให้อัตโนมัติ (ไม่พิมพ์ก็ได้)
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setStep("main")}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const detail = problemDetail.trim();
+                    const note = detail
+                      ? `พบปัญหา ${displayName}: ${detail}`
+                      : `พบผุ/มีปัญหา ${displayName}`;
+                    onAction("red", undefined, note);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5"
+                >
+                  <span>✓ บันทึกปัญหา (ฟันสีแดง)</span>
+                </button>
+              </div>
             </div>
           )}
 
