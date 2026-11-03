@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, ShieldCheck, Activity, X } from "lucide-react";
-import Odontogram, { ToothStatus } from "../../dentist/treatment/Odontogram";
+import { ArrowLeft, ShieldCheck, Activity, X, CreditCard, UserCheck, AlertCircle, CheckCircle2 } from "lucide-react";
+import Odontogram, { ToothStatus, getToothHistory } from "../../dentist/treatment/Odontogram";
 import { SupernumeraryTooth, getExtraToothLocation } from "../../dentist/treatment/ToothGeometry";
 import { getPatientTreatmentRecords } from "../../shared/supabaseApi";
 
@@ -164,6 +164,59 @@ export default function DentalRecordView({
               {statusStr}
             </div>
           </div>
+
+          {/* Tooth Specific History */}
+          {(() => {
+            const toothHist = getToothHistory(cleanKey, historyRecords);
+            return (
+              <div className="mb-4 text-left">
+                <p className="text-xs font-bold text-slate-700 mb-2 flex items-center justify-between">
+                  <span>ประวัติการรักษาซี่นี้:</span>
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    {toothHist.length > 0 ? `${toothHist.length} รายการ` : "ไม่มีบันทึก"}
+                  </span>
+                </p>
+                {toothHist.length > 0 ? (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {toothHist.map((h, i) => (
+                      <div key={h.id || i} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1">
+                        <div className="flex justify-between items-center text-[11px] text-slate-500">
+                          <span className="font-semibold text-slate-700">
+                            {new Date(h.date).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" })}
+                          </span>
+                          <span>{h.doctor}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {h.services.map((srv, sIdx) => (
+                            <span key={sIdx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100">
+                              {srv}
+                            </span>
+                          ))}
+                        </div>
+                        {h.notes && (
+                          <p className="text-[10px] text-slate-600 bg-white p-1.5 rounded-lg border border-slate-100">
+                            {h.notes}
+                          </p>
+                        )}
+                        {(h.cashier || h.paymentMethod || h.cost) && (
+                          <div className="flex justify-between items-center text-[10px] text-emerald-800 bg-emerald-50/60 p-1.5 rounded-lg border border-emerald-100/80">
+                            <span>
+                              {h.paymentMethod ? `ชำระผ่าน ${h.paymentMethod}` : 'ชำระแล้ว'} {h.cost && <strong className="text-emerald-950 ml-1">฿{h.cost}</strong>}
+                            </span>
+                            {h.cashier && <span>รับเงินโดย: <strong className="text-emerald-950">${h.cashier}</strong></span>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-50 rounded-xl text-center text-xs text-slate-400">
+                    ยังไม่มีประวัติการทำหัตถการในซี่นี้
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           
           <button onClick={() => setClickedTooth(null)} className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors text-sm">
             ปิด
@@ -205,71 +258,34 @@ export default function DentalRecordView({
               readonly={true}
               isChild={isChild}
               setIsChild={setIsChild}
+              historyRecords={historyRecords}
+              patientName={user?.name}
               onToothClick={(tooth) => setClickedTooth(String(tooth))}
             />
           </div>
 
-          {/* Right Column: Summary */}
+          {/* Right Column: Doctor's Advice & Quick Actions */}
           <div className="lg:w-80 space-y-4">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Activity size={18} className="text-blue-500"/> สรุปการรักษา
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                    <span className="text-sm font-medium text-red-900">พบปัญหา / ต้องรักษา</span>
-                  </div>
-                  <span className="font-bold text-red-600">{cariesCount} ซี่</span>
+            {/* Doctor's Advice Card */}
+            <div className="bg-[#1A365D] p-5 rounded-2xl shadow-sm text-white space-y-4">
+              <div className="flex items-start gap-3">
+                <ShieldCheck size={22} className="text-blue-300 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-sm mb-1 text-blue-50">คำแนะนำจากทันตแพทย์</h4>
+                  <p className="text-xs leading-relaxed text-blue-100/90 whitespace-pre-line">{localAdvice}</p>
                 </div>
-
-                <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50 border border-blue-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <span className="text-sm font-medium text-blue-900">รักษาแล้ว</span>
-                  </div>
-                  <span className="font-bold text-blue-600">{filledCount} ซี่</span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 mt-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-slate-500"></div>
-                    <span className="text-sm font-medium text-slate-800">ถอน / สูญเสีย</span>
-                  </div>
-                  <span className="font-bold text-slate-600">{missingTeeth.length} ซี่</span>
-                </div>
-
-                {extraTeeth.length > 0 && (
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-200 mt-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                      <span className="text-sm font-medium text-amber-900">ฟันเกิน / ฟันซ้อน</span>
-                    </div>
-                    <span className="font-bold text-amber-700">{extraTeeth.length} ซี่</span>
-                  </div>
-                )}
               </div>
-              {cariesCount > 0 && (
-                <div className="mt-5 pt-5 border-t border-slate-100">
+
+              {cariesCount > 0 && onBookAppointment && (
+                <div className="pt-2 border-t border-white/10">
                   <button 
                     onClick={onBookAppointment}
-                    className="w-full py-2.5 bg-[#FF8C9A] hover:bg-[#ff7a8a] text-white text-sm font-medium rounded-xl transition-colors shadow-sm"
+                    className="w-full py-2.5 bg-[#FF8C9A] hover:bg-[#ff7a8a] text-white text-xs font-bold rounded-xl transition-all shadow-sm active:scale-[0.98]"
                   >
-                    จองคิวรักษาต่อเนื่อง
+                    จองคิวรักษาฟันต่อเนื่อง ({cariesCount} ซี่)
                   </button>
                 </div>
               )}
-            </div>
-
-            <div className="bg-[#1A365D] p-5 rounded-2xl shadow-sm text-white">
-              <div className="flex items-start gap-3">
-                <ShieldCheck size={24} className="text-blue-300 flex-shrink-0" />
-                <div>
-                  <h4 className="font-semibold text-sm mb-1 text-blue-50">คำแนะนำล่าสุด</h4>
-                  <p className="text-sm leading-relaxed text-blue-200">{localAdvice}</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -319,6 +335,21 @@ export default function DentalRecordView({
                       <div className="mb-3">
                         <span className="text-xs font-semibold text-orange-500 block mb-0.5">คำแนะนำ:</span>
                         <p className="text-xs text-orange-700 bg-orange-50 p-2 rounded-lg border border-orange-100">{record.recommendations}</p>
+                      </div>
+                    )}
+
+                    {(record.cashier || record.paymentMethod || record.cost) && (
+                      <div className="mb-3 p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between text-xs text-emerald-900">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <CreditCard size={13} className="text-emerald-600" />
+                          <span>{record.paymentMethod ? `ชำระผ่าน ${record.paymentMethod}` : "ชำระเงินแล้ว"}</span>
+                          {record.cost && <strong className="text-emerald-950 ml-1">฿{record.cost}</strong>}
+                        </span>
+                        {record.cashier && (
+                          <span className="text-[11px] text-emerald-800">
+                            ผู้รับเงิน: <strong className="text-emerald-950">${record.cashier}</strong>
+                          </span>
+                        )}
                       </div>
                     )}
 

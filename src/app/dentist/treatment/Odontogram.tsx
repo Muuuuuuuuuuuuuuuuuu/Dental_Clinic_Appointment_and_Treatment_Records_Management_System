@@ -1,11 +1,34 @@
 import React, { useState } from "react";
-import { Trash2, X, Sparkles, Plus, AlertCircle, ClipboardList } from "lucide-react";
-import { 
-  TOOTH_SHAPES, 
-  PRESET_SUPERNUMERARY, 
-  SupernumeraryTooth, 
-  ToothPathData, 
-  TOOTH_BADGE_POSITIONS, 
+import {
+  Scan, 
+  Trash2, 
+  X, 
+  CreditCard, 
+  Banknote, 
+  Sparkles, 
+  Plus, 
+  AlertCircle, 
+  ClipboardList, 
+  Eye, 
+  Stethoscope, 
+  Activity, 
+  Calendar, 
+  User, 
+  History, 
+  ChevronDown, 
+  ChevronUp, 
+  ArrowRight, 
+  ShieldCheck,
+  CheckCircle2,
+  RotateCcw,
+  Clock
+} from "lucide-react";
+import {
+  TOOTH_SHAPES,
+  PRESET_SUPERNUMERARY,
+  SupernumeraryTooth,
+  ToothPathData,
+  TOOTH_BADGE_POSITIONS,
   getExtraToothLocation,
   getAdjacentToothBoxes,
   getUpperToothRowItems,
@@ -17,6 +40,90 @@ import {
 
 export type ToothStatus = "normal" | "red" | "blue" | "cross";
 
+export interface ToothHistoryItem {
+  id?: string | number;
+  date: string;
+  doctor?: string;
+  services: string[];
+  notes?: string;
+  recommendations?: string;
+  statusInRecord?: ToothStatus;
+  cashier?: string;
+  paymentMethod?: string;
+  paidAt?: string;
+  cost?: string | number;
+}
+
+export function getToothHistory(toothId: string | number, records: any[] = []): ToothHistoryItem[] {
+  if (!records || !Array.isArray(records) || records.length === 0) return [];
+  const rawId = String(toothId).replace("teeth-", "").trim();
+  const isMesiodens = rawId === "mesiodens" || rawId === "11S" || rawId.startsWith("11S-") || rawId.startsWith("mesiodens-");
+
+  const results: ToothHistoryItem[] = [];
+
+  records.forEach(rec => {
+    const matchedServices: string[] = [];
+
+    // 1. ตรวจจาก detailedServices
+    if (Array.isArray(rec.detailedServices)) {
+      rec.detailedServices.forEach((ds) => {
+        const loc = String(ds.locationCode || "").trim();
+        if (loc === rawId || (isMesiodens && (loc === "mesiodens" || loc === "11S"))) {
+          const sName = ds.name || "หัตถการ";
+          matchedServices.push(ds.qty > 1 ? (sName + " (x" + ds.qty + ")") : sName);
+        }
+      });
+    }
+
+    // 2. ตรวจจาก treatmentServices
+    if (Array.isArray(rec.treatmentServices)) {
+      rec.treatmentServices.forEach((s) => {
+        if (!s) return;
+        const sTrim = s.trim();
+        const patterns = [
+          "ซี่ " + rawId,
+          "ซี่ที่: " + rawId,
+          "ซี่ที่ " + rawId,
+          "(" + rawId + ")",
+          "+" + rawId,
+          ":" + rawId
+        ];
+        if (isMesiodens) {
+          patterns.push("mesiodens", "Mesiodens", "+11S", "11S", "ฟันเกินกึ่งกลาง");
+        }
+
+        const isMatch = patterns.some(p => sTrim.includes(p));
+        if (isMatch && !matchedServices.includes(sTrim)) {
+          matchedServices.push(sTrim);
+        }
+      });
+    }
+
+    // 3. ตรวจสอบสถานะจาก odontogramData ย้อนหลัง
+    const odData = rec.odontogramData || {};
+    const statusInRec = odData[rawId] || (isMesiodens ? (odData["mesiodens"] || odData["11S"]) : undefined);
+
+    if (matchedServices.length > 0 || (statusInRec && statusInRec !== "normal")) {
+      const statusLabel = statusInRec === "red" ? "พบปัญหา" : statusInRec === "blue" ? "รักษาแล้ว" : statusInRec === "cross" ? "ถอน/ผ่าออก" : "ตรวจติดตาม";
+      results.push({
+        id: rec.id,
+        date: rec.date || "-",
+        doctor: rec.doctor || "ไม่ระบุแพทย์",
+        services: matchedServices.length > 0 ? matchedServices : ["บันทึกสถานะผัง: " + statusLabel],
+        notes: rec.notes,
+        recommendations: rec.recommendations,
+        statusInRecord: statusInRec,
+        cashier: rec.cashier,
+        paymentMethod: rec.paymentMethod,
+        paidAt: rec.paidAt,
+        cost: rec.cost
+      });
+    }
+  });
+
+  return results;
+}
+
 export interface OdontogramProps {
   toothData: Record<number | string, ToothStatus>;
   onToothClick?: (tooth: number | string, status?: ToothStatus) => void;
@@ -26,10 +133,14 @@ export interface OdontogramProps {
   extraTeeth?: SupernumeraryTooth[];
   onAddExtraTooth?: (tooth: SupernumeraryTooth) => void;
   onRemoveExtraTooth?: (id: string) => void;
-  onSaveToothManager?: (
+onSaveToothManager?: (
     updatedToothData: Record<number | string, ToothStatus>,
     updatedExtraTeeth: SupernumeraryTooth[]
   ) => void;
+  viewMode?: "treatment" | "patient";
+  onViewModeChange?: (mode: "treatment" | "patient") => void;
+  historyRecords?: any[];
+  patientName?: string;
 }
 
 const TOOTH_NAMES_TH: Record<number, string> = {
@@ -137,26 +248,60 @@ function getExtraToothInsertOptionLabel(num: number): string {
   return `+${num}S: ฟันเกิน/ซ้อนบริเวณซี่ ${num}`;
 }
 
-export default function Odontogram({ 
-  toothData, 
-  isChild, 
-  setIsChild, 
-  readonly = false, 
+export default function Odontogram({
+  toothData,
+  isChild,
+  setIsChild,
+  readonly = false,
   onToothClick,
   extraTeeth = [],
   onAddExtraTooth,
   onRemoveExtraTooth,
-  onSaveToothManager
+  onSaveToothManager,
+  viewMode,
+  onViewModeChange,
+  historyRecords = [],
+  patientName
 }: OdontogramProps) {
+  const [internalViewMode, setInternalViewMode] = useState<"treatment" | "patient">(
+    readonly ? "patient" : (viewMode || "treatment")
+  );
+  const currentMode = readonly ? "patient" : (viewMode !== undefined ? viewMode : internalViewMode);
+
+  const handleModeChange = (mode: "treatment" | "patient") => {
+    if (onViewModeChange) {
+      onViewModeChange(mode);
+    }
+    setInternalViewMode(mode);
+  };
+
+  const [selectedToothForInspection, setSelectedToothForInspection] = useState<string | null>(null);
+  const [showFullTimeline, setShowFullTimeline] = useState(false);
   const [showToothManagerModal, setShowToothManagerModal] = useState(false);
-  const [customToothToAdd, setCustomToothToAdd] = useState<string>('');
+const [customToothToAdd, setCustomToothToAdd] = useState<string>('');
   const [internalExtraTeeth, setInternalExtraTeeth] = useState<SupernumeraryTooth[]>([]);
-  
+
   // Draft state for Tooth Manager Modal (ไม่เขียนลงบันทึกหัตถการหรือเซฟจนกว่าจะกดเสร็จสิ้น)
   const [draftToothData, setDraftToothData] = useState<Record<number | string, ToothStatus>>({});
   const [draftExtraTeeth, setDraftExtraTeeth] = useState<SupernumeraryTooth[]>([]);
 
   const activeExtraTeeth = extraTeeth && extraTeeth.length > 0 ? extraTeeth : internalExtraTeeth;
+
+  const handleResetAllToFullMouth = () => {
+    // ล้างฟันที่ถูกมาร์กว่าถอน/หาย (cross) ออกทั้งหมด คืนสถานะฟันครบ 32 ซี่
+    const cleaned: Record<number | string, ToothStatus> = {};
+    Object.entries(toothData).forEach(([k, v]) => {
+      if (v !== 'cross') cleaned[k] = v;
+    });
+    if (onSaveToothManager) {
+      onSaveToothManager(cleaned, []);
+    } else if (onToothClick) {
+      missingTeeth.forEach(t => {
+        const num = parseInt(t.replace('teeth-', ''), 10);
+        onToothClick(num, "cross");
+      });
+    }
+  };
 
   const handleOpenToothManager = () => {
     setDraftToothData({ ...toothData });
@@ -249,8 +394,8 @@ export default function Odontogram({
 
     if (status === "red") {
       baseFill = "rgba(230, 230, 230, 0.95)";
-      innerFill = "#FFB3C1"; // ชมพู = มีปัญหา
-      strokeColor = "#E63946";
+      innerFill = "#FFE4E6"; // โรสซอฟต์ = มีปัญหา (ไม่แดงจัดจนแสบตา)
+      strokeColor = "#F43F5E";
       strokeWidth = "2.2";
     } else if (status === "blue") {
       baseFill = "rgba(230, 230, 230, 0.95)";
@@ -270,7 +415,7 @@ export default function Odontogram({
       strokeColor = "#1e3a6e";
     }
 
-    const titleText = extraLabel 
+    const titleText = extraLabel
       ? `${extraLabel} (${status === 'red' ? 'พบปัญหา' : status === 'blue' ? 'รักษาแล้ว' : status === 'cross' ? 'ถอน/สูญเสีย' : 'ปกติ'})`
       : `ซี่ ${TOOTH_NAMES_TH[Number(toothNum)] || toothNum} (${status === 'red' ? 'พบปัญหา' : status === 'blue' ? 'รักษาแล้ว' : status === 'cross' ? 'ถอน/สูญเสีย' : 'ปกติ'})`;
 
@@ -281,11 +426,13 @@ export default function Odontogram({
         className={`cursor-pointer ${onToothClick ? 'hover:scale-[1.03] hover:brightness-110' : ''}`}
         onClick={(e) => {
           e.stopPropagation();
-          if (onToothClick) {
+          if (currentMode === "patient") {
+            setSelectedToothForInspection(String(toothNum));
+          } else if (onToothClick) {
             onToothClick(toothNum, undefined);
           }
         }}
-        style={{ 
+        style={{
           transformOrigin: "center",
           transition: "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)"
         }}
@@ -345,9 +492,9 @@ export default function Odontogram({
 
   // Render a luxury clickable "+S" badge marker for a supernumerary tooth (Method 1 - Zero Jitter)
   const renderExtraBadge = (
-    extra: SupernumeraryTooth, 
-    pos: { x: number; y: number }, 
-    unmirrorX?: boolean, 
+    extra: SupernumeraryTooth,
+    pos: { x: number; y: number },
+    unmirrorX?: boolean,
     unmirrorY?: boolean
   ) => {
     const status = toothData[extra.id] || "normal";
@@ -364,13 +511,13 @@ export default function Odontogram({
       borderColor = "#F1F5F9";
     }
 
-    const scaleTransform = (unmirrorX && unmirrorY) 
-      ? "scale(-1, -1)" 
-      : unmirrorX 
-      ? "scale(-1, 1)" 
-      : unmirrorY 
-      ? "scale(1, -1)" 
-      : "";
+    const scaleTransform = (unmirrorX && unmirrorY)
+      ? "scale(-1, -1)"
+      : unmirrorX
+        ? "scale(-1, 1)"
+        : unmirrorY
+          ? "scale(1, -1)"
+          : "";
 
     const locationText = getExtraToothLocation(extra.id);
     const statusLabel = status === 'red' ? 'พบปัญหา' : status === 'blue' ? 'รักษาแล้ว' : status === 'cross' ? 'ถอนแล้ว' : 'ฟันปกติ';
@@ -383,7 +530,9 @@ export default function Odontogram({
         className="cursor-pointer group select-none"
         onClick={(e) => {
           e.stopPropagation();
-          if (onToothClick) {
+          if (currentMode === "patient") {
+            setSelectedToothForInspection(String(extra.id));
+          } else if (onToothClick) {
             onToothClick(extra.id, undefined);
           }
         }}
@@ -431,54 +580,128 @@ export default function Odontogram({
     );
   };
 
+  // Summary counts for patient view mode
+  const cariesCount = Object.entries(toothData).filter(([k, s]) => s === 'red' && k !== 'extraTeeth' && k !== 'wholeMouth').length;
+  const filledCount = Object.entries(toothData).filter(([k, s]) => s === 'blue' && k !== 'extraTeeth' && k !== 'wholeMouth').length;
+  const missingCount = Object.entries(toothData).filter(([k, s]) => s === 'cross' && k !== 'extraTeeth' && k !== 'wholeMouth').length;
+  const extraCount = activeExtraTeeth.length;
+
   return (
     <div className="bg-white p-4 rounded-2xl" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
-      {/* Header Row: Title on Left, Ultra-Compact Mini Toggle on Right */}
-      <div className="flex justify-between items-center mb-3 gap-2">
-        <h3 className="font-semibold text-base whitespace-nowrap" style={{ color: "#1A365D" }}>Odontogram (แผนผังฟัน)</h3>
+      {/* Header Row: Title, Mode Switcher, and Mini Adult/Child Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b border-slate-100">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h3 className="font-bold text-base whitespace-nowrap" style={{ color: "#1A365D" }}>
+            {readonly ? "แผนผังสุขภาพฟัน" : "Odontogram (แผนผังฟัน)"}
+          </h3>
+          {patientName && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100">
+              {patientName}
+            </span>
+          )}
+        </div>
 
-        {/* ปุ่มสลับ ฟันแท้ / ฟันน้ำนม เล็กกะทัดรัดลง 3 เท่า อยู่มุมขวาบน ไม่เด่นแย่งสายตา */}
-        {setIsChild && (
-          <div className="inline-flex items-center bg-slate-100/90 rounded-lg p-0.5 border border-slate-200/80 shadow-xs shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsChild(false)}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${
-                !isChild
-                  ? 'bg-white text-slate-800 shadow-xs'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-              title="ชุดฟันแท้ (Adult)"
-            >
-              ฟันแท้
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsChild(true)}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${
-                isChild
-                  ? 'bg-white text-slate-800 shadow-xs'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-              title="ชุดฟันน้ำนม (Child)"
-            >
-              ฟันน้ำนม
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+          {/* Mode Switcher: โหมดรักษา VS มุมมองคนไข้ */}
+          {!readonly ? (
+            <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => handleModeChange("treatment")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  currentMode === "treatment"
+                    ? "bg-[#1A365D] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                title="คลิกฟันเพื่อเปิดเมนูบันทึกหัตถการและแผนการรักษา"
+              >
+                <Stethoscope size={13} />
+                <span>โหมดรักษา</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange("patient")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  currentMode === "patient"
+                    ? "bg-[#FF8C9A] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                title="ดูสถานะฟันและประวัติการรักษาในมุมมองเหมือนที่คนไข้เห็น"
+              >
+                <Eye size={13} />
+                <span>มุมมองคนไข้</span>
+              </button>
+            </div>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <Eye size={13} /> มุมมองคนไข้
+            </span>
+          )}
+
+          {/* ปุ่มสลับ ฟันแท้ / ฟันน้ำนม */}
+          {setIsChild && (
+            <div className="inline-flex items-center bg-slate-100/90 rounded-lg p-0.5 border border-slate-200/80 shadow-xs shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsChild(false)}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${
+                  !isChild
+                    ? 'bg-white text-slate-800 shadow-xs'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+                title="ชุดฟันแท้ (Adult)"
+              >
+                ฟันแท้
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsChild(true)}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${
+                  isChild
+                    ? 'bg-white text-slate-800 shadow-xs'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+                title="ชุดฟันน้ำนม (Child)"
+              >
+                ฟันน้ำนม
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ปุ่มบันทึกตำแหน่งฟันตามสภาพจริง: วางตรงกลางข้างบนแผนผังฟัน กว้างพอดีกล่องผ้าใบ */}
-      {!readonly && onToothClick && (
+      {/* Patient View Mode Banner: สรุปภาพรวมสถานะฟันเหมือนหน้าคนไข้ */}
+      {currentMode === "patient" && (
+        <div className="mb-4 space-y-2.5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-50/70 to-indigo-50/70 border border-blue-100 text-[11px] text-blue-900">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Eye size={13} className="text-blue-600 shrink-0" />
+              <span>โหมดมุมมองคนไข้: คลิกที่ซี่ฟันเพื่อตรวจดูสถานะและประวัติการรักษาของซี่นั้น</span>
+            </span>
+{historyRecords.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowFullTimeline(!showFullTimeline)}
+                className="text-blue-700 hover:text-blue-900 font-bold underline shrink-0 ml-2"
+              >
+                {showFullTimeline ? "ซ่อนประวัติทั้งหมด" : `ดูประวัติทั้งหมด (${historyRecords.length})`}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ปุ่มบันทึกตำแหน่งฟันตามสภาพจริง: แสดงเฉพาะในโหมดรักษา */}
+      {!readonly && onToothClick && currentMode === "treatment" && (
         <div className="flex justify-center mb-3">
           <button
             type="button"
             onClick={handleOpenToothManager}
-            className="w-full max-w-[270px] flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold bg-slate-800 text-white hover:bg-slate-900 border border-slate-700 transition-all shadow-sm hover:shadow active:scale-[0.99]"
+            className="w-fit flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs font-bold bg-slate-800 text-white hover:bg-slate-900 border border-slate-700 transition-all shadow-sm hover:shadow active:scale-[0.99]"
             title="บันทึกตำแหน่งฟันอ้างอิงจากสภาพช่องปากจริงของคนไข้ (ลบฟันที่เคยถอนจากที่อื่น / เพิ่มฟันเกิน) โดยไม่คิดค่ารักษาในบิล"
           >
             <ClipboardList size={14} className="text-amber-400 shrink-0" />
-            <span className="truncate">บันทึกตำแหน่งฟันตามสภาพจริง</span>
+            <span className="whitespace-nowrap">บันทึกตำแหน่งฟันตามสภาพจริง</span>
             {(missingTeeth.length > 0 || activeExtraTeeth.length > 0) && (
               <span className="flex items-center gap-1 ml-0.5 shrink-0">
                 {missingTeeth.length > 0 && (
@@ -495,25 +718,23 @@ export default function Odontogram({
             )}
           </button>
         </div>
-      )}
-
-      {/* Legend */}
+      )}      {/* Legend */}
       <div className="flex flex-wrap items-center justify-center gap-3.5 text-xs text-slate-600 mb-3 px-2">
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FFB3C1] border border-[#E63946] inline-block"></span>
-          <span>พบปัญหา</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FFE4E6] border border-[#F43F5E] inline-block"></span>
+          <span>พบปัญหา {currentMode === "patient" && <span className="font-bold text-rose-600">({cariesCount})</span>}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-[#BDE0FE] border border-[#023E8A] inline-block"></span>
-          <span>รักษาแล้ว</span>
+          <span>รักษาแล้ว {currentMode === "patient" && <span className="font-bold text-blue-600">({filledCount})</span>}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-[#E2E8F0] border border-[#64748B] inline-block"></span>
-          <span>ถอน/สูญเสีย</span>
+          <span>ถอน/สูญเสีย {currentMode === "patient" && <span className="font-bold text-slate-600">({missingCount})</span>}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-[#FEF9C3] border-2 border-amber-500 inline-block"></span>
-          <span>ฟันเกิน/ซ้อน</span>
+          <span>ฟันเกิน/ซ้อน {currentMode === "patient" && <span className="font-bold text-amber-700">({extraCount})</span>}</span>
         </div>
       </div>
 
@@ -800,11 +1021,10 @@ export default function Odontogram({
                           <button
                             type="button"
                             onClick={() => handleToggleDraftTooth(item.id)}
-                            className={`w-7 sm:w-8 h-8 shrink-0 rounded-lg text-xs font-bold transition-all border flex flex-col items-center justify-center leading-none ${
-                              isRemoved
-                                ? "bg-rose-600 text-white border-rose-700 shadow-xs scale-105"
-                                : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50 shadow-2xs"
-                            }`}
+                            className={`w-7 sm:w-8 h-8 shrink-0 rounded-lg text-xs font-bold transition-all border flex flex-col items-center justify-center leading-none ${isRemoved
+                              ? "bg-rose-600 text-white border-rose-700 shadow-xs scale-105"
+                              : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50 shadow-2xs"
+                              }`}
                             title={`ซี่ ${item.id} ${isRemoved ? '(ลบแล้ว - คลิกคืนค่า)' : '(คลิกเพื่อลบฟัน)'}`}
                           >
                             <span>{item.label}</span>
@@ -858,11 +1078,10 @@ export default function Odontogram({
                           <button
                             type="button"
                             onClick={() => handleToggleDraftTooth(item.id)}
-                            className={`w-7 sm:w-8 h-8 shrink-0 rounded-lg text-xs font-bold transition-all border flex flex-col items-center justify-center leading-none ${
-                              isRemoved
-                                ? "bg-rose-600 text-white border-rose-700 shadow-xs scale-105"
-                                : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50 shadow-2xs"
-                            }`}
+                            className={`w-7 sm:w-8 h-8 shrink-0 rounded-lg text-xs font-bold transition-all border flex flex-col items-center justify-center leading-none ${isRemoved
+                              ? "bg-rose-600 text-white border-rose-700 shadow-xs scale-105"
+                              : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50 shadow-2xs"
+                              }`}
                             title={`ซี่ ${item.id} ${isRemoved ? '(ลบแล้ว - คลิกคืนค่า)' : '(คลิกเพื่อลบฟัน)'}`}
                           >
                             <span>{item.label}</span>
@@ -904,7 +1123,7 @@ export default function Odontogram({
                             setCustomToothToAdd('');
                           }
                         }}
-                        className="bg-white border border-amber-300 text-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-2xs flex-1 min-w-[260px] max-w-full truncate"
+                        className="bg-white border border-amber-800 text-slate-800 rounded-lg px-3 py-3 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-800 shadow-2xs flex-1 min-w-[260px] max-w-full truncate"
                       >
                         <option value="">-- คลิกเลือกตำแหน่งที่พบ (ระบุว่าจะแทรกระหว่างซี่ไหนในผัง) --</option>
                         <optgroup label="⚡ ตำแหน่งที่พบบ่อย (Mesiodens / เขี้ยวซ้อน / ฟันเกินคุด)">
@@ -956,9 +1175,9 @@ export default function Odontogram({
                     <span className="text-rose-700 font-bold">
                       {draftMissingTeeth.length > 0
                         ? draftMissingTeeth.map(t => {
-                            const isEx = t.endsWith('S') || t === 'mesiodens';
-                            return isEx ? `${t} (+S)` : t;
-                          }).join(', ') + ' (' + draftMissingTeeth.length + ' ซี่)'
+                          const isEx = t.endsWith('S') || t === 'mesiodens';
+                          return isEx ? `${t} (+S)` : t;
+                        }).join(', ') + ' (' + draftMissingTeeth.length + ' ซี่)'
                         : 'ไม่มี (ฟันครบ 32 ซี่)'}
                     </span>
                   </div>
@@ -969,8 +1188,8 @@ export default function Odontogram({
                         const toothId = t.id === "mesiodens" ? "11S" : t.id;
                         const locTip = getExtraToothLocation(t.id);
                         return (
-                          <span 
-                            key={t.id} 
+                          <span
+                            key={t.id}
                             title={locTip}
                             className="inline-flex items-center gap-1 bg-amber-100 text-amber-950 border border-amber-300 px-1.5 py-0.5 rounded-md font-bold text-[10px] shadow-2xs cursor-help"
                           >
@@ -996,6 +1215,22 @@ export default function Odontogram({
 
               {/* Sticky Fixed Footer: บันทึก/เสร็จสิ้นทันที ไม่ต้องเลื่อนจอ */}
               <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 shrink-0 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cleaned: Record<number | string, ToothStatus> = {};
+                    Object.entries(draftToothData).forEach(([k, v]) => {
+                      if (v !== 'cross') cleaned[k] = v;
+                    });
+                    setDraftToothData(cleaned);
+                    setDraftExtraTeeth([]);
+                  }}
+                  className="px-2.5 py-1 text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200"
+                  title="ล้างค่าทั้งหมดและคืนฟันครบ 32 ซี่ปกติ"
+                >
+                  <RotateCcw size={12} />
+                  <span>คืนฟันครบ 32 ซี่</span>
+                </button>
                 <div className="text-[11px] text-slate-600 truncate">
                   {draftMissingTeeth.length > 0 ? (
                     <span>
@@ -1026,7 +1261,268 @@ export default function Odontogram({
           </div>
         );
       })()}
-    </div>
+      {/* Modal: รายละเอียดและประวัติการรักษาของซี่ฟันที่คลิก (ในโหมดมุมมองคนไข้) */}
+      {selectedToothForInspection && (() => {
+        const cleanKey = selectedToothForInspection.replace('teeth-', '').trim();
+        const isExtra = cleanKey === 'mesiodens' || cleanKey.endsWith('S') || cleanKey.includes('S-') || activeExtraTeeth.some(t => t.id === cleanKey);
+        
+        let toothDisplayNum = cleanKey;
+        let toothName = "";
+        let extraLocationDesc = "";
+
+        if (isExtra) {
+          toothDisplayNum = cleanKey === "mesiodens" ? "+11S" : (cleanKey.startsWith('+') ? cleanKey : `+${cleanKey}`);
+          toothName = cleanKey === "mesiodens" 
+            ? "ฟันเกินกึ่งกลางฟันหน้าบน (Mesiodens)" 
+            : `ฟันเกิน / ฟันซ้อน (${toothDisplayNum})`;
+          extraLocationDesc = getExtraToothLocation(cleanKey);
+        } else {
+          const num = parseInt(cleanKey, 10);
+          toothName = TOOTH_NAMES_TH[num] || `ซี่ ${cleanKey}`;
+        }
+
+        const status = toothData[cleanKey] || "normal";
+        let statusStr = isExtra ? "ตรวจพบฟันเกิน (ปกติ/ติดตาม)" : "ปกติ (Normal)";
+        let colorStr = isExtra ? "#D97706" : "#10B981"; // Amber or Green
+        let statusBg = isExtra ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-emerald-50 text-emerald-800 border-emerald-200";
+
+        if (status === "red") {
+          statusStr = "พบปัญหา / ต้องรักษา";
+          colorStr = "#EF4444";
+          statusBg = "bg-rose-50 text-rose-800 border-rose-200";
+        } else if (status === "blue") {
+          statusStr = "รักษาแล้ว (Treated)";
+          colorStr = "#2563EB";
+          statusBg = "bg-blue-50 text-blue-800 border-blue-200";
+        } else if (status === "cross") {
+          statusStr = "ถอน / ผ่าออกแล้ว (Extracted)";
+          colorStr = "#64748B";
+          statusBg = "bg-slate-100 text-slate-800 border-slate-300";
+        }
+
+        const toothHistory = getToothHistory(cleanKey, historyRecords);
+
+        return (
+          <div 
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 animate-in fade-in duration-150"
+            onClick={() => setSelectedToothForInspection(null)}
+          >
+            <div 
+              className="bg-white rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-200 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-150"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-slate-900 to-[#1A365D] text-white p-4 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div 
+                    className="w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-base shadow-sm shrink-0 border"
+                    style={{ backgroundColor: colorStr + "25", color: "#FFFFFF", borderColor: colorStr }}
+                  >
+                    {toothDisplayNum}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold leading-tight">{toothName}</h3>
+                    <p className="text-[11px] text-blue-200">มุมมองสถานะคนไข้ & ประวัติการรักษา</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedToothForInspection(null)}
+                  className="p-1.5 text-slate-300 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-4 space-y-3.5 overflow-y-auto flex-1">
+                {/* Current Status Badge */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-xs font-semibold text-slate-600">สถานะปัจจุบัน:</span>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusBg}`}>
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colorStr }}></span>
+                    {statusStr}
+                  </span>
+                </div>
+
+                {extraLocationDesc && (
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                    <span className="font-bold block mb-0.5">ตำแหน่งฟันเกิน:</span>
+                    {extraLocationDesc}
+                  </div>
+                )}
+
+                {/* Tooth Treatment History */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <History size={14} className="text-blue-600" />
+                      <span>ประวัติการรักษาของซี่นี้</span>
+                    </h4>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {toothHistory.length > 0 ? `พบ ${toothHistory.length} รายการ` : "ไม่มีบันทึก"}
+                    </span>
+                  </div>
+
+                  {toothHistory.length > 0 ? (
+                    <div className="space-y-2">
+                      {toothHistory.map((h, idx) => (
+                        <div 
+                          key={h.id || idx}
+                          className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:border-blue-300 transition-all space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-[#1A365D] flex items-center gap-1.5">
+                              <Calendar size={13} className="text-blue-500" />
+                              {new Date(h.date).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" })}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium border border-blue-100 flex items-center gap-1">
+                              <User size={10} />
+                              {h.doctor}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {h.services.map((srv, sIdx) => (
+                              <span 
+                                key={sIdx}
+                                className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-100"
+                              >
+                                {srv}
+                              </span>
+                            ))}
+                          </div>
+
+                          {h.notes && (
+                            <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                              <span className="font-semibold text-slate-500">บันทึก: </span>
+                              {h.notes}
+                            </div>
+                          )}
+
+                          {h.recommendations && (
+                            <div className="text-[11px] text-amber-800 bg-amber-50/80 p-2 rounded-xl border border-amber-100">
+                              <span className="font-semibold text-amber-700">คำแนะนำ: </span>
+                              {h.recommendations}
+                            </div>
+                          )}
+
+                          {/* Audit Trail: ข้อมูลการเงินและผู้รับชำระเงิน */}
+                          {(h.cashier || h.paymentMethod || h.cost) && (
+                            <div className="flex items-center justify-between text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100 text-slate-600 mt-1">
+                              <span className="flex items-center gap-1 font-medium">
+                                <CreditCard size={12} className="text-emerald-600" />
+                                <span>{h.paymentMethod ? `ชำระผ่าน ${h.paymentMethod}` : "ชำระเงินเรียบร้อย"}</span>
+                                {h.cost && <strong className="text-slate-800 ml-1">฿{h.cost}</strong>}
+                              </span>
+                              {h.cashier && (
+                                <span className="text-[10px] text-slate-500 font-medium">
+                                  รับชำระโดย: <span className="text-slate-700 font-semibold">{h.cashier}</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 px-4 bg-slate-50/80 rounded-2xl border border-dashed border-slate-200">
+                      <Clock size={24} className="mx-auto text-slate-300 mb-1.5" />
+                      <p className="text-xs font-semibold text-slate-600">ยังไม่เคยมีบันทึกการทำหัตถการในซี่นี้</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">หากคนไข้เคยรับบริการ ระบบจะแสดงรายการหัตถการและบันทึกของแพทย์ที่นี่</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedToothForInspection(null)}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium rounded-xl text-xs transition-colors shadow-2xs"
+                >
+                  ปิด
+                </button>
+
+                {!readonly && onToothClick && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const toothToTreat = cleanKey;
+                      setSelectedToothForInspection(null);
+                      handleModeChange("treatment");
+                      onToothClick(toothToTreat, undefined);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-[#FF8C9A] hover:bg-[#ff7a8a] text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
+                  >
+                    <Stethoscope size={14} />
+                    <span>ไปที่โหมดรักษาซี่นี้ ({toothDisplayNum})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Accordion: ไทม์ไลน์ประวัติการรักษาทั้งหมดของคนไข้ */}
+      {currentMode === "patient" && showFullTimeline && historyRecords.length > 0 && (
+        <div className="mt-4 p-4 bg-slate-50/70 rounded-2xl border border-slate-200 space-y-3 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <History size={15} className="text-blue-600" />
+              <span>ประวัติการรักษาทั้งหมด ({historyRecords.length} ครั้ง)</span>
+            </h4>
+            <button
+              type="button"
+              onClick={() => setShowFullTimeline(false)}
+              className="text-xs text-slate-400 hover:text-slate-600 font-semibold"
+            >
+              ปิด
+            </button>
+          </div>
+
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+            {historyRecords.map((rec) => (
+              <div key={rec.id} className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-[#1A365D]">
+                    {new Date(rec.date).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" })}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">
+                    {rec.doctor}
+                  </span>
+                </div>
+                {rec.treatmentServices && rec.treatmentServices.length > 0 ? (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {rec.treatmentServices.map((s: string) => (
+                      <span key={s} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-700">{rec.service}</p>
+                )}
+                {rec.notes && (
+                  <p className="text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded-lg border border-slate-100 mt-1">
+                    {rec.notes}
+                  </p>
+                )}
+                {(rec.cashier || rec.paymentMethod || rec.cost) && (
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-100 mt-1">
+                    <span>
+                      {rec.paymentMethod ? `ชำระ: ${rec.paymentMethod}` : "ชำระแล้ว"} {rec.cost && <b className="text-slate-700">฿{rec.cost}</b>}
+                    </span>
+                    {rec.cashier && <span>ผู้รับเงิน: <b className="text-slate-700">{rec.cashier}</b></span>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+</div>
   );
 }
-

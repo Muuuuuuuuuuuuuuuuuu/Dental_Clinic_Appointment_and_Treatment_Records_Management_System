@@ -55,14 +55,6 @@ const DOC_NAV = [
   { key: "profile"   as DocView, label: "ข้อมูลส่วนตัว",     icon: User },
 ];
 
-const WEEK_SCHEDULE = [
-  { day: "จันทร์",  date: "7 ก.ค.", shift: "09:00–17:00", patients: 8,  status: "วันทำงาน" },
-  { day: "อังคาร",  date: "8 ก.ค.", shift: "09:00–17:00", patients: 7,  status: "วันทำงาน" },
-  { day: "พุธ",     date: "9 ก.ค.", shift: "09:00–12:00", patients: 4,  status: "ครึ่งวัน" },
-  { day: "พฤหัส",  date: "10 ก.ค.", shift: "09:00–17:00", patients: 8,  status: "วันนี้" },
-  { day: "ศุกร์",   date: "11 ก.ค.", shift: "09:00–17:00", patients: 6,  status: "วันทำงาน" },
-  { day: "เสาร์",  date: "12 ก.ค.", shift: "หยุด",          patients: 0,  status: "หยุด" },
-];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 

@@ -27,7 +27,14 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     odontogram_data,
     appointment!inner(start_time, appointment_status, dentist ( users ( profile (first_name, last_name) ) ), appointment_detail ( service (service_name) )),
     attending_dentist:dentist ( users ( profile (first_name, last_name) ) ),
-    payment (total_amount),
+    payment (
+      payment_id,
+      total_amount,
+      payment_method,
+      payment_status,
+      paid_at,
+      staff:staff_id ( users ( profile (first_name, last_name) ) )
+    ),
     treatment_detail ( service_id, location_code, quantity, actual_price, service (service_name) ),\n    treatment_product ( product_id, quantity, actual_price, product (product_name) )
   `).eq('appointment.patient_id', targetPatientId)
     .in('appointment.appointment_status', ['เสร็จสิ้น', 'รอชำระเงิน', 'ชำระเงินแล้ว'])
@@ -46,6 +53,10 @@ export async function getPatientTreatmentRecords(patientId?: number) {
 
     const srvName = apptDetail?.service?.service_name || 'ไม่ระบุบริการ';
     const costAmt = pay ? pay.total_amount : null;
+    const cashierProfile = pay?.staff?.users?.profile;
+    const cashierName = cashierProfile ? `${cashierProfile.first_name} ${cashierProfile.last_name}` : (pay?.staff_id ? `เจ้าหน้าที่ (ID: ${pay.staff_id})` : null);
+    const paymentMethod = pay?.payment_method || null;
+    const paidAt = pay?.paid_at || null;
 
     let treatmentNotes = d.doctor_note || '';
     let recommendations = d.recommendations || '';
@@ -92,6 +103,9 @@ export async function getPatientTreatmentRecords(patientId?: number) {
       detailedServices,
       extraProducts,
       doctor: dr ? `${dr.first_name} ${dr.last_name}` : 'ไม่ระบุแพทย์',
+      cashier: cashierName,
+      paymentMethod: paymentMethod,
+      paidAt: paidAt,
       date: d.treatment_date,
       time: d.appointment?.start_time?.slice(0, 5) || '00:00',
       cost: costAmt !== null ? costAmt.toLocaleString() : null,

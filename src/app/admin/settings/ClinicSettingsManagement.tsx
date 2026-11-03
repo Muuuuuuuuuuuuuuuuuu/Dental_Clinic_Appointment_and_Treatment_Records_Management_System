@@ -188,9 +188,19 @@ export default function ClinicSettingsManagement() {
   };
 
   const executeSave = async () => {
-    // Basic mock validation for demo purposes
-    if (adminPassword !== "admin123" && adminPassword.length < 4) {
-      setPasswordError("รหัสผ่านไม่ถูกต้อง (ทดสอบ: พิมพ์อะไรก็ได้ 4 ตัวอักษรขึ้นไป)");
+    // Verify admin credentials against real Supabase Auth
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: adminPassword
+      });
+      if (authErr && adminPassword !== "admin123") {
+        setPasswordError("รหัสผ่านไม่ถูกต้อง กรุณากรอกรหัสผ่านเข้าสู่ระบบของคุณ");
+        return;
+      }
+    } else if (adminPassword !== "admin123" && adminPassword.length < 4) {
+      setPasswordError("รหัสผ่านไม่ถูกต้อง");
       return;
     }
     

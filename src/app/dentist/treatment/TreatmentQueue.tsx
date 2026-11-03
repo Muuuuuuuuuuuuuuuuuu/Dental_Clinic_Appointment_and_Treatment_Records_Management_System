@@ -3,7 +3,7 @@ import { Search, Filter, Play, CheckCircle, Clock, FileText, Plus, X, AlertTrian
 
 import { Appointment, STATUS_COLORS, ServiceInfo, AppointmentStatus, DentistInfo, hasHealthAlert } from "../../shared/data";
 import { getAppointments, getServices, updateAppointmentStatus, supabase } from "../../shared/supabaseApi";
-import { saveTreatment, getPatientLatestOdontogram, getProducts, savePatientOdontogram } from "../../shared/api/treatmentApi";
+import { saveTreatment, getPatientLatestOdontogram, getProducts, savePatientOdontogram, getPatientTreatmentRecords } from "../../shared/api/treatmentApi";
 import Odontogram, { ToothStatus } from "./Odontogram";
 import { SupernumeraryTooth, getExtraToothLocation } from "./ToothGeometry";
 
@@ -68,6 +68,7 @@ export default function TreatmentQueue({
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
   const [selectedToothForAction, setSelectedToothForAction] = useState<number | string | null>(null);
   const [showMedModal, setShowMedModal] = useState<number | null>(null); // appointment id
+  const [patientHistoryRecords, setPatientHistoryRecords] = useState<any[]>([]);
   const [medList, setMedList] = useState<{ name: string; dose: string; freq: string; days: string }[]>([]);
 
   const today = getNow();
@@ -233,16 +234,31 @@ export default function TreatmentQueue({
       actualCost: a.cost ? (Number(a.cost) || "") : ""
     });
 
+    let records: any[] = [];
+    if (a.patientId) {
+      try {
+        records = await getPatientTreatmentRecords(a.patientId);
+        setPatientHistoryRecords(records);
+      } catch (err) {
+        console.error("Fetch patient history error:", err);
+        setPatientHistoryRecords([]);
+      }
+    } else {
+      setPatientHistoryRecords([]);
+    }
+
+    // ถ้าเป็นคนไข้มาครั้งแรก (ไม่มีประวัติการรักษาเดิมเลย) ให้เริ่มด้วยฟันครบ 32 ซี่ปกติ 100%
     if (a.odontogramData && Object.keys(a.odontogramData).length > 0) {
       const { wholeMouth, extraTeeth: savedExtra, ...rest } = a.odontogramData as any;
       setToothData(rest as any);
       setExtraTeeth(Array.isArray(savedExtra) ? savedExtra : []);
-    } else if (a.patientId) {
+    } else if (a.patientId && records.length > 0) {
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
       const { wholeMouth, extraTeeth: savedExtra, ...rest } = historyOdontogram as any;
       setToothData(rest as any);
       setExtraTeeth(Array.isArray(savedExtra) ? savedExtra : []);
     } else {
+      // คนไข้ใหม่ / มาครั้งแรก: ฟันครบ 32 ซี่สมบูรณ์ ไม่มีซี่ไหนหาย
       setToothData({});
       setExtraTeeth([]);
     }
@@ -701,6 +717,8 @@ export default function TreatmentQueue({
                         isChild={isChild}
                         setIsChild={setIsChild}
                         extraTeeth={extraTeeth}
+                        historyRecords={patientHistoryRecords}
+                        patientName={a.patientName}
                         onAddExtraTooth={(newTooth) => {
                           setExtraTeeth(prev => {
                             if (prev.find(x => x.id === newTooth.id)) return prev;
