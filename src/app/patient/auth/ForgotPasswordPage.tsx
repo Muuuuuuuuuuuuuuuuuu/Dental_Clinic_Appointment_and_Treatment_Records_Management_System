@@ -14,33 +14,33 @@ import {
 type Step = "email" | "otp" | "reset" | "done";
 
 export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () => void; onSuccess?: () => void }) {
-  // ─── shared state ──────────────────────────────────────────────
+  // 
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ─── OTP state ─────────────────────────────────────────────────
+  // 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [resent, setResent] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // ─── Reset password state ──────────────────────────────────────
+  // 
   const [newPass, setNewPass] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
 
-  // ─── helpers ───────────────────────────────────────────────────
+  // 
   const btnGradient = {
     background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)",
     boxShadow: "0 4px 20px rgba(255,140,154,0.4)",
   };
 
-  // ═══════════════════════════════════════════════════════════════
+  // 
   // Step 1: ส่ง OTP ไปอีเมลจริงผ่าน EmailJS + เก็บใน Supabase
-  // ═══════════════════════════════════════════════════════════════
+  // 
   const sendOtp = async () => {
     setError("");
     if (!email) { setError("กรุณากรอกอีเมล"); return; }
@@ -57,9 +57,9 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════
+  // 
   // Step 2: ยืนยัน OTP กับ Supabase
-  // ═══════════════════════════════════════════════════════════════
+  // 
   const handleDigit = (i: number, v: string) => {
     if (!/^\d?$/.test(v)) return;
     const next = [...digits];
@@ -103,9 +103,9 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
     setTimeout(() => setResent(false), 3000);
   };
 
-  // ═══════════════════════════════════════════════════════════════
+  // 
   // Step 3: เปลี่ยนรหัสผ่านใหม่ใน Supabase
-  // ═══════════════════════════════════════════════════════════════
+  // 
   const doResetPassword = async () => {
     setError("");
     if (!newPass) { setError("กรุณากรอกรหัสผ่านใหม่"); return; }
@@ -124,9 +124,9 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
   };
 
 
-  // ═══════════════════════════════════════════════════════════════
+  // 
   // Step indicator (3 ขั้นตอน)
-  // ═══════════════════════════════════════════════════════════════
+  // 
   const stepLabels = ["กรอกอีเมล", "ยืนยัน OTP", "ตั้งรหัสผ่านใหม่"];
   const stepIndex = step === "email" ? 0 : step === "otp" ? 1 : 2;
 
@@ -144,7 +144,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
                   background: isDone
                     ? "linear-gradient(135deg,#22C55E,#16A34A)"
                     : isActive
-                    ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)"
+                    ? "#FF8C9A"
                     : "#E2E8F0",
                   color: isDone || isActive ? "white" : "#94A3B8",
                 }}
@@ -170,9 +170,9 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
     </div>
   );
 
-  // ═══════════════════════════════════════════════════════════════
-  // Error banner
-  // ═══════════════════════════════════════════════════════════════
+  // 
+  // แถบแสดงข้อความแจ้งเตือนข้อผิดพลาด
+  // 
   const ErrorBanner = () =>
     error ? (
       <div
@@ -183,11 +183,9 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
       </div>
     ) : null;
 
-  // ═══════════════════════════════════════════════════════════════
-  // Render by step
-  // ═══════════════════════════════════════════════════════════════
-
-  /* ── DONE ────────────────────────────────────────────────────── */
+  // 
+  // แสดงผลตามขั้นตอนปัจจุบัน
+  //  เสร็จสิ้น ────────────────────────────────────────────────────── */
   if (step === "done") {
     return (
       <AuthShell title="เปลี่ยนรหัสผ่านสำเร็จ" sub="คุณสามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้แล้ว">
@@ -200,7 +198,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
           </div>
           <h3
             className="text-xl font-semibold mb-2"
-            style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}
+            style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}
           >
             เปลี่ยนรหัสผ่านเรียบร้อย!
           </h3>
@@ -219,7 +217,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
     );
   }
 
-  /* ── STEP 1 — Email ──────────────────────────────────────────── */
+  /*  */
   if (step === "email") {
     return (
       <AuthShell title="ลืมรหัสผ่าน" sub="กรอกอีเมลที่ลงทะเบียนไว้ ระบบจะส่งรหัส OTP ไปยังอีเมลของคุณ">
@@ -258,7 +256,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
     );
   }
 
-  /* ── STEP 2 — OTP ────────────────────────────────────────────── */
+  /*  */
   if (step === "otp") {
     return (
       <AuthShell title="ยืนยัน OTP" sub={`ระบบได้ส่งรหัส OTP 6 หลักไปยัง ${email} แล้ว`}>
@@ -269,7 +267,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
           className="p-4 rounded-xl mb-6 text-sm text-center"
           style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}
         >
-          📩 กรุณาตรวจสอบกล่องจดหมายอีเมลของคุณ (รวมถึงโฟลเดอร์ Spam/Junk)
+          กรุณาตรวจสอบกล่องจดหมายอีเมลของคุณ (รวมถึงโฟลเดอร์ Spam/Junk)
         </div>
 
         <ErrorBanner />
@@ -324,12 +322,12 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
     );
   }
 
-  /* ── STEP 3 — Reset password ─────────────────────────────────── */
+  /*  */
   return (
     <AuthShell title="ตั้งรหัสผ่านใหม่" sub="กรุณากรอกรหัสผ่านใหม่ที่คุณต้องการ">
       <StepIndicator />
 
-      {/* Security badge */}
+      {/* ป้ายแสดงความปลอดภัย */}
       <div
         className="flex items-center gap-2 p-3 rounded-xl mb-6 text-sm"
         style={{ backgroundColor: "#E8FFF0", color: "#1B7A3E" }}
@@ -386,7 +384,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
           </div>
         </Field>
 
-        {/* Password match indicator */}
+        {/* ตัวบ่งชี้ว่ารหัสผ่านตรงกัน */}
         {confirmPass && (
           <div
             className="flex items-center gap-2 text-xs"

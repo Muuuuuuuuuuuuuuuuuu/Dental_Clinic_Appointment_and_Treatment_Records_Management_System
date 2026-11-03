@@ -12,10 +12,10 @@ export function useIdleTimeout(onIdle: () => void, timeoutMinutes: number = 30) 
   }, [onIdle, timeoutMs]);
 
   useEffect(() => {
-    // Initial start
+    // เริ่มนับเวลาเมื่อเปิดหน้าเว็บ
     resetTimer();
 
-    // Events to track user activity
+    // เหตุการณ์ที่ใช้ตรวจจับการใช้งานของผู้ใช้
     const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
     
     const handleActivity = () => {

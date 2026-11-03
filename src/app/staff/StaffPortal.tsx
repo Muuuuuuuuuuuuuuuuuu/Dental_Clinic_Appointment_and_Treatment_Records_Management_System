@@ -51,7 +51,7 @@ const STAFF_NAV = [
 
 ];
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// 
 
 function StaffSidebar({ 
   view, 
@@ -77,12 +77,12 @@ function StaffSidebar({
           <Smile size={16} color="white" />
         </div>
         <div>
-          <div className="font-bold text-sm text-white" style={{ fontFamily: "Playfair Display, serif" }}>คลินิกสุภัทร</div>
+          <div className="font-bold text-sm text-white" style={{ fontFamily: "Sarabun, sans-serif" }}>คลินิกสุภัทร</div>
           <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>พนักงานต้อนรับ</div>
         </div>
       </div>
       <div onClick={() => setView("profile")} className="flex items-center gap-3 px-3 py-3 rounded-2xl mb-6 relative overflow-hidden cursor-pointer hover:bg-white/10 transition-colors" style={{ backgroundColor: view === "profile" ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.06)" }}>
-        {/* Clock In Indicator */}
+        {/* แถบสีแสดงสถานะการลงเวลาเข้างาน */}
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${isClockedIn ? 'bg-green-400' : 'bg-gray-400'}`} />
         
         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ backgroundColor: "#1D6FA4" }}>
@@ -129,7 +129,7 @@ function StaffSidebar({
   );
 }
 
-// ─── Clock In Screen (With Demo IP Whitelisting) ─────────────────────────────
+// 
 
 function ClockInScreen({ 
   onClockIn, 
@@ -147,7 +147,7 @@ function ClockInScreen({
     setLoading(true);
     setErrorMsg("");
     
-    // Simulate network check delay
+    // จำลองการตรวจสอบเครือข่ายก่อนลงเวลาเข้างาน
     setTimeout(() => {
       setLoading(false);
       if (mockNetwork === "home") {
@@ -161,7 +161,7 @@ function ClockInScreen({
   return (
     <div className="flex flex-col items-center justify-center h-full py-10 px-4 relative">
       
-      {/* Demo Controls (For Professor Presentation) */}
+      {/* แผงควบคุมโหมดจำลองสำหรับการนำเสนอ */}
       <div className="absolute top-0 right-0 bg-white p-4 rounded-2xl border-2 border-dashed border-gray-300 shadow-sm z-10 w-64">
         <div className="flex items-center gap-2 mb-3 text-gray-500 font-bold text-xs uppercase tracking-wider">
           <AlertTriangle size={14} /> โหมดจำลองสำหรับพรีเซนต์
@@ -184,14 +184,14 @@ function ClockInScreen({
       <div className="bg-white rounded-3xl p-10 max-w-md w-full flex flex-col items-center text-center relative overflow-hidden mt-12 lg:mt-0" 
         style={{ boxShadow: "0 10px 40px rgba(26,54,93,0.08)" }}>
         
-        {/* Decorative background */}
-        <div className="absolute top-0 left-0 w-full h-2" style={{ background: "linear-gradient(90deg, #1D6FA4, #FF8C9A)" }} />
+        {/* แถบสีตกแต่งด้านบน */}
+        <div className="absolute top-0 left-0 w-full h-2" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }} />
         
         <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: "#F0F4F8" }}>
           <Fingerprint size={40} style={{ color: "#1D6FA4" }} />
         </div>
         
-        <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+        <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
           ระงับการเข้าถึงชั่วคราว
         </h2>
         
@@ -232,7 +232,7 @@ function ClockInScreen({
   );
 }
 
-// ─── Staff Portal Root ────────────────────────────────────────────────────────
+// 
 
 export default function StaffPortal({
   appointments,
@@ -250,7 +250,7 @@ export default function StaffPortal({
   const [view, setView] = useState<StaffView>("queue");
   const [sideOpen, setSideOpen] = useState(false);
   
-  // Clock-in & Network State
+  // สถานะการลงเวลาเข้างานและเครือข่าย
   const [isClockedIn, setIsClockedIn] = useState(true);
   const [mockNetwork, setMockNetwork] = useState<"clinic" | "home">("clinic");
 
@@ -259,7 +259,7 @@ export default function StaffPortal({
     onLogout();
   }, 30);
 
-  // Staff Data
+  // ข้อมูลพนักงานที่เข้าสู่ระบบ
   const [staffInfo, setStaffInfo] = useState<any | null>(null);
 
   useEffect(() => {
@@ -280,7 +280,7 @@ export default function StaffPortal({
   const showLockScreen = isOperationalView && !isClockedIn;
 
   return (
-    <div className="min-h-screen flex" style={{ fontFamily: "Prompt, sans-serif", backgroundColor: "#F0F4F8" }}>
+    <div className="min-h-screen flex" style={{ fontFamily: "Sarabun, sans-serif", backgroundColor: "#F0F4F8" }}>
       {sideOpen && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setSideOpen(false)} />}
 
       <aside className="fixed top-0 left-0 h-full z-40 hidden lg:block" style={{ width: 250 }}>
@@ -295,7 +295,7 @@ export default function StaffPortal({
       <div className="flex-1 flex flex-col lg:ml-[250px]">
         <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b bg-white" style={{ borderColor: "rgba(26,54,93,0.1)" }}>
           <button onClick={() => setSideOpen(true)} style={{ color: "#1A365D" }}><Menu size={20} /></button>
-          <span className="font-bold text-sm" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>คลินิกสุภัทร • พนักงาน</span>
+          <span className="font-bold text-sm" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>คลินิกสุภัทร • พนักงาน</span>
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isClockedIn ? 'bg-green-500' : 'bg-gray-300'}`} />
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: "#1D6FA4" }}>

@@ -27,13 +27,17 @@ export default function PatientVerification() {
     : [];
 
   const handleEditSubmit = async (patientId: number) => {
+    if (editForm.phone && editForm.phone.replace(/\D/g, "").length !== 10) {
+      alert("เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักเท่านั้น");
+      return;
+    }
     setIsSaving(true);
     try {
       await updatePatientInfoByPatientId(patientId, editForm);
-      // Update local state
+      // อัปเดตข้อมูลที่มีอยู่ local state
       setAllPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...editForm } : p));
       setEditingPatientId(null);
-      refetchAppointments(); // Refresh appointments in case we need to update appointment records in the future
+      refetchAppointments(); // รีเฟรชข้อมูลนัดหมายเพื่อให้ข้อมูลเป็นปัจจุบัน
       alert("อัปเดตข้อมูลสำเร็จ");
     } catch (err: any) {
       alert(err.message || "เกิดข้อผิดพลาดในการอัปเดต");
@@ -45,7 +49,7 @@ export default function PatientVerification() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ตรวจสอบข้อมูลคนไข้</h1>
+        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ตรวจสอบข้อมูลคนไข้</h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>ค้นหาและยืนยันตัวตนก่อนเข้ารับบริการ</p>
       </div>
       <div className="relative max-w-md mb-6">
@@ -125,7 +129,7 @@ export default function PatientVerification() {
                      </div>
                      <div>
                        <label className="text-xs text-[#4A6080] block mb-1">เบอร์โทรศัพท์</label>
-                       <input value={editForm.phone} onChange={e => setEditForm(f => ({...f, phone: e.target.value}))} className="w-full px-3 py-2 rounded-lg text-sm border bg-white focus:outline-none focus:border-[#FF8C9A]" />
+                       <input type="tel" maxLength={10} placeholder="กรอกตัวเลข 10 หลัก" value={editForm.phone} onChange={e => setEditForm(f => ({...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10)}))} className="w-full px-3 py-2 rounded-lg text-sm border bg-white focus:outline-none focus:border-[#FF8C9A]" />
                      </div>
                      <div>
                        <label className="text-xs text-[#4A6080] block mb-1">ประวัติแพ้ยา (คั่นด้วยลูกน้ำ)</label>

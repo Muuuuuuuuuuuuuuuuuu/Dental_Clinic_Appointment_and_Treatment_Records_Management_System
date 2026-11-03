@@ -50,11 +50,11 @@ export default function HistoryView({ user }: { user: PatientUser }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ประวัติการรักษา</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ประวัติการรักษา</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>บันทึกการเข้ารับบริการทั้งหมดของคุณ</p>
         </div>
         <div className="text-right">
-          <div className="text-xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#FF8C9A" }}>
+          <div className="text-xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#FF8C9A" }}>
             ฿{total.toLocaleString()}
           </div>
           <div className="text-xs" style={{ color: "#4A6080" }}>ค่าใช้จ่ายรวม</div>
@@ -88,7 +88,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
         ))}
       </div>
 
-      {/* Detail Modal: Tabbed View (Treatment & Advice vs Payment Slip) */}
+      {/* หน้าต่างรายละเอียด: แยกแท็บข้อมูลการรักษาและใบเสร็จรับเงิน */}
       {selected && (() => {
         const netTotal = getItemTotal(selected);
         const refNo = "TR-" + String(selected.id).padStart(5, '0');
@@ -98,10 +98,10 @@ export default function HistoryView({ user }: { user: PatientUser }) {
         const dateStr = selected.date ? thDate(selected.date) : "-";
         const timeStr = selected.time ? (selected.time + " น.") : "";
 
-        // Function to download slip as high-res PNG image
+        // ฟังก์ชันสำหรับดาวน์โหลดใบเสร็จเป็นไฟล์ภาพ PNG ความละเอียดสูง
         const handleDownloadSlipImage = () => {
           const canvas = document.createElement("canvas");
-          const scale = 2; // Retina scale
+          const scale = 2; // ความละเอียดสูงสำหรับหน้าจอชัดพิเศษ
           const width = 420;
           
           const itemsCount = (selected.detailedServices?.length || 1) + (selected.extraProducts?.length || 0);
@@ -114,24 +114,24 @@ export default function HistoryView({ user }: { user: PatientUser }) {
 
           ctx.scale(scale, scale);
 
-          // 1. Background
+          // 1. พื้นหลัง
           ctx.fillStyle = "#FFFFFF";
           ctx.beginPath();
           ctx.roundRect(0, 0, width, estimatedHeight, 24);
           ctx.fill();
 
-          // Border
+          // เส้นขอบ
           ctx.strokeStyle = "#E2E8F0";
           ctx.lineWidth = 1.5;
           ctx.stroke();
 
-          // 2. Header Top Bar
+          // 2. แถบส่วนหัวด้านบน
           ctx.fillStyle = "#1A365D";
           ctx.beginPath();
           ctx.roundRect(0, 0, width, 12, [24, 24, 0, 0]);
           ctx.fill();
 
-          // Success Green Checkmark Circle
+          // วงกลมเครื่องหมายถูกสีเขียว
           ctx.fillStyle = "#10B981";
           ctx.beginPath();
           ctx.arc(width / 2, 54, 22, 0, Math.PI * 2);
@@ -156,7 +156,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
           ctx.font = "12px system-ui, -apple-system, sans-serif";
           ctx.fillText(dateStr + " " + timeStr, width / 2, 122);
 
-          // Amount Box
+          // กล่องแสดงยอดชำระเงิน
           ctx.fillStyle = "#F8FAFC";
           ctx.beginPath();
           ctx.roundRect(24, 138, width - 48, 72, 16);
@@ -174,7 +174,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
           ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
           ctx.fillText("฿" + netTotal.toLocaleString() + ".00", width / 2, 194);
 
-          // Info Rows
+          // แถวข้อมูลรายละเอียด
           let curY = 240;
           const drawRow = (label, val, valColor, isBold) => {
             ctx.fillStyle = "#64748B";
@@ -190,7 +190,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
           };
 
           drawRow("รหัสอ้างอิง", refNo, "#64748B", false);
-          drawRow("สถานพยาบาล", "คลินิกทันตกรรมสุพัฒน์", "#1A365D", true);
+          drawRow("สถานพยาบาล", "คลินิกทันตกรรมสุภัทร", "#1A365D", true);
           drawRow("แพทย์ผู้รักษา", doctorName, "#0F172A", true);
           if (cashierName) drawRow("ผู้รับชำระเงิน", cashierName, "#0F172A", true);
           drawRow("ช่องทางชำระ", "ชำระผ่าน " + payMethod, "#0F172A", true);
@@ -234,7 +234,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
           ctx.fillStyle = "#94A3B8";
           ctx.font = "9px system-ui, -apple-system, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText("e-Slip ออกโดยระบบคลินิกทันตกรรมสุพัฒน์ • ตรวจสอบย้อนหลังได้ 100%", width / 2, curY);
+          ctx.fillText("e-Slip ออกโดยระบบคลินิกทันตกรรมสุภัทร • ตรวจสอบย้อนหลังได้ 100%", width / 2, curY);
 
           const link = document.createElement("a");
           link.download = "dental-slip-" + refNo + ".png";
@@ -247,7 +247,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
             className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200 receipt-modal-overlay"
             onClick={() => setSelected(null)}
           >
-            {/* Print Specific CSS: Hides background and formats ONLY the slip sheet */}
+            {/* สไตล์เฉพาะตอนสั่งพิมพ์: ซ่อนพื้นหลังและจัดหน้าเฉพาะใบเสร็จ */}
             <style>{`
               @media print {
                 body * {
@@ -291,9 +291,9 @@ export default function HistoryView({ user }: { user: PatientUser }) {
               className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200/90 relative flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
               onClick={e => e.stopPropagation()}
             >
-              {/* Header Bar with Tabs and Close Button (Hidden on Print) */}
+              {/* แถบส่วนหัวพร้อมปุ่มสลับแท็บและปุ่มปิด (ซ่อนเวลาสั่งพิมพ์) */}
               <div className="receipt-no-print bg-slate-50 border-b border-slate-200/80 px-4 pt-3 pb-2.5 flex items-center justify-between gap-2 shrink-0">
-                {/* 2 Tabs: Treatment & Advice vs Payment Slip */}
+                {/* 2 แท็บ: รายละเอียดการรักษา และ ใบเสร็จรับเงิน */}
                 <div className="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-xl border border-slate-300/60">
                   <button
                     type="button"
@@ -330,10 +330,10 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                 </button>
               </div>
 
-              {/* TAB 1: Clinical Notes & Doctor's Recommendations */}
+              {/* แท็บที่ 1: บันทึกการรักษาและคำแนะนำจากทันตแพทย์ */}
               {activeModalTab === "advice" && (
                 <div className="overflow-y-auto p-4 sm:p-5 space-y-4">
-                  {/* Service Card Header */}
+                  {/* ส่วนหัวการ์ดบริการ */}
                   <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/70 border border-blue-100 flex items-start justify-between gap-3">
                     <div>
                       <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-md">
@@ -392,7 +392,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                     )}
                   </div>
 
-                  {/* 3. Detailed Services & Teeth Location */}
+                  {/* 3. รายละเอียดหัตถการและตำแหน่งซี่ฟัน */}
                   {selected.detailedServices && selected.detailedServices.length > 0 && (
                     <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
                       <span className="text-xs font-bold text-slate-800 block pb-1 border-b border-slate-100">
@@ -415,7 +415,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                     </div>
                   )}
 
-                  {/* 4. Medicines / Products Prescribed */}
+                  {/* 4. รายการยาและเวชภัณฑ์ที่ได้รับ */}
                   {selected.extraProducts && selected.extraProducts.length > 0 && (
                     <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
                       <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 pb-1 border-b border-slate-100">
@@ -433,7 +433,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                     </div>
                   )}
 
-                  {/* Action Button to switch to receipt */}
+                  {/* ปุ่มสลับไปดูใบเสร็จรับเงิน */}
                   <div className="pt-1">
                     <button
                       type="button"
@@ -447,11 +447,11 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                 </div>
               )}
 
-              {/* TAB 2: Mobile Banking E-Slip (Payment Slip) */}
+              {/* แท็บที่ 2: ใบเสร็จรับเงินอิเล็กทรอนิกส์ */}
               {activeModalTab === "receipt" && (
                 <div id="dental-receipt-slip" className="overflow-y-auto p-5 sm:p-6 space-y-3.5 bg-white">
                   
-                  {/* Slip Header with Green Checkmark Icon */}
+                  {/* ส่วนหัวใบเสร็จพร้อมไอคอนยืนยันการชำระเงิน */}
                   <div className="text-center pt-1 pb-1">
                     <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto mb-2.5 shadow-md shadow-emerald-500/20">
                       <CheckCheck size={26} strokeWidth={2.5} />
@@ -462,7 +462,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                     </p>
                   </div>
 
-                  {/* Amount Highlight Box */}
+                  {/* กล่องแสดงยอดเงินรวม */}
                   <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/70 text-center">
                     <span className="text-[11px] font-medium text-slate-500 block mb-0.5">จำนวนเงินที่ชำระ</span>
                     <div className="text-2xl font-black tracking-tight" style={{ color: "#1B7A3E" }}>
@@ -470,10 +470,10 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                     </div>
                   </div>
 
-                  {/* Perforation Dashed Line */}
+                  {/* เส้นประคั่นส่วน */}
                   <div className="border-t border-dashed border-slate-200 my-1"></div>
 
-                  {/* Key Transaction Info (Left: Label, Right: Value) */}
+                  {/* ข้อมูลรายการชำระเงิน (ซ้าย: หัวข้อ, ขวา: ข้อมูล) */}
                   <div className="divide-y divide-slate-100 text-xs">
                     <div className="flex items-center justify-between gap-3 py-1.5">
                       <span className="text-slate-400 font-medium shrink-0">รหัสอ้างอิง</span>
@@ -482,7 +482,7 @@ export default function HistoryView({ user }: { user: PatientUser }) {
 
                     <div className="flex items-center justify-between gap-3 py-1.5">
                       <span className="text-slate-400 font-medium shrink-0">สถานพยาบาล</span>
-                      <span className="font-bold text-[#1A365D] text-right">คลินิกทันตกรรมสุพัฒน์</span>
+                      <span className="font-bold text-[#1A365D] text-right">คลินิกทันตกรรมสุภัทร</span>
                     </div>
 
                     <div className="flex items-center justify-between gap-3 py-1.5">
@@ -503,10 +503,10 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                     </div>
                   </div>
 
-                  {/* Perforation Dashed Line */}
+                  {/* เส้นประคั่นส่วน */}
                   <div className="border-t border-dashed border-slate-200 my-1"></div>
 
-                  {/* Itemized Services Breakdown */}
+                  {/* รายการค่าบริการและเวชภัณฑ์แยกตามรายการ */}
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider pb-1">
                       <span>รายการหัตถการ / บริการ</span>
@@ -544,52 +544,24 @@ export default function HistoryView({ user }: { user: PatientUser }) {
                     </div>
                   </div>
 
-                  {/* Footer Notice */}
+                  {/* ข้อความส่วนท้ายใบเสร็จ */}
                   <div className="pt-2 text-center">
                     <p className="text-[9px] text-slate-400">
-                      e-Slip ออกโดยระบบคลินิกทันตกรรมสุพัฒน์ • ตรวจสอบย้อนหลังได้ 100%
+                      e-Slip ออกโดยระบบคลินิกทันตกรรมสุภัทร • ตรวจสอบย้อนหลังได้ 100%
                     </p>
                   </div>
 
                 </div>
               )}
 
-              {/* Bottom Actions (Hidden on Print) */}
-              <div className="receipt-no-print p-3 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
+              {/* ปุ่มด้านล่าง */}
+              <div className="receipt-no-print p-3 bg-slate-50 border-t border-slate-100 flex items-center">
                 <button 
                   onClick={() => setSelected(null)} 
-                  className="flex-1 py-2.5 bg-white hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs border border-slate-200 transition-colors shadow-2xs"
+                  className="w-full py-2.5 bg-white hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs border border-slate-200 transition-colors shadow-2xs"
                 >
                   ปิด
                 </button>
-                {activeModalTab === "receipt" ? (
-                  <>
-                    <button 
-                      onClick={handleDownloadSlipImage} 
-                      className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition-colors shadow-xs"
-                      title="บันทึกสลิปเป็นรูปภาพ PNG สไตล์สลิปโอนเงิน"
-                    >
-                      <Download size={14} />
-                      <span>บันทึกสลิป</span>
-                    </button>
-                    <button 
-                      onClick={() => window.print()} 
-                      className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-[#1A365D] hover:bg-[#2A507A] text-white font-semibold rounded-xl text-xs transition-colors shadow-xs"
-                      title="พิมพ์สลิปการรักษา"
-                    >
-                      <Printer size={14} />
-                      <span>พิมพ์</span>
-                    </button>
-                  </>
-                ) : (
-                  <button 
-                    onClick={() => setActiveModalTab("receipt")} 
-                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#1A365D] hover:bg-[#2A507A] text-white font-semibold rounded-xl text-xs transition-colors shadow-xs"
-                  >
-                    <Receipt size={14} />
-                    <span>ดูสลิปการเงิน</span>
-                  </button>
-                )}
               </div>
 
             </div>

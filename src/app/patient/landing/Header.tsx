@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { X, Menu, Smile, User, Calendar, ChevronRight } from "lucide-react";
 import ClinicStatusBadge from "./ClinicStatus";
 
@@ -25,7 +25,7 @@ export default function Header({ onLoginClick, isLoggedIn, onPortal }: { onLogin
             <Smile size={20} color="white" />
           </div>
           <div>
-            <div className="font-bold text-base leading-tight" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>คลินิกสุภัทร</div>
+            <div className="font-bold text-base leading-tight" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>คลินิกสุภัทร</div>
             <div className="text-xs" style={{ color: "#4A6080", letterSpacing: "0.05em" }}>SUPHAT CLINIC</div>
           </div>
         </a>

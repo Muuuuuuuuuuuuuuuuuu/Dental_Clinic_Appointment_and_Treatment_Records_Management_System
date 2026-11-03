@@ -1,48 +1,47 @@
 import { createClient } from '@supabase/supabase-js';
 import { getPatientProfileByUserId } from '../supabaseApi';
 import { supabase } from '../utils/supabaseClient';
-import { sendOTPEmail } from '../utils/emailService';
 import { RegForm } from '../../patient/types';
 
 /**
- * ?? Auth API Module
- * �Ѵ����к��׹�ѹ��ǵ�, ��͡�Թ, ��Ѥ���Ҫԡ, OTP, ������ʼ�ҹ
+ * โมดูลจัดการระบบยืนยันตัวตน
+ * จัดการระบบยืนยันตัวตน, ล็อกอิน, สมัครสมาชิก, OTP, และรหัสผ่าน
  */
 export async function changePassword(currentPassword: string, newPassword: string) {
-  // 1. �֧ email �ͧ���������͡�Թ����
+  // 1. ดึงอีเมลของผู้ใช้ที่ล็อกอินอยู่
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !user.email) throw new Error("��辺�����ż��������͡�Թ����");
+  if (!user || !user.email) throw new Error("ไม่พบข้อมูลผู้ใช้ที่ล็อกอินอยู่");
 
-  // 2. ���ͺ��͡�Թ�������ʼ�ҹ��������׹�ѹ��ǵ�
+  // 2. ทดสอบล็อกอินด้วยรหัสผ่านเดิมเพื่อยืนยันตัวตน
   const { error: verifyErr } = await supabase.auth.signInWithPassword({
     email: user.email,
     password: currentPassword
   });
-  if (verifyErr) throw new Error("���ʼ�ҹ������١��ͧ");
+  if (verifyErr) throw new Error("รหัสผ่านเดิมไม่ถูกต้อง");
 
-  // 3. ����¹���ʼ�ҹ����������
+  // 3. เปลี่ยนรหัสผ่านเป็นรหัสใหม่
   const { error: updateErr } = await supabase.auth.updateUser({
     password: newPassword
   });
-  if (updateErr) throw new Error("�������ö����¹���ʼ�ҹ��: " + updateErr.message);
+  if (updateErr) throw new Error("ไม่สามารถเปลี่ยนรหัสผ่านได้: " + updateErr.message);
 
   return true;
 }
 
 export async function changeEmail(currentPassword: string, newEmail: string) {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !user.email) throw new Error("��辺�����ż��������͡�Թ����");
+  if (!user || !user.email) throw new Error("ไม่พบข้อมูลผู้ใช้ที่ล็อกอินอยู่");
 
   const { error: verifyErr } = await supabase.auth.signInWithPassword({
     email: user.email,
     password: currentPassword
   });
-  if (verifyErr) throw new Error("���ʼ�ҹ���١��ͧ");
+  if (verifyErr) throw new Error("รหัสผ่านไม่ถูกต้อง");
 
   const { error: updateErr } = await supabase.auth.updateUser({
     email: newEmail
   });
-  if (updateErr) throw new Error("�������ö����¹�������: " + updateErr.message);
+  if (updateErr) throw new Error("ไม่สามารถเปลี่ยนอีเมลได้: " + updateErr.message);
 
   const { error: profileErr } = await supabase.from('patients').update({ email: newEmail }).eq('user_id', user.id);
   if (profileErr) console.warn("Failed to update email in patients table", profileErr);
@@ -51,21 +50,21 @@ export async function changeEmail(currentPassword: string, newEmail: string) {
 }
 
 export async function loginPatient(email: string, pass: string) {
-  // Use real Supabase Auth
+  // เข้าสู่ระบบผ่านระบบยืนยันตัวตนของ Supabase
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password: pass
   });
 
   if (authError || !authData.user) {
-    throw new Error("������������ʼ�ҹ���١��ͧ");
+    throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
   }
 
-  // Get user profile using the authenticated user id
+  // ดึงข้อมูลโปรไฟล์ผู้ใช้จากรหัสที่ยืนยันตัวตนแล้ว
   const profile = await getPatientProfileByUserId(authData.user.id);
   if (!profile) {
-    // If not a patient, they might be a staff/admin. We still return something so AuthShell knows login succeeded.
-    // In a full implementation, we'd fetch staff profile here.
+    // กรณีไม่ใช่คนไข้ (เช่น พนักงานหรือแอดมิน) ให้ส่งค่ากลับเพื่อแจ้งว่าเข้าสู่ระบบสำเร็จ
+    // ข้อมูลโปรไฟล์ของพนักงานจะถูกดึงในหน้าระบบพนักงาน
     return { email: authData.user.email };
   }
   return profile;
@@ -76,15 +75,15 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   return data !== null && data.length > 0;
 }
 export async function requestRegistrationOTP(form: RegForm) {
-  // Use real Supabase Auth signup (sends confirmation email with OTP if configured)
+  // สมัครสมาชิกผ่านระบบยืนยันตัวตนของ Supabase พร้อมส่งอีเมลรหัส OTP
   const { data, error } = await supabase.auth.signUp({
     email: form.email,
     password: form.password,
   });
   if (error) throw error;
 
-  // Supabase returns an empty identities array if the user already exists
-  // to prevent email enumeration, but in this case we want to tell the user
+  // หากอีเมลนี้มีในระบบแล้ว Supabase จะคืนค่า identities เป็นอาเรย์ว่าง
+  // เพื่อแจ้งเตือนให้ผู้ใช้ทราบว่าอีเมลนี้ถูกใช้งานแล้ว
   if (data?.user?.identities && data.user.identities.length === 0) {
     throw new Error("อีเมลนี้ได้ลงทะเบียนไว้แล้ว โปรดเข้าสู่ระบบ หรือใช้อีเมลอื่น (หากกำลังทดสอบ โปรดลบยูสเซอร์เก่าใน Supabase ก่อน)");
   }
@@ -135,7 +134,7 @@ export async function cancelRegistration() {
 }
 
 export async function savePatientData(form: RegForm) {
-  // Get the authenticated user (since they just verified OTP)
+  // ดึงข้อมูลผู้ใช้หลังจากยืนยันรหัส OTP สำเร็จ
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
   if (authErr || !user) throw new Error("ไม่พบข้อมูลผู้ใช้ที่ยืนยันตัวตนแล้ว กรุณาเข้าสู่ระบบใหม่");
 
@@ -144,10 +143,10 @@ export async function savePatientData(form: RegForm) {
 
   // gender ต้องเป็น 'ชาย' หรือ 'หญิง' เท่านั้น (ตาม CHECK constraint)
   const validGender = (form.gender === 'ชาย' || form.gender === 'หญิง') ? form.gender : null;
-  // Check if old user exists by citizen_id (for Account Linking)
+  // ตรวจสอบว่ามีประวัติเดิมจากเลขบัตรประชาชนหรือไม่ (เพื่อเชื่อมบัญชี Walk-in)
   const { data: oldUser } = await supabase.from('users').select('user_id').eq('citizen_id', cleanIdCard).maybeSingle();
 
-  // Upsert into Profile (handles case where trigger may have already created a record)
+  // บันทึกหรืออัปเดตข้อมูลโปรไฟล์
   const { error: pErr } = await supabase.from('profile').upsert({
     citizen_id: cleanIdCard,
     first_name: form.firstName,
@@ -159,7 +158,7 @@ export async function savePatientData(form: RegForm) {
   }, { onConflict: 'citizen_id' });
   if (pErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลส่วนตัว: ${pErr.message}`);
 
-  // Upsert into Users (handles case where auth trigger may have created the row)
+  // บันทึกหรืออัปเดตข้อมูลตารางผู้ใช้
   const { error: uErr } = await supabase.from('users').upsert({
     user_id: userId,
     citizen_id: cleanIdCard,
@@ -172,7 +171,7 @@ export async function savePatientData(form: RegForm) {
   let returnedPatientId: number;
 
   if (oldUser && oldUser.user_id !== userId) {
-    // ACCOUNT LINKING: They walked in before (mock ID), now they registered online
+    // เชื่อมโยงบัญชี: กรณีคนไข้เคยมาทำฟันแบบ Walk-in แล้วมาสมัครสมาชิกออนไลน์ภายหลัง
     const { data: linkedPat } = await supabase.from('patient').update({ user_id: userId }).eq('user_id', oldUser.user_id).select('patient_id').maybeSingle();
     if (linkedPat) {
       returnedPatientId = linkedPat.patient_id;
@@ -180,10 +179,10 @@ export async function savePatientData(form: RegForm) {
       const { data: patData } = await supabase.from('patient').insert({ user_id: userId }).select('patient_id').single();
       returnedPatientId = patData.patient_id;
     }
-    // Keep db clean
+    // ลบข้อมูลชั่วคราวเดิมเพื่อไม่ให้ซ้ำซ้อน
     await supabase.from('users').delete().eq('user_id', oldUser.user_id);
   } else {
-    // Normal Check if patient record already exists before inserting
+    // ตรวจสอบว่ามีข้อมูลในตารางคนไข้หรือยังก่อนเพิ่มข้อมูลใหม่
     const { data: existingPatient } = await supabase
       .from('patient')
       .select('patient_id')
@@ -191,7 +190,7 @@ export async function savePatientData(form: RegForm) {
       .maybeSingle();
 
     if (!existingPatient) {
-      // Insert into Patient only if it doesn't exist yet
+      // เพิ่มข้อมูลลงตารางคนไข้หากยังไม่มี
       const { data: patData, error: patErr } = await supabase.from('patient').insert({
         user_id: userId
       }).select('patient_id').single();
@@ -199,12 +198,12 @@ export async function savePatientData(form: RegForm) {
       if (patErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลคนไข้: ${patErr.message}`);
       returnedPatientId = patData.patient_id;
     } else {
-      // Patient already exists, we use its ID
+      // หากมีข้อมูลคนไข้อยู่แล้วให้ใช้รหัสคนไข้เดิม
       returnedPatientId = existingPatient.patient_id;
     }
   }
 
-  // Update Emergency Contact
+  // บันทึกข้อมูลผู้ติดต่อฉุกเฉิน
   if (form.emergencyName || form.emergencyPhone) {
     await supabase.from('emergency_contact').delete().eq('patient_id', returnedPatientId);
     await supabase.from('emergency_contact').insert({
@@ -215,7 +214,7 @@ export async function savePatientData(form: RegForm) {
     });
   }
 
-  // Update Allergy & Disease
+  // บันทึกประวัติการแพ้ยาและโรคประจำตัว
   if (form.allergies && form.allergies !== 'ไม่มี' && form.allergies !== 'ไม่มีประวัติ' && form.allergies !== '-') {
     await supabase.from('patient_allergy').delete().eq('patient_id', returnedPatientId);
     const allergies = form.allergies.split(',').map(s => s.trim()).filter(s => s);
@@ -236,7 +235,7 @@ export async function savePatientData(form: RegForm) {
   return returnedPatientId;
 }
 
-// --- Dentist History ---
+// --- ประวัติการทำงานของทันตแพทย์ ---
 
 // ============================================================================
 // PASSWORD RESET (ลืมรหัสผ่าน)

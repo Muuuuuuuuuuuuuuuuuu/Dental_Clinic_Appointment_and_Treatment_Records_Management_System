@@ -21,7 +21,7 @@ export default function LoginPage({
   const [loading, setLoading] = useState(false);
   const [showDemos, setShowDemos] = useState(false);
 
-  // Combine all demos from all roles
+  // รวมบัญชีตัวอย่างจากทุกบทบาทเข้าด้วยกัน
   const allDemos = ROLE_TABS.flatMap(tab => tab.demos.map(demo => ({ ...demo, roleLabel: tab.label })));
 
   const fillDemo = (demo: {label: string, email: string, pass: string}) => {
@@ -55,7 +55,7 @@ export default function LoginPage({
         throw new Error(msg || "ไม่สามารถเข้าสู่ระบบได้");
       }
 
-      // Check role from public.users table (default to patient if not found)
+      // ตรวจสอบบทบาทผู้ใช้จากตาราง users (หากไม่พบให้เป็นคนไข้)
       const { data: userData } = await supabase
         .from('users')
         .select('role')
@@ -63,16 +63,23 @@ export default function LoginPage({
         .single();
 
       const role = userData?.role || "patient";
-      // Handle both Thai and English role names
+      // รองรับชื่อบทบาททั้งภาษาไทยและภาษาอังกฤษ
       const isPatient = role === "patient" || role === "คนไข้";
 
       if (isPatient) {
-        // Fetch profile using the already-authenticated user ID
+        // ดึงข้อมูลโปรไฟล์โดยใช้รหัสผู้ใช้ที่ยืนยันตัวตนแล้ว
         const { getPatientProfileByUserId } = await import("../../shared/supabaseApi");
         const profile = await getPatientProfileByUserId(authData.user.id) as any;
         
         if (!profile) {
           throw new Error("INCOMPLETE_PROFILE");
+        }
+
+        // หากคนไข้เข้าสู่ระบบด้วยรหัสผ่านเริ่มต้น 123456789 หรือมีสถานะต้องเปลี่ยนรหัสผ่านครั้งแรก
+        const cleanEmail = email.trim().toLowerCase();
+        if (pass === "123456789" || pass === "patient123" || authData.user.user_metadata?.must_change_password === true) {
+          localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
+          localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
         }
 
         onLogin({
@@ -101,7 +108,7 @@ export default function LoginPage({
     } catch (err: any) {
       if (err.message === "INCOMPLETE_PROFILE") {
         setError("คุณยังกรอกข้อมูลส่วนตัวไม่ครบถ้วน กรุณาสมัครสมาชิกใหม่อีกครั้ง");
-        // We will call onRegister so the user goes back to the registration screen
+        // เรียกฟังก์ชันกลับไปยังหน้าสมัครสมาชิก
         setTimeout(() => {
           onRegister();
         }, 2000);
@@ -161,7 +168,7 @@ export default function LoginPage({
           {loading ? "กำลังตรวจสอบ..." : "เข้าสู่ระบบ"}
         </button>
 
-        {/* Demo credentials hint (Hidden by default for clean screenshots) */}
+        {/* ส่วนแสดงบัญชีตัวอย่างสำหรับการทดสอบ (ซ่อนไว้เป็นค่าเริ่มต้น) */}
         <div className="mt-6 flex flex-col items-center">
           <button type="button" onClick={() => setShowDemos(!showDemos)}
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors">

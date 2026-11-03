@@ -8,7 +8,7 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}><Smile size={16} color="white" /></div>
-              <span className="font-bold text-sm text-white" style={{ fontFamily: "Playfair Display, serif" }}>คลินิกสุภัทร</span>
+              <span className="font-bold text-sm text-white" style={{ fontFamily: "Sarabun, sans-serif" }}>คลินิกสุภัทร</span>
             </div>
             <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.5)", fontWeight: 300 }}>ให้บริการทันตกรรมครบวงจร ด้วยมาตรฐานสากล ราคาที่เข้าถึงได้</p>
           </div>

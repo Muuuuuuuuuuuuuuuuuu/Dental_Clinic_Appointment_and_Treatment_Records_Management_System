@@ -62,12 +62,12 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
     ? dentists.filter(d => d.serviceIds?.includes(selectedServiceId))
     : dentists;
 
-  // Fetch slots whenever we reach step 1 and have a date/doctor
+  // ดึงช่วงเวลาว่างเมื่ออยู่ในขั้นตอนเลือกเวลาและเลือกวันที่เรียบร้อยแล้ว
   useEffect(() => {
     if (step === 1 && form.date && !form.openAppt) {
       setLoadingSlots(true);
-      // For Walk-in, we might select 'Any doctor' which means form.doctorId === 0
-      // The API should handle doctorId=0 by returning all available slots across doctors
+      // สำหรับคิวหน้าร้าน (Walk-in) กรณีไม่ระบุแพทย์จะใช้รหัสเป็น 0
+      // ระบบจะดึงช่วงเวลาว่างของทันตแพทย์ทุกท่านที่เข้าเวร
       getClinicTimeSlots(form.date, selectedServiceId, form.doctorId || undefined).then(slots => {
         const processed = slots.map((slot, i) => {
           if (slot.status !== 'available') return { ...slot, canBook: false };
@@ -99,7 +99,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
     });
   };
 
-  // Calendar Helpers
+  // ฟังก์ชันช่วยจัดการปฏิทิน
   const today = new Date();
   const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
   const year = targetDate.getFullYear();
@@ -119,7 +119,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
     const closure = closures.find((c) => c.date === dateStr);
     if (closure) return { status: "past" as const, reason: closure.reason };
     
-    // Check doctor schedule
+    // ตรวจสอบตารางเวรของทันตแพทย์
     if (form.doctorId > 0) {
       const selDocData = dentists.find(fd => fd.id === form.doctorId);
       const shift = doctorSchedules.find(s => s.dentistId === form.doctorId && s.dayOfWeek === dayOfWk);
@@ -143,7 +143,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
       return;
     }
     
-    // Local filter like PatientManagement.tsx
+    // ค้นหาและกรองรายชื่อคนไข้
     const filtered = allPatients.filter(p => 
       p.name.toLowerCase().includes(keyword) || 
       p.hn.toLowerCase().includes(keyword) ||
@@ -199,7 +199,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
         <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: "#E8FFF0" }}>
           <CheckCircle size={28} style={{ color: "#22C55E" }} />
         </div>
-        <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จอง Walk-in สำเร็จ!</h2>
+        <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จอง Walk-in สำเร็จ!</h2>
         <p className="text-sm mb-1" style={{ color: "#4A6080" }}>{patientInfo?.name}</p>
         <p className="text-sm mb-6" style={{ color: "#4A6080" }}>{form.service} • {form.openAppt ? "รอคนไข้ระบุวัน-เวลา" : `เวลา ${form.time} น.`}</p>
         <button onClick={() => { setStep(0); setForm({ service: "", doctorId: 0, date: "", time: "", note: "", openAppt: false }); setPatientInfo(null); setPatientResults([]); setSearchKeyword(""); setDone(false); }}
@@ -214,12 +214,12 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จองคิว Walk-in</h1>
+        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จองคิว Walk-in</h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>จองคิวสำหรับคนไข้ที่มาหน้าร้าน</p>
       </div>
 
       <div className="max-w-6xl mx-auto">
-        {/* Progress */}
+        {/* แถบแสดงขั้นตอน */}
         <div className="flex items-center gap-2 mb-6">
           {["ข้อมูลคนไข้", "รายละเอียดและเวลา", "ยืนยัน"].map((l, i) => (
             <div key={i} className="flex items-center gap-2 flex-shrink-0">
@@ -228,8 +228,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
                   backgroundColor: i < step ? "#E8FFF0" : i === step ? "#FF8C9A" : "rgba(26,54,93,0.06)",
                   color: i < step ? "#1B7A3E" : i === step ? "white" : "#4A6080",
                 }}>
-                {i < step ? "✓" : i + 1}
-                <span>{l}</span>
+                <span>{i + 1}. {l}</span>
               </div>
               {i < 2 && <div className="w-3 sm:w-10 h-0.5" style={{ backgroundColor: i < step ? "#22C55E" : "rgba(26,54,93,0.1)" }} />}
             </div>
@@ -251,7 +250,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
                        value={searchKeyword} 
                        onChange={e => {
                          setSearchKeyword(e.target.value);
-                         if (patientInfo) setPatientInfo(null); // Clear selected if typing anew
+                         if (patientInfo) setPatientInfo(null); // ล้างคนไข้ที่เลือกไว้หากพิมพ์ค้นหาใหม่
                        }}
                        placeholder="พิมพ์ชื่อ-สกุล / เลขบัตรฯ / เบอร์โทร / อีเมล" 
                        className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/30"
@@ -300,7 +299,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
 
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1fr_1.1fr_1fr] gap-6 items-start">
-              {/* COL 1: Services */}
+              {/* คอลัมน์ที่ 1: เลือกบริการ */}
               <div className="space-y-5">
                 <div>
                   <p className="text-xs font-medium mb-2" style={{ color: "#4A6080" }}>เลือกบริการ *</p>
@@ -309,7 +308,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
                       <button key={s.id} onClick={() => handleServiceChange(s.name)}
                         className="px-3 py-2.5 rounded-xl text-xs text-left transition-all"
                         style={{
-                          backgroundColor: form.service === s.name ? "#FFE8EC" : "#F0F4F8",
+                          backgroundColor: form.service === s.name ? "#FFD6DC" : "#F0F4F8",
                           border: form.service === s.name ? "1.5px solid #FF8C9A" : "1.5px solid transparent",
                           color: "#1A365D",
                         }}>
@@ -330,10 +329,10 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
                 )}
               </div>
 
-              {/* COL 2: Doctor + Calendar */}
+              {/* คอลัมน์ที่ 2: เลือกทันตแพทย์และวันที่ */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 
-                {/* Doctor Select */}
+                {/* ช่องเลือกทันตแพทย์ */}
                 <div style={{ borderRadius: 16, backgroundColor: "white", overflow: "hidden", boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}>
                   <div style={{ padding: "10px 14px" }}>
                     <p className="text-xs font-medium mb-2" style={{ color: "#4A6080" }}>เลือกทันตแพทย์ (ตัวเลือกเสริม)</p>
@@ -365,9 +364,9 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
                   </div>
                 </div>
 
-                {/* Calendar */}
+                {/* ปฏิทิน */}
                 <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(26,54,93,0.10)" }}>
-                  {/* Header */}
+                  {/* ส่วนหัว */}
                   <div style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)", padding: "9px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <button onClick={() => setMonthOffset((m) => m - 1)}
                       style={{ width: 24, height: 24, borderRadius: 6, border: "none", backgroundColor: "rgba(255,255,255,0.2)", cursor: "pointer", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -382,16 +381,16 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
                     </button>
                   </div>
 
-                  {/* Grid */}
+                  {/* ตารางวันที่ */}
                   <div style={{ backgroundColor: "white", padding: "8px 10px 10px" }}>
-                    {/* Day labels */}
+                    {/* ชื่อวันในสัปดาห์ */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
                       {["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((d, i) => {
                         const dayColors = ["#EF4444", "#FBBF24", "#F472B6", "#34D399", "#F97316", "#3B82F6", "#A855F7"];
                         return <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: dayColors[i], paddingBottom: 2 }}>{d}</div>;
                       })}
                     </div>
-                    {/* Date cells */}
+                    {/* ช่องวันที่ */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
                       {[...Array(firstDow)].map((_, i) => <div key={`e${i}`} />)}
                       {[...Array(daysInMonth)].map((_, i) => {
@@ -433,7 +432,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
                 </div>
               </div>
 
-              {/* COL 3: Time Slots */}
+              {/* คอลัมน์ที่ 3: เลือกเวลา */}
               <div>
                 {!form.openAppt && form.date && (
                   <div style={{ borderRadius: 16, backgroundColor: "white", padding: "14px 16px", boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}>

@@ -50,7 +50,7 @@ export default function DentalRecordView({
 }: DentalRecordViewProps) {
   const [isChild, setIsChild] = useState(false);
   
-  // Extract clean initial tooth data & extraTeeth if passed via props
+  // แยกข้อมูลสถานะซี่ฟันและฟันเกินเริ่มต้นที่ส่งเข้ามา
   const { extraTeeth: initialExtras = [], wholeMouth: _, ...cleanInitialTeeth } = (toothData as any) || {};
   const [localToothData, setLocalToothData] = useState<Record<number | string, ToothStatus>>(cleanInitialTeeth || {});
   const [extraTeeth, setExtraTeeth] = useState<SupernumeraryTooth[]>(Array.isArray(initialExtras) ? initialExtras : []);
@@ -66,7 +66,7 @@ export default function DentalRecordView({
       setHistoryRecords(records);
       const withTeeth = records.filter((r: any) => r.odontogramData && Object.keys(r.odontogramData).length > 0);
       if (withTeeth.length > 0) {
-        // Sort descending by date
+        // เรียงลำดับตามวันที่จากล่าสุดไปเก่าสุด
         const sorted = withTeeth.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const latest = sorted[0];
         const raw = latest.odontogramData || {};
@@ -79,11 +79,11 @@ export default function DentalRecordView({
     }).catch(console.error);
   }, [user]);
 
-  // Counting caries and filled teeth
+  // นับจำนวนฟันผุและฟันที่ได้รับการรักษาแล้ว
   const cariesCount = Object.entries(localToothData).filter(([k, s]) => s === 'red' && k !== 'extraTeeth' && k !== 'wholeMouth').length;
   const filledCount = Object.entries(localToothData).filter(([k, s]) => s === 'blue' && k !== 'extraTeeth' && k !== 'wholeMouth').length;
   
-  // Auto-infer missing teeth from extraction history
+  // ตรวจสอบซี่ฟันที่ถูกถอนจากประวัติการรักษาโดยอัตโนมัติ
   const inferredMissingTeeth = new Set<string>();
   historyRecords.forEach(record => {
     if (record.treatmentServices) {
@@ -99,7 +99,7 @@ export default function DentalRecordView({
     .map(([n]) => String(n).replace('teeth-', ''));
   const missingTeeth = Array.from(new Set([...explicitMissing, ...inferredMissingTeeth]));
 
-  // Merged tooth data so that inferred missing teeth also display as hollow/cross in odontogram
+  // รวมข้อมูลสถานะซี่ฟันเพื่อให้ซี่ที่เคยถอนแสดงในผังฟันด้วย
   const mergedToothData: Record<number | string, ToothStatus> = { ...localToothData };
   missingTeeth.forEach(t => {
     if (!mergedToothData[t]) {
@@ -107,7 +107,7 @@ export default function DentalRecordView({
     }
   });
 
-  // Mobile-friendly tooth & extra tooth popup modal
+  // หน้าต่างแสดงรายละเอียดซี่ฟันและฟันเกิน
   const renderToothPopup = () => {
     if (!clickedTooth) return null;
     const cleanKey = clickedTooth.replace('teeth-', '');
@@ -129,17 +129,17 @@ export default function DentalRecordView({
     
     const status = mergedToothData[cleanKey] || "normal";
     let statusStr = isExtra ? "ตรวจพบฟันเกิน (ปกติ/ติดตามอาการ)" : "ปกติ (Normal)";
-    let colorStr = isExtra ? "#D97706" : "#10B981"; // Amber for extra, Green for normal
+    let colorStr = isExtra ? "#D97706" : "#10B981"; // สีเหลืองสำหรับฟันเกิน สีเขียวสำหรับฟันปกติ
     
     if (status === "red") {
       statusStr = "พบปัญหา / ต้องรักษา";
-      colorStr = "#EF4444"; // Red
+      colorStr = "#EF4444"; // สีแดง (พบปัญหา)
     } else if (status === "blue") {
       statusStr = "รักษาแล้ว";
-      colorStr = "#3B82F6"; // Blue
+      colorStr = "#3B82F6"; // สีน้ำเงิน (รักษาแล้ว)
     } else if (status === "cross") {
       statusStr = "ถอน / ผ่าออกแล้ว";
-      colorStr = "#64748B"; // Slate
+      colorStr = "#64748B"; // สีเทา (ถอนแล้ว)
     }
 
     return (
@@ -165,7 +165,7 @@ export default function DentalRecordView({
             </div>
           </div>
 
-          {/* Tooth Specific History */}
+          {/* ประวัติการรักษาเฉพาะซี่ฟันนี้ */}
           {(() => {
             const toothHist = getToothHistory(cleanKey, historyRecords);
             return (
@@ -230,7 +230,7 @@ export default function DentalRecordView({
     <div className="w-full min-h-screen bg-[#F8FAFC]">
       {renderToothPopup()}
       
-      {/* Header Navigation */}
+      {/* แถบนำทางส่วนหัว */}
       <div className="bg-white px-4 py-4 flex items-center justify-between sticky top-0 z-50 border-b border-gray-100/50 backdrop-blur-md bg-white/80">
         <div className="flex items-center gap-3">
           <button 
@@ -247,10 +247,10 @@ export default function DentalRecordView({
       </div>
 
       <div className="max-w-4xl mx-auto p-4 lg:p-8 space-y-6">
-        {/* Main Content Area */}
+        {/* พื้นที่แสดงเนื้อหาหลัก */}
         <div className="flex flex-col lg:flex-row gap-6">
           
-          {/* Left Column: Visual Chart (Matches Doctor's Odontogram View) */}
+          {/* คอลัมน์ซ้าย: แผนผังฟัน (ตรงกับมุมมองของทันตแพทย์) */}
           <div className="flex-grow">
             <Odontogram
               toothData={mergedToothData}
@@ -264,9 +264,9 @@ export default function DentalRecordView({
             />
           </div>
 
-          {/* Right Column: Doctor's Advice & Quick Actions */}
+          {/* คอลัมน์ขวา: คำแนะนำจากทันตแพทย์และปุ่มทางลัด */}
           <div className="lg:w-80 space-y-4">
-            {/* Doctor's Advice Card */}
+            {/* การ์ดคำแนะนำจากทันตแพทย์ */}
             <div className="bg-[#1A365D] p-5 rounded-2xl shadow-sm text-white space-y-4">
               <div className="flex items-start gap-3">
                 <ShieldCheck size={22} className="text-blue-300 flex-shrink-0 mt-0.5" />
@@ -290,7 +290,7 @@ export default function DentalRecordView({
           </div>
         </div>
 
-        {/* Treatment History Timeline */}
+        {/* ลำดับเวลาประวัติการรักษา */}
         {historyRecords.length > 0 && (
           <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
             <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
@@ -299,11 +299,11 @@ export default function DentalRecordView({
             <div className="space-y-6 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
               {historyRecords.map((record) => (
                 <div key={record.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                  {/* Timeline Dot */}
+                  {/* จุดแสดงลำดับเวลา */}
                   <div className="flex items-center justify-center w-8 h-8 rounded-full border-4 border-white bg-[#FF8C9A] text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
                   </div>
                   
-                  {/* Card */}
+                  {/* การ์ดรายละเอียด */}
                   <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-slate-100 bg-slate-50 shadow-sm transition-all hover:shadow-md">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-bold text-[#1A365D]">{new Date(record.date).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" })}</span>
@@ -364,7 +364,7 @@ export default function DentalRecordView({
                           setLocalAdvice(record.recommendations || "ยังไม่มีคำแนะนำ");
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
-                        className="w-full mt-2 py-1.5 text-xs font-semibold text-[#FF8C9A] bg-[#FFE8EC] rounded-lg hover:bg-[#ff7a8a] hover:text-white transition-colors"
+                        className="w-full mt-2 py-1.5 text-xs font-semibold text-[#FF8C9A] bg-[#FFD6DC] rounded-lg hover:bg-[#ff7a8a] hover:text-white transition-colors"
                       >
                         ดูแผนผังฟันของวันนี้
                       </button>

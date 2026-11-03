@@ -25,20 +25,20 @@ export default function ScheduleHub() {
 
   const handleBack = () => {
     setSubView(prevSubView);
-    setPrevSubView(null); // Reset prev after going back
+    setPrevSubView(null); // ล้างค่าหน้าก่อนหน้าหลังจากกดย้อนกลับ
   };
 
-  // Sub-view rendering
+  // แสดงผลหน้าย่อยที่เลือก
   if (subView === "schedule") return <SubViewWrapper onBack={() => setSubView(null)}><ScheduleManagement onNavigateToSettings={() => handleNavigate("clinic_settings")} /></SubViewWrapper>;
   if (subView === "leaves") return <SubViewWrapper onBack={() => setSubView(null)}><LeaveApprovals /></SubViewWrapper>;
   if (subView === "clinic_settings") return <SubViewWrapper onBack={handleBack}><ClinicSettingsManagement /></SubViewWrapper>;
 
-  // Hub card selector
+  // การ์ดเมนูเลือกหมวดหมู่การจัดการ
   return (
     <div>
       <div className="mb-8 flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
             ตารางเวรและการลา
           </h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>จัดการตารางเวรบุคลากรและอนุมัติคำขอลา</p>
@@ -54,7 +54,7 @@ export default function ScheduleHub() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
-        {/* Schedule Card */}
+        {/* การ์ดจัดการตารางเวร */}
         <button
           onClick={() => setSubView("schedule")}
           className="group text-left bg-white rounded-2xl overflow-hidden shadow-sm border transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
@@ -80,13 +80,13 @@ export default function ScheduleHub() {
           </div>
         </button>
 
-        {/* Leave Approvals Card */}
+        {/* การ์ดอนุมัติการลางาน */}
         <button
           onClick={() => setSubView("leaves")}
           className="group text-left bg-white rounded-2xl overflow-hidden shadow-sm border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative"
           style={{ borderColor: pendingCount > 0 ? "#F59E0B" : "rgba(26,54,93,0.08)" }}
         >
-          {/* Notification badge */}
+          {/* ป้ายแจ้งเตือนจำนวนรายการ */}
           {pendingCount > 0 && (
             <div className="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full text-white text-xs font-bold shadow-lg animate-pulse"
               style={{ backgroundColor: "#EF4444" }}>

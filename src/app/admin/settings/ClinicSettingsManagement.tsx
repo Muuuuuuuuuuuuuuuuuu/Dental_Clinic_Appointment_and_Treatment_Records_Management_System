@@ -13,7 +13,7 @@ export default function ClinicSettingsManagement() {
   const [weeklyOffDays, setWeeklyOffDays] = useState<number[]>([0]);
   const [dailyHours, setDailyHours] = useState<Record<string, DayHours>>({});
 
-  // Confirm Modal state
+  // สถานะหน้าต่างยืนยันการบันทึก
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -30,7 +30,7 @@ export default function ClinicSettingsManagement() {
   const [closureSuccess, setClosureSuccess] = useState("");
   const [editingClosure, setEditingClosure] = useState<{ id: number; reason: string } | null>(null);
 
-  // default form state if not in DB
+  // ค่าเริ่มต้นของฟอร์มกรณีไม่มีข้อมูลในฐานข้อมูล
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
@@ -188,7 +188,7 @@ export default function ClinicSettingsManagement() {
   };
 
   const executeSave = async () => {
-    // Verify admin credentials against real Supabase Auth
+    // ตรวจสอบรหัสผ่านผู้ดูแลระบบกับฐานข้อมูล
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.email) {
       const { error: authErr } = await supabase.auth.signInWithPassword({
@@ -207,13 +207,13 @@ export default function ClinicSettingsManagement() {
     setShowConfirmModal(false);
     setSaving(true);
     try {
-      // Save regular form data
+      // บันทึกข้อมูลตั้งค่าทั่วไปของคลินิก
       for (const [key, value] of Object.entries(formData)) {
         if (settings[key] !== value) {
           await updateClinicSetting(key, String(value));
         }
       }
-      // Save weekly off days and daily hours
+      // บันทึกวันหยุดประจำสัปดาห์และเวลาทำการรายวัน
       await Promise.all([
         updateWeeklyOffDays(weeklyOffDays),
         updateDailyHours(dailyHours)
@@ -237,7 +237,7 @@ export default function ClinicSettingsManagement() {
     <div className="w-full max-w-6xl animate-fade-in relative">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ตั้งค่าระบบคลินิก</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ตั้งค่าระบบคลินิก</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>จัดการเวลาเปิด-ปิด และการตั้งค่าพื้นฐานของคลินิก</p>
         </div>
         <button 
@@ -250,7 +250,7 @@ export default function ClinicSettingsManagement() {
         </button>
       </div>
 
-      {/* Operating Hours Card - Per Day */}
+      {/* การ์ดตั้งค่าเวลาทำการรายวัน */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
           <Clock size={18} className="text-[#FF8C9A]" />
@@ -300,7 +300,7 @@ export default function ClinicSettingsManagement() {
         </div>
       </div>
 
-      {/* Weekly Off Days Card */}
+      {/* การ์ดตั้งค่าวันหยุดประจำสัปดาห์ */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
           <CalendarOff size={18} className="text-red-400" />
@@ -341,7 +341,7 @@ export default function ClinicSettingsManagement() {
             })}
           </div>
 
-          {/* Summary */}
+          {/* สรุปเวลาทำการ */}
           <div className="p-3 rounded-xl flex items-center gap-2 text-sm" style={{ backgroundColor: "#F0F9FF", color: "#0369A1" }}>
             <Info size={14} className="flex-shrink-0" />
             <span>
@@ -354,14 +354,14 @@ export default function ClinicSettingsManagement() {
         </div>
       </div>
       
-      {/* Special Closures Card */}
+      {/* การ์ดจัดการวันหยุดพิเศษ */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
           <CalendarIcon size={18} className="text-[#1A365D]" />
           <h2 className="font-semibold text-slate-800">จัดการวันหยุดพิเศษ (Special Closures)</h2>
         </div>
         <div className="p-6">
-          {closureError && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">{'❌ ' + closureError}</div>}
+          {closureError && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">{closureError}</div>}
           
           <form onSubmit={handleAddClosure} className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
             <h3 className="font-semibold text-sm mb-3 text-gray-700">เพิ่มวันหยุดพิเศษ</h3>
@@ -408,7 +408,7 @@ export default function ClinicSettingsManagement() {
             {closureSuccess && (
               <div className="mt-4 animate-fade-in">
                 <div className="flex items-center justify-between text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-                  <span>✓ {closureSuccess}</span>
+                  <span>{closureSuccess}</span>
                 </div>
               </div>
             )}
@@ -456,7 +456,7 @@ export default function ClinicSettingsManagement() {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* หน้าต่างยืนยันรหัสผ่านก่อนบันทึก */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { X, ChevronRight, AlertCircle, Sparkles, Ban, RotateCcw, Trash2 } from "lucide-react";
+import { X, ChevronRight, AlertCircle, Sparkles, Ban, RotateCcw, Trash2, Plus } from "lucide-react";
 import { ToothStatus } from "./Odontogram";
-import { SupernumeraryTooth } from "./ToothGeometry";
+import { SupernumeraryTooth, createCustomSupernumerary } from "./ToothGeometry";
 
 export default function ToothActionModal({ 
   tooth, 
@@ -29,7 +29,7 @@ export default function ToothActionModal({
   const [step, setStep] = useState<"main" | "specify_problem" | "select_service">("main");
   const [problemDetail, setProblemDetail] = useState(initialNotes || "");
   const displayName = toothLabel || (typeof tooth === "string" ? tooth : `ซี่ ${tooth}`);
-  // Filter out services that apply to the whole mouth (not specific to a tooth)
+  // กรองบริการที่ทำทั้งปากออก (แสดงเฉพาะบริการที่ทำรายซี่)
   const filteredServices = services.filter(s => {
     const applyType = s.applyTo?.toLowerCase();
     if (applyType === 'tooth' || applyType === 'รายซี่') return true;
@@ -41,7 +41,7 @@ export default function ToothActionModal({
     return !isMouthKeyword;
   });
   
-  // Group filtered services by category
+  // จัดกลุ่มบริการตามหมวดหมู่
   const categories = Array.from(new Set(filteredServices.map(s => s.category || "อื่นๆ")));
   
   const handleServiceClick = (service: any) => {
@@ -88,8 +88,8 @@ export default function ToothActionModal({
                     <AlertCircle size={18} />
                   </div>
                   <div>
-                    <div className="font-semibold text-sm">ตรวจพบฟันผุ / มีปัญหา</div>
-                    <div className="text-xs text-red-600/80">พิมพ์ระบุปัญหาที่ต้องรักษา (สีแดง)</div>
+                    <div className="font-semibold text-sm">บันทึกสภาพปัญหา / รอยโรค</div>
+                    <div className="text-xs text-red-600/80">ระบุอาการหรือรอยโรคที่ตรวจพบ</div>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-red-400 mt-2 shrink-0 group-hover:translate-x-0.5 transition-transform" />
@@ -105,25 +105,64 @@ export default function ToothActionModal({
                     <Sparkles size={18} />
                   </div>
                   <div>
-                    <div className="font-semibold text-sm">บันทึกการทำหัตถการ (คลินิกนี้)</div>
-                    <div className="text-xs text-blue-600/80">อุดฟัน, ครอบฟัน, หรือถอนฟันรอบนี้ (มีค่าบริการ)</div>
+                    <div className="font-semibold text-sm">บันทึกหัตถการการรักษา</div>
+                    <div className="text-xs text-blue-600/80">เลือกรายการหัตถการที่ดำเนินการในครั้งนี้</div>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-blue-400 mt-2 shrink-0 group-hover:translate-x-0.5 transition-transform" />
               </button>
 
+              {/* Option 3: ระบุเป็นฟันที่เคยถอนแล้วตามสภาพช่องปากจริง (ไม่คิดค่าบริการ) */}
+              <button
+                type="button"
+                onClick={() => onAction("cross", undefined, `ประวัติเดิม: เคยถอน/สูญเสีย ${displayName}`)}
+                className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-slate-100 text-slate-700 transition-all text-left flex items-start justify-between group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-200/80 flex items-center justify-center shrink-0 text-slate-600 mt-0.5 group-hover:scale-105 transition-transform">
+                    <Ban size={18} />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">ระบุว่าเคยถอนแล้ว / ไม่มีฟันซี่นี้</div>
+                    <div className="text-xs text-slate-500">บันทึกตามสภาพช่องปากจริง (ไม่คิดค่าบริการในบิล)</div>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-slate-400 mt-2 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+              </button>
 
-              
-              {/* Option 4: ยกเลิก / คืนค่าเป็นปกติ */}
+              {/* Option 4: เพิ่มฟันเกิน / ฟันซ้อน (+S) บริเวณซี่นี้ */}
+              {typeof tooth === "number" && onAddExtraTooth && !hasExtraTooth && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newExtra = createCustomSupernumerary(tooth);
+                    onAddExtraTooth(newExtra);
+                  }}
+                  className="w-full p-3 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100/80 text-amber-900 transition-all text-left flex items-start justify-between group"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 text-amber-600 mt-0.5 group-hover:scale-105 transition-transform">
+                      <Plus size={18} />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-sm">เพิ่มฟันเกิน / ฟันซ้อน (+S) บริเวณซี่นี้</div>
+                      <div className="text-xs text-amber-700/80">แสดงป้าย +S เกาะที่ {displayName} บนแผนผังฟัน</div>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="text-amber-500 mt-2 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
+
+              {/* Option 5: ยกเลิก / คืนค่าเป็นปกติ */}
               <button 
                 onClick={() => onAction("normal")} 
                 className="w-full p-2.5 rounded-xl border border-dashed border-gray-300 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors text-center text-xs font-medium flex items-center justify-center gap-1.5 mt-4"
               >
                 <RotateCcw size={14} />
-                <span>คืนค่าสถานะเป็นฟันปกติ (Clear Status)</span>
+                <span>ล้างสถานะซี่ฟัน</span>
               </button>
 
-              {/* Option 5: สำหรับฟันเกิน/ฟันซ้อน - ลบออกจากแผนผัง */}
+              {/* Option 6: ลบฟันเกิน/ฟันซ้อนออกจากแผนผัง */}
               {onRemoveExtraTooth && (
                 <button
                   type="button"
@@ -131,7 +170,7 @@ export default function ToothActionModal({
                   className="w-full p-2.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors text-center text-xs font-semibold flex items-center justify-center gap-1.5 mt-2"
                 >
                   <Trash2 size={14} className="text-rose-600" />
-                  <span>ลบฟันเกิน/ฟันซ้อนซี่นี้ออกจากแผนผัง</span>
+                  <span>ลบฟันเกิน/ฟันซ้อนออกจากแผนผัง</span>
                 </button>
               )}
             </div>
@@ -145,7 +184,7 @@ export default function ToothActionModal({
                   onClick={() => setStep("main")} 
                   className="hover:text-slate-900 text-xs font-semibold flex items-center gap-1"
                 >
-                  ◀ ย้อนกลับ
+                  ย้อนกลับ
                 </button>
                 <span>/</span>
                 <span className="text-red-700 text-xs font-bold">ระบุปัญหาที่ตรวจพบ</span>
@@ -159,19 +198,16 @@ export default function ToothActionModal({
                 
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    กรอกรายละเอียดปัญหา / อาการที่ตรวจพบ:
+                    รายละเอียดอาการ / รอยโรค:
                   </label>
                   <textarea
                     value={problemDetail}
                     onChange={e => setProblemDetail(e.target.value)}
-                    placeholder="พิมพ์ระบุปัญหาได้อย่างอิสระ เช่น ฟันผุลึกด้าน Occlusal, วัสดุอุดเดิมแตกบิ่น, ฟันร้าวเสียวเวลาเคี้ยว, มีหนองปลายราก..."
+                    placeholder="ระบุอาการหรือรอยโรคที่ตรวจพบ..."
                     rows={3}
                     className="w-full text-xs p-2.5 rounded-lg border border-red-300 focus:outline-none focus:ring-1 focus:ring-red-500 bg-white text-slate-800 resize-none shadow-2xs"
                     autoFocus
                   />
-                  <div className="text-[10px] text-slate-500 mt-1">
-                    * ข้อความนี้จะถูกบันทึกลงในช่องบันทึกการรักษา/อาการให้อัตโนมัติ (ไม่พิมพ์ก็ได้)
-                  </div>
                 </div>
               </div>
 
@@ -194,7 +230,7 @@ export default function ToothActionModal({
                   }}
                   className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5"
                 >
-                  <span>✓ บันทึกปัญหา (ฟันสีแดง)</span>
+                  <span>บันทึกข้อมูล</span>
                 </button>
               </div>
             </div>

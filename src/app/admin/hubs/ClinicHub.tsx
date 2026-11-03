@@ -54,7 +54,7 @@ export default function ClinicHub() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
           จัดการคลินิก
         </h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>เลือกหมวดหมู่ที่ต้องการจัดการ</p>

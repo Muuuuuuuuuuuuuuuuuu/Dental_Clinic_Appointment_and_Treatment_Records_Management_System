@@ -94,11 +94,11 @@ export default function UserProfile({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ข้อมูลส่วนตัว</h1>
+      <h1 className="text-2xl font-bold mb-6" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ข้อมูลส่วนตัว</h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="rounded-2xl bg-white p-6 text-center" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
           <div className="w-24 h-24 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl text-white font-bold" 
-               style={{ background: type === 'admin' ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)" : "linear-gradient(135deg,#1D6FA4,#1A365D)" }}>
+               style={{ background: type === 'admin' ? "#FF8C9A" : "linear-gradient(135deg,#1D6FA4,#1A365D)" }}>
             {user.firstName?.[0] || user.name?.[0] || (type === "admin" ? "อ" : "พ")}
           </div>
           <h2 className="font-bold" style={{ color: "#1A365D" }}>{user.firstName ? `${user.firstName} ${user.lastName}` : user.name}</h2>
@@ -158,7 +158,7 @@ export default function UserProfile({
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
-            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>เปลี่ยนรหัสผ่านใหม่</h3>
+            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>เปลี่ยนรหัสผ่านใหม่</h3>
             
             {changeError && <p className="text-red-500 text-xs mb-3">{changeError}</p>}
             
@@ -218,7 +218,7 @@ export default function UserProfile({
       {showEmailModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
-            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>เปลี่ยนอีเมล</h3>
+            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>เปลี่ยนอีเมล</h3>
             
             {emailMessage && (
               <p className={`text-xs mb-3 ${emailMessage.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>

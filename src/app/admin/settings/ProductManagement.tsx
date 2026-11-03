@@ -8,15 +8,15 @@ const PRODUCT_TYPES = ['ยา', 'สินค้าทั่วไป'] as cons
 const COMMON_UNITS = ['เม็ด', 'แคปซูล', 'ขวด', 'หลอด', 'ชิ้น', 'อัน', 'ซอง', 'กล่อง', 'เซ็ต'];
 
 export default function ProductManagement() {
-  // Data States
+  // สถานะข้อมูลรายการ
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Edit States
+  // สถานะสำหรับการแก้ไขข้อมูล
   const [editId, setEditId] = useState<number | null>(null);
   const [editData, setEditData] = useState<Partial<Product>>({});
 
-  // Add States
+  // สถานะสำหรับการเพิ่มข้อมูลใหม่
   const [isAdding, setIsAdding] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -34,7 +34,7 @@ export default function ProductManagement() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // get all products including inactive for admin
+      // ดึงข้อมูลเวชภัณฑ์ทั้งหมดรวมถึงรายการที่ปิดใช้งานสำหรับผู้ดูแลระบบ
       const { supabase } = await import('../../shared/utils/supabaseClient');
       const { data } = await supabase.from('product').select('*').order('product_type', { ascending: true });
       if (data) {
@@ -102,7 +102,7 @@ export default function ProductManagement() {
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-gray-100" style={{ boxShadow: "0 4px 20px rgba(26,54,93,0.03)" }}>
         <div>
-          <h2 className="text-xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการสินค้าและยา</h2>
+          <h2 className="text-xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จัดการสินค้าและยา</h2>
           <p className="text-sm" style={{ color: "#4A6080" }}>เพิ่ม/แก้ไข รายชื่อยาและสินค้าทั่วไปสำหรับขายหน้าเคาน์เตอร์</p>
         </div>
         <button 

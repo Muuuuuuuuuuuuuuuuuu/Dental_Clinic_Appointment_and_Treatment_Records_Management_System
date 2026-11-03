@@ -16,9 +16,9 @@ import HealthChecklistForm, { HealthChecklistData } from "./HealthChecklistForm"
 
 const iconMap: Record<string, any> = { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity, Clock };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Service detail static data
-// ─────────────────────────────────────────────────────────────────────────────
+// 
+// ข้อมูลรายละเอียดของแต่ละบริการ 
+// 
 interface ServiceDetail {
   benefits: string[];
   procedures: string[];
@@ -79,19 +79,19 @@ const DEFAULT_SERVICE_DETAIL: ServiceDetail = {
   care: ["ก่อนทำ:", "เตรียมตัวและพักผ่อนให้เพียงพอ ทำความสะอาดช่องปาก", "หลังทำ:", "ปฏิบัติตามคำแนะนำของทันตแพทย์อย่างเคร่งครัด", "ทานยาตามที่สั่ง (ถ้ามี)", "หากมีอาการผิดปกติ ให้รีบติดต่อคลินิกทันที"],
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Reusable section card (always expanded, no toggle)
-// ─────────────────────────────────────────────────────────────────────────────
-const DetailCard = ({ emoji, title, accent, children }: { emoji: string; title: string; accent: string; children: React.ReactNode }) => (
+// 
+// การ์ดแสดงข้อมูลแต่ละส่วน
+// 
+const DetailCard = ({ title, accent, children }: { title: string; accent: string; children: React.ReactNode }) => (
   <div style={{ borderRadius: 14, backgroundColor: "white", padding: "14px 16px", boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}>
-    <p style={{ fontWeight: 700, fontSize: 12, color: accent, marginBottom: 8 }}>{emoji} {title}</p>
+    <p style={{ fontWeight: 700, fontSize: 12, color: accent, marginBottom: 8 }}>{title}</p>
     {children}
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────────────────────────────────────
+// 
+// คอมโพเนนต์หลัก
+// 
 export default function BookingView({
   setView,
   initialService = null,
@@ -203,7 +203,7 @@ export default function BookingView({
     }
   }, [step, selService, servicesData]);
 
-  // Calendar helpers
+  // ฟังก์ชันช่วยจัดการปฏิทิน
   const today = new Date();
   const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
   const year = targetDate.getFullYear();
@@ -213,7 +213,7 @@ export default function BookingView({
   const todayN = today.getDate();
   const isCurrentMonth = monthOffset === 0;
 
-  // ─── dayStatus: เช็คระดับปฏิทิน (past / weeklyOff / closure / doctor working) ──────────
+  // 
   const dayStatus = (d: number) => {
     if (isCurrentMonth && d < todayN) return { status: "past" as const };
     if (monthOffset < 0) return { status: "past" as const };
@@ -224,20 +224,20 @@ export default function BookingView({
     const closure = closures.find((c) => c.date === dateStr);
     if (closure) return { status: "past" as const, reason: closure.reason };
     
-    // Check doctor schedule
+    // ตรวจสอบตารางเวรของทันตแพทย์
     if (step >= 1 && filteredDoctors.length > 0) {
       let isWorking = false;
       if (selDoctor === "any") {
-        // Any doctor in filteredDoctors must be working on this dayOfWk and not on full leave
+        // ต้องมีทันตแพทย์อย่างน้อย 1 ท่านที่เข้าเวรในวันนี้และไม่ได้ลาเต็มวัน
         isWorking = filteredDoctors.some(fd => {
           const shift = doctorSchedules.find(s => s.dentistId === fd.id && s.dayOfWeek === dayOfWk);
           if (shift && shift.isOff) return false;
           const isFullLeave = upcomingLeaves.some(l => l.user_id === fd.userId && l.leave_date === dateStr && l.leave_period === 'เต็มวัน');
           if (isFullLeave) return false;
-          return true; // Assume working unless explicitly off or full leave
+          return true; // ให้ถือว่าเข้าเวรตามปกติเว้นแต่จะตั้งเป็นวันหยุดหรือลาเต็มวัน
         });
       } else {
-        // Selected doctor must be working and not on full leave
+        // ทันตแพทย์ที่เลือกต้องเข้าเวรและไม่ได้ลาเต็มวัน
         const shift = doctorSchedules.find(s => s.dentistId === selDoctor && s.dayOfWeek === dayOfWk);
         const selDocData = filteredDoctors.find(fd => fd.id === selDoctor) || landingDoctors.find(d => d.id === selDoctor);
         const isFullLeave = selDocData ? upcomingLeaves.some(l => l.user_id === selDocData.userId && l.leave_date === dateStr && l.leave_period === 'เต็มวัน') : false;
@@ -247,7 +247,7 @@ export default function BookingView({
         } else if (isFullLeave) {
           isWorking = false;
         } else {
-          isWorking = true; // Assume working
+          isWorking = true; // ถือว่าเข้าเวรตามปกติ
         }
       }
       if (!isWorking) return { status: "past" as const, reason: "แพทย์ไม่เข้าตรวจ/ลา" };
@@ -257,24 +257,24 @@ export default function BookingView({
   };
 
   const estTime = selService !== null && servicesData[selService] ? servicesData[selService].baseTimeMins : 30;
-  const totalDuration = estTime; // Service time directly dictates the blocked time
+  const totalDuration = estTime; // ใช้เวลาตามระยะเวลาของบริการโดยตรง
   const reqSlots = Math.ceil(totalDuration / 30);
   
-  // Patient sees only treatment time
+  // แสดงเฉพาะระยะเวลาที่ใช้ในการรักษาให้คนไข้เห็น
   const patientEndTimeStr = selTime ? (() => {
     const [h, m] = selTime.split(":").map(Number);
     const tot = h * 60 + m + estTime;
     return `${Math.floor(tot / 60).toString().padStart(2, "0")}:${(tot % 60).toString().padStart(2, "0")}`;
   })() : "";
 
-  // Full duration (Treatment + buffer)
+  // ระยะเวลารวมทั้งหมด
   const endTimeStr = selTime ? (() => {
     const [h, m] = selTime.split(":").map(Number);
     const tot = h * 60 + m + totalDuration;
     return `${Math.floor(tot / 60).toString().padStart(2, "0")}:${(tot % 60).toString().padStart(2, "0")}`;
   })() : "";
 
-  // ─── Backend-driven time slots ────────────────────────────────────────────
+  // 
   useEffect(() => {
     if (!selDay || selService === null || !servicesData[selService]) {
       setBackendSlots([]);
@@ -311,7 +311,7 @@ export default function BookingView({
           setFullyBookedDates(prev => { const next = new Set(prev); next.delete(dateStr); return next; });
         }
         
-        // Retain the selected time if it's still available in the new slots
+        // คงเวลาที่เลือกไว้เดิมหากยังว่างอยู่ในรายการเวลาใหม่
         setSelTime((prevTime) => {
           if (!prevTime) return null;
           const timeIndex = slots.findIndex(s => s.time === prevTime);
@@ -333,7 +333,7 @@ export default function BookingView({
       .finally(() => setLoadingSlots(false));
   }, [selDay, selDoctor, selService, monthOffset, year, month, servicesData]);
 
-  // Handle doctor or service changes to invalidate selected day and clear fully booked cache
+  // เมื่อเปลี่ยนแพทย์หรือบริการ ให้ล้างวันที่เลือกและรีเซ็ตข้อมูลวันที่คิวเต็ม
   useEffect(() => {
     setFullyBookedDates(new Set());
     if (selDay !== null) {
@@ -344,14 +344,14 @@ export default function BookingView({
     }
   }, [selDoctor, selService]);
 
-  // ─── Fetch monthly fully booked dates ─────────
+  // 
   useEffect(() => {
     if (step === 1 && servicesData.length > 0) {
       const serviceId = selService !== null ? servicesData[selService]?.serviceId : undefined;
       const doctorId = selDoctor !== "any" && selDoctor !== null ? (selDoctor as number) : undefined;
       const estMins = selService !== null && servicesData[selService] ? (servicesData[selService]?.baseTimeMins || 30) : 30;
 
-      setFullyBookedDates(new Set()); // clear while loading
+      setFullyBookedDates(new Set()); // ล้างค่าระหว่างรอโหลดข้อมูล
       getMonthlyFullyBookedDates(year, month, serviceId, doctorId, estMins)
         .then(dates => {
           setFullyBookedDates(new Set(dates));
@@ -360,19 +360,19 @@ export default function BookingView({
     }
   }, [year, month, selService, selDoctor, step, servicesData]);
 
-  // Handle month change separately to always clear selected day
+  // เมื่อเปลี่ยนเดือนให้ล้างวันที่เลือกไว้เสมอ
   useEffect(() => {
     setSelDay(null);
     setSelTime(null);
   }, [monthOffset]);
 
-  // ─── Compute canBook from backendSlots (consecutive slot check) ──────────
+  // 
   const availableTimes = backendSlots.map((slot, i) => {
     let ok = slot.status === 'available';
     for (let j = 0; j < reqSlots; j++) {
       if (i + j >= backendSlots.length) { ok = false; break; }
       if (backendSlots[i + j].status !== 'available') { ok = false; break; }
-      // Check consecutive: next slot must be exactly 30 min after current
+      // ตรวจสอบว่าช่วงเวลาถัดไปต่อเนื่องกัน (ห่างกันช่องละ 30 นาที)
       if (j > 0) {
         const [prevH, prevM] = backendSlots[i + j - 1].time.split(":").map(Number);
         const [curH, curM] = backendSlots[i + j].time.split(":").map(Number);
@@ -431,13 +431,13 @@ export default function BookingView({
       }
       setMatchedDoctor(selDoctor as number);
     } else {
-      // Backend will auto-assign, we don't set finalDoctorId
+      // ให้ระบบหลังบ้านจัดสรรทันตแพทย์ให้อัตโนมัติ
       finalDoctorId = undefined;
     }
     
     const serviceData = servicesData[selService!];
     
-    // Check health risk for routing
+    // ตรวจสอบความเสี่ยงด้านสุขภาพเพื่อคัดกรอง
     const isReturning = Boolean(user && (
       hasHealthAlert(user.allergies, user.conditions) || 
       (user.emergencyName && user.emergencyName.trim() !== '')
@@ -494,7 +494,7 @@ export default function BookingView({
         }
       }
       if (onAddAppt && res) {
-        // Map the Supabase response to the frontend Appointment type roughly so UI updates instantly
+        // แปลงข้อมูลที่ได้รับจากฐานข้อมูลเพื่ออัปเดตหน้าจอทันที
         onAddAppt({
           id: (res as any).appointment_id || Date.now(),
           patientId: user?.patientId,
@@ -520,7 +520,7 @@ export default function BookingView({
   };
 
 
-  // Done screen
+  // หน้าจอแสดงผลเมื่อจองสำเร็จ
   if (done) {
     const displayDoc = selDoctor === "any" || selDoctor === null
       ? (landingDoctors.find((d) => d.id === matchedDoctor)?.name || "ไม่ระบุแพทย์")
@@ -531,7 +531,7 @@ export default function BookingView({
           style={{ backgroundColor: "#E8FFF0" }}>
           <CheckCircle size={36} style={{ color: "#22C55E" }} />
         </div>
-        <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+        <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
           จองนัดหมายสำเร็จ!
         </h2>
         <p className="text-sm mb-2" style={{ color: "#4A6080" }}>{servicesData[selService!]?.title || ""} กับ {displayDoc}</p>
@@ -559,14 +559,14 @@ export default function BookingView({
 
   return (
     <div>
-      {/* Header */}
+      {/* ส่วนหัว */}
       <div className="flex items-center gap-3 mb-5">
         {step > (isFollowUp ? 1 : 0) && (
           <button onClick={handleBack} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white"
             style={{ color: "#1A365D" }}><ChevronLeft size={18} /></button>
         )}
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จองนัดหมาย</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จองนัดหมาย</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>
             {step === 0 && "เลือกบริการ"}
             {step === 1 && "รายละเอียดและเลือกเวลา"}
@@ -576,7 +576,7 @@ export default function BookingView({
         </div>
       </div>
 
-      {/* Step pills */}
+      {/* แถบแสดงขั้นตอนการจอง */}
       <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
         {steps.map((s, i) => (
           <div key={s.id} className="flex items-center gap-2 flex-shrink-0">
@@ -593,7 +593,7 @@ export default function BookingView({
         ))}
       </div>
 
-      {/* ══ STEP 0: Select Service ══ */}
+      {/*  */}
       {step === 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {servicesData.map((s, i) => {
@@ -615,14 +615,14 @@ export default function BookingView({
         </div>
       )}
 
-      {/* ══ STEP 1: Combined (2 columns) ══ */}
+      {/*  */}
       {step === 1 && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.25fr] gap-5 items-start">
 
-          {/* LEFT: all detail cards, always visible */}
+          {/* ด้านซ้าย: การ์ดแสดงรายละเอียดบริการ */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-            {/* Service badge */}
+            {/* ป้ายชื่อบริการ */}
             <div style={{ borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, background: "linear-gradient(135deg,#FFF0F2,#FFF8F9)", border: "1px solid rgba(255,140,154,0.25)" }}>
               {(() => {
                 const Icon = iconMap[servicesData[selService!]?.iconName] || Smile; return (
@@ -641,7 +641,7 @@ export default function BookingView({
               </div>
             </div>
 
-            <DetailCard emoji="✨" title={`ประโยชน์ของ${serviceTitle}`} accent="#22C55E">
+            <DetailCard title={`ประโยชน์ของ${serviceTitle}`} accent="#22C55E">
               {detail.benefits.map((b, i) => (
                 <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#4A6080", marginBottom: 6, alignItems: "flex-start" }}>
                   <CheckCircle size={13} style={{ color: "#22C55E", flexShrink: 0, marginTop: 2 }} />{b}
@@ -649,7 +649,7 @@ export default function BookingView({
               ))}
             </DetailCard>
 
-            <DetailCard emoji="🩺" title="ขั้นตอนการรักษา" accent="#FF8C9A">
+            <DetailCard title="ขั้นตอนการรักษา" accent="#FF8C9A">
               {detail.procedures.map((p, i) => (
                 <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "#4A6080", marginBottom: 6, alignItems: "flex-start" }}>
                   <span style={{ color: "white", backgroundColor: "#FF8C9A", borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: "bold", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
@@ -658,7 +658,7 @@ export default function BookingView({
               ))}
             </DetailCard>
 
-            <DetailCard emoji="💊" title="การดูแลก่อนและหลังการรักษา" accent="#3B82F6">
+            <DetailCard title="การดูแลก่อนและหลังการรักษา" accent="#3B82F6">
               {detail.care.map((c, i) => {
                 const isPre = c.startsWith("ก่อนทำ:");
                 const isPost = c.startsWith("หลังทำ:");
@@ -676,10 +676,10 @@ export default function BookingView({
 
           </div>
 
-          {/* RIGHT: Doctor + Calendar + Time */}
+          {/* ด้านขวา: เลือกแพทย์ ปฏิทิน และเวลา */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-            {/* Doctor (toggle) */}
+            {/* ส่วนเลือกทันตแพทย์ */}
             <div style={{ borderRadius: 16, backgroundColor: "white", overflow: "hidden", boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}>
               <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, borderBottom: wantSelectDoctor ? "1px solid rgba(26,54,93,0.06)" : "none" }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#FFF0F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -735,7 +735,7 @@ export default function BookingView({
 
 
 
-            {/* Warning Note for Follow-up / Plan Items */}
+            {/* ข้อความแจ้งเตือนสำหรับนัดติดตามอาการ */}
             {(isFollowUp || planItemId) && (
               <div style={{ borderRadius: 12, backgroundColor: "#FEF3C7", padding: "12px 16px", border: "1px solid #FDE68A", display: "flex", alignItems: "flex-start", gap: 10 }}>
                 <AlertTriangle size={18} style={{ color: "#D97706", marginTop: 2, flexShrink: 0 }} />
@@ -748,9 +748,9 @@ export default function BookingView({
               </div>
             )}
 
-            {/* Calendar — compact premium */}
+            {/* ปฏิทินเลือกวันนัดหมาย */}
             <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 16px rgba(26,54,93,0.10)" }}>
-              {/* Header gradient */}
+              {/* ส่วนหัวปฏิทิน */}
               <div style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)", padding: "9px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <button onClick={() => setMonthOffset((m) => m - 1)}
                   style={{ width: 24, height: 24, borderRadius: 6, border: "none", backgroundColor: "rgba(255,255,255,0.2)", cursor: "pointer", color: "white", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.2s" }}
@@ -769,16 +769,16 @@ export default function BookingView({
                 </button>
               </div>
 
-              {/* Grid */}
+              {/* ตารางวันที่ */}
               <div style={{ backgroundColor: "white", padding: "8px 10px 10px" }}>
-                {/* Day labels */}
+                {/* ชื่อวันในสัปดาห์ */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
                   {["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((d, i) => {
                     const dayColors = ["#EF4444", "#FBBF24", "#F472B6", "#34D399", "#F97316", "#3B82F6", "#A855F7"];
                     return <div key={d} style={{ textAlign: "center", fontSize: 9, fontWeight: 600, color: dayColors[i], paddingBottom: 2 }}>{d}</div>;
                   })}
                 </div>
-                {/* Date cells */}
+                {/* ช่องวันที่ */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
                   {[...Array(firstDow)].map((_, i) => <div key={`e${i}`} />)}
                   {[...Array(daysInMonth)].map((_, i) => {
@@ -805,7 +805,7 @@ export default function BookingView({
                           cursor: (isPast || isFullyBooked) ? "not-allowed" : "pointer",
                           transition: "all 0.15s",
                           background: sel
-                            ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)"
+                            ? "#FF8C9A"
                             : isFullyBooked ? "rgba(239,68,68,0.12)" : "transparent",
                           color: sel
                             ? "white"
@@ -832,7 +832,7 @@ export default function BookingView({
                     );
                   })}
                 </div>
-                {/* Legend */}
+                {/* คำอธิบายสัญลักษณ์สี */}
                 <div style={{ display: "flex", gap: 10, marginTop: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 8, color: "#94A3B8" }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }} />เลือก
@@ -850,7 +850,7 @@ export default function BookingView({
             {/* Time slots — ดึงจาก Backend */}
             <div style={{ borderRadius: 16, backgroundColor: "white", padding: "14px 16px", boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}>
               <p style={{ fontWeight: 700, fontSize: 13, color: "#1A365D", marginBottom: 10 }}>
-                {selDay ? `⏰ เวลาว่าง — วันที่ ${selDay}` : "⏰ เลือกวันในปฏิทินก่อน"}
+                {selDay ? `เวลาว่าง — วันที่ ${selDay}` : "เลือกวันในปฏิทินก่อน"}
               </p>
               {selDay ? (
                 <>
@@ -902,7 +902,7 @@ export default function BookingView({
                     </div>
                   )}
                   {selTime && (
-                    <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 12, backgroundColor: "#FFE8EC", display: "flex", gap: 8 }}>
+                    <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 12, backgroundColor: "#FFD6DC", display: "flex", gap: 8 }}>
                       <Clock size={14} style={{ color: "#E0314C", flexShrink: 0, marginTop: 2 }} />
                       <div>
                         <p style={{ fontSize: 13, fontWeight: 700, color: "#E0314C" }}>{selTime} – {endTimeStr} น.</p>
@@ -918,7 +918,7 @@ export default function BookingView({
               )}
             </div>
 
-            {/* Notes Field */}
+            {/* ช่องระบุหมายเหตุหรืออาการเบื้องต้น */}
             <div style={{ marginTop: 16 }}>
               <label style={{ fontSize: 13, fontWeight: 700, color: "#1A365D", marginBottom: 8, display: "block" }}>
                 หมายเหตุ / อาการเบื้องต้น (ตัวเลือก)
@@ -936,16 +936,16 @@ export default function BookingView({
             </div>
 
 
-            {/* Proceed button */}
+            {/* ปุ่มดำเนินการต่อ */}
             <button onClick={handleNext} disabled={!canNext()}
-              style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: canNext() ? "pointer" : "not-allowed", background: canNext() ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)" : "rgba(26,54,93,0.08)", color: canNext() ? "white" : "#94A3B8", boxShadow: canNext() ? "0 4px 20px rgba(255,140,154,0.35)" : "none", transition: "all 0.2s" }}>
+              style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: canNext() ? "pointer" : "not-allowed", background: canNext() ? "#FF8C9A" : "rgba(26,54,93,0.08)", color: canNext() ? "white" : "#94A3B8", boxShadow: canNext() ? "0 4px 20px rgba(255,140,154,0.35)" : "none", transition: "all 0.2s" }}>
               {canNext() ? <><span>ดำเนินการต่อ</span><ArrowRight size={16} /></> : "เลือกวันและเวลาก่อน"}
             </button>
           </div>
         </div>
       )}
 
-      {/* ══ STEP 2: Health Checklist ══ */}
+      {/*  */}
       {step === 2 && (
         <div className="animate-fade-in space-y-6">
           <HealthChecklistForm 
@@ -957,13 +957,13 @@ export default function BookingView({
             }} 
           />
           <button onClick={handleNext} disabled={!canNext()}
-            style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: canNext() ? "pointer" : "not-allowed", background: canNext() ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)" : "rgba(26,54,93,0.08)", color: canNext() ? "white" : "#94A3B8", boxShadow: canNext() ? "0 4px 20px rgba(255,140,154,0.35)" : "none", transition: "all 0.2s" }}>
+            style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: canNext() ? "pointer" : "not-allowed", background: canNext() ? "#FF8C9A" : "rgba(26,54,93,0.08)", color: canNext() ? "white" : "#94A3B8", boxShadow: canNext() ? "0 4px 20px rgba(255,140,154,0.35)" : "none", transition: "all 0.2s" }}>
             {canNext() ? <><span>ไปหน้ายืนยันการจอง</span><ArrowRight size={16} /></> : "กรุณากรอกข้อมูลและกดยินยอมให้ครบถ้วน"}
           </button>
         </div>
       )}
 
-      {/* ══ STEP 4: Confirm ══ */}
+      {/*  */}
       {step === 4 && (
         <div style={{ maxWidth: 520 }}>
           <div style={{ borderRadius: 20, backgroundColor: "white", padding: 24, boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
@@ -982,12 +982,12 @@ export default function BookingView({
             ))}
             {notes && (
               <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 12, backgroundColor: "#F0F4F8" }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: "#1A365D", marginBottom: 4 }}>📝 อาการที่แจ้งไว้</p>
+                <p style={{ fontSize: 12, fontWeight: 700, color: "#1A365D", marginBottom: 4 }}>อาการที่แจ้งไว้</p>
                 <p style={{ fontSize: 12, color: "#4A6080" }}>{notes}</p>
               </div>
             )}
             <button onClick={handleConfirm} disabled={isSubmitting}
-              style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, color: "white", marginTop: 20, cursor: isSubmitting ? "not-allowed" : "pointer", background: isSubmitting ? "#ccc" : "linear-gradient(135deg,#FF8C9A,#FF6B7E)", boxShadow: isSubmitting ? "none" : "0 4px 20px rgba(255,140,154,0.4)", transition: "all 0.2s" }}>
+              style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, color: "white", marginTop: 20, cursor: isSubmitting ? "not-allowed" : "pointer", background: isSubmitting ? "#ccc" : "#FF8C9A", boxShadow: isSubmitting ? "none" : "0 4px 20px rgba(255,140,154,0.4)", transition: "all 0.2s" }}>
               {isSubmitting ? "กำลังดำเนินการ..." : "ยืนยันการจองนัดหมาย"}
             </button>
           </div>
@@ -996,3 +996,4 @@ export default function BookingView({
     </div>
   );
 }
+

@@ -3,7 +3,7 @@ import { supabase } from '../utils/supabaseClient';
 import { DentistInfo } from '../data';
 
 /**
- * 🦷 Dentist API Module
+ * โมดูลจัดการข้อมูลทันตแพทย์
  * จัดการข้อมูลทันตแพทย์ทั้งหมด
  */
 
@@ -306,7 +306,7 @@ export async function getDentistTreatmentHistory(dentistId: number) {
     return [];
   }
 
-  // Format data for easier display in UI
+  // จัดรูปแบบข้อมูลเพื่อนำไปแสดงผลบนหน้าจอ
   const history: any[] = [];
   data.forEach((record: any) => {
     const patientProfile = record.appointment?.patient?.users?.profile || (Array.isArray(record.appointment) ? record.appointment[0]?.patient?.users?.profile : null);

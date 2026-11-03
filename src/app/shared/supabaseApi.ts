@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './utils/supabaseClient';
-import { sendOTPEmail } from './utils/emailService';
 export { supabase };
 import { RegForm } from '../patient/types';
 import { Appointment, DentistInfo, PatientInfo, StaffInfo, AdminInfo, ServiceInfo, LeaveRequest, Announcement, SpecialClosure, Shift, Promotion, ServiceCategoryType, ACTIVE_APPOINTMENT_STATUSES } from './data';
@@ -12,14 +11,14 @@ import { notifyAppointmentsUpdated, checkAppointmentConflicts } from './api/appo
 
 
 // ============================================================================
-// REALTIME HELPERS
+// ฟังก์ชันช่วยจัดการการอัปเดตข้อมูลแบบเรียลไทม์
 // ============================================================================
 // ============================================================================
-// ADAPTER: V4 Normalized Schema
-// This file has been updated to fetch data from the 15 normalized tables.
+// ส่วนเชื่อมต่อฐานข้อมูล
+// ดึงและจัดการข้อมูลจากตารางฐานข้อมูลของคลินิก
 // ============================================================================
 
-// --- Dentists ---
+// --- ข้อมูลทันตแพทย์ ---
 
 
 
@@ -27,7 +26,7 @@ import { notifyAppointmentsUpdated, checkAppointmentConflicts } from './api/appo
 
 
 
-// --- Admins ---
+// --- ข้อมูลผู้ดูแลระบบ ---
 export async function getAdmins() {
   const { data, error } = await supabase.from('users').select(`
     user_id,
@@ -153,7 +152,7 @@ export async function updateAdmin(id: string, updates: Partial<AdminInfo>) {
   return { id, ...updates };
 }
 
-// --- Staff ---
+// --- ข้อมูลพนักงาน ---
 export async function getStaff() {
   const { data, error } = await supabase.from('staff').select(`
     *,
@@ -384,7 +383,7 @@ export async function updateServicePublicStatus(id: number, isPublic: boolean) {
   if (error) throw error;
 }
 
-// --- Landing Page Data ---
+// --- ข้อมูลหน้าแรกของเว็บไซต์ ---
 export async function getLandingServices() {
   const { data, error } = await supabase.from('service').select('*');
   if (error) return [];
@@ -403,7 +402,7 @@ export async function getLandingServices() {
       title: d.service_name,
       desc: d.description || `บริการระดับมืออาชีพ ใช้เวลาประมาณ ${d.estimated_time} นาที`,
       price: d.base_price ? `เริ่มต้น ${d.base_price.toLocaleString()} บาท` : 'แจ้งราคาหลังตรวจ',
-      color: '#FFE8EC',
+      color: '#FFD6DC',
       baseTimeMins: d.estimated_time || 30,
       details: { benefits: d.benefits || [], procedures: d.procedures || [], care: d.care || [] }
     }));
@@ -445,7 +444,7 @@ export async function getReviews() {
   });
 }
 
-// --- Clinic Settings ---
+// --- การตั้งค่าคลินิก ---
 export async function getClinicSettings() {
   const { data, error } = await supabase.from('clinic_settings').select('*');
   if (error) return {};
@@ -464,13 +463,13 @@ export async function updateClinicSetting(key: string, value: string) {
   if (error) throw error;
 }
 
-// --- Weekly Off Days (clinic-level policy) ---
+// --- วันหยุดประจำสัปดาห์ของคลินิก ---
 export async function getWeeklyOffDays(): Promise<number[]> {
   const settings = await getClinicSettings();
   try {
     return JSON.parse(settings.weekly_off_days || '[0]');
   } catch {
-    return [0]; // default: Sunday
+    return [0]; // ค่าเริ่มต้น: วันอาทิตย์
   }
 }
 
@@ -478,7 +477,7 @@ export async function updateWeeklyOffDays(days: number[]): Promise<void> {
   await updateClinicSetting('weekly_off_days', JSON.stringify(days));
 }
 
-// --- Per-Day Operating Hours ---
+// --- เวลาทำการรายวัน ---
 export interface DayHours {
   open: string;
   close: string;
@@ -500,7 +499,7 @@ export async function getDailyHours(): Promise<Record<string, DayHours>> {
     if (settings.daily_hours) {
       return { ...DEFAULT_DAILY_HOURS, ...JSON.parse(settings.daily_hours) };
     }
-    // Fallback: build from legacy keys
+    // กรณีสำรอง: build from legacy keys
     const fallback = { ...DEFAULT_DAILY_HOURS };
     const openTime = settings.open_time || "09:00";
     const closeTime = settings.close_time || "20:00";
@@ -518,7 +517,7 @@ export async function updateDailyHours(hours: Record<string, DayHours>): Promise
   await updateClinicSetting('daily_hours', JSON.stringify(hours));
 }
 
-// --- Patients ---
+// --- ข้อมูลคนไข้ ---
 export async function getPatients() {
   const { data, error } = await supabase.from('patient').select(`
     *,
@@ -572,7 +571,7 @@ export async function searchPatientByKeyword(keyword: string): Promise<PatientIn
     const { data } = await supabase.from('users').select('user_id').eq('citizen_id', unformattedId);
     if (data) userIds = data.map(d => d.user_id);
   } else {
-    // try phone, first_name, last_name
+    // ค้นหาจากเบอร์โทรศัพท์ ชื่อ หรือนามสกุล
     const searchPattern = `%${cleanKeyword}%`;
     const { data } = await supabase.from('profile')
       .select('user_id')
@@ -643,7 +642,7 @@ export async function addPatient(patient: {
     import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
   );
 
-  const defaultPassword = patient.password || '12345678';
+  const defaultPassword = patient.password || '123456789';
 
   // 1. สร้างบัญชีผู้ใช้ใน Supabase Auth จริงๆ หรือดึง user_id กรณีผ่าน OTP มาแล้ว
   let realUserId = (patient as any).userId || '';
@@ -651,7 +650,8 @@ export async function addPatient(patient: {
     const { data: authData } = await adminAuthClient.auth.admin.createUser({
       email: patient.email,
       password: defaultPassword,
-      email_confirm: true
+      email_confirm: true,
+      user_metadata: { must_change_password: true }
     });
 
     if (authData?.user) {
@@ -668,7 +668,8 @@ export async function addPatient(patient: {
           realUserId = foundId;
           await adminAuthClient.auth.admin.updateUserById(foundId, {
             email_confirm: true,
-            password: defaultPassword
+            password: defaultPassword,
+            user_metadata: { must_change_password: true }
           });
         }
       } catch (linkErr) {
@@ -690,10 +691,11 @@ export async function addPatient(patient: {
   try {
     await adminAuthClient.auth.admin.updateUserById(realUserId, {
       email_confirm: true,
-      password: defaultPassword
+      password: defaultPassword,
+      user_metadata: { must_change_password: true }
     });
   } catch (updErr) {
-    // ignore
+    // ข้ามข้อผิดพลาด
   }
 
   // 2. สร้าง Profile
@@ -826,7 +828,7 @@ export async function getPatientProfileByUserId(userId: string) {
   };
 }
 
-// --- Update Patient Profile ---
+// --- อัปเดตข้อมูลส่วนตัวคนไข้ ---
 export async function updatePatientProfile(userId: string, updates: {
   phone?: string;
   email?: string;
@@ -968,7 +970,7 @@ export async function updatePatientInfoByPatientId(patientId: number, updates: {
   }
 }
 
-// --- Appointments ---
+// --- ข้อมูลนัดหมาย ---
 export async function getLeaveRequests() {
   const { data, error } = await supabase.from('leave_record').select(`
     *,
@@ -980,7 +982,7 @@ export async function getLeaveRequests() {
     const p = d.users?.profile;
     return {
       id: d.leave_id,
-      doctorId: d.user_id, // doctorId will now contain the user_id (UUID)
+      doctorId: d.user_id, // ใช้รหัสผู้ใช้ (UUID) สำหรับระบุผู้ขอลา
       doctorName: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       startDate: d.leave_date,
       endDate: d.leave_date, // โครงสร้างใหม่มีแค่วันที่เดียว
@@ -993,12 +995,12 @@ export async function getLeaveRequests() {
 }
 export async function addLeaveRequest(req: Omit<LeaveRequest, 'id' | 'createdAt' | 'doctorName'>) {
   const { data, error } = await supabase.from('leave_record').insert({
-    user_id: req.doctorId, // Expecting UUID here
+    user_id: req.doctorId, // รับค่ารหัส UUID
     leave_date: req.startDate,
     leave_period: 'เต็มวัน',
     leave_type: req.leaveType,
     reason: req.reason,
-    is_approved: null // null means pending
+    is_approved: null // ค่าว่าง (null) หมายถึงรออนุมัติ
   }).select().single();
 
   if (error) throw error;
@@ -1009,7 +1011,7 @@ export async function updateLeaveStatus(id: number, status: string) {
   if (status === 'อนุมัติแล้ว') is_approved = true;
   else if (status === 'ไม่อนุมัติ' || status === 'ปฏิเสธ') is_approved = false;
 
-  // Check conflicts if approving
+  // ตรวจสอบคิวนัดหมายที่ชนกันก่อนอนุมัติการลา
   if (is_approved === true) {
     const { data: leaveRecord } = await supabase.from('leave_record').select('*').eq('leave_id', id).single();
     if (leaveRecord) {
@@ -1033,7 +1035,7 @@ export async function updateLeaveStatus(id: number, status: string) {
 }
 
 // ============================================================================
-// OLD SCHEMA FALLBACKS 
+// ฟังก์ชันสำรองสำหรับโครงสร้างข้อมูลเดิม 
 // (สำหรับตารางที่ไม่มีใน 15 ตารางของ PDF เช่น ประกาศ, โปรโมชั่น, กะทำงาน)
 // ============================================================================
 
@@ -1055,7 +1057,7 @@ export async function getAnnouncements() {
 }
 
 export async function getPublicAnnouncements() {
-  // Fetch only active announcements that have not expired
+  // ดึงเฉพาะประกาศที่เปิดใช้งานและยังไม่หมดอายุ
   const today = new Date().toISOString().split('T')[0];
   const { data, error } = await supabase
     .from('announcement')
@@ -1240,7 +1242,7 @@ export async function upsertShift(userId: string, dayOfWeek: number, updates: Pa
   if (updates.end_time !== undefined) payload.end_shift = updates.end_time;
   if (updates.is_off !== undefined) payload.is_off = updates.is_off;
 
-  // First check if it exists
+  // ตรวจสอบก่อนว่ามีข้อมูลอยู่แล้วหรือไม่
   const { data: existing, error: findError } = await supabase
     .from('schedule')
     .select('schedule_id')
@@ -1254,7 +1256,7 @@ export async function upsertShift(userId: string, dayOfWeek: number, updates: Pa
   }
 
   if (existing) {
-    // Update
+    // อัปเดตข้อมูลที่มีอยู่
     const { error: updateError } = await supabase
       .from('schedule')
       .update(payload)
@@ -1265,7 +1267,7 @@ export async function upsertShift(userId: string, dayOfWeek: number, updates: Pa
       throw updateError;
     }
   } else {
-    // Insert
+    // เพิ่มข้อมูลใหม่
     const { error: insertError } = await supabase
       .from('schedule')
       .insert(payload);

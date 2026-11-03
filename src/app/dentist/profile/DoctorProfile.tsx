@@ -8,7 +8,7 @@ import { supabase } from "../../shared/utils/supabaseClient";
 export default function DoctorProfile({ doctor }: { doctor: DentistInfo | null }) {
   const [allServices, setAllServices] = useState<ServiceInfo[]>([]);
   
-  // Change Password States
+  // สถานะสำหรับการเปลี่ยนรหัสผ่าน
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -53,7 +53,7 @@ export default function DoctorProfile({ doctor }: { doctor: DentistInfo | null }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ข้อมูลส่วนตัว</h1>
+      <h1 className="text-2xl font-bold mb-6" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ข้อมูลส่วนตัว</h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="rounded-2xl bg-white p-6 text-center" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
           <div className="w-24 h-24 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl text-white font-bold" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
@@ -71,8 +71,8 @@ export default function DoctorProfile({ doctor }: { doctor: DentistInfo | null }
             {[
               ["ความเชี่ยวชาญ", doctor.specialty],
               ["เลขที่ใบอนุญาต", doctor.license],
-              ["สถาบันการศึกษา", doctor.university],
-              ["ประสบการณ์", "12 ปี"],
+              ["สถาบันการศึกษา", doctor.university || "-"],
+              ["ประสบการณ์", doctor.experienceYears ? `${doctor.experienceYears} ปี` : "-"],
             ].map(([k, v]) => (
               <div key={k} className="flex py-2.5" style={{ borderBottom: "1px solid rgba(26,54,93,0.05)" }}>
                 <span className="text-xs w-36 font-medium flex-shrink-0" style={{ color: "#4A6080" }}>{k}</span>
@@ -123,11 +123,11 @@ export default function DoctorProfile({ doctor }: { doctor: DentistInfo | null }
         </div>
       </div>
 
-      {/* Password Change Modal */}
+      {/* หน้าต่างเปลี่ยนรหัสผ่าน */}
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
-            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>เปลี่ยนรหัสผ่านใหม่</h3>
+            <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>เปลี่ยนรหัสผ่านใหม่</h3>
             
             {changeError && <p className="text-red-500 text-xs mb-3">{changeError}</p>}
             

@@ -9,11 +9,11 @@ import {
 export default function ServiceManagement() {
   const [activeTab, setActiveTab] = useState<'services'>('services');
 
-  // Data States
+  // สถานะข้อมูลรายการ
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Services Edit States
+  // สถานะสำหรับการแก้ไขบริการ
   const [editId, setEditId] = useState<number | null>(null);
   const [prices, setPrices] = useState<Record<number, string>>({});
   const [maxPrices, setMaxPrices] = useState<Record<number, string>>({});
@@ -26,7 +26,7 @@ export default function ServiceManagement() {
   const [proceduresMap, setProceduresMap] = useState<Record<number, string>>({});
   const [careMap, setCareMap] = useState<Record<number, string>>({});
 
-  // Services Add States
+  // สถานะสำหรับการเพิ่มบริการใหม่
   const [isAdding, setIsAdding] = useState(false);
   const [newService, setNewService] = useState({
     name: "", desc: "", price: "", maxPrice: "", time: "30", category: SERVICE_CATEGORIES[0] as string, 
@@ -50,7 +50,7 @@ export default function ServiceManagement() {
     }
   };
 
-  // --- SERVICE LOGIC ---
+  // --- ส่วนจัดการข้อมูลบริการ ---
   const saveServiceChanges = async (id: number) => {
     const p = parseInt(prices[id] ?? "0", 10);
     const mpStr = maxPrices[id];
@@ -156,7 +156,7 @@ export default function ServiceManagement() {
     <div className="animate-fade-in">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ตั้งค่าบริการ</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ตั้งค่าบริการ</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>จัดการบริการและหมวดหมู่บริการ</p>
         </div>
 

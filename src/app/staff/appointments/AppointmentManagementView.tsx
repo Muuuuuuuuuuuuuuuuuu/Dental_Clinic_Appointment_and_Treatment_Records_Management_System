@@ -18,11 +18,11 @@ export default function AppointmentManagementView({
   const [activeTab, setActiveTab] = useState<TabView>("confirm");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Modals state
+  // สถานะการเปิด-ปิดหน้าต่างป๊อปอัป state
   const [transferAppt, setTransferAppt] = useState<Appointment | null>(null);
   const [rescheduleAppt, setRescheduleAppt] = useState<Appointment | null>(null);
   
-  // Form state
+  // สถานะข้อมูลในแบบฟอร์ม
   const [newDoctorId, setNewDoctorId] = useState<string>("");
   const [newDate, setNewDate] = useState<string>("");
   const [newTime, setNewTime] = useState<string>("");
@@ -98,7 +98,7 @@ export default function AppointmentManagementView({
     }
   };
 
-  // Derived state
+  // ข้อมูลที่คำนวณและคัดกรองแล้ว
   const activeAppointments = appointments.filter(a => !["เสร็จสิ้น", "ยกเลิก", "ไม่มาตามนัด"].includes(a.status));
 
   
@@ -115,7 +115,7 @@ export default function AppointmentManagementView({
       list = list.filter(a => a.patientName.toLowerCase().includes(q) || a.hn.toLowerCase().includes(q) || a.doctorName.toLowerCase().includes(q));
     }
     
-    // Sort by date/time
+    // เรียงลำดับตามวันและเวลา
     return list.sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
   }, [appointments, activeTab, searchQuery, activeAppointments]);
 
@@ -139,7 +139,7 @@ export default function AppointmentManagementView({
     <div>
       <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการนัดหมาย</h1>
+          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จัดการนัดหมาย</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>ยืนยันเคสที่มีความเสี่ยง, ย้ายเคส, เลื่อนคิว และยกเลิกนัดหมาย</p>
         </div>
         {(activeTab === "all" || activeTab === "transfer" || activeTab === "reschedule") && (
@@ -156,7 +156,7 @@ export default function AppointmentManagementView({
         )}
       </div>
 
-      {/* Tabs */}
+      {/* แถบเลือกหมวดหมู่ */}
       <div className="flex overflow-x-auto gap-2 mb-6 pb-2" style={{ scrollbarWidth: "none" }}>
         {TABS.map(tab => (
           <button
@@ -175,7 +175,7 @@ export default function AppointmentManagementView({
         ))}
       </div>
 
-      {/* Main Content List */}
+      {/* รายการข้อมูลหลัก */}
       <div className="space-y-4">
         {displayAppointments.length === 0 ? (
           <div className="rounded-2xl bg-white p-12 flex flex-col items-center justify-center text-center" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
@@ -189,13 +189,13 @@ export default function AppointmentManagementView({
           displayAppointments.map(a => (
             <div key={a.id} className="rounded-2xl bg-white p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all hover:shadow-md" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.04)", borderLeft: activeTab === "confirm" ? "4px solid #F57F17" : "none" }}>
               <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
-                {/* Date & Time block */}
+                {/* กล่องแสดงวันและเวลา */}
                 <div className="bg-gray-50 px-4 py-3 rounded-xl flex flex-col items-center justify-center min-w-[120px] border border-gray-100">
                   <span className="text-xs font-bold mb-1" style={{ color: "#4A6080" }}>{a.date}</span>
                   <span className="text-lg font-black" style={{ color: "#1A365D" }}>{a.time} น.</span>
                 </div>
                 
-                {/* Info block */}
+                {/* กล่องข้อมูลรายละเอียด */}
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <p className="text-base font-bold" style={{ color: "#1A365D" }}>{a.patientName}</p>
@@ -240,7 +240,7 @@ export default function AppointmentManagementView({
                 </div>
               </div>
               
-              {/* Action Buttons based on Tab */}
+              {/* ปุ่มดำเนินการตามหมวดหมู่ที่เลือก */}
               <div className="flex flex-col sm:flex-row gap-2 min-w-[160px] md:justify-end">
                 {activeTab === "confirm" && (
                   <>
@@ -278,7 +278,7 @@ export default function AppointmentManagementView({
                 )}
                 
                 {/* {activeTab === "all" && (
-                  // Removed 'View Details' button as requested
+                  // แสดงเฉพาะปุ่มดำเนินการหลัก
                 )} */}
               </div>
             </div>
@@ -286,12 +286,12 @@ export default function AppointmentManagementView({
         )}
       </div>
 
-      {/* Transfer Modal */}
+      {/* หน้าต่างโอนย้ายคิวไปยังทันตแพทย์ท่านอื่น */}
       {transferAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(26,54,93,0.4)", backdropFilter: "blur(4px)" }}>
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h2 className="text-xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ย้ายเคส (Transfer)</h2>
+              <h2 className="text-xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ย้ายเคส (Transfer)</h2>
               <button onClick={() => setTransferAppt(null)} className="p-1.5 rounded-lg hover:bg-gray-200"><X size={16} style={{ color: "#4A6080" }} /></button>
             </div>
             <div className="p-6">
@@ -338,12 +338,12 @@ export default function AppointmentManagementView({
         </div>
       )}
 
-      {/* Reschedule / Cancel Modal */}
+      {/* หน้าต่างเลื่อนนัดและยกเลิกนัดหมาย */}
       {rescheduleAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(26,54,93,0.4)", backdropFilter: "blur(4px)" }}>
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h2 className="text-xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>เลื่อน/ยกเลิกนัด</h2>
+              <h2 className="text-xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>เลื่อน/ยกเลิกนัด</h2>
               <button onClick={() => setRescheduleAppt(null)} className="p-1.5 rounded-lg hover:bg-gray-200"><X size={16} style={{ color: "#4A6080" }} /></button>
             </div>
             <div className="p-6">

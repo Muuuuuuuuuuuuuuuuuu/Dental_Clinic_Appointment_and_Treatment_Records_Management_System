@@ -52,14 +52,29 @@ export default function PatientManagement() {
       alert("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (ชื่อ, นามสกุล, เลขบัตรประชาชน, อีเมล)");
       return;
     }
+    if (form.citizenId.replace(/\D/g, "").length !== 13) {
+      alert("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลักเท่านั้น");
+      return;
+    }
+    if (form.phone && form.phone.replace(/\D/g, "").length !== 10) {
+      alert("เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักเท่านั้น");
+      return;
+    }
+    if (form.emergencyContactPhone && form.emergencyContactPhone.replace(/\D/g, "").length !== 10) {
+      alert("เบอร์ผู้ติดต่อฉุกเฉินต้องเป็นตัวเลข 10 หลักเท่านั้น");
+      return;
+    }
     
     setSaving(true);
     try {
-      const passwordToUse = form.password || "patient123";
+      const passwordToUse = form.password || "123456789";
       await addPatient({
         ...form,
         password: passwordToUse
       });
+      const cleanEmail = form.email.trim().toLowerCase();
+      localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
+      localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
       setShowModal(false);
       setForm({
         firstName: "", lastName: "", citizenId: "", email: "", phone: "", gender: "", dob: "", address: "", allergyHistory: "ไม่มี", underlyingDisease: "ไม่มี", emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelationship: "", password: ""
@@ -79,10 +94,10 @@ export default function PatientManagement() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto" style={{ fontFamily: "Prompt, sans-serif" }}>
+    <div className="max-w-6xl mx-auto" style={{ fontFamily: "Sarabun, sans-serif" }}>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการคนไข้</h1>
+          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จัดการคนไข้</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>คนไข้ทั้งหมด {patients.length} คน</p>
         </div>
         
@@ -113,7 +128,7 @@ export default function PatientManagement() {
           <table className="w-full text-sm whitespace-nowrap">
             <thead style={{ backgroundColor: "#F8F9FA" }}>
               <tr>
-                {["HN", "ชื่อ-นามสกุล", "อีเมล", "เบอร์โทร", "โรคประจำตัว", "ประวัติแพ้ยา", ""].map(h => (
+                {["HN", "ชื่อ-นามสกุล", "อีเมล", "เบอร์โทร", "โรคประจำตัว", "ประวัติแพ้ยา"].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-xs font-semibold" style={{ color: "#4A6080" }}>{h}</th>
                 ))}
               </tr>
@@ -138,16 +153,11 @@ export default function PatientManagement() {
                   <td className="px-5 py-3.5 text-xs" style={{ color: p.allergyHistory !== 'ไม่มีประวัติ' && p.allergyHistory !== 'ไม่มี' ? "#D32F2F" : "#4A6080" }}>
                     {p.allergyHistory}
                   </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <button className="p-1.5 rounded-lg hover:bg-gray-100" style={{ color: "#E65100" }} title="ลบข้อมูล"><Trash2 size={14} /></button>
-                    </div>
-                  </td>
                 </tr>
               ))}
               {filteredPatients.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-400">ไม่พบข้อมูลคนไข้</td>
+                  <td colSpan={6} className="text-center py-8 text-gray-400">ไม่พบข้อมูลคนไข้</td>
                 </tr>
               )}
             </tbody>
@@ -159,7 +169,7 @@ export default function PatientManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(26,54,93,0.4)", backdropFilter: "blur(4px)" }}>
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 p-8 overflow-y-auto max-h-[90vh]">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+              <h2 className="text-xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
                 เพิ่มคนไข้ใหม่
               </h2>
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100" style={{ color: "#4A6080" }}><X size={18} /></button>
@@ -179,7 +189,7 @@ export default function PatientManagement() {
 
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เลขบัตรประชาชน</label>
-                <input value={form.citizenId} onChange={e => setForm(f => ({ ...f, citizenId: e.target.value }))}
+                <input maxLength={13} placeholder="กรอกตัวเลข 13 หลัก" value={form.citizenId} onChange={e => setForm(f => ({ ...f, citizenId: e.target.value.replace(/\D/g, "").slice(0, 13) }))}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} />
               </div>
 
@@ -197,7 +207,7 @@ export default function PatientManagement() {
 
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์</label>
-                <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                <input type="tel" maxLength={10} placeholder="กรอกตัวเลข 10 หลัก" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} />
               </div>
 
@@ -238,7 +248,7 @@ export default function PatientManagement() {
 
               <div>
                 <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เบอร์ผู้ติดต่อฉุกเฉิน</label>
-                <input value={form.emergencyContactPhone} onChange={e => setForm(f => ({ ...f, emergencyContactPhone: e.target.value }))}
+                <input type="tel" maxLength={10} placeholder="กรอกตัวเลข 10 หลัก" value={form.emergencyContactPhone} onChange={e => setForm(f => ({ ...f, emergencyContactPhone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
                   className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} />
               </div>
               <div>
@@ -248,9 +258,9 @@ export default function PatientManagement() {
               </div>
               
               <div className="md:col-span-2">
-                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตั้งรหัสผ่าน (ปล่อยว่างไว้หากต้องการใช้ patient123)</label>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตั้งรหัสผ่านเริ่มต้น (ปล่อยว่างไว้หากต้องการใช้ 123456789)</label>
                 <input type="text" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} placeholder="patient123" />
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border" style={{ backgroundColor: "#F0F4F8", borderColor: "transparent", color: "#1A365D" }} placeholder="123456789" />
               </div>
             </div>
 

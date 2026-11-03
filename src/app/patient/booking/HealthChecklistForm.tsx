@@ -38,10 +38,10 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
     let valid = false;
     
     if (isReturning && formData.hasChanges === false) {
-      // 1-Click Verification: unchanged
+      // ยืนยันว่าข้อมูลสุขภาพไม่เปลี่ยนแปลง
       valid = true;
     } else {
-      // Full form validation
+      // ตรวจสอบความครบถ้วนของแบบฟอร์ม
       const hasEmergency = formData.emergencyName.trim() !== '' && formData.emergencyPhone.trim() !== '' && formData.emergencyRelationship.trim() !== '';
       const validAllergy = formData.hasAllergy === false || (formData.hasAllergy === true && formData.allergies.length > 0 && (!formData.allergies.includes('แพ้อื่นๆ') || formData.allergyOther.trim() !== ''));
       const validCondition = formData.hasCondition === false || (formData.hasCondition === true && formData.conditions.length > 0 && (!formData.conditions.includes('โรคอื่นๆ') || formData.conditionOther.trim() !== ''));
@@ -152,7 +152,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
           <div className="p-6 space-y-8">
         
-        {/* Section 1 */}
+        {/* ส่วนที่ 1 */}
         <section className="space-y-4">
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
             <User size={18} className="text-[#FF8C9A]" /> ส่วนที่ 1: ข้อมูลผู้ติดต่อฉุกเฉิน
@@ -175,7 +175,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
         <hr className="border-[#E2E8F0]" />
 
-        {/* Section 2 */}
+        {/* ส่วนที่ 2 */}
         <section className="space-y-4">
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
             <AlertCircle size={18} className="text-[#FF8C9A]" /> ส่วนที่ 2: ประวัติการแพ้ยาและสารเคมี
@@ -217,7 +217,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
         <hr className="border-[#E2E8F0]" />
 
-        {/* Section 3 */}
+        {/* ส่วนที่ 3 */}
         <section className="space-y-4">
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
             <Activity size={18} className="text-[#FF8C9A]" /> ส่วนที่ 3: ภาวะสุขภาพและโรคประจำตัว
@@ -265,7 +265,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
         <hr className="border-[#E2E8F0]" />
 
-        {/* Section 4 */}
+        {/* ส่วนที่ 4 */}
         <section className="space-y-4">
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
             <CheckSquare size={18} className="text-[#FF8C9A]" /> ส่วนที่ 4: ความยินยอม (E-Consent)

@@ -10,7 +10,7 @@ import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
 
 type ViewMode = "daily" | "weekly" | "monthly";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── ฟังก์ชันช่วยเหลือ ────────────────────────────────────────────────────────
 
 /** ดึงวันที่ "ปัจจุบัน" โดยรองรับ Time Travel mock datetime จาก localStorage */
 function getNow(): Date {
@@ -42,7 +42,7 @@ function getMonday(d: Date) {
   return r;
 }
 
-// ─── Stat Cards ───────────────────────────────────────────────────────────────
+// ─── การ์ดแสดงสถิติคิวงาน ─────────────────────────────────────────────────────
 function StatCards({ appts, setView }: { appts: Appointment[]; setView: (v: StaffView) => void }) {
   const waitCheckin = appts.filter(a => a.status === "ยืนยันการจอง" || a.status === "รอการยืนยัน").length;
   const checkedIn = appts.filter(a => a.status === "เช็คอินเรียบร้อย").length;
@@ -67,7 +67,7 @@ function StatCards({ appts, setView }: { appts: Appointment[]; setView: (v: Staf
           <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: s.bg }}>
             <s.icon size={18} style={{ color: s.ic }} />
           </div>
-          <div className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>{s.val}</div>
+          <div className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>{s.val}</div>
           <div className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{s.label}</div>
         </div>
       ))}
@@ -76,7 +76,7 @@ function StatCards({ appts, setView }: { appts: Appointment[]; setView: (v: Staf
 }
 
 
-// ─── Appointment List Table ───────────────────────────────────────────────────
+// ─── ตารางรายการนัดหมาย ───────────────────────────────────────────────────────
 function AppointmentList({ appts }: { appts: Appointment[] }) {
   if (appts.length === 0) {
     return (
@@ -121,7 +121,7 @@ function AppointmentList({ appts }: { appts: Appointment[] }) {
   );
 }
 
-// ─── Today's Kanban Board ─────────────────────────────────────────────────────
+// ─── กระดานจัดการคิววันนี้ ────────────────────────────────────────────────────
 function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], onUpdate: (id: number, s: Partial<Appointment>) => void, setView?: (v: StaffView) => void }) {
   const toCheckIn = appts.filter(a => a.status === "ยืนยันการจอง" || a.status === "รอการยืนยัน");
   const inQueue = appts.filter(a => a.status === "เช็คอินเรียบร้อย" || a.status === "กำลังรักษา");
@@ -129,7 +129,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-      {/* Column 1: To Check-in */}
+      {/* คอลัมน์ที่ 1: รอเช็คอิน */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 text-blue-600">
@@ -175,7 +175,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
         )}
       </div>
 
-      {/* Column 2: In Queue / Treating */}
+      {/* คอลัมน์ที่ 2: รอเข้าพบ / กำลังรักษา */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-100 text-orange-600">
@@ -209,7 +209,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
                     onClick={() => onUpdate(a.id, { status: "กำลังรักษา" })}
                     className="w-full flex justify-center items-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all hover:bg-fuchsia-50"
                     style={{ color: "#A21CAF", border: "1px dashed #A21CAF" }}>
-                    ⏳ รอแพทย์เรียก
+                    รอแพทย์เรียก
                   </button>
                 )}
                 {a.status === "กำลังรักษา" && (
@@ -224,7 +224,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
         )}
       </div>
 
-      {/* Column 3: To Pay */}
+      {/* คอลัมน์ที่ 3: รอชำระเงิน */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-100 text-green-600">
@@ -262,7 +262,7 @@ function TodayKanbanBoard({ appts, onUpdate, setView }: { appts: Appointment[], 
   );
 }
 
-// ─── View Mode Toggle ─────────────────────────────────────────────────────────
+// ─── ปุ่มสลับมุมมอง (รายวัน / รายสัปดาห์ / รายเดือน) ─────────────────────────
 function ViewToggle({ mode, setMode }: { mode: ViewMode; setMode: (m: ViewMode) => void }) {
   const items: { key: ViewMode; label: string; icon: React.ElementType }[] = [
     { key: "daily", label: "รายวัน", icon: CalendarDays },
@@ -287,7 +287,7 @@ function ViewToggle({ mode, setMode }: { mode: ViewMode; setMode: (m: ViewMode) 
   );
 }
 
-// ─── Daily View ───────────────────────────────────────────────────────────────
+// ─── มุมมองรายวัน ─────────────────────────────────────────────────────────────
 function DailyView({
   selectedDate, setSelectedDate, appointments, closures, weeklyOffs, dentists, leaves, shifts, setView, onUpdateAppt
 }: {
@@ -316,7 +316,7 @@ function DailyView({
 
   return (
     <div>
-      {/* Date Navigator */}
+      {/* แถบเลื่อนเลือกวันที่ */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
@@ -325,7 +325,7 @@ function DailyView({
             <ChevronLeft size={20} />
           </button>
           <div className="text-center min-w-[200px]">
-            <p className="font-bold text-lg flex items-center justify-center gap-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+            <p className="font-bold text-lg flex items-center justify-center gap-2" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
               {isToday && <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FF8C9A", color: "white" }}>วันนี้</span>}
               {thaiDay[selectedDate.getDay()]}
             </p>
@@ -363,7 +363,7 @@ function DailyView({
 
       </div>
 
-      {/* Closure Banner */}
+      {/* แถบแจ้งเตือนวันปิดทำการ */}
       {isClosed && (
         <div className="rounded-xl px-4 py-3 mb-5 flex items-center gap-3" style={{ backgroundColor: "#FFF3E0", border: "1px solid #FED7AA" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#FFCC80" }}>
@@ -378,7 +378,7 @@ function DailyView({
         </div>
       )}
 
-      {/* Doctors on Duty */}
+      {/* รายชื่อทันตแพทย์ที่เข้าเวรวันนี้ */}
       {!isClosed && (
         <div className="mb-5 flex flex-col gap-3 bg-white p-4 rounded-2xl border border-gray-100" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.04)" }}>
           <div className="flex items-center justify-between">
@@ -387,12 +387,12 @@ function DailyView({
           
           <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-2">
             {dentists.map((doc, idx) => {
-              // Extract just the first name if formatted with title
+              // แยกเฉพาะชื่อต้นของทันตแพทย์เพื่อแสดงผล
               const docNameStr = doc.name.split(" ")[1] || doc.name;
               const isOnLeave = leaves.some(l => l.doctorId === doc.userId && l.startDate === dateStr && l.status === "อนุมัติแล้ว");
               const docAppts = dayAppts.filter(a => (a.doctorName || "").includes(docNameStr));
               
-              // Check shift schedule
+              // ตรวจสอบตารางเวรการทำงาน
               const shift = shifts.find(s => s.person_type === 'dentist' && s.person_id === doc.id && s.day_of_week === selectedDate.getDay());
               
               const isWorking = (shift && !shift.is_off && !isOnLeave) || docAppts.length > 0;
@@ -418,7 +418,7 @@ function DailyView({
         </div>
       )}
 
-      {/* Content based on isToday */}
+      {/* แสดงกระดานคิวหากเป็นวันนี้ หรือแสดงตารางนัดหมายหากเป็นวันอื่น */}
       {isToday && !closure ? (
         <>
           <TodayKanbanBoard appts={dayAppts} onUpdate={onUpdateAppt} setView={setView} />
@@ -435,10 +435,10 @@ function DailyView({
         </>
       ) : (
         <>
-          {/* Stat Cards */}
+          {/* การ์ดสรุปจำนวนคิว */}
           <StatCards appts={dayAppts} setView={setView} />
 
-          {/* Appointment List */}
+          {/* ตารางรายการนัดหมาย */}
           <div className="mb-3">
             <p className="text-xs font-medium mb-3" style={{ color: "#94A3B8" }}>
               รายการนัดหมาย • {dayAppts.length} ราย
@@ -451,7 +451,7 @@ function DailyView({
   );
 }
 
-// ─── Weekly View ──────────────────────────────────────────────────────────────
+// ─── มุมมองรายสัปดาห์ ─────────────────────────────────────────────────────────
 function WeeklyView({
   selectedDate, setSelectedDate, appointments, closures, weeklyOffs, setMode
 }: {
@@ -475,7 +475,7 @@ function WeeklyView({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Week Navigator */}
+      {/* แถบเลื่อนเลือกสัปดาห์ */}
       <div className="flex items-center justify-between mb-5">
         <button onClick={() => setSelectedDate(addDays(selectedDate, -7))}
           className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white transition-colors"
@@ -483,7 +483,7 @@ function WeeklyView({
           <ChevronLeft size={20} />
         </button>
         <div className="text-center">
-          <p className="font-bold text-lg" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+          <p className="font-bold text-lg" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
             สัปดาห์ที่ {Math.ceil(monday.getDate() / 7)}
           </p>
           <div className="flex items-center justify-center gap-1 mt-0.5">
@@ -508,11 +508,11 @@ function WeeklyView({
         </button>
       </div>
 
-      {/* Week Time-Grid */}
+      {/* ตารางเวลาประจำสัปดาห์ */}
       <div className="flex bg-white rounded-2xl overflow-hidden border border-gray-100 flex-1" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
-        {/* Time labels */}
+        {/* คอลัมน์แสดงเวลา */}
         <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/50">
-          <div className="h-14 border-b border-gray-100"></div> {/* Header spacer */}
+          <div className="h-14 border-b border-gray-100"></div> {/* ช่องว่างส่วนหัวตาราง */}
           {hours.map(h => (
             <div key={h} className="h-24 border-b border-gray-100 p-2 text-right relative">
               <span className="text-xs font-medium text-gray-400 absolute -top-2.5 right-2 bg-gray-50 px-1">{String(h).padStart(2, '0')}:00</span>
@@ -520,7 +520,7 @@ function WeeklyView({
           ))}
         </div>
 
-        {/* Days */}
+        {/* วันที่ในเดือน */}
         <div className="flex-1 grid grid-cols-7 overflow-x-auto">
           {weekDays.map(day => {
             const ds = fmtDate(day);
@@ -532,7 +532,7 @@ function WeeklyView({
 
             return (
               <div key={ds} className="border-r border-gray-100 last:border-r-0 relative min-w-[120px]">
-                {/* Day Header */}
+                {/* ส่วนหัวของแต่ละวัน */}
                 <div className="h-14 border-b border-gray-100 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => handleDayClick(day)}>
                   <span className="text-[11px] text-gray-500 font-medium">{thaiDayShort[day.getDay()]}</span>
                   <div className={`mt-0.5 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold ${isToday ? "bg-pink-500 text-white" : "text-gray-700"}`}>
@@ -540,9 +540,9 @@ function WeeklyView({
                   </div>
                 </div>
 
-                {/* Day Body */}
-                <div className="relative flex flex-col" style={{ height: `${12 * 6}rem` /* 12 hours * 6rem (h-24) */ }}>
-                  {/* Appointments */}
+                {/* ช่องตารางเวลาของแต่ละวัน */}
+                <div className="relative flex flex-col" style={{ height: `${12 * 6}rem` /* ความสูงตาราง 12 ชั่วโมง */ }}>
+                  {/* การ์ดนัดหมายในตารางเวลา */}
                   {isClosed ? (
                     <div className="absolute inset-0 flex items-center justify-center p-2 text-center" style={{ backgroundColor: "rgba(255, 243, 224, 0.4)", zIndex: 5 }}>
                       <span className="text-[11px] font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-md">{closure ? `ปิด: ${closure.reason}` : "วันหยุด"}</span>
@@ -581,7 +581,7 @@ function WeeklyView({
   );
 }
 
-// ─── Monthly View ─────────────────────────────────────────────────────────────
+// ─── มุมมองรายเดือน ───────────────────────────────────────────────────────────
 function MonthlyView({
   selectedDate, setSelectedDate, appointments, closures, weeklyOffs, setMode
 }: {
@@ -606,14 +606,14 @@ function MonthlyView({
 
   return (
     <div>
-      {/* Month Navigator */}
+      {/* แถบเลื่อนเลือกเดือน */}
       <div className="flex items-center justify-between mb-5">
         <button onClick={() => setMonthDate(new Date(year, month - 1, 1))}
           className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white transition-colors"
           style={{ color: "#4A6080" }}>
           <ChevronLeft size={20} />
         </button>
-        <p className="font-bold text-lg" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+        <p className="font-bold text-lg" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
           {thaiMonth[month]} {year + 543}
         </p>
         <button onClick={() => setMonthDate(new Date(year, month + 1, 1))}
@@ -623,21 +623,21 @@ function MonthlyView({
         </button>
       </div>
 
-      {/* Calendar */}
+      {/* ปฏิทิน */}
       <div className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
-        {/* Header Row */}
+        {/* แถวชื่อวันในสัปดาห์ */}
         <div className="grid grid-cols-7 gap-1 mb-3">
           {thaiDayShort.map(d => (
             <div key={d} className="text-center text-xs font-semibold py-2" style={{ color: "#94A3B8" }}>{d}</div>
           ))}
         </div>
 
-        {/* Days Grid */}
+        {/* ตารางวันที่ในเดือน */}
         <div className="grid grid-cols-7 gap-1">
-          {/* Empty cells */}
+          {/* ช่องว่างก่อนวันแรกของเดือน */}
           {[...Array(firstDow)].map((_, i) => <div key={`e${i}`} />)}
 
-          {/* Day cells */}
+          {/* ช่องวันที่ */}
           {[...Array(daysInMonth)].map((_, i) => {
             const d = i + 1;
             const ds = fmtDate(new Date(year, month, d));
@@ -652,7 +652,7 @@ function MonthlyView({
                 className="relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all hover:shadow-md hover:ring-2 hover:ring-pink-200 group"
                 title={isClosed ? (closure ? `ปิดทำการ: ${closure.reason}` : "วันหยุดประจำสัปดาห์") : `${dayAppts.length} นัดหมาย`}
                 style={{
-                  backgroundColor: isClosed ? "#FFF8F0" : isToday ? "#FFE8EC" : "#FAFBFC",
+                  backgroundColor: isClosed ? "#FFF8F0" : isToday ? "#FFD6DC" : "#FAFBFC",
                   border: isToday ? "2px solid #FF8C9A" : "1px solid #F0F2F5",
                 }}>
                 <span className="text-sm font-semibold" style={{
@@ -661,7 +661,7 @@ function MonthlyView({
                   {d}
                 </span>
 
-                {/* Appointment count badge */}
+                {/* ป้ายแสดงจำนวนนัดหมายในแต่ละวัน */}
                 {dayAppts.length > 0 && !isClosed && (
                   <span className="absolute bottom-1 text-xs font-bold px-1.5 py-0 rounded-full"
                     style={{ backgroundColor: "#FF8C9A", color: "white", fontSize: "9px" }}>
@@ -669,7 +669,7 @@ function MonthlyView({
                   </span>
                 )}
 
-                {/* Closure indicator */}
+                {/* ป้ายแสดงวันหยุดคลินิก */}
                 {isClosed && (
                   <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E65100" }} />
                 )}
@@ -679,7 +679,7 @@ function MonthlyView({
         </div>
       </div>
 
-      {/* Legend */}
+      {/* คำอธิบายสัญลักษณ์สี */}
       <div className="flex items-center gap-5 mt-4 px-2">
         {[
           { color: "#FF8C9A", label: "วันนี้" },
@@ -700,7 +700,7 @@ function MonthlyView({
   );
 }
 
-// ─── Main QueueBoard ──────────────────────────────────────────────────────────
+// ─── คอมโพเนนต์หลักหน้าจัดการคิวงาน ──────────────────────────────────────────
 export default function QueueBoard({
   setView,
   appointments: initialAppointments
@@ -751,7 +751,7 @@ export default function QueueBoard({
       if (updates.status) {
         const updated = await updateAppointmentStatus(id, updates.status);
         setAppointments(apps => apps.map(a => a.id === id ? { ...a, status: updated.status } : a));
-        // Also trigger a background refetch to ensure full sync
+        // ดึงข้อมูลใหม่ในพื้นหลังเพื่อให้ข้อมูลตรงกันทั้งหมด
         fetchAppointments();
       }
     } catch (err) {
@@ -763,10 +763,10 @@ export default function QueueBoard({
 
   return (
     <div>
-      {/* Header */}
+      {/* ส่วนหัว */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
             คิวงาน
           </h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>
@@ -776,7 +776,7 @@ export default function QueueBoard({
         <ViewToggle mode={viewMode} setMode={setViewMode} />
       </div>
 
-      {/* Views */}
+      {/* แสดงผลตามมุมมองที่เลือก */}
       {viewMode === "daily" && (
         <DailyView
           selectedDate={selectedDate}

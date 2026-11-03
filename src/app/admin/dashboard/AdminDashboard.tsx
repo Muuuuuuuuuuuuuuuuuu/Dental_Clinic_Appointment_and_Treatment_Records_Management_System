@@ -49,7 +49,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   useEffect(() => {
     const syncDate = () => setSelectedDate(getNow());
 
-    // Storage event (cross-tab)
+    // ซิงค์ข้อมูลข้ามแท็บผ่าน Storage Event
     window.addEventListener("storage", (e) => {
       if (e.key === "supat_mock_date") syncDate();
     });
@@ -66,7 +66,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
 
   const targetDateStr = getLocalDateStr(selectedDate);
 
-  // Filter appointments based on timeframe and selectedDate
+  // กรองรายการนัดหมายตามช่วงเวลาและวันที่เลือก
   const filteredAppts = appointments.filter(a => {
     if (!a.date) return false; // ป้องกัน a.date เป็น null หรือ undefined
 
@@ -90,17 +90,17 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
     <div className="p-8 flex justify-center items-center h-64">Loading...</div>
   );
 
-  // Calculate dentists on duty
+  // คำนวณจำนวนทันตแพทย์ที่เข้าเวร
   const targetDayOfWeek = selectedDate.getDay();
   let onDutyDentistsCnt = 0;
   if (timeframe === "today") {
     onDutyDentistsCnt = new Set(doctorSchedules.filter(s => s.dayOfWeek === targetDayOfWeek && !s.isOff).map(s => s.dentistId)).size;
   } else {
-    // For week/month, show total active dentists
+    // สำหรับมุมมองสัปดาห์/เดือน ให้แสดงจำนวนทันตแพทย์ที่ปฏิบัติงานทั้งหมด
     onDutyDentistsCnt = new Set(doctorSchedules.filter(s => !s.isOff).map(s => s.dentistId)).size;
   }
 
-  // Chart data
+  // ข้อมูลสำหรับแสดงกราฟ
   const chartData = timeframe === "today" ?
     Array.from({ length: 12 }).map((_, i) => {
       const hour = i + 9;
@@ -141,18 +141,18 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
     }
   };
 
-  // Status Breakdown
+  // สรุปจำนวนตามสถานะ
   const { completed: completedCnt, scheduled: scheduledCnt, cancelled: cancelledCnt, noShow: noShowCnt, total: totalCnt } = getAppointmentBreakdown(filteredAppts);
 
-  // Continuous Cases
+  // เคสรักษาต่อเนื่อง
   const activeOrtho = appointments.filter(a => (a.service.includes("จัดฟัน") || a.service.includes("รากเทียม")) && !["ยกเลิก", "เสร็จสิ้น"].includes(a.status)).length;
 
   return (
     <div className="animate-fade-in flex flex-col" style={{ height: "calc(100vh - 7rem)" }}>
-      {/* Row 1: Header + Controls — compact single row */}
+      {/* แถวที่ 1: ส่วนหัวและปุ่มควบคุม */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3 flex-shrink-0">
         <div>
-          <h1 className="text-xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ภาพรวมระบบ</h1>
+          <h1 className="text-xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ภาพรวมระบบ</h1>
           <p className="text-xs" style={{ color: "#4A6080" }}>
             {selectedDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
@@ -179,12 +179,12 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         </div>
       </div>
 
-      {/* Row 2: KPI Cards — compact horizontal */}
+      {/* แถวที่ 2: การ์ดสรุปตัวเลขสำคัญ */}
       <div className="grid grid-cols-4 gap-3 mb-3 flex-shrink-0">
         {[
           { label: "นัดหมาย", val: filteredAppts.length, icon: Calendar, bg: "#E8F4FF", ic: "#1D6FA4" },
           { label: "รายได้", val: `฿${revenue.toLocaleString()}`, icon: TrendingUp, bg: "#E8FFF0", ic: "#1B7A3E" },
-          { label: "แพทย์ออกตรวจ", val: onDutyDentistsCnt, icon: UserCheck, bg: "#FFE8EC", ic: "#FF6B7E" },
+          { label: "แพทย์ออกตรวจ", val: onDutyDentistsCnt, icon: UserCheck, bg: "#FFD6DC", ic: "#FF6B7E" },
           { label: "รออนุมัติลา", val: pending, icon: AlertCircle, bg: "#FFF3E0", ic: "#E65100" },
         ].map(s => (
           <div key={s.label} className="rounded-xl bg-white px-4 py-3 cursor-pointer hover:shadow-md transition-shadow flex items-center gap-3"
@@ -194,23 +194,23 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
               <s.icon size={18} style={{ color: s.ic }} />
             </div>
             <div>
-              <div className="text-2xl font-bold leading-tight" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>{s.val}</div>
+              <div className="text-2xl font-bold leading-tight" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>{s.val}</div>
               <div className="text-xs font-medium" style={{ color: "#4A6080" }}>{s.label}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Row 3: Charts side by side — flex-1 fills remaining */}
+      {/* แถวที่ 3: กราฟสถิติแสดงผลคู่กัน */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3 flex-1 min-h-0">
-        {/* Appointment chart */}
+        {/* กราฟจำนวนนัดหมาย */}
         <div className="rounded-xl bg-white p-4 flex flex-col" style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}>
           <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <h2 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
               กราฟนัดหมาย ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "รายเดือน" : "7 วัน"})
             </h2>
             {timeframe !== "today" && (
-              <span className="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">💡 คลิกแท่ง</span>
+              <span className="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">คลิกแท่งกราฟ</span>
             )}
           </div>
           <div className="flex-1 min-h-0">
@@ -228,7 +228,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
           </div>
         </div>
 
-        {/* Revenue Chart */}
+        {/* กราฟรายได้ */}
         <div className="rounded-xl bg-white p-4 flex flex-col" style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}>
           <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <h3 className="font-semibold text-xs" style={{ color: "#1A365D" }}>
@@ -250,9 +250,9 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         </div>
       </div>
 
-      {/* Row 4: Bottom bar — Status + Active Cases + Appointment CTA */}
+      {/* แถวที่ 4: แถบสรุปสถานะ เคสต่อเนื่อง และปุ่มดูรายการนัดหมาย */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-shrink-0">
-        {/* Status Breakdown — compact horizontal */}
+        {/* สรุปสถานะนัดหมายแบบแนวนอน */}
         <div className="lg:col-span-5 rounded-xl bg-white px-4 py-3 flex flex-col justify-center" style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-sm" style={{ color: "#1A365D" }}>สัดส่วนสถานะ</h3>
@@ -271,19 +271,19 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
           </div>
         </div>
 
-        {/* Active Cases — compact */}
+        {/* สรุปเคสที่กำลังรักษา */}
         <div className="lg:col-span-3 rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: "linear-gradient(135deg, #1A365D 0%, #29538A 100%)", boxShadow: "0 2px 8px rgba(26,54,93,0.1)" }}>
           <div className="p-2 bg-white/10 rounded-lg flex-shrink-0">
             <RefreshCw size={16} className="text-[#FF8C9A]" />
           </div>
           <div>
             <div className="text-[10px] text-white/60">เคสต่อเนื่อง</div>
-            <span className="text-2xl font-bold text-white" style={{ fontFamily: "Playfair Display, serif" }}>{activeOrtho}</span>
+            <span className="text-2xl font-bold text-white" style={{ fontFamily: "Sarabun, sans-serif" }}>{activeOrtho}</span>
             <span className="text-xs text-white/70 ml-1">เคส</span>
           </div>
         </div>
 
-        {/* Appointment List CTA — clickable card */}
+        {/* การ์ดเปิดดูรายการนัดหมายทั้งหมด */}
         <button onClick={() => setShowApptModal(true)}
           className="lg:col-span-4 rounded-xl px-4 py-3 flex items-center justify-between text-left group transition-all hover:shadow-lg"
           style={{ background: "linear-gradient(135deg, #FF8C9A 0%, #FF6B7E 100%)", boxShadow: "0 2px 8px rgba(255,107,126,0.2)" }}>
@@ -302,13 +302,13 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
         </button>
       </div>
 
-      {/* Appointment Slide-out Panel */}
+      {/* แผงแสดงรายการนัดหมายด้านข้าง */}
       {showApptModal && (
         <>
           <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setShowApptModal(false)} />
           <div className="fixed inset-y-4 right-4 w-full max-w-xl bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
             style={{ animation: "slideInRight 0.25s ease-out" }}>
-            {/* Modal Header */}
+            {/* ส่วนหัวของหน้าต่างป๊อปอัป */}
             <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0" style={{ borderColor: "rgba(26,54,93,0.08)" }}>
               <div>
                 <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>รายการนัดหมาย</h2>
@@ -321,7 +321,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
                 <X size={18} style={{ color: "#4A6080" }} />
               </button>
             </div>
-            {/* Modal Body */}
+            {/* ส่วนเนื้อหาของหน้าต่างป๊อปอัป */}
             <div className="flex-1 overflow-y-auto p-4" style={{ scrollbarWidth: "thin" }}>
               {filteredAppts.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-slate-400 text-sm">ไม่มีรายการนัดหมายในช่วงเวลานี้</div>
@@ -332,7 +332,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
                     return (
                       <div key={a.id} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors"
                         style={{ border: "1px solid rgba(26,54,93,0.06)" }}>
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#FFE8EC" }}>
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#FFD6DC" }}>
                           <span className="text-sm font-bold" style={{ color: "#FF6B7E" }}>{a.time.slice(0, 5)}</span>
                         </div>
                         <div className="flex-1 min-w-0">

@@ -49,7 +49,7 @@ const ADMIN_NAV: { key: AdminView; label: string; icon: any }[] = [
   { key: "users-hub",    label: "จัดการผู้ใช้งาน",      icon: Users }
 ];
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// 
 
 function AdminSidebar({ view, setView, onLogout, pendingLeaves }: {
   view: AdminView; setView: (v: AdminView) => void; onLogout: () => void; pendingLeaves: number;
@@ -61,7 +61,7 @@ function AdminSidebar({ view, setView, onLogout, pendingLeaves }: {
           <Smile size={16} color="white" />
         </div>
         <div>
-          <div className="font-bold text-sm text-white" style={{ fontFamily: "Playfair Display, serif" }}>คลินิกสุภัทร</div>
+          <div className="font-bold text-sm text-white" style={{ fontFamily: "Sarabun, sans-serif" }}>คลินิกสุภัทร</div>
           <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>ผู้ดูแลระบบ</div>
         </div>
       </div>
@@ -79,7 +79,7 @@ function AdminSidebar({ view, setView, onLogout, pendingLeaves }: {
             style={{ backgroundColor: view === key ? "#FF8C9A" : "transparent", color: view === key ? "white" : "rgba(255,255,255,0.65)" }}>
             <Icon size={17} />
             <span className="flex-1">{label}</span>
-            {/* Notification badge for pending leaves */}
+            {/* ป้ายแจ้งเตือนจำนวนใบลาที่รออนุมัติ */}
             {key === "schedule-hub" && pendingLeaves > 0 && (
               <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                 style={{
@@ -102,7 +102,7 @@ function AdminSidebar({ view, setView, onLogout, pendingLeaves }: {
   );
 }
 
-// ─── Generic CRUD Table helper ────────────────────────────────────────────────
+// 
 
 function Badge({ label, active }: { label: string; active: boolean }) {
   return (
@@ -112,7 +112,7 @@ function Badge({ label, active }: { label: string; active: boolean }) {
   );
 }
 
-// ─── Admin Portal Root ────────────────────────────────────────────────────────
+// 
 
 export default function AdminPortal({
   onLogout,
@@ -133,7 +133,7 @@ export default function AdminPortal({
     onLogout();
   }, 30);
 
-  // Fetch pending leave count for badge
+  // ดึงจำนวนใบลาที่รออนุมัติมาแสดงบนป้ายแจ้งเตือน
   useEffect(() => {
     getLeaveRequests()
       .then(leaves => setPendingLeaves(leaves.filter(l => l.status === "รออนุมัติ").length))
@@ -159,7 +159,7 @@ export default function AdminPortal({
   }, []);
 
   return (
-    <div className="min-h-screen flex" style={{ fontFamily: "Prompt, sans-serif", backgroundColor: "#F0F4F8" }}>
+    <div className="min-h-screen flex" style={{ fontFamily: "Sarabun, sans-serif", backgroundColor: "#F0F4F8" }}>
       {sideOpen && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setSideOpen(false)} />}
 
       <aside className="fixed top-0 left-0 h-full z-40 hidden lg:block" style={{ width: 250 }}>
@@ -174,7 +174,7 @@ export default function AdminPortal({
       <div className="flex-1 flex flex-col lg:ml-[250px]">
         <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b bg-white" style={{ borderColor: "rgba(26,54,93,0.1)" }}>
           <button onClick={() => setSideOpen(true)} style={{ color: "#1A365D" }}><Menu size={20} /></button>
-          <span className="font-bold text-sm" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>คลินิกสุภัทร • ผู้ดูแลระบบ</span>
+          <span className="font-bold text-sm" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>คลินิกสุภัทร • ผู้ดูแลระบบ</span>
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: "#FF8C9A" }}>A</div>
         </div>
         <AdminStatusBanner />

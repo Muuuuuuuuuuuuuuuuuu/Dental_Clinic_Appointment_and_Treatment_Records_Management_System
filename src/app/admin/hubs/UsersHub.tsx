@@ -50,17 +50,17 @@ export default function UsersHub() {
       .catch(console.error);
   }, []);
 
-  // Sub-view rendering
+  // แสดงผลหน้าย่อยที่เลือก
   if (subView === "admins") return <SubViewWrapper title="ผู้ดูแลระบบ" onBack={() => setSubView(null)}><AdminManagement /></SubViewWrapper>;
   if (subView === "dentists") return <SubViewWrapper title="ทันตแพทย์" onBack={() => setSubView(null)}><DentistManagement /></SubViewWrapper>;
   if (subView === "staff") return <SubViewWrapper title="พนักงาน" onBack={() => setSubView(null)}><StaffManagement /></SubViewWrapper>;
 
 
-  // Hub card selector
+  // การ์ดเมนูเลือกหมวดหมู่การจัดการ
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
           จัดการผู้ใช้งาน
         </h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>เลือกประเภทผู้ใช้งานที่ต้องการจัดการ</p>
@@ -74,7 +74,7 @@ export default function UsersHub() {
             className="group text-left bg-white rounded-2xl overflow-hidden shadow-sm border transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
             style={{ borderColor: "rgba(26,54,93,0.08)" }}
           >
-            {/* Gradient header */}
+            {/* ส่วนหัวของการ์ด */}
             <div className="p-5 pb-3" style={{ background: card.gradient }}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-2.5"
                 style={{ backgroundColor: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }}>
@@ -83,7 +83,7 @@ export default function UsersHub() {
               <h3 className="text-base font-bold text-white">{card.title}</h3>
             </div>
 
-            {/* Body */}
+            {/* ส่วนเนื้อหา */}
             <div className="p-5 pt-3">
               <p className="text-xs mb-4 leading-relaxed" style={{ color: "#4A6080" }}>
                 {card.desc}

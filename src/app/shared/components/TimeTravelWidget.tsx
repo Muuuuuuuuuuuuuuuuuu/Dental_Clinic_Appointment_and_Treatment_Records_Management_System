@@ -46,7 +46,7 @@ export default function TimeTravelWidget() {
     window.location.reload();
   };
 
-  // Quick-set time presets
+  // ตัวเลือกตั้งเวลาด่วน
   const timePresets = [
     { label: "เช้า", time: "08:00" },
     { label: "เที่ยง", time: "12:00" },
@@ -61,7 +61,7 @@ export default function TimeTravelWidget() {
         className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full font-bold shadow-lg transition-all hover:scale-105 active:scale-95 ${
           isActive ? "bg-amber-500 text-white animate-pulse" : "bg-slate-800 text-white"
         }`}
-        style={{ fontFamily: "Prompt, sans-serif" }}
+        style={{ fontFamily: "Sarabun, sans-serif" }}
       >
         <Clock size={18} />
         {isActive ? `จำลองเวลา: ${activeLabel}` : "Time Travel"}
@@ -72,9 +72,9 @@ export default function TimeTravelWidget() {
   return (
     <div
       className="fixed bottom-4 right-4 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-80"
-      style={{ fontFamily: "Prompt, sans-serif" }}
+      style={{ fontFamily: "Sarabun, sans-serif" }}
     >
-      {/* Header */}
+      {/* ส่วนหัว */}
       <div className="flex items-center justify-between mb-4 border-b pb-3">
         <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
           <Clock size={16} className="text-amber-500" /> Time Travel (จำลองเวลา)
@@ -88,7 +88,7 @@ export default function TimeTravelWidget() {
       </div>
 
       <div className="space-y-4">
-        {/* Date Picker */}
+        {/* ช่องเลือกวันที่ */}
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1.5">
             เลือกวันที่ต้องการทดสอบ
@@ -104,7 +104,7 @@ export default function TimeTravelWidget() {
           </div>
         </div>
 
-        {/* Time Picker */}
+        {/* ช่องเลือกเวลา */}
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1.5">
             เลือกเวลาที่ต้องการทดสอบ
@@ -120,7 +120,7 @@ export default function TimeTravelWidget() {
           </div>
         </div>
 
-        {/* Quick Time Presets */}
+        {/* ปุ่มลัดเลือกเวลา */}
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1.5">
             เวลาด่วน (Quick Set)
@@ -143,7 +143,7 @@ export default function TimeTravelWidget() {
           </div>
         </div>
 
-        {/* Preview */}
+        {/* แสดงตัวอย่างเวลาที่จำลอง */}
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-amber-700 font-medium">
             จะจำลองเป็น:{" "}
@@ -153,7 +153,7 @@ export default function TimeTravelWidget() {
           </p>
         </div>
 
-        {/* Action Buttons */}
+        {/* ปุ่มดำเนินการ */}
         <div className="flex gap-2">
           <button
             onClick={handleApply}

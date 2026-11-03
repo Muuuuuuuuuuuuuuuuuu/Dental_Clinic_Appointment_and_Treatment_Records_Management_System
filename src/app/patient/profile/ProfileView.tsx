@@ -32,6 +32,14 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
 
   const saveProfile = async () => {
     setSaveErr("");
+    if (form.phone.replace(/\D/g, "").length !== 10) {
+      setSaveErr("เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักเท่านั้น");
+      return;
+    }
+    if (form.emergencyPhone && form.emergencyPhone.replace(/\D/g, "").length !== 10) {
+      setSaveErr("เบอร์ผู้ติดต่อฉุกเฉินต้องเป็นตัวเลข 10 หลักเท่านั้น");
+      return;
+    }
     setSaveLoading(true);
     try {
       const { supabase, updatePatientProfile } = await import("../../shared/supabaseApi");
@@ -74,7 +82,7 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
   const savePw = async () => {
     setPwErr("");
     if (!pw.old) { setPwErr("กรุณากรอกรหัสผ่านเดิม"); return; }
-    if (pw.newPw.length < 8) { setPwErr("รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร"); return; }
+    if (pw.newPw.length < 6) { setPwErr("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร"); return; }
     if (pw.newPw !== pw.confirm) { setPwErr("รหัสผ่านใหม่ไม่ตรงกัน"); return; }
 
     setPwLoading(true);
@@ -103,7 +111,7 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ข้อมูลส่วนตัว</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ข้อมูลส่วนตัว</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>จัดการและตรวจสอบข้อมูลส่วนตัวของคุณ</p>
         </div>
         {saved && (
@@ -114,7 +122,7 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Avatar card */}
+        {/* การ์ดแสดงรูปและชื่อผู้ใช้ */}
         <div className="rounded-2xl bg-white p-6 text-center" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
           <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white mx-auto mb-3"
             style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
@@ -134,9 +142,9 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
           </div>
         </div>
 
-        {/* Detail cards */}
+        {/* การ์ดข้อมูลส่วนตัว */}
         <div className="lg:col-span-2 space-y-4">
-          {/* View-only */}
+          {/* ข้อมูลที่แสดงผลอย่างเดียว (แก้ไขไม่ได้) */}
           <div className="rounded-2xl bg-white p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm" style={{ color: "#1A365D" }}>ข้อมูลระบุตัวตน (View Only)</h3>
@@ -150,7 +158,7 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
             <InfoRow label="ประวัติแพ้ยา" val={user.allergies} />
           </div>
 
-          {/* Editable */}
+          {/* ข้อมูลที่แก้ไขได้ */}
           <div className="rounded-2xl bg-white p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-sm" style={{ color: "#1A365D" }}>ข้อมูลที่แก้ไขได้</h3>
@@ -184,6 +192,10 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
                   {k === "address" ? (
                     <textarea value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
                       rows={2} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                  ) : k === "phone" || k === "emergencyPhone" ? (
+                    <input type="tel" maxLength={10} placeholder="กรอกตัวเลข 10 หลัก" value={(form as any)[k]}
+                      onChange={e => setForm(f => ({ ...f, [k]: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                      className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                   ) : (
                     <input value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
@@ -195,13 +207,13 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
             })}
           </div>
 
-          {/* Security */}
+          {/* การตั้งค่าความปลอดภัย */}
           <div className="rounded-2xl bg-white p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm" style={{ color: "#1A365D" }}>การจัดการความปลอดภัย (Security)</h3>
             </div>
             
-            {/* Email Edit */}
+            {/* ส่วนแก้ไขรหัสอีเมล */}
             <div className="py-3 border-b border-gray-100">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium" style={{ color: "#4A6080" }}>อีเมล (Email)</span>
@@ -235,7 +247,7 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
               )}
             </div>
 
-            {/* Password Edit */}
+            {/* ส่วนเปลี่ยนรหัสผ่าน */}
             <div className="py-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium" style={{ color: "#4A6080" }}>รหัสผ่าน (Password)</span>
@@ -244,13 +256,13 @@ export default function ProfileView({ user, setUser }: { user: PatientUser; setU
                 </button>
               </div>
               {!pwMode ? (
-                <p className="text-sm" style={{ color: "#1A365D" }}>????????</p>
+                <p className="text-sm" style={{ color: "#1A365D" }}>••••••••</p>
               ) : (
                 <div className="space-y-3 mt-3">
                   {pwErr && <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}><AlertCircle size={13} /> {pwErr}</div>}
                   {[
                     { k: "old",    label: "รหัสผ่านเดิม" },
-                    { k: "newPw",  label: "รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)" },
+                    { k: "newPw",  label: "รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)" },
                     { k: "confirm",label: "ยืนยันรหัสผ่านใหม่" },
                   ].map(f => (
                     <div key={f.k}>

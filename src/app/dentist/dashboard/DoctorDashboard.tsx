@@ -56,13 +56,13 @@ export default function DoctorDashboard({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
-          สวัสดี {doctor ? `คุณหมอ${doctor.name}` : ''} 👩‍⚕️
+        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
+          สวัสดี {doctor ? `คุณหมอ${doctor.name}` : ''}
         </h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>{formattedDate} • {todayText}</p>
       </div>
 
-      {/* KPI */}
+      {/* การ์ดสรุปข้อมูลสำคัญวันนี้ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: "คนไข้วันนี้", val: myAppts.length, icon: Users, bg: "#E8F4FF", ic: "#1D6FA4" },
@@ -74,18 +74,18 @@ export default function DoctorDashboard({
             <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: s.bg }}>
               <s.icon size={18} style={{ color: s.ic }} />
             </div>
-            <div className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>{s.val}</div>
+            <div className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>{s.val}</div>
             <div className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{s.label}</div>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Today's queue */}
+        {/* คิวคนไข้วันนี้ */}
         <div className="lg:col-span-2 rounded-2xl bg-white p-6" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold" style={{ color: "#1A365D" }}>คิวของฉันวันนี้</h2>
-            <button onClick={() => setView("queue")} className="text-xs hover:opacity-70" style={{ color: "#FF8C9A" }}>ดูทั้งหมด →</button>
+            <button onClick={() => setView("queue")} className="text-xs hover:opacity-70" style={{ color: "#FF8C9A" }}>ดูทั้งหมด</button>
           </div>
           <div className="space-y-3">
             {myAppts.slice(0, 5).map(a => {
@@ -114,11 +114,11 @@ export default function DoctorDashboard({
           </div>
         </div>
 
-        {/* Today's shift + alerts */}
+        {/* ตารางเวรวันนี้และการแจ้งเตือน */}
         <div className="space-y-4">
           <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#1A365D,#2A507A)", boxShadow: "0 4px 20px rgba(26,54,93,0.2)" }}>
             <p className="text-xs font-medium mb-1" style={{ color: "rgba(255,255,255,0.6)" }}>เวลาออกตรวจวันนี้</p>
-            <p className="text-3xl font-bold text-white" style={{ fontFamily: "Playfair Display, serif" }}>09:00</p>
+            <p className="text-3xl font-bold text-white" style={{ fontFamily: "Sarabun, sans-serif" }}>09:00</p>
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>ถึง 17:00 น.</p>
           </div>
         </div>

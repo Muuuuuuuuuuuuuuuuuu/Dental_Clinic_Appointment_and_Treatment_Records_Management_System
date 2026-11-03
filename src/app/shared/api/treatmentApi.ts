@@ -2,7 +2,7 @@ import { supabase } from '../utils/supabaseClient';
 import { notifyAppointmentsUpdated } from './appointmentApi';
 
 /**
- * 🏥 Treatment API Module
+ * โมดูลจัดการข้อมูลการรักษา
  * จัดการประวัติการรักษา แผนการรักษา และการชำระเงิน
  */
 export async function getPatientTreatmentRecords(patientId?: number) {
@@ -78,13 +78,21 @@ export async function getPatientTreatmentRecords(patientId?: number) {
     }
     
     if (d.treatment_detail) {
-      detailedServices = d.treatment_detail.map((td: any) => ({
-        serviceId: td.service_id,
-        name: td.service?.service_name || 'ไม่ระบุ',
-        locationCode: td.location_code,
-        qty: td.quantity,
-        price: td.actual_price
-      }));
+      const seenDetailKeys = new Set<string>();
+      detailedServices = d.treatment_detail
+        .filter((td: any) => {
+          const key = `${td.service_id}-${td.location_code || ''}`;
+          if (seenDetailKeys.has(key)) return false;
+          seenDetailKeys.add(key);
+          return true;
+        })
+        .map((td: any) => ({
+          serviceId: td.service_id,
+          name: td.service?.service_name || 'ไม่ระบุ',
+          locationCode: td.location_code,
+          qty: td.quantity,
+          price: td.actual_price
+        }));
     }
 
     if (d.treatment_product) {
@@ -96,9 +104,15 @@ export async function getPatientTreatmentRecords(patientId?: number) {
       }));
     }
 
+    const actualServiceText = detailedServices.length > 0
+      ? detailedServices.map((s: any) => `${s.name}${s.locationCode && s.locationCode !== 'MOUTH' ? ` (ซี่ ${s.locationCode})` : ''}`).join(', ')
+      : treatmentServices.length > 0
+      ? treatmentServices.join(', ')
+      : srvName;
+
     return {
       id: d.treatment_id,
-      service: srvName,
+      service: actualServiceText,
       treatmentServices,
       detailedServices,
       extraProducts,
@@ -189,11 +203,11 @@ export async function saveTreatment(
   medicines?: any[],
   updateStatusToWaitPayment: boolean = true
 ) {
-  // 1. Fetch treatment_record
+  // 1. ดึงข้อมูลระเบียนการรักษา
   const { data: trData } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', apptId).maybeSingle();
   let treatmentId = trData?.treatment_id;
 
-  // Update or insert treatment record
+  // อัปเดตหรือเพิ่มข้อมูลระเบียนการรักษาใหม่
   if (treatmentId) {
     const updatePayload: any = {
       doctor_note: notes,
@@ -236,11 +250,19 @@ export async function saveTreatment(
     if (newTr) treatmentId = newTr.treatment_id;
   }
 
-  // 2. Update or Insert treatment_detail
+  // 2. อัปเดตหรือเพิ่มรายละเอียดหัตถการที่ทำ
   if (treatmentId && detailedServices && detailedServices.length > 0) {
     await supabase.from('treatment_detail').delete().eq('treatment_id', treatmentId);
     
-    const tdInserts = detailedServices.map(s => ({
+    const seenKeys = new Set<string>();
+    const uniqueServices = detailedServices.filter(s => {
+      const key = `${s.id || s.serviceId}-${s.locationCode || ''}`;
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    });
+
+    const tdInserts = uniqueServices.map(s => ({
       treatment_id: treatmentId,
       service_id: s.id || s.serviceId,
       location_code: s.locationCode || null,
@@ -252,7 +274,7 @@ export async function saveTreatment(
     if (tdErr) console.error("Error inserting treatment_detail:", tdErr);
   }
 
-  // 3. Update or Insert treatment_product (medicines)
+  // 3. อัปเดตหรือเพิ่มรายการยาและเวชภัณฑ์ที่สั่งจ่าย
   if (treatmentId && medicines && medicines.length > 0) {
     await supabase.from('treatment_product').delete().eq('treatment_id', treatmentId);
     
@@ -267,7 +289,7 @@ export async function saveTreatment(
     if (tpErr) console.error("Error inserting treatment_product:", tpErr);
   }
 
-  // 4. Update appointment status (only if requested)
+  // 4. อัปเดตสถานะนัดหมาย (เฉพาะกรณีส่งจบการรักษา)
   if (updateStatusToWaitPayment) {
     const { data: updatedAppt, error: apptErr } = await supabase
       .from('appointment')
@@ -290,7 +312,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
   const { error: apptError } = await supabase.from('appointment').update({ appointment_status: 'เสร็จสิ้น' }).eq('appointment_id', apptId);
   if (apptError) throw apptError;
 
-  // 2. Fetch treatment_record and patient_id
+  // 2. ดึงข้อมูลระเบียนการรักษาและรหัสคนไข้
   const { data: apptData } = await supabase.from('appointment').select('patient_id, treatment_record(treatment_id)').eq('appointment_id', apptId).maybeSingle();
   const trData = apptData?.treatment_record;
   let treatmentId = Array.isArray(trData) ? trData[0]?.treatment_id : (trData as any)?.treatment_id;
@@ -300,7 +322,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
     const { data: { user } } = await supabase.auth.getUser();
     let staffId = null;
     if (user) {
-      // Find staff profile by joining with users or directly querying staff
+      // ค้นหาข้อมูลพนักงานผู้รับชำระเงิน
       const { data: staffData } = await supabase.from('staff').select('staff_id').eq('user_id', user.id).maybeSingle();
       if (staffData) {
         staffId = staffData.staff_id;
@@ -327,7 +349,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
       });
     }
     
-    // Update treatment_detail for services and treatment_product for prescribed products
+    // อัปเดตรายการหัตถการและรายการเวชภัณฑ์
     if (adjustedServices && adjustedServices.length > 0) {
       for (const s of adjustedServices) {
         if (String(s.serviceId).startsWith('prod-')) {
@@ -346,9 +368,9 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
       }
     }
 
-    // Insert extraProducts safely (only new ones)
+    // เพิ่มรายการเวชภัณฑ์เพิ่มเติม (เฉพาะรายการใหม่)
     if (extraProducts && extraProducts.length > 0) {
-      // First, get existing products to avoid inserting duplicates if somehow passed
+      // ดึงรายการเวชภัณฑ์ที่มีอยู่ก่อนเพื่อป้องกันการบันทึกซ้ำ
       const { data: existingProds } = await supabase.from('treatment_product')
         .select('product_id')
         .eq('treatment_id', treatmentId);
@@ -393,7 +415,7 @@ export async function getPatientHistory(patientId: number) {
       service: td.service?.service_name || 'ไม่ระบุ',
       doctor: doctorName,
       date: d.treatment_date,
-      time: '00:00', // Time might not be in treatment_record
+      time: '00:00', // เวลาอาจไม่ได้เก็บอยู่ในตารางระเบียนการรักษาโดยตรง
       cost: td.actual_price ? String(td.actual_price) : '0',
       teeth: td.tooth_number || '',
       notes: d.doctor_note || '',
@@ -425,7 +447,7 @@ export async function getTreatmentRecords(patientName?: string) {
 
   return data.map((d: any) => {
     const dr = d.dentist?.users?.profile;
-    const detail = d.treatment_detail?.[0]; // Assume 1 detail per treatment for simplicity
+    const detail = d.treatment_detail?.[0]; // ใช้รายการหัตถการหลักของระเบียนการรักษานั้น
     const srvName = detail?.service?.service_name || detail?.diagnosis || 'ไม่ระบุบริการ';
     const costAmt = d.payment?.[0]?.total_amount || detail?.actual_price || 0;
 
@@ -445,7 +467,7 @@ export async function getTreatmentRecords(patientName?: string) {
 
 
 
-// --- Patient Registration ---
+// --- การลงทะเบียนคนไข้ใหม่ ---
 export async function getProducts(type?: string) {
   let query = supabase.from('product').select('*').eq('is_active', true).order('product_name', { ascending: true });
   if (type) query = query.eq('product_type', type);

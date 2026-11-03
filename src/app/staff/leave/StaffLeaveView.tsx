@@ -8,7 +8,7 @@ interface StaffLeaveViewProps {
 }
 
 export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
-  // Use staff id for leaves
+  // ใช้รหัสพนักงานสำหรับการลางาน
   const staffUserId = (staff as any)?.userId || staff?.id?.toString(); 
   
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -40,7 +40,7 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
       ]);
       setShifts(sData.filter(s => s.person_id === staff?.id && s.person_type === 'staff'));
       setClosures(cData);
-      setLeaves(lData.filter(l => l.doctorId === staffUserId)); // Reuse doctorId field for staff in this context
+      setLeaves(lData.filter(l => l.doctorId === staffUserId)); // ใช้ฟิลด์รหัสผู้ขอลาสำหรับพนักงาน
       setWeeklyOffDays(offDays);
     } catch (err) {
       console.error(err);
@@ -86,10 +86,10 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
     }
   };
 
-  // --- Regular Schedule View Logic ---
+  // --- ส่วนจัดการมุมมองตารางเวรปกติ ---
   const renderRegularSchedule = () => {
     const days = ["จันทร์", "อังคาร", "พุธ", "พฤหัส", "ศุกร์", "เสาร์", "อาทิตย์"];
-    const dayMap = [1, 2, 3, 4, 5, 6, 0]; // Monday = 1, Sunday = 0
+    const dayMap = [1, 2, 3, 4, 5, 6, 0]; // วันจันทร์ = 1, วันอาทิตย์ = 0
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 h-full overflow-hidden transition-all flex flex-col">
@@ -145,7 +145,7 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
     );
   };
 
-  // --- Calendar View Logic ---
+  // --- ส่วนจัดการมุมมองปฏิทิน ---
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
   const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
@@ -157,7 +157,7 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayOfWeek = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).getDay();
     
-    // Check Status
+    // ตรวจสอบสถานะของแต่ละวัน
     const closure = closures.find(c => c.date === dateStr);
     const leave = leaves.find(l => l.startDate === dateStr);
     const baseShift = shifts.find(s => s.day_of_week === dayOfWeek);
@@ -213,7 +213,7 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
     const isPast = dateStr < todayStr;
     const isToday = dateStr === todayStr;
 
-    // Is it clickable?
+    // ตรวจสอบว่าสามารถคลิกเลือกวันลาได้หรือไม่
     const isClickable = !isPast && !closure && !isClinicOff && !leave && baseShift && !baseShift.is_off;
 
     return (
@@ -243,7 +243,7 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
           </div>
         )}
 
-        {/* Tooltip on Hover */}
+        {/* กล่องข้อความรายละเอียดเมื่อนำเมาส์ไปชี้ */}
         {tooltip && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
             {tooltip}
@@ -292,9 +292,9 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
   }
 
   return (
-    <div style={{ fontFamily: "Prompt, sans-serif" }}>
+    <div style={{ fontFamily: "Sarabun, sans-serif" }}>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ปฏิทินและการลางาน</h1>
+        <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ปฏิทินและการลางาน</h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>ตรวจสอบตารางทำงานและส่งคำขอลางานได้ที่นี่</p>
       </div>
 
@@ -308,7 +308,7 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-        {/* Calendar Header */}
+        {/* ส่วนหัวของปฏิทิน */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <div className="flex items-center gap-2">
             <select
@@ -326,7 +326,7 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
               style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%231A365D%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '10px' }}
             >
               {[...Array(5)].map((_, i) => {
-                const year = new Date().getFullYear() + i - 1; // From last year to 3 years ahead
+                const year = new Date().getFullYear() + i - 1; // แสดงตัวเลือกปีตั้งแต่ปีที่แล้วไปจนถึงอีก 3 ปีข้างหน้า
                 return <option key={year} value={year}>{year + 543}</option>;
               })}
             </select>
@@ -338,14 +338,14 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
           </div>
         </div>
 
-        {/* Legend */}
+        {/* คำอธิบายสัญลักษณ์สี */}
         <div className="flex flex-wrap gap-4 mb-4 text-xs">
           <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-red-500" /> ลาเต็มวัน</div>
           <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-yellow-400" /> รออนุมัติ</div>
           <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-orange-500" /> คลินิกปิด</div>
         </div>
 
-        {/* Calendar Grid */}
+        {/* ตารางปฏิทิน */}
         <div className="grid grid-cols-7 gap-px bg-gray-100 border border-gray-100 rounded-xl overflow-hidden">
           {["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"].map(day => (
             <div key={day} className="bg-gray-50 py-3 text-center text-xs font-semibold text-gray-500">
@@ -353,22 +353,22 @@ export default function StaffLeaveView({ staff }: StaffLeaveViewProps) {
             </div>
           ))}
           
-          {/* Empty cells before start of month */}
+          {/* ช่องว่างก่อนวันแรกของเดือน */}
           {Array.from({ length: firstDayOfMonth }).map((_, i) => (
             <div key={`empty-${i}`} className="bg-gray-50 min-h-[60px]" />
           ))}
           
-          {/* Days */}
+          {/* วันที่ในเดือน */}
           {Array.from({ length: daysInMonth }).map((_, i) => renderCalendarCell(i + 1))}
           
-          {/* Empty cells after end of month */}
+          {/* ช่องว่างหลังวันสุดท้ายของเดือน */}
           {Array.from({ length: (7 - ((firstDayOfMonth + daysInMonth) % 7)) % 7 }).map((_, i) => (
             <div key={`empty-end-${i}`} className="bg-gray-50 min-h-[60px]" />
           ))}
         </div>
       </div>
 
-      {/* Leave Request Modal */}
+      {/* หน้าต่างส่งคำขอลางาน */}
       {leaveModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">

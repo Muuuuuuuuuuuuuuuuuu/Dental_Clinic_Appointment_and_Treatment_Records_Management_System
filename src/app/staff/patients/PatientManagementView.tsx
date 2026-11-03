@@ -12,12 +12,12 @@ export default function PatientManagementView() {
     <div>
       <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการคนไข้</h1>
+          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จัดการคนไข้</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>ค้นหาประวัติ หรือ ลงทะเบียนคนไข้ใหม่</p>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* แถบเลือกหมวดหมู่ */}
       <div className="flex overflow-x-auto gap-2 mb-6 pb-2" style={{ scrollbarWidth: "none" }}>
         <button
           onClick={() => setActiveTab("search")}
@@ -41,7 +41,7 @@ export default function PatientManagementView() {
         </button>
       </div>
 
-      {/* Content based on Tab */}
+      {/* แสดงเนื้อหาตามแท็บที่เลือก */}
       <div className="mt-4">
         {activeTab === "search" ? (
           <div className="bg-white/50 p-1 rounded-2xl border border-transparent">

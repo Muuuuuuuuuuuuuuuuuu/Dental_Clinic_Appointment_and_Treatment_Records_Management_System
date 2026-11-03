@@ -55,6 +55,7 @@ export default function TreatmentQueue({
   }, []);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [recording, setRecording] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<{
     notes: string;
     recommendations: string;
@@ -67,7 +68,7 @@ export default function TreatmentQueue({
   const [isChild, setIsChild] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "all">("today");
   const [selectedToothForAction, setSelectedToothForAction] = useState<number | string | null>(null);
-  const [showMedModal, setShowMedModal] = useState<number | null>(null); // appointment id
+  const [showMedModal, setShowMedModal] = useState<number | null>(null); // รหัสนัดหมาย
   const [patientHistoryRecords, setPatientHistoryRecords] = useState<any[]>([]);
   const [medList, setMedList] = useState<{ name: string; dose: string; freq: string; days: string }[]>([]);
 
@@ -103,7 +104,7 @@ export default function TreatmentQueue({
         const { start, end } = getMonthRange();
         return a.date >= start && a.date <= end;
       }
-      return true; // all
+      return true; // ทั้งหมด
     })
     .sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
@@ -265,9 +266,11 @@ export default function TreatmentQueue({
   };
 
   const saveDraftTreatment = async (appt: Appointment) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
-      const formattedMedicines = form.medicines.map(m => `💊 ${m.name} x${m.qty} ${m.unit || ''}`);
+      const formattedMedicines = form.medicines.map(m => `${m.name} x${m.qty} ${m.unit || ''}`);
       formattedServices.push(...formattedMedicines);
 
       const detailedServices = [...form.services];
@@ -295,39 +298,46 @@ export default function TreatmentQueue({
         odontogramData: fullOdontogram as any
       } : a));
 
-      alert("✅ บันทึกร่างข้อมูลการรักษาและผังฟันลงฐานข้อมูลเรียบร้อยแล้ว");
+      alert("บันทึกร่างข้อมูลการรักษาและผังฟันลงฐานข้อมูลเรียบร้อยแล้ว");
     } catch (err: any) {
       console.error("Save draft error:", err);
       alert("เกิดข้อผิดพลาดในการบันทึกร่าง: " + (err?.message || "ไม่สามารถบันทึกได้"));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const submitTreatment = async (appt: Appointment) => {
+    if (isSubmitting) return;
     if (!form.notes.trim()) {
       alert("กรุณาบันทึกหัตถการ / สิ่งที่ทำ ก่อนส่งข้อมูล");
       return;
     }
 
-    const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
-    const formattedMedicines = form.medicines.map(m => `💊 ${m.name} x${m.qty} ${m.unit || ''}`);
-    formattedServices.push(...formattedMedicines);
+    setIsSubmitting(true);
+    try {
+      const formattedServices = form.services.map(s => `${s.name}${s.locationCode ? ` (ซี่ ${s.locationCode})` : ''}${s.qty > 1 ? ` x${s.qty}` : ''}`);
+      const formattedMedicines = form.medicines.map(m => `${m.name} x${m.qty} ${m.unit || ''}`);
+      formattedServices.push(...formattedMedicines);
 
-    const detailedServices = [...form.services];
+      const detailedServices = [...form.services];
 
-    await onUpdateAppt(appt.id, {
-      status: "รอชำระเงิน",
-      treatmentNotes: form.notes,
-      treatmentServices: formattedServices,
-      recommendations: form.recommendations,
-      cost: Number(form.actualCost) || 0,
-      odontogramData: { ...toothData, extraTeeth, wholeMouth: false } as any
-    }, detailedServices, form.medicines);
+      await onUpdateAppt(appt.id, {
+        status: "รอชำระเงิน",
+        treatmentNotes: form.notes,
+        treatmentServices: formattedServices,
+        recommendations: form.recommendations,
+        cost: Number(form.actualCost) || 0,
+        odontogramData: { ...toothData, extraTeeth, wholeMouth: false } as any
+      }, detailedServices, form.medicines);
 
-    alert("✅ บันทึกการรักษาและส่งข้อมูลไปรอชำระเงินเรียบร้อยแล้ว");
-    setRecording(null);
-    setForm({ notes: "", recommendations: "", services: [], medicines: [], actualCost: "" });
-    setToothData({});
-    setExtraTeeth([]);
+      setRecording(null);
+      setForm({ notes: "", recommendations: "", services: [], medicines: [], actualCost: "" });
+      setToothData({});
+      setExtraTeeth([]);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleToothClick = (tooth: number | string, status?: ToothStatus) => {
@@ -342,7 +352,7 @@ export default function TreatmentQueue({
           updated[tooth] = next;
         }
 
-        // If a history line already exists in notes and someone cancelled a deleted tooth outside modal:
+        // กรณีมีข้อความประวัติถอนฟันในบันทึกแล้วมีการยกเลิกซี่ฟันที่ลบ:
         const remainingMissing = Object.entries(updated)
           .filter(([_, s]) => s === "cross")
           .map(([id]) => id)
@@ -372,7 +382,7 @@ export default function TreatmentQueue({
     setToothData(updatedToothData);
     setExtraTeeth(updatedExtraTeeth);
 
-    // Auto-save odontogram to database immediately for current appointment
+    // บันทึกข้อมูลผังฟันลงฐานข้อมูลอัตโนมัติสำหรับนัดหมายปัจจุบัน
     if (recording) {
       savePatientOdontogram(recording, updatedToothData, updatedExtraTeeth, doctor?.id);
     }
@@ -412,7 +422,7 @@ export default function TreatmentQueue({
     "กำลังรักษา": { label: "บันทึกการรักษา", next: "รอชำระเงิน", color: "#7C3AED" },
   };
 
-  // ─── Medicine Modal ───────────────────────────────────────────────────────────
+  // ─── หน้าต่างเลือกสั่งยา ──────────────────────────────────────────────────────
   const COMMON_MEDS = [
     { name: "ยาแก้ปวด (Ibuprofen 400mg)", dose: "400mg", freq: "ทุก 6 ชั่วโมงเมื่อปวด", days: "3" },
     { name: "ยาแก้ปวด (Paracetamol 500mg)", dose: "500mg", freq: "ทุก 4-6 ชั่วโมงเมื่อปวด", days: "3" },
@@ -442,7 +452,7 @@ export default function TreatmentQueue({
 
   return (
     <div>
-      {/* Medicine Modal */}
+      {/* หน้าต่างเลือกสั่งยา */}
       {showMedModal !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.45)" }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[85vh] overflow-y-auto">
@@ -492,7 +502,7 @@ export default function TreatmentQueue({
                 onClick={applyMedsToNotes}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
                 style={{ background: "linear-gradient(135deg,#9333EA,#7C3AED)" }}>
-                ✅ ใส่ลงในบันทึกการรักษา
+                ใส่ลงในบันทึกการรักษา
               </button>
               <button onClick={() => { setShowMedModal(null); setMedList([]); }}
                 className="px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-200" style={{ color: "#4A6080" }}>ยกเลิก</button>
@@ -522,12 +532,28 @@ export default function TreatmentQueue({
                   });
                   setSelectedToothForAction(null);
                 }
+              : extraTeeth.some(x => x.id === `${selectedToothForAction}S` || (selectedToothForAction === 11 && x.id === "mesiodens"))
+              ? () => {
+                  const targetIds = [`${selectedToothForAction}S`, ...(selectedToothForAction === 11 ? ["mesiodens"] : [])];
+                  setExtraTeeth(prev => prev.filter(x => !targetIds.includes(x.id)));
+                  setToothData(prev => {
+                    const next = { ...prev };
+                    targetIds.forEach(id => delete next[id]);
+                    return next;
+                  });
+                  setSelectedToothForAction(null);
+                }
               : undefined
           }
           onAddExtraTooth={(newTooth) => {
             setExtraTeeth(prev => [...prev.filter(x => x.id !== newTooth.id), newTooth]);
+            setForm(f => ({
+              ...f,
+              notes: f.notes ? `${f.notes}\n- ตรวจพบฟันเกิน/ฟันซ้อน: ${newTooth.label}` : `- ตรวจพบฟันเกิน/ฟันซ้อน: ${newTooth.label}`
+            }));
+            setSelectedToothForAction(null);
           }}
-          hasExtraTooth={extraTeeth.some(x => x.id === `${selectedToothForAction}S`)}
+          hasExtraTooth={extraTeeth.some(x => x.id === `${selectedToothForAction}S` || (selectedToothForAction === 11 && x.id === "mesiodens"))}
           initialNotes={
             form.notes
               ? form.notes
@@ -560,7 +586,7 @@ export default function TreatmentQueue({
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>คิวการรักษา</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>คิวการรักษา</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>
             {timeFilter === "today" ? `วันที่ ${formattedDate}` : timeFilter === "week" ? "สัปดาห์นี้" : timeFilter === "month" ? "เดือนนี้" : "คิวทั้งหมด"} • {filteredAppts.length} ราย
           </p>
@@ -594,8 +620,11 @@ export default function TreatmentQueue({
 
           return (
             <div key={a.id} className="rounded-2xl bg-white overflow-hidden transition-all" style={{ boxShadow: "0 2px 16px rgba(26,54,93,0.08)" }}>
-              {/* Main row */}
-              <div className="p-5 flex items-start gap-4">
+              {/* แถวข้อมูลหลักของคิว */}
+              <div
+                onClick={() => setExpanded(isExp ? null : a.id)}
+                className="p-5 flex items-start gap-4 cursor-pointer hover:bg-slate-50/70 transition-colors"
+              >
                 <div className="flex flex-col items-center justify-center flex-shrink-0">
                   <div className="text-[10px] font-medium text-gray-400 mb-1">
                     {a.date === todayString ? "วันนี้" : new Date(a.date).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
@@ -616,23 +645,21 @@ export default function TreatmentQueue({
                     )}
                   </div>
                   <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>{a.service}</p>
-                  {hasHealthAlert(undefined, a.conditions) && <p className="text-xs mt-1" style={{ color: "#E65100" }}>⚠ {a.conditions}</p>}
-                  {hasHealthAlert(a.allergies) && <p className="text-xs" style={{ color: "#E65100" }}>💊 แพ้: {a.allergies}</p>}
+                  {hasHealthAlert(undefined, a.conditions) && <p className="text-xs mt-1" style={{ color: "#E65100" }}>โรคประจำตัว: {a.conditions}</p>}
+                  {hasHealthAlert(a.allergies) && <p className="text-xs" style={{ color: "#E65100" }}>แพ้: {a.allergies}</p>}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>{a.status}</span>
-                  <button onClick={async () => {
-                    if (isExp) setExpanded(null);
-                    else {
-                      setExpanded(a.id);
-                    }
+                  <button onClick={(e) => {
+                    e.stopPropagation();
+                    setExpanded(isExp ? null : a.id);
                   }} style={{ color: "#4A6080" }}>
                     <ChevronRight size={16} className="transition-transform" style={{ transform: isExp ? "rotate(90deg)" : "none" }} />
                   </button>
                 </div>
               </div>
 
-              {/* Expanded: health info + actions */}
+              {/* ส่วนขยาย: ข้อมูลสุขภาพและปุ่มดำเนินการ */}
               {isExp && !isRec && (
                 <div className="px-5 pb-5 border-t" style={{ borderColor: "rgba(26,54,93,0.06)" }}>
                   <div className="grid grid-cols-2 gap-4 py-4">
@@ -661,25 +688,35 @@ export default function TreatmentQueue({
 
                     if (history.length === 0) return null;
                     return (
-                      <div className="mb-4 bg-slate-50/70 rounded-xl p-3 border border-slate-100">
-                        <p className="text-xs font-semibold mb-2" style={{ color: "#1A365D" }}>ประวัติการรักษาล่าสุด</p>
-                        <div className="space-y-2">
-                          {history.slice(0, 3).map(h => (
-                            <div key={h.id} className="text-xs p-2.5 bg-white rounded-lg border border-slate-100/50 flex justify-between items-start shadow-sm">
-                              <div>
-                                <p className="font-medium mb-0.5" style={{ color: "#1A365D" }}>{h.date} • โดย {h.doctorName}</p>
-                                <p style={{ color: "#4A6080" }}>บริการ: {h.service}</p>
-                                {h.treatmentNotes && (
-                                  <div className="mt-1.5 pt-1.5 border-t border-slate-50">
-                                    <p className="text-[11px] font-medium text-slate-500 mb-0.5">บันทึกจากแพทย์:</p>
-                                    <p className="text-[11px]" style={{ color: "#64748B", whiteSpace: "pre-line" }}>
-                                      {h.treatmentNotes}
-                                    </p>
+                      <div className="mb-4 bg-slate-50/70 rounded-xl p-3.5 border border-slate-100">
+                        <p className="text-xs font-semibold mb-2.5" style={{ color: "#1A365D" }}>ประวัติการรักษาล่าสุด</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                          {history.slice(0, 3).map(h => {
+                            const formattedHistDate = h.date
+                              ? new Date(h.date).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })
+                              : "-";
+                            return (
+                              <div key={h.id} className="text-xs p-3 bg-white rounded-xl border border-slate-200/70 flex flex-col justify-between shadow-2xs">
+                                <div>
+                                  <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-slate-100">
+                                    <span className="font-semibold" style={{ color: "#1A365D" }}>{formattedHistDate}</span>
+                                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 font-medium" style={{ color: "#4A6080" }}>
+                                      {h.doctorName || "-"}
+                                    </span>
                                   </div>
-                                )}
+                                  <p className="font-medium mb-1" style={{ color: "#1A365D" }}>บริการ: <span style={{ color: "#4A6080", fontWeight: 400 }}>{h.service}</span></p>
+                                  {h.treatmentNotes && (
+                                    <div className="mt-1.5 pt-1.5 border-t border-slate-50">
+                                      <p className="text-[11px] font-medium text-slate-500 mb-0.5">บันทึกจากแพทย์:</p>
+                                      <p className="text-[11px] leading-relaxed" style={{ color: "#64748B", whiteSpace: "pre-line" }}>
+                                        {h.treatmentNotes}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -702,7 +739,7 @@ export default function TreatmentQueue({
                 </div>
               )}
 
-              {/* Treatment recording form */}
+              {/* แบบฟอร์มบันทึกการรักษา */}
               {isRec && (
                 <div className="px-5 pb-3 border-t" style={{ borderColor: "rgba(26,54,93,0.06)" }}>
                   <div className="flex items-center justify-between py-2">
@@ -740,11 +777,10 @@ export default function TreatmentQueue({
                     <div className="space-y-3">
                       <details className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
                         <summary className="text-[12px] font-bold p-3 cursor-pointer hover:bg-slate-100 flex items-center justify-between text-slate-700">
-                          <span>➕ หัตถการอื่นๆ (ไม่ได้ระบุตำแหน่งซี่ฟัน)</span>
+                          <span>หัตถการทั่วไป (ทั้งปาก / ไม่ระบุซี่)</span>
                           <ChevronRight size={16} className="text-slate-400 group-open:rotate-90 transition-transform" />
                         </summary>
-                        <div className="p-3 pt-0 border-t border-slate-100">
-                          <p className="text-[10px] mb-2 text-slate-500">ตัวเลือกด้านล่างนี้ใช้สำหรับหัตถการที่ไม่ได้ผูกกับซี่ฟันใดซี่ฟันหนึ่งโดยเฉพาะ เช่น ขูดหินปูน จัดฟัน ฟอกสีฟัน ฯลฯ</p>
+                        <div className="p-3 pt-2 border-t border-slate-100">
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
                             {services.filter(s => s.active && s.applyTo !== 'TOOTH').map(s => {
                               const existing = form.services.find(x => x.id === s.id);
@@ -776,7 +812,7 @@ export default function TreatmentQueue({
 
                       <details className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
                         <summary className="text-[12px] font-bold p-3 cursor-pointer hover:bg-slate-100 flex items-center justify-between text-slate-700">
-                          <span>💊 สั่งจ่ายยา</span>
+                          <span>สั่งจ่ายยา</span>
                           <ChevronRight size={16} className="text-slate-400 group-open:rotate-90 transition-transform" />
                         </summary>
                         <div className="p-3 pt-0 border-t border-slate-100">
@@ -820,19 +856,19 @@ export default function TreatmentQueue({
                             })}
                           </div>
                           {products.length === 0 && (
-                            <div className="text-center py-2 text-xs text-gray-500">ไม่มีรายการยาในระบบ (แจ้งแอดมินเพิ่มได้ที่จัดการคลินิก)</div>
+                            <div className="text-center py-2 text-xs text-gray-500">ไม่พบรายการเวชภัณฑ์ในระบบ</div>
                           )}
                         </div>
 
-                        {/* Selected Medicines Instructions */}
+                        {/* ช่องระบุวิธีใช้ยาสำหรับรายการยาที่เลือก */}
                         {form.medicines.length > 0 && (
                           <div className="mt-3 p-3 bg-blue-50/50 rounded-xl border border-blue-100/50 space-y-2">
                             <label className="text-[10px] font-bold text-blue-800 uppercase tracking-wide flex items-center gap-1.5">
-                              <span>📝 วิธีใช้ยา / คำสั่งแพทย์ (Dosage Instructions)</span>
+                              <span>วิธีใช้ยา</span>
                             </label>
                             {form.medicines.map(m => (
                               <div key={m.id} className="flex flex-col gap-1 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
-                                <span className="text-xs font-semibold text-slate-700">💊 {m.name}</span>
+                                <span className="text-xs font-semibold text-slate-700">{m.name}</span>
                                 <input
                                   type="text"
                                   value={m.instruction}
@@ -869,7 +905,7 @@ export default function TreatmentQueue({
                           style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                       </div>
 
-                      {/* Bill Preview */}
+                      {/* สรุปยอดค่าใช้จ่ายเบื้องต้น */}
                       {(() => {
                         const servicesCost = form.services.reduce((sum, s) => sum + ((s.price ?? 0) * s.qty), 0);
                         const medicinesCost = form.medicines.reduce((sum, m) => sum + ((m.price ?? 0) * m.qty), 0);
@@ -879,7 +915,7 @@ export default function TreatmentQueue({
                           return (
                             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm">
                               <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">บิลที่จะส่งให้พนักงานเก็บเงิน</span>
+                                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">สรุปค่าใช้จ่ายเบื้องต้น</span>
                                 <div className="flex items-center gap-2 text-xs text-emerald-700 mt-1">
                                   {servicesCost > 0 && <span>ค่าหัตถการ ({servicesCost.toLocaleString()} บ.)</span>}
                                   {medicinesCost > 0 && <span>ค่ายา ({medicinesCost.toLocaleString()} บ.)</span>}
@@ -897,17 +933,20 @@ export default function TreatmentQueue({
                       <div className="flex justify-end gap-2 pt-1 flex-wrap">
                         <button 
                           type="button"
+                          disabled={isSubmitting}
                           onClick={() => saveDraftTreatment(a)}
-                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all border border-slate-300 shadow-2xs"
+                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all border border-slate-300 shadow-2xs disabled:opacity-50"
                           title="บันทึกข้อมูลการรักษาและผังฟันลงฐานข้อมูลทันที (เก็บเป็นร่าง ยังไม่ส่งไปแคชเชียร์)"
                         >
                           <FileText size={14} className="text-slate-500" /> 
                           <span>บันทึกร่าง</span>
                         </button>
-                        <button onClick={() => submitTreatment(a)}
-                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 shadow-sm hover:shadow"
+                        <button
+                          disabled={isSubmitting}
+                          onClick={() => submitTreatment(a)}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 shadow-sm hover:shadow disabled:opacity-50"
                           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-                          <Send size={14} /> ส่งข้อมูลให้พนักงาน (รอชำระเงิน)
+                          <Send size={14} /> {isSubmitting ? "กำลังส่งข้อมูล..." : "ส่งข้อมูลให้พนักงาน (รอชำระเงิน)"}
                         </button>
                         <button onClick={() => setRecording(null)}
                           className="px-5 py-2.5 rounded-xl text-sm font-medium"

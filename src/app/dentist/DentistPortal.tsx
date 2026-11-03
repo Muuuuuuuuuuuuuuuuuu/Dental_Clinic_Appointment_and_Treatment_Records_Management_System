@@ -56,7 +56,7 @@ const DOC_NAV = [
 ];
 
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// ─── แถบเมนูด้านข้าง ──────────────────────────────────────────────────────────
 
 function DoctorSidebar({ view, setView, onLogout, doctor }: { view: DocView; setView: (v: DocView) => void; onLogout: () => void; doctor: DentistInfo | null }) {
   return (
@@ -66,7 +66,7 @@ function DoctorSidebar({ view, setView, onLogout, doctor }: { view: DocView; set
           <Smile size={16} color="white" />
         </div>
         <div>
-          <div className="font-bold text-sm text-white" style={{ fontFamily: "Playfair Display, serif" }}>คลินิกสุภัทร</div>
+          <div className="font-bold text-sm text-white" style={{ fontFamily: "Sarabun, sans-serif" }}>คลินิกสุภัทร</div>
           <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em" }}>DENTAL CLINIC</div>
         </div>
       </div>
@@ -108,7 +108,7 @@ function DoctorSidebar({ view, setView, onLogout, doctor }: { view: DocView; set
   );
 }
 
-// ─── Doctor Portal Root ───────────────────────────────────────────────────────
+// ─── หน้าหลักระบบทันตแพทย์ ────────────────────────────────────────────────────
 
 export default function DoctorPortal({
   onLogout,
@@ -143,7 +143,7 @@ export default function DoctorPortal({
   }, [loginEmail]);
 
   return (
-    <div className="min-h-screen flex" style={{ fontFamily: "Prompt, sans-serif", backgroundColor: "#F0F4F8" }}>
+    <div className="min-h-screen flex" style={{ fontFamily: "Sarabun, sans-serif", backgroundColor: "#F0F4F8" }}>
       {sideOpen && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setSideOpen(false)} />}
 
       <aside className="fixed top-0 left-0 h-full z-40 transition-transform duration-300 lg:translate-x-0 hidden lg:block" style={{ width: 250 }}>
@@ -158,7 +158,7 @@ export default function DoctorPortal({
       <div className="flex-1 flex flex-col lg:ml-[250px]">
         <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b bg-white" style={{ borderColor: "rgba(26,54,93,0.1)" }}>
           <button onClick={() => setSideOpen(true)} style={{ color: "#1A365D" }}><Menu size={20} /></button>
-          <span className="font-bold text-sm" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>คลินิกสุภัทร • ทันตแพทย์</span>
+          <span className="font-bold text-sm" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>คลินิกสุภัทร • ทันตแพทย์</span>
           {doctor && (
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
               {doctor.name[4] || "ท"}

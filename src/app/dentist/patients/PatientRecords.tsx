@@ -22,7 +22,7 @@ export default function PatientRecords({ doctorId }: { doctorId?: number }) {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>เวชระเบียนคนไข้</h1>
+        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>เวชระเบียนคนไข้</h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>ค้นหาข้อมูลและประวัติสุขภาพคนไข้</p>
       </div>
       <div className="max-w-md mb-6">

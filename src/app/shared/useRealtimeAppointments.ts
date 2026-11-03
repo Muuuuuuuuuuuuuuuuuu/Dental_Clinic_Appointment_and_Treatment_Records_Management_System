@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase, getAppointments } from './supabaseApi';
 import { Appointment } from './data';
 
-// Singleton manager to prevent "cannot add callbacks after subscribe()" error
+// ตัวจัดการช่องสัญญาณเรียลไทม์ส่วนกลางเพื่อป้องกันการเชื่อมต่อซ้ำซ้อน
 let sharedChannel: any = null;
 const listeners = new Set<() => void>();
 
@@ -22,14 +22,14 @@ export function useRealtimeAppointments(initialAppointments: Appointment[] = [])
   }, []);
 
   useEffect(() => {
-    // Initial fetch
+    // ดึงข้อมูลครั้งแรกเมื่อเริ่มทำงาน
     fetchAppointments();
 
-    // Register this component's listener
+    // ลงทะเบียนรับการแจ้งเตือนเมื่อข้อมูลอัปเดต
     const listener = () => fetchAppointments();
     listeners.add(listener);
 
-    // Initialize the shared channel if it doesn't exist
+    // สร้างช่องสัญญาณเรียลไทม์หากยังไม่มี
     if (!sharedChannel) {
       sharedChannel = supabase
         .channel('icemu-updates')
@@ -53,9 +53,9 @@ export function useRealtimeAppointments(initialAppointments: Appointment[] = [])
     }
 
     return () => {
-      // Remove this component's listener
+      // ยกเลิกการรับแจ้งเตือนเมื่อปิดหน้านี้
       listeners.delete(listener);
-      // If no more components are listening, cleanup the channel
+      // ปิดช่องสัญญาณเมื่อไม่มีหน้าใดใช้งานอยู่
       if (listeners.size === 0 && sharedChannel) {
         supabase.removeChannel(sharedChannel);
         sharedChannel = null;

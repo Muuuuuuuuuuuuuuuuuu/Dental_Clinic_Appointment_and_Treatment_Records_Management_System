@@ -12,8 +12,8 @@ export default function LeaveApprovals() {
 
   const lsc: Record<string, { bg: string; text: string }> = {
     "รออนุมัติ": { bg: "#FFF3E0", text: "#E65100" },
-    "อนุมัติแล้ว":  { bg: "#E8FFF0", text: "#1B7A3E" },
-    "ไม่อนุมัติ":   { bg: "#FEF2F2", text: "#B91C1C" },
+    "อนุมัติแล้ว": { bg: "#E8FFF0", text: "#1B7A3E" },
+    "ไม่อนุมัติ": { bg: "#FEF2F2", text: "#B91C1C" },
   };
 
   useEffect(() => {
@@ -47,11 +47,10 @@ export default function LeaveApprovals() {
   const TabButton = ({ id, label, icon: Icon, count }: { id: Tab, label: string, icon: any, count?: number }) => (
     <button
       onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all ${
-        activeTab === id 
-          ? "border-b-2 border-[#1A365D] text-[#1A365D]" 
+      className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all ${activeTab === id
+          ? "border-b-2 border-[#1A365D] text-[#1A365D]"
           : "border-b-2 border-transparent text-[#4A6080] hover:text-[#1A365D] hover:bg-black/5"
-      }`}
+        }`}
     >
       <Icon size={16} />
       {label}
@@ -66,7 +65,7 @@ export default function LeaveApprovals() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>อนุมัติการลางาน</h1>
+        <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>อนุมัติการลางาน</h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>จัดการคำขอลางานของพนักงานและแพทย์ทั้งหมด</p>
       </div>
 
@@ -78,7 +77,7 @@ export default function LeaveApprovals() {
       {activeTab === "pending" && (
         <div className="space-y-4">
           {pendingLeaves.length === 0 ? (
-             <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">ไม่มีคำขอลางานที่รออนุมัติ</div>
+            <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">ไม่มีคำขอลางานที่รออนุมัติ</div>
           ) : pendingLeaves.map(l => (
             <div key={l.id} className="rounded-2xl bg-white p-5 border border-l-4 border-l-[#F59E0B]" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
               <div className="flex items-start justify-between gap-4">
@@ -122,11 +121,11 @@ export default function LeaveApprovals() {
       {activeTab === "history" && (
         <div className="space-y-4">
           {historyLeaves.length === 0 ? (
-             <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">ไม่มีประวัติการอนุมัติ</div>
+            <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">ไม่มีประวัติการอนุมัติ</div>
           ) : historyLeaves.map(l => {
-             const sc = lsc[l.status] ?? { bg: "#F0F4F8", text: "#4A6080" };
-             const isApproved = l.status === "อนุมัติแล้ว";
-             return (
+            const sc = lsc[l.status] ?? { bg: "#F0F4F8", text: "#4A6080" };
+            const isApproved = l.status === "อนุมัติแล้ว";
+            return (
               <div key={l.id} className={`rounded-2xl bg-white p-5 border border-l-4 ${isApproved ? 'border-l-[#22C55E]' : 'border-l-[#EF4444]'}`} style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4">

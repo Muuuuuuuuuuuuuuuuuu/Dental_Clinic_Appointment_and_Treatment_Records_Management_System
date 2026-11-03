@@ -30,7 +30,7 @@ export default function TreatmentHistory({ doctor }: { doctor: DentistInfo | nul
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div>
-          <h2 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Playfair Display, serif" }}>ประวัติการทำหัตถการ</h2>
+          <h2 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Sarabun, sans-serif" }}>ประวัติการทำหัตถการ</h2>
           <p className="text-sm text-slate-500 mt-1">ประวัติเคสและการรักษาทั้งหมดที่คุณได้รับผิดชอบ</p>
         </div>
       </div>

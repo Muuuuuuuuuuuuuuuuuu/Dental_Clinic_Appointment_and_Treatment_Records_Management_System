@@ -1,4 +1,4 @@
-// ─── Shared types & mock data across all portals ──────────────────────────────
+// ─── โครงสร้างข้อมูลและประเภทข้อมูลที่ใช้ร่วมกันทั้งระบบ ──────────────────────
 
 // Helper: ตรวจสอบว่าคนไข้มีประวัติสุขภาพที่ควรแจ้งเตือนหรือไม่
 // ใช้ฟังก์ชันนี้ในทุกหน้าแทนการเขียน !== "ไม่มี" เองทุกครั้ง
@@ -157,7 +157,7 @@ export interface StaffInfo {
 }
 
 export interface AdminInfo {
-  id: string; // auth user id
+  id: string; // รหัสผู้ใช้สำหรับยืนยันตัวตน
   name: string;
   firstName?: string;
   lastName?: string;
@@ -207,7 +207,7 @@ export interface ServiceInfo {
   category: string;
   newCategoryIcon?: string;
   newCategoryColor?: string;
-  estimatedTime?: number; // Duration in minutes
+  estimatedTime?: number; // ระยะเวลา (นาที)
   active: boolean;
   isPublic?: boolean;
   applyTo?: string;
@@ -257,7 +257,7 @@ export interface Announcement {
   title: string;
   content: string;
   link?: string;
-  mediaUrl?: string; // e.g. Image or video URL
+  mediaUrl?: string; // ลิงก์รูปภาพหรือวิดีโอ
   target: "public" | "all_internal" | "dentist" | "staff";
   isActive: boolean;
   expiresAt: string | null;
@@ -279,14 +279,14 @@ export interface Promotion {
   expiresAt?: string | null;
 }
 
-// ─── Clinic status ────────────────────────────────────────────────────────────
+// ─── สถานะการเปิดทำการของคลินิก ──────────────────────────────────────────────
 
 export interface SpecialClosure {
   id: number;
-  date: string;   // YYYY-MM-DD
+  date: string;   // รูปแบบวันที่ YYYY-MM-DD
   reason: string;
   isRecurring?: boolean;
-  linkedAnnouncementId?: number; // Soft link to announcement
+  linkedAnnouncementId?: number; // เชื่อมโยงกับประกาศของคลินิก
 }
 
 export interface Shift {
@@ -332,15 +332,15 @@ export function getClinicStatus(
   const day = now.getDay();
   const mins = now.getHours() * 60 + now.getMinutes();
 
-  // Day names for display
+  // ชื่อวันสำหรับแสดงผล
   const dayNames = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 
-  // Check weekly off days (dynamic — no longer hardcoded to Sunday)
+  // ตรวจสอบวันหยุดประจำสัปดาห์ของคลินิก
   if (weeklyOffDays.includes(day)) {
     return { type: "closed", label: "หยุดทำการ", sublabel: `วัน${dayNames[day]} — ไม่มีบริการ`, color: "#FEF2F2", dotColor: "#EF4444" };
   }
 
-  // Parse configurable open/close times — per-day or fallback to legacy
+  // แปลงเวลาเปิด-ปิดทำการของแต่ละวัน
   const parseTime = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
   
   let openTime: number;
@@ -350,7 +350,7 @@ export function getClinicStatus(
     openTime = parseTime(dailyHours[String(day)].open);
     closeTime = parseTime(dailyHours[String(day)].close);
   } else {
-    // Legacy fallback
+    // ค่าสำรองกรณีใช้ข้อมูลรูปแบบเดิม
     const legacy = clinicHours as { open_time?: string; close_time?: string; saturday_close_time?: string } | undefined;
     openTime = parseTime(legacy?.open_time || "09:00");
     closeTime = day === 6
@@ -366,7 +366,7 @@ export function getClinicStatus(
     return { type: "open", label: "เปิดให้บริการ", sublabel: `วันนี้ถึง ${closeStr} น.`, color: "#E8FFF0", dotColor: "#22C55E" };
   }
 
-  // Find next working day for "opens again" message
+  // ค้นหาวันเปิดทำการถัดไปเพื่อนำมาแสดงข้อความแจ้งคนไข้
   const findNextOpenDay = (): string => {
     if (mins < openTime) return `วันนี้ ${hoursStr}`;
     for (let i = 1; i <= 7; i++) {
@@ -382,7 +382,7 @@ export function getClinicStatus(
   return { type: "closed", label: "ปิดให้บริการ", sublabel: `เปิดอีกครั้ง ${findNextOpenDay()}`, color: "#F0F4F8", dotColor: "#94A3B8" };
 }
 
-// ─── Status colors ────────────────────────────────────────────────────────────
+// ─── กำหนดสีของแต่ละสถานะนัดหมาย ────────────────────────────────────────────
 
 export const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   "รอการยืนยัน": { bg: "#FFFBEB", text: "#D97706", dot: "#F59E0B" },

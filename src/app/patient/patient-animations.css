@@ -1,13 +1,7 @@
-/* ═══════════════════════════════════════════════════════════════════════════════
-   Patient Portal — Animations & Visual Effects
-   ═══════════════════════════════════════════════════════════════════════════════ */
-
-/* ─── Fade-in Up Animation ─────────────────────────────────────────────────── */
-
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -16,15 +10,13 @@
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.7s ease-out both;
+  animation: fadeInUp 0.25s ease-out both;
 }
-
-/* ─── Fade-in Scale Animation ──────────────────────────────────────────────── */
 
 @keyframes fadeInScale {
   from {
     opacity: 0;
-    transform: scale(0.92);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
@@ -33,15 +25,13 @@
 }
 
 .animate-fade-in-scale {
-  animation: fadeInScale 0.5s ease-out both;
+  animation: fadeInScale 0.2s ease-out both;
 }
-
-/* ─── Slide-in Left Animation ──────────────────────────────────────────────── */
 
 @keyframes slideInLeft {
   from {
     opacity: 0;
-    transform: translateX(-30px);
+    transform: translateX(-12px);
   }
   to {
     opacity: 1;
@@ -50,127 +40,61 @@
 }
 
 .animate-slide-in-left {
-  animation: slideInLeft 0.5s ease-out both;
-}
-
-/* ─── Float Animation (Hero cards) ─────────────────────────────────────────── */
-
-@keyframes gentleFloat {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+  animation: slideInLeft 0.25s ease-out both;
 }
 
 .card-float {
-  animation: gentleFloat 4s ease-in-out infinite;
+  /* การ์ดแสดงผลแบบนิ่ง */
 }
 
 .hero-img-float {
-  animation: gentleFloat 6s ease-in-out infinite;
-}
-
-/* ─── Pulse Animation (Status dots) ────────────────────────────────────────── */
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.3); }
-}
-
-/* ─── Shimmer Text (Stats) ─────────────────────────────────────────────────── */
-
-@keyframes shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
+  /* รูปภาพแสดงผลแบบนิ่ง */
 }
 
 .shimmer-text {
-  background: linear-gradient(90deg, #FF8C9A 0%, #FF6B7E 25%, #FFB3BC 50%, #FF6B7E 75%, #FF8C9A 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: shimmer 4s linear infinite;
-}
-
-/* ─── Button Glow Effect ───────────────────────────────────────────────────── */
-
-@keyframes btnGlow {
-  0%, 100% { box-shadow: 0 8px 28px rgba(255,140,154,0.45); }
-  50% { box-shadow: 0 8px 40px rgba(255,140,154,0.65), 0 0 20px rgba(255,107,126,0.3); }
+  color: #FF8C9A;
 }
 
 .btn-glow {
-  animation: btnGlow 3s ease-in-out infinite;
+  box-shadow: 0 4px 14px rgba(255, 140, 154, 0.35);
 }
-
-/* ─── Auth Panel Image Hover ───────────────────────────────────────────────── */
 
 .auth-panel-img {
-  transition: transform 0.6s ease;
+  transition: opacity 0.3s ease;
 }
-
-.auth-panel-img:hover {
-  transform: scale(1.03);
-}
-
-/* ─── Smooth Scrolling ─────────────────────────────────────────────────────── */
 
 html {
   scroll-behavior: smooth;
 }
 
-/* ─── Focus Glow for Inputs ────────────────────────────────────────────────── */
-
 input:focus,
 textarea:focus,
 select:focus {
-  box-shadow: 0 0 0 3px rgba(255, 140, 154, 0.15);
+  box-shadow: 0 0 0 2px rgba(255, 140, 154, 0.15);
   border-color: #FF8C9A !important;
-  transition: all 0.3s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-
-/* ─── Card Hover Transitions ───────────────────────────────────────────────── */
 
 .group {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-/* ─── Step indicator pulse ─────────────────────────────────────────────────── */
-
-@keyframes stepPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255,140,154,0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(255,140,154,0); }
+.nav-link-underline {
+  position: relative;
 }
 
-/* ─── Gradient Background Animation (for auth pages) ───────────────────────── */
-
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.nav-link-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0%;
+  height: 2px;
+  background: linear-gradient(90deg, #FF8C9A, #FF6B7E);
+  border-radius: 1px;
+  transition: width 0.2s ease;
 }
 
-/* ─── Selection Color ──────────────────────────────────────────────────────── */
-
-::selection {
-  background: rgba(255, 140, 154, 0.3);
-  color: #1A365D;
-}
-
-/* ─── Scrollbar Styling ────────────────────────────────────────────────────── */
-
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(26, 54, 93, 0.15);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(26, 54, 93, 0.3);
+.nav-link-underline:hover::after {
+  width: 100%;
 }

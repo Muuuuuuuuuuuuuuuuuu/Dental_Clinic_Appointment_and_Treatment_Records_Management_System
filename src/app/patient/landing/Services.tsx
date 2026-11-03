@@ -15,8 +15,8 @@ export default function Services({ onCTA }: { onCTA: () => void }) {
     <section id="services" style={{ backgroundColor: "#F8F9FA" }}>
       <div className="mx-auto px-6 lg:px-25 w-full py-12">
         <div className="text-center mb-14 animate-fade-in-up">
-          <div className="inline-block text-sm font-medium px-4 py-1.5 rounded-full mb-4" style={{ backgroundColor: "#FFE8EC", color: "#FF6B7E" }}>บริการทั้งหมด</div>
-          <h2 className="text-4xl font-bold mb-4" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>บริการทันตกรรมครบวงจร</h2>
+          <div className="inline-block text-sm font-medium px-4 py-1.5 rounded-full mb-4" style={{ backgroundColor: "#FFD6DC", color: "#FF6B7E" }}>บริการทั้งหมด</div>
+          <h2 className="text-4xl font-bold mb-4" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>บริการทันตกรรมครบวงจร</h2>
           <p className="text-base max-w-xl mx-auto" style={{ color: "#4A6080", fontWeight: 300 }}>ให้บริการครอบคลุมทุกความต้องการด้านสุขภาพช่องปาก</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

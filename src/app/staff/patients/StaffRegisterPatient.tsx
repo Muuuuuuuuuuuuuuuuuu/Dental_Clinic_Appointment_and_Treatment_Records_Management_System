@@ -36,7 +36,7 @@ export default function StaffRegisterPatient() {
   const [form, setForm] = useState<RegForm>({
     firstName: "", lastName: "", idCard: "", dob: "", gender: "",
     phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
-    conditions: "", allergies: "", email: "", address: "", password: "patient123"
+    conditions: "", allergies: "", email: "", address: "", password: "123456789"
   });
   const [showFormPass, setShowFormPass] = useState(false);
   const [otp, setOtp] = useState("");
@@ -53,7 +53,7 @@ export default function StaffRegisterPatient() {
   const set = (k: keyof RegForm, v: string) => setForm(f => ({ ...f, [k]: v }));
   const age = useMemo(() => calcAge(form.dob), [form.dob]);
 
-  // Countdown timer for resend cooldown
+  // ตัวนับเวลาถอยหลังก่อนกดส่งรหัส OTP ซ้ำ
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setTimeout(() => setResendCooldown(c => c - 1), 1000);
@@ -68,6 +68,14 @@ export default function StaffRegisterPatient() {
     }
     if (form.idCard.replace(/-/g, "").length < 13) {
       setErr("เลขประจำตัวประชาชนต้องมี 13 หลัก");
+      return false;
+    }
+    if (form.phone.replace(/\D/g, "").length !== 10) {
+      setErr("เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักเท่านั้น");
+      return false;
+    }
+    if (form.emergencyPhone && form.emergencyPhone.replace(/\D/g, "").length !== 10) {
+      setErr("เบอร์ติดต่อฉุกเฉินต้องเป็นตัวเลข 10 หลักเท่านั้น");
       return false;
     }
     if (!form.email) {
@@ -91,7 +99,7 @@ export default function StaffRegisterPatient() {
     setLoading(true);
     setErr("");
 
-    const loginPassword = form.password || "patient123";
+    const loginPassword = form.password || "123456789";
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setDevOtp(generatedOtp);
 
@@ -99,6 +107,9 @@ export default function StaffRegisterPatient() {
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: loginPassword,
+        options: {
+          data: { must_change_password: true }
+        }
       });
 
       if (data?.user?.id) {
@@ -169,7 +180,7 @@ export default function StaffRegisterPatient() {
   // สร้างบัญชีจริง ๆ ผ่าน addPatient
   const createAccount = async () => {
     const rawId = form.idCard.replace(/-/g, "");
-    const loginPassword = form.password || "patient123";
+    const loginPassword = form.password || "123456789";
 
     try {
       await addPatient({
@@ -189,6 +200,9 @@ export default function StaffRegisterPatient() {
         emergencyContactPhone: form.emergencyPhone,
         emergencyContactRelationship: form.emergencyRelationship,
       });
+      const cleanEmail = form.email.trim().toLowerCase();
+      localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
+      localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
       setSuccessInfo({
         name: `${form.firstName} ${form.lastName}`,
         loginEmail: form.email,
@@ -235,21 +249,21 @@ export default function StaffRegisterPatient() {
     setForm({
       firstName: "", lastName: "", idCard: "", dob: "", gender: "",
       phone: "", emergencyName: "", emergencyPhone: "", emergencyRelationship: "",
-      conditions: "", allergies: "", email: "", address: "", password: "patient123"
+      conditions: "", allergies: "", email: "", address: "", password: "123456789"
     });
     setErr("");
     setResendCooldown(0);
     setResendMsg("");
   };
 
-  // ─── Step 3: Success Screen ───────────────────────────────────────────────
+  // 
   if (step === "done" && successInfo) {
     return (
       <div className="max-w-lg mx-auto py-12 text-center bg-white rounded-2xl shadow-sm border border-gray-100 p-10">
         <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-6" style={{ background: "linear-gradient(135deg,#4ade80,#22c55e)" }}>
           <CheckCircle size={40} color="white" />
         </div>
-        <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+        <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
           ลงทะเบียนสำเร็จ!
         </h2>
         <p className="text-gray-500 mb-6 text-sm">
@@ -303,7 +317,7 @@ export default function StaffRegisterPatient() {
               </button>
             </div>
             <p className="text-[11px] mt-1.5" style={{ color: "#94A3B8" }}>
-              แจ้งให้คนไข้ทราบ: สามารถเข้าสู่ระบบด้วยอีเมลนี้ และสามารถเปลี่ยนรหัสผ่านได้ในเมนูข้อมูลส่วนตัว
+              แจ้งให้คนไข้ทราบ: เข้าสู่ระบบด้วยอีเมลและรหัสผ่านเริ่มต้นนี้ เมื่อเข้าสู่ระบบครั้งแรก ระบบจะให้คนไข้เปลี่ยนรหัสผ่านใหม่ด้วยตนเอง
             </p>
           </div>
         </div>
@@ -317,7 +331,7 @@ export default function StaffRegisterPatient() {
     );
   }
 
-  // ─── Step 2: OTP Step ─────────────────────────────────────────────────────
+  // 
   if (step === "otp") {
     return (
       <div className="max-w-md mx-auto bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
@@ -331,7 +345,7 @@ export default function StaffRegisterPatient() {
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: "#F0F4F8" }}>
             <Mail size={28} style={{ color: "#FF8C9A" }} />
           </div>
-          <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+          <h2 className="text-xl font-bold mb-2" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
             ยืนยันรหัส OTP ทางอีเมล
           </h2>
           <p className="text-sm leading-relaxed" style={{ color: "#4A6080" }}>
@@ -383,7 +397,7 @@ export default function StaffRegisterPatient() {
         <div className="p-3.5 rounded-xl flex items-start gap-2.5 mb-5" style={{ backgroundColor: "#FFF3E0", border: "1px solid #FED7AA" }}>
           <AlertCircle size={15} className="mt-0.5 flex-shrink-0" style={{ color: "#D97706" }} />
           <p className="text-xs leading-relaxed" style={{ color: "#92400E" }}>
-            💡 ตรวจสอบอีเมล: หากไม่พบใน Inbox ให้ตรวจสอบในโฟลเดอร์ <strong>จดหมายขยะ (Spam / Junk)</strong>
+            ตรวจสอบอีเมล: หากไม่พบใน Inbox ให้ตรวจสอบในโฟลเดอร์ <strong>จดหมายขยะ (Spam / Junk)</strong>
           </p>
         </div>
 
@@ -410,7 +424,7 @@ export default function StaffRegisterPatient() {
     );
   }
 
-  // ─── Step 1: Form Step ────────────────────────────────────────────────────
+  // 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-2xl p-6 lg:p-10 shadow-sm border border-gray-100">
       <div className="flex items-center gap-4 mb-8">
@@ -418,7 +432,7 @@ export default function StaffRegisterPatient() {
           <UserPlus size={24} style={{ color: "#FF8C9A" }} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ลงทะเบียนคนไข้ใหม่</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ลงทะเบียนคนไข้ใหม่</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>กรอกข้อมูลเพื่อสร้างประวัติในระบบ — พนักงานเป็นผู้ดำเนินการแทนคนไข้ พร้อมยืนยันอีเมลผ่าน OTP</p>
         </div>
       </div>
@@ -430,7 +444,7 @@ export default function StaffRegisterPatient() {
       )}
 
       <div className="space-y-8">
-        {/* Section 1: Personal Info */}
+        {/* ส่วนที่ 1: ข้อมูลส่วนตัว */}
         <div>
           <h3 className="font-semibold mb-4 pb-2 border-b" style={{ color: "#1A365D", borderColor: "rgba(26,54,93,0.1)" }}>ข้อมูลส่วนตัว (Personal Information)</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -467,13 +481,15 @@ export default function StaffRegisterPatient() {
           </div>
         </div>
 
-        {/* Section 2: Contact & Login Info */}
+        {/* ส่วนที่ 2: ข้อมูลติดต่อและบัญชีผู้ใช้ */}
         <div>
           <h3 className="font-semibold mb-4 pb-2 border-b" style={{ color: "#1A365D", borderColor: "rgba(26,54,93,0.1)" }}>ข้อมูลการติดต่อและบัญชีเข้าสู่ระบบ (Contact & Account)</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์ <span className="text-red-400">*</span></label>
-              <input type="tel" className={inputCls} style={inputStyle(form.phone)} value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="08x-xxx-xxxx" />
+              <input type="tel" className={inputCls} style={inputStyle(form.phone)} value={form.phone}
+                onChange={e => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="กรอกตัวเลข 10 หลัก" maxLength={10} />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>
@@ -482,7 +498,7 @@ export default function StaffRegisterPatient() {
               <input type="email" className={inputCls} style={inputStyle(form.email)} value={form.email}
                 onChange={e => set("email", e.target.value.trim())} placeholder="example@email.com" />
               <p className="text-[10px] mt-1 text-slate-500">
-                ⚠️ คนไข้จะใช้อีเมลนี้ในการเข้าสู่ระบบ และระบบจะส่ง OTP ยืนยันไปที่อีเมลนี้
+                คนไข้จะใช้อีเมลนี้ในการเข้าสู่ระบบ และระบบจะส่ง OTP ยืนยันไปที่อีเมลนี้
               </p>
             </div>
             <div className="md:col-span-2">
@@ -496,7 +512,7 @@ export default function StaffRegisterPatient() {
                   style={inputStyle(form.password)}
                   value={form.password}
                   onChange={e => set("password", e.target.value)}
-                  placeholder="รหัสผ่านเริ่มต้น (เช่น patient123)"
+                  placeholder="123456789"
                 />
                 <button
                   type="button"
@@ -506,7 +522,7 @@ export default function StaffRegisterPatient() {
                 </button>
               </div>
               <p className="text-[10px] mt-1 text-slate-500">
-                รหัสผ่านที่คนไข้จะใช้เข้าสู่ระบบร่วมกับอีเมล (แนะนำให้คนไข้เปลี่ยนหลังเข้าสู่ระบบครั้งแรก)
+                รหัสผ่านเริ่มต้นคือ 123456789 เมื่อคนไข้เข้าสู่ระบบครั้งแรก ระบบจะให้คนไข้เปลี่ยนรหัสผ่านใหม่ด้วยตนเอง
               </p>
             </div>
             <div className="md:col-span-2">
@@ -521,7 +537,9 @@ export default function StaffRegisterPatient() {
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>เบอร์ติดต่อฉุกเฉิน</label>
-              <input type="tel" className={inputCls} style={inputStyle(form.emergencyPhone)} value={form.emergencyPhone} onChange={e => set("emergencyPhone", e.target.value)} placeholder="08x-xxx-xxxx" />
+              <input type="tel" className={inputCls} style={inputStyle(form.emergencyPhone)} value={form.emergencyPhone}
+                onChange={e => set("emergencyPhone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="กรอกตัวเลข 10 หลัก" maxLength={10} />
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4A6080" }}>ความสัมพันธ์</label>
@@ -530,7 +548,7 @@ export default function StaffRegisterPatient() {
           </div>
         </div>
 
-        {/* Section 3: Medical Info */}
+        {/* ส่วนที่ 3: ข้อมูลสุขภาพและประวัติแพ้ยา */}
         <div>
           <h3 className="font-semibold mb-4 pb-2 border-b" style={{ color: "#1A365D", borderColor: "rgba(26,54,93,0.1)" }}>ข้อมูลสุขภาพ (Medical History)</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -545,7 +563,7 @@ export default function StaffRegisterPatient() {
           </div>
         </div>
 
-        {/* Email OTP Notice Box */}
+        {/* กล่องแจ้งเตือนการยืนยันรหัส OTP ทางอีเมล */}
         <div className="p-4 rounded-xl flex items-start gap-3" style={{ backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE" }}>
           <Mail size={16} className="flex-shrink-0 mt-0.5" style={{ color: "#1D4ED8" }} />
           <div className="text-xs leading-relaxed" style={{ color: "#1E40AF" }}>

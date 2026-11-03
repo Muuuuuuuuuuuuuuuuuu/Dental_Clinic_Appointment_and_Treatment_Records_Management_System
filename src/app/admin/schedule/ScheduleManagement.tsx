@@ -34,28 +34,28 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
   const [loading, setLoading] = useState(true);
   const [pendingChanges, setPendingChanges] = useState<Record<string, Partial<Shift> & { userId: string, dayNum: number }>>({});
 
-  // Calendar State
+  // สถานะของปฏิทิน
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarFilter, setCalendarFilter] = useState<'all' | 'dentist' | 'staff'>('all');
 
-  // Weekly Template State
+  // สถานะตารางเวรประจำสัปดาห์
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateFilter, setTemplateFilter] = useState<'all' | 'dentist' | 'staff'>('all');
   const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(false);
 
-  // Bulk Edit State
+  // สถานะการแก้ไขตารางเวรแบบกลุ่ม
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [bulkConfig, setBulkConfig] = useState({
     target: 'all' as 'all' | 'dentist' | 'staff',
     startTime: '09:00',
     endTime: '20:00',
-    days: [1, 2, 3, 4, 5] // Default Mon-Fri
+    days: [1, 2, 3, 4, 5] // ค่าเริ่มต้น จันทร์-ศุกร์
   });
 
-  // Modals
+  // สถานะการเปิด-ปิดหน้าต่างป๊อปอัป
   const [selectedDayInfo, setSelectedDayInfo] = useState<{ dateObj: Date; dateStr: string } | null>(null);
   
-  // Shift Edit Modal
+  // หน้าต่างแก้ไขกะการทำงาน
   const [editingShift, setEditingShift] = useState<{ shift: Shift | undefined, personId: number, personType: string, personName: string, dayNum: number, userId: string } | null>(null);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     const dbValue = (value === "") ? null : value;
     const pendingKey = `${userId}_${dayNum}`;
     
-    // Update local state for UI
+    // อัปเดตสถานะในหน้าจอทันที
     let found = false;
     const updatedShifts = shifts.map(s => {
       if (s.person_id === personId && s.person_type === personType && s.day_of_week === dayNum) {
@@ -101,9 +101,9 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     });
 
     if (!found) {
-      // Mock a temporary shift so the UI renders it
+      // สร้างข้อมูลกะชั่วคราวเพื่อให้หน้าจอแสดงผลทันที
       updatedShifts.push({
-        id: -1, // Mock ID
+        id: -1, // รหัสชั่วคราว
         person_id: personId,
         person_type: personType as "dentist" | "staff",
         day_of_week: dayNum,
@@ -115,7 +115,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     
     setShifts(updatedShifts);
 
-    // Add to pending changes
+    // เพิ่มเข้าในรายการที่รอบันทึก
     setPendingChanges(prev => ({
       ...prev,
       [pendingKey]: {
@@ -126,7 +126,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
       }
     }));
       
-    // Update editing shift state so UI reflects changes immediately
+    // อัปเดตสถานะกะที่กำลังแก้ไขเพื่อให้หน้าจอแสดงผลทันที
     if (editingShift && editingShift.personId === personId && editingShift.dayNum === dayNum) {
       setEditingShift({
         ...editingShift,
@@ -168,7 +168,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     if (!confirm(`คุณต้องการกำหนดให้บุคลากรท่านนี้หยุดงานในวันที่ ${dateStr} ใช่หรือไม่?`)) return;
     
     try {
-      // Create leave request directly
+      // สร้างรายการวันหยุด/ลางานโดยตรง
       const { addLeaveRequest, updateLeaveStatus } = await import('../../shared/supabaseApi');
       const req = await addLeaveRequest({
         doctorId: personUserId,
@@ -178,9 +178,9 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
         reason: 'แอดมินกำหนดวันหยุดเฉพาะกิจ',
         status: 'รออนุมัติ'
       });
-      // Auto approve
+      // อนุมัติอัตโนมัติ
       await updateLeaveStatus(req.leave_id, 'อนุมัติแล้ว');
-      fetchData(); // reload
+      fetchData(); // โหลดข้อมูลใหม่
     } catch (err: any) {
       console.error(err);
       alert(err.message || "เกิดข้อผิดพลาดในการกำหนดวันหยุด");
@@ -209,7 +209,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     const newShifts = [...shifts];
 
     allPersons.forEach(person => {
-      if (!person.userId) return; // Need user_id to insert
+      if (!person.userId) return; // ต้องใช้รหัสผู้ใช้ในการเพิ่มข้อมูล
       if (bulkConfig.target !== 'all' && person.type !== bulkConfig.target) return;
 
       for (let dayIndex = 0; dayIndex <= 6; dayIndex++) {
@@ -226,10 +226,10 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
         };
 
         if (shiftIndex !== -1) {
-          // Update existing local shift
+          // อัปเดตข้อมูลกะที่มีอยู่ในหน้าจอ
           newShifts[shiftIndex] = { ...newShifts[shiftIndex], ...updatedFields };
         } else {
-          // Push mock shift
+          // เพิ่มข้อมูลกะใหม่ลงในรายการหน้าจอ
           newShifts.push({
             id: -1,
             person_id: person.id,
@@ -239,7 +239,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
           });
         }
 
-        // Add to pending
+        // เพิ่มเข้ารายการที่รอบันทึก
         newPendingChanges[pendingKey] = {
            ...(newPendingChanges[pendingKey] || {}),
            userId: person.userId,
@@ -252,7 +252,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
     setShifts(newShifts);
     setPendingChanges(newPendingChanges);
     setShowBulkEditModal(false);
-    // Smooth scroll to top to see "Save" button
+    // เลื่อนหน้าจอขึ้นด้านบนเพื่อให้เห็นปุ่มบันทึก
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -299,11 +299,11 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
   };
 
   return (
-    <div style={{ fontFamily: "Prompt, sans-serif" }} className="pb-20">
+    <div style={{ fontFamily: "Sarabun, sans-serif" }} className="pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการตารางเวร (ศูนย์บัญชาการ)</h1>
+            <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จัดการตารางเวร (ศูนย์บัญชาการ)</h1>
             {onNavigateToSettings && (
               <button
                 onClick={onNavigateToSettings}
@@ -325,7 +325,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
         </div>
       </div>
 
-      {/* ─── SECTION 1: Weekly Template (Matrix) ─── */}
+      {/*  */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 overflow-hidden">
         <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -437,7 +437,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
         )}
       </div>
 
-      {/* ─── SECTION 2: Actual Calendar ─── */}
+      {/*  */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 p-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
           <div>
@@ -548,9 +548,9 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
       </div>
 
 
-      {/* ─── MODALS ─── */}
+      {/*  */}
 
-      {/* 1. Daily Detail Modal */}
+      {/* 1. หน้าต่างแสดงรายละเอียดรายวัน */}
       {selectedDayInfo && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
@@ -579,7 +579,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
 
                 return (
                   <>
-                    {/* Working */}
+                    {/* รายชื่อผู้ที่เข้าเวร */}
                     <div>
                       <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-green-500"></span>
@@ -611,7 +611,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
                       )}
                     </div>
 
-                    {/* On Leave */}
+                    {/* รายชื่อผู้ที่ลางาน */}
                     {onLeave.length > 0 && (
                       <div>
                         <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
@@ -643,7 +643,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
         </div>
       )}
 
-      {/* 2. Edit Shift Modal */}
+      {/* 2. หน้าต่างแก้ไขเวลาเข้าเวร */}
       {editingShift && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
@@ -715,7 +715,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
         </div>
       )}
 
-      {/* 3. Bulk Edit Modal */}
+      {/* 3. หน้าต่างตั้งค่าตารางเวรแบบกลุ่ม */}
       {showBulkEditModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
@@ -728,7 +728,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
             </div>
             
             <div className="space-y-5">
-              {/* Target Group */}
+              {/* กลุ่มบุคลากรที่ต้องการตั้งค่า */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">กลุ่มเป้าหมาย</label>
                 <div className="flex bg-gray-100 p-1 rounded-lg">
@@ -748,7 +748,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
                 </div>
               </div>
 
-              {/* Work Days */}
+              {/* วันทำงาน */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">วันทำงานในสัปดาห์</label>
                 <div className="flex flex-wrap gap-2">
@@ -779,7 +779,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
                 </div>
               </div>
 
-              {/* Work Hours */}
+              {/* เวลาทำงาน */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">เวลาเข้างาน</label>
@@ -801,7 +801,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
                 </div>
               </div>
 
-              {/* Warning */}
+              {/* ข้อความแจ้งเตือน */}
               <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3 mt-4">
                 <Info size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-blue-800 leading-relaxed">
@@ -810,7 +810,7 @@ export default function ScheduleManagement({ onNavigateToSettings }: { onNavigat
                 </p>
               </div>
 
-              {/* Action Buttons */}
+              {/* ปุ่มดำเนินการ */}
               <div className="flex gap-3 pt-2">
                 <button 
                   onClick={() => setShowBulkEditModal(false)}

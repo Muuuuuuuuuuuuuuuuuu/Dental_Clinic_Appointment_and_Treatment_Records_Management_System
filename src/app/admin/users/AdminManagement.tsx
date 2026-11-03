@@ -77,11 +77,19 @@ export default function AdminManagement() {
   };
 
   const save = async () => {
+    if (!editing && form.citizenId.replace(/\D/g, "").length !== 13) {
+      alert("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลักเท่านั้น");
+      return;
+    }
+    if (form.phone && form.phone.replace(/\D/g, "").length !== 10) {
+      alert("เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักเท่านั้น");
+      return;
+    }
     try {
       if (editing) {
         if (!editing.id) return;
         const updated = await updateAdmin(editing.id, form as Partial<AdminInfo>);
-        // Refetch to get computed names correctly
+        // ดึงข้อมูลใหม่เพื่อให้ได้ชื่อ-นามสกุลที่อัปเดตถูกต้อง
         fetchAdmins();
       } else {
         await addAdmin({ ...form, active: true } as AdminInfo);
@@ -110,7 +118,7 @@ export default function AdminManagement() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>จัดการผู้ดูแลระบบ</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จัดการผู้ดูแลระบบ</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>ผู้ดูแลระบบทั้งหมด {admins.length} บัญชี</p>
         </div>
         <button onClick={() => open()} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white"
@@ -164,7 +172,7 @@ export default function AdminManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(26,54,93,0.4)", backdropFilter: "blur(4px)" }}>
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 p-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+              <h2 className="text-xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
                 {editing ? "แก้ไขผู้ดูแลระบบ" : "เพิ่มผู้ดูแลระบบใหม่"}
               </h2>
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} style={{ color: "#4A6080" }} /></button>
@@ -185,7 +193,7 @@ export default function AdminManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เลขบัตรประชาชน (13 หลัก)</label>
-                  <input type="text" value={form.citizenId} onChange={e => setForm(f => ({ ...f, citizenId: e.target.value }))} maxLength={13} disabled={!!editing} className={`w-full px-3 py-2.5 rounded-xl text-sm outline-none ${editing ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                  <input type="text" value={form.citizenId} onChange={e => setForm(f => ({ ...f, citizenId: e.target.value.replace(/\D/g, "").slice(0, 13) }))} maxLength={13} placeholder="กรอกตัวเลข 13 หลัก" disabled={!!editing} className={`w-full px-3 py-2.5 rounded-xl text-sm outline-none ${editing ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                 </div>
                 <div>
                   <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เพศ</label>
@@ -204,7 +212,7 @@ export default function AdminManagement() {
                 </div>
                 <div>
                   <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์</label>
-                  <input type="text" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+                  <input type="tel" maxLength={10} placeholder="กรอกตัวเลข 10 หลัก" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
                 </div>
               </div>
 

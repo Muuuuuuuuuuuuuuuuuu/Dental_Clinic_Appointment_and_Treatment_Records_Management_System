@@ -38,7 +38,7 @@ export default function AppointmentsView({
   const [expiringIds, setExpiringIds] = useState<Set<number>>(new Set());
   const autoExpireRanRef = useRef(false);
 
-  // Always fetch fresh data from DB when mounted or patientId changes
+  // ดึงข้อมูลนัดหมายล่าสุดจากฐานข้อมูลเสมอเมื่อเปิดหน้านี้หรือเมื่อรหัสคนไข้เปลี่ยน
   // (ไม่พึ่ง globalAppointments เพราะอาจ [] หรือ RLS block ได้)
   useEffect(() => {
     if (!user.patientId) {
@@ -106,7 +106,7 @@ export default function AppointmentsView({
     });
   }, [loading, appts.length]);
 
-  // Sync updates from parent state (including newly created ones)
+  // ซิงค์ข้อมูลที่อัปเดตจากหน้าหลัก (รวมถึงนัดหมายที่เพิ่งสร้างใหม่)
   useEffect(() => {
     if (!globalAppointments || !user.patientId) return;
     const parentAppts = globalAppointments.filter(a => a.patientId === user.patientId);
@@ -140,8 +140,8 @@ export default function AppointmentsView({
   const activeAppts = appts.filter(a => {
     if (a.status === "ยกเลิก") return false;
     if (a.status === "เสร็จสิ้น" || a.status === "ไม่มาตามนัด") return false;
-    // Don't filter out past times; if it's not finished/cancelled, it's still active!
-    // It could be that they are currently in treatment, or the queue is running late.
+    // ไม่กรองเวลาที่ผ่านไปแล้วออก หากยังไม่เสร็จสิ้นหรือยกเลิกให้ถือว่ายังเป็นนัดหมายที่ใช้งานอยู่
+    // เนื่องจากคนไข้อาจกำลังรับการรักษาอยู่ หรือคิวอาจล่าช้ากว่าเวลาที่นัด
     return true;
   }).sort((a, b) => {
     if (!a.date && !b.date) return 0;
@@ -158,7 +158,7 @@ export default function AppointmentsView({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>รายการนัดหมาย</h1>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>รายการนัดหมาย</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>ติดตามสถานะนัดหมายทั้งหมดของคุณ</p>
         </div>
         <button onClick={() => setView("booking")}
@@ -203,7 +203,7 @@ export default function AppointmentsView({
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center flex-shrink-0"
-                    style={{ background: isPending ? "linear-gradient(135deg,#FF8C9A,#FF6B7E)" : "linear-gradient(135deg,#4ade80,#22c55e)" }}>
+                    style={{ background: isPending ? "#FF8C9A" : "linear-gradient(135deg,#4ade80,#22c55e)" }}>
                     <span className="text-xs font-bold text-white leading-none">{a.date ? new Date(a.date).getDate() : "-"}</span>
                     <span className="text-xs text-white opacity-80">{a.date ? new Date(a.date).toLocaleDateString("th-TH", { month: "short" }) : "-"}</span>
                   </div>

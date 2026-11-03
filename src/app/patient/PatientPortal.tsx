@@ -6,15 +6,16 @@ import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours }
 import { supabase } from "../shared/utils/supabaseClient";
 import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
 
-// ─── Auth pages ───────────────────────────────────────────────────────────────
+// ─── หน้าเข้าสู่ระบบและสมัครสมาชิก ────────────────────────────────────────────
 import LoginPage from "./auth/LoginPage";
 import ForgotPasswordPage from "./auth/ForgotPasswordPage";
 import ConsentPage from "./auth/ConsentPage";
+import FirstTimePasswordPage from "./auth/FirstTimePasswordPage";
 
-// ─── Portal layout ───────────────────────────────────────────────────────────
+// ─── โครงสร้างหน้าเว็บฝั่งคนไข้ ───────────────────────────────────────────────
 import PortalLayout from "./layout/PortalLayout";
 
-// ─── Patient portal views ─────────────────────────────────────────────────────
+// ─── หน้าย่อยในระบบคนไข้ ──────────────────────────────────────────────────────
 import DashboardView from "./dashboard/DashboardView";
 import BookingView from "./booking/BookingView";
 import AppointmentsView from "./appointments/AppointmentsView";
@@ -22,7 +23,7 @@ import HistoryView from "./history/HistoryView";
 import DentalRecordView from "./record/DentalRecordView";
 import ProfileView from "./profile/ProfileView";
 
-// ─── Landing page sections ────────────────────────────────────────────────────
+// ─── ส่วนประกอบหน้าแรกของเว็บไซต์ ─────────────────────────────────────────────
 import Header from "./landing/Header";
 import Hero from "./landing/Hero";
 import Services from "./landing/Services";
@@ -32,16 +33,16 @@ import Doctors from "./landing/Doctors";
 import Contact from "./landing/Contact";
 import Footer from "./landing/Footer";
 
-// ─── Other portals ────────────────────────────────────────────────────────────
+// ─── ระบบฝั่งพนักงาน ทันตแพทย์ และผู้ดูแลระบบ ─────────────────────────────────
 import DoctorPortal from "../dentist/DentistPortal";
 import AdminPortal from "../admin/AdminPortal";
 import StaffPortal from "../staff/StaffPortal";
 
-// ─── CSS ──────────────────────────────────────────────────────────────────────
+// ─── ไฟล์สไตล์ CSS ────────────────────────────────────────────────────────────
 import "./patient-animations.css";
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PatientPortal — Application Router
+// คอมโพเนนต์หลักสำหรับจัดการเส้นทางหน้าเว็บทั้งหมด
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export default function PatientPortal() {
@@ -56,6 +57,38 @@ export default function PatientPortal() {
   const [followUpProps, setFollowUpProps] = useState<{service: number, doctor: number, planItem?: number, openTicketId?: number} | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [needsConsent, setNeedsConsent] = useState(false);
+  const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
+
+  // ─── ตรวจสอบว่าคนไข้ต้องเปลี่ยนรหัสผ่านเริ่มต้นในการเข้าใช้งานครั้งแรกหรือไม่ ───
+  const needsFirstTimePasswordChange = (identifiers: (string | number | undefined | null)[], sessionUser?: any) => {
+    // 1. ตรวจสอบจาก LocalStorage หากถูกกำหนดให้ต้องเปลี่ยนรหัสผ่านเริ่มต้น
+    for (const id of identifiers) {
+      if (!id) continue;
+      const clean = String(id).trim().toLowerCase();
+      if (localStorage.getItem(`supat_must_change_pwd_${clean}`) === "true") return true;
+    }
+
+    // 2. ตรวจสอบจาก Supabase Auth metadata
+    if (sessionUser?.user_metadata?.must_change_password === true && sessionUser?.user_metadata?.password_changed !== true) {
+      for (const id of identifiers) {
+        if (!id) continue;
+        const clean = String(id).trim().toLowerCase();
+        if (localStorage.getItem(`supat_pwd_changed_${clean}`) === "true") return false;
+      }
+      return true;
+    }
+
+    return false;
+  };
+
+  const markPasswordChanged = (identifiers: (string | number | undefined | null)[]) => {
+    for (const id of identifiers) {
+      if (!id) continue;
+      const clean = String(id).trim().toLowerCase();
+      localStorage.removeItem(`supat_must_change_pwd_${clean}`);
+      localStorage.setItem(`supat_pwd_changed_${clean}`, "true");
+    }
+  };
 
   // ─── ตรวจสอบว่าคนไข้คนนี้เคยยินยอมนโยบายแล้วหรือยัง ────────────────────
   const hasAcceptedConsent = (identifiers: (string | number | undefined | null)[], sessionUser?: any) => {
@@ -104,13 +137,13 @@ export default function PatientPortal() {
   };
 
   useEffect(() => {
-    // Fetch clinic status data
+    // ดึงข้อมูลสถานะการเปิด-ปิดของคลินิก
     Promise.all([getWeeklyOffDays(), getClinicClosures(), getClinicSettings(), getDailyHours()]).then(([offDays, closures, settings, dh]) => {
       setClinicStatus(getClinicStatus(new Date(), closures, offDays, settings, dh));
     }).catch(console.error);
   }, []);
 
-  // Check Supabase session on mount to persist login
+  // ตรวจสอบเซสชันการเข้าสู่ระบบเมื่อเปิดหน้าเว็บ
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -142,7 +175,7 @@ export default function PatientPortal() {
               setRole("patient");
               setIsLoggedIn(true);
 
-              // ─── ตรวจ consent ก่อนเข้า Portal (session restore) ───────────
+              // ─── ตรวจการเปลี่ยนรหัสผ่านครั้งแรก และ consent ก่อนเข้า Portal (session restore) ───
               const identifiers = [
                 session.user.id,
                 session.user.email,
@@ -151,12 +184,15 @@ export default function PatientPortal() {
                 profile.idCard,
                 profile.phone
               ];
-              if (!hasAcceptedConsent(identifiers, session.user)) {
-                setNeedsConsent(true);
+              const mustChangePwd = needsFirstTimePasswordChange(identifiers, session.user);
+              const mustAcceptConsent = !hasAcceptedConsent(identifiers, session.user);
+              if (mustChangePwd) setNeedsPasswordChange(true);
+              if (mustAcceptConsent) setNeedsConsent(true);
+              if (mustChangePwd || mustAcceptConsent) {
                 return;
               }
 
-              // Restore last view or go to dashboard
+              // คืนค่าหน้าล่าสุดที่เปิดค้างไว้ หรือไปที่หน้าแดชบอร์ด
               const savedView = localStorage.getItem("supat_last_view") as View;
               const urlParams = new URLSearchParams(window.location.search);
               if (urlParams.get('planItem') || urlParams.get('followUp') || urlParams.get('openTicketId')) {
@@ -187,7 +223,7 @@ export default function PatientPortal() {
   }, []);
 
   useEffect(() => {
-    // URL param handling for open tickets
+    // ตรวจสอบพารามิเตอร์บน URL สำหรับเปิดรายการนัดหมาย
     const urlParams = new URLSearchParams(window.location.search);
     const planItem = urlParams.get('planItem');
     const doctorStr = urlParams.get('doctorId');
@@ -197,16 +233,16 @@ export default function PatientPortal() {
     if (openTicketId) {
       setFollowUpProps({
         openTicketId: parseInt(openTicketId, 10),
-        service: 1, doctor: 1 // to be overwritten by BookingView fetch
+        service: 1, doctor: 1 // ข้อมูลจะถูกอัปเดตอีกครั้งเมื่อหน้าจองคิวโหลดเสร็จ
       });
       setView("login");
     } else if (planItem) {
       setFollowUpProps({
         planItem: parseInt(planItem, 10),
-        doctor: doctorStr ? parseInt(doctorStr, 10) : 1, // fallback to any/1
-        service: serviceStr ? parseInt(serviceStr, 10) : 1 // fallback to any/1
+        doctor: doctorStr ? parseInt(doctorStr, 10) : 1, // ค่าสำรองกรณีไม่ได้ระบุ
+        service: serviceStr ? parseInt(serviceStr, 10) : 1 // ค่าสำรองกรณีไม่ได้ระบุ
       });
-      setView("login"); // Require login first, or go directly to booking if logged in
+      setView("login"); // หากยังไม่ได้เข้าสู่ระบบให้ไปหน้าล็อกอินก่อน หากเข้าสู่ระบบแล้วให้ไปหน้าจองคิว
     }
   }, []);
 
@@ -228,7 +264,7 @@ export default function PatientPortal() {
       const { data } = await supabase.auth.getUser();
       authUser = data?.user;
     } catch (e) {
-      // ignore
+      // ข้ามข้อผิดพลาด
     }
     const identifiers = [
       u.email,
@@ -238,9 +274,34 @@ export default function PatientPortal() {
       authUser?.id,
       authUser?.email
     ];
-    if (!hasAcceptedConsent(identifiers, authUser)) {
-      setNeedsConsent(true);
-    } else {
+    const mustChangePwd = needsFirstTimePasswordChange(identifiers, authUser);
+    const mustAcceptConsent = !hasAcceptedConsent(identifiers, authUser);
+    setNeedsPasswordChange(mustChangePwd);
+    setNeedsConsent(mustAcceptConsent);
+    if (!mustChangePwd && !mustAcceptConsent) {
+      updateView("dashboard");
+    }
+  };
+
+  const handleFirstTimePasswordChanged = async () => {
+    let authUser: any = null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      authUser = data?.user;
+    } catch (e) {
+      // ข้ามข้อผิดพลาด
+    }
+    const identifiers = [
+      user?.email,
+      user?.patientId,
+      user?.idCard,
+      user?.phone,
+      authUser?.id,
+      authUser?.email
+    ];
+    markPasswordChanged(identifiers);
+    setNeedsPasswordChange(false);
+    if (!needsConsent) {
       updateView("dashboard");
     }
   };
@@ -251,7 +312,7 @@ export default function PatientPortal() {
       const { data } = await supabase.auth.getUser();
       authUser = data?.user;
     } catch (e) {
-      // ignore
+      // ข้ามข้อผิดพลาด
     }
     const identifiers = [
       user?.email,
@@ -291,7 +352,7 @@ export default function PatientPortal() {
     else goLogin();
   };
 
-  // ─── Route to staff/doctor/admin portals ──────────────────────────────────
+  // ─── นำทางไปยังหน้าของพนักงาน ทันตแพทย์ หรือผู้ดูแลระบบ ──────────────────────
   if (role === "doctor") {
     return <DoctorPortal appointments={sharedAppointments} onLogout={handleLogout} loginEmail={loginEmail} />;
   }
@@ -302,14 +363,29 @@ export default function PatientPortal() {
     return <StaffPortal appointments={sharedAppointments} onUpdateAppt={updateAppt} onAddAppt={addAppt} onLogout={handleLogout} loginEmail={loginEmail} />;
   }
 
-  // ─── Patient portal views ─────────────────────────────────────────────────
+  // ─── แสดงผลหน้าต่างๆ ของฝั่งคนไข้ ────────────────────────────────────────────
   const isPortalView = PORTAL_VIEWS.includes(view);
 
   if (isInitializing) {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400">กำลังโหลดข้อมูล...</div>;
   }
 
-  // ─── First-Time Consent Gate ─────────────────────────────────────────────
+  // ─── หน้าเปลี่ยนรหัสผ่านเริ่มต้นสำหรับการเข้าใช้งานครั้งแรก ────────────────────
+  if (needsPasswordChange && isLoggedIn && role === "patient") {
+    return (
+      <FirstTimePasswordPage
+        userEmail={user?.email}
+        onSuccess={handleFirstTimePasswordChanged}
+        onBack={() => {
+          setNeedsPasswordChange(false);
+          setNeedsConsent(false);
+          handleLogout();
+        }}
+      />
+    );
+  }
+
+  // ─── หน้าให้ความยินยอมข้อมูลส่วนบุคคล (PDPA) สำหรับการเข้าใช้งานครั้งแรก ─────
   if (needsConsent && isLoggedIn && role === "patient") {
     return (
       <ConsentPage
@@ -370,15 +446,15 @@ export default function PatientPortal() {
     );
   }
 
-  // ─── Auth pages ───────────────────────────────────────────────────────────
+  // ─── หน้ายืนยันตัวตน (เข้าสู่ระบบ / สมัครสมาชิก / ลืมรหัสผ่าน) ──────────────
   if (view === "login")           return <LoginPage onLogin={handleLogin} onLoginRole={handleLoginRole} onRegister={() => setView("login")} onForgotPassword={() => { setPrevView("login"); setView("forgot-password"); }} onBack={() => setView(prevView)} />;
   if (view === "forgot-password") return <ForgotPasswordPage onBack={() => setView(prevView)} onSuccess={() => setView('login')} />;
 
-  // ─── Landing page ─────────────────────────────────────────────────────────
+  // ─── หน้าแรกของคลินิก ────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen" style={{ fontFamily: "Prompt, sans-serif", scrollBehavior: "smooth" }}>
-      {/* Special closure / status announcement bar */}
+    <div className="min-h-screen" style={{ fontFamily: "Sarabun, sans-serif", scrollBehavior: "smooth" }}>
+      {/* แถบประกาศวันหยุดพิเศษหรือสถานะคลินิก */}
       {clinicStatus && clinicStatus.type !== "open" && (
         <div className="w-full text-center py-2.5 px-4 text-sm font-medium flex items-center justify-center gap-2 z-50 relative"
           style={{
@@ -389,8 +465,8 @@ export default function PatientPortal() {
           <Info size={14} />
           <span>
             {clinicStatus.type === "special"
-              ? `🏖️ หยุดพิเศษวันนี้ — ${clinicStatus.specialReason}`
-              : `🔒 ${clinicStatus.label} — ${clinicStatus.sublabel}`}
+              ? `หยุดพิเศษวันนี้ — ${clinicStatus.specialReason}`
+              : `${clinicStatus.label} — ${clinicStatus.sublabel}`}
           </span>
         </div>
       )}

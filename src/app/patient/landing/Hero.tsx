@@ -13,7 +13,7 @@ export default function Hero({ onCTA }: { onCTA: () => void }) {
               <ClinicStatusBadge />
             </div>
             <h1 className="text-5xl xl:text-7xl font-bold leading-tight mb-8"
-              style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>
+              style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
               ยิ้มสวย<br /><span style={{ color: "#FF8C9A" }}>มั่นใจทุกวัน</span><br />ดูแลโดยผู้เชี่ยวชาญ
             </h1>
             <p className="text-2xl leading-relaxed mb-10 max-w-lg" style={{ color: "#4A6080", fontWeight: 300 }}>

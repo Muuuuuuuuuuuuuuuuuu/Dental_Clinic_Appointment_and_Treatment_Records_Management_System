@@ -8,7 +8,7 @@ interface DoctorCalendarProps {
 }
 
 export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
-  const doctorId = doctor?.userId; // Using UUID for leaves
+  const doctorId = doctor?.userId; // ใช้รหัส UUID สำหรับข้อมูลการลางาน
   
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [closures, setClosures] = useState<SpecialClosure[]>([]);
@@ -38,10 +38,10 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
         getAppointments(),
         getWeeklyOffDays()
       ]);
-      setShifts(sData.filter(s => s.person_id === doctor?.id && s.person_type === 'dentist')); // Shift uses dentist_id
+      setShifts(sData.filter(s => s.person_id === doctor?.id && s.person_type === 'dentist')); // ตารางเวรใช้รหัสทันตแพทย์ (dentist_id)
       setClosures(cData);
-      // We want to see all leaves for this doctor, even pending ones, to display in calendar
-      setLeaves(lData.filter(l => l.doctorId === doctorId)); // Leave uses UUID
+      // ดึงข้อมูลการลาทั้งหมดของแพทย์ท่านนี้ (รวมที่รออนุมัติ) เพื่อแสดงในปฏิทิน
+      setLeaves(lData.filter(l => l.doctorId === doctorId)); // ข้อมูลการลาใช้รหัส UUID
       setAppointments(aData.filter(a => a.doctorId === doctor?.id));
       setWeeklyOffDays(offDays);
     } catch (err) {
@@ -64,12 +64,12 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
       const added = await addLeaveRequest({
         doctorId: doctorId,
         startDate: selectedDate,
-        endDate: selectedDate, // Simplified to single day
+        endDate: selectedDate, // กำหนดให้ลาแบบรายวัน
         leaveType: leaveType,
         reason: leaveReason.trim(),
         status: "รออนุมัติ"
       });
-      // We append a mocked version for immediate UI update until refresh
+      // เพิ่มข้อมูลการลาลงในหน้าจอทันทีเพื่อไม่ต้องรอรีเฟรช
       setLeaves([...leaves, {
         id: added.leave_id || Date.now(),
         doctorId: doctorId,
@@ -89,10 +89,10 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     }
   };
 
-  // --- Regular Schedule View Logic ---
+  // --- ส่วนจัดการมุมมองตารางเวรปกติ ---
   const renderRegularSchedule = () => {
     const days = ["จันทร์", "อังคาร", "พุธ", "พฤหัส", "ศุกร์", "เสาร์", "อาทิตย์"];
-    const dayMap = [1, 2, 3, 4, 5, 6, 0]; // Monday = 1, Sunday = 0
+    const dayMap = [1, 2, 3, 4, 5, 6, 0]; // วันจันทร์ = 1, วันอาทิตย์ = 0
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 h-full overflow-hidden transition-all flex flex-col">
@@ -148,7 +148,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     );
   };
 
-  // --- Calendar View Logic ---
+  // --- ส่วนจัดการมุมมองปฏิทิน ---
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
   const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
@@ -161,7 +161,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     const dayOfWeek = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).getDay();
     const dayAppts = appointments.filter(a => a.date === dateStr);
     
-    // Check Status
+    // ตรวจสอบสถานะของแต่ละวัน
     const closure = closures.find(c => c.date === dateStr);
     const leave = leaves.find(l => l.startDate === dateStr);
     const baseShift = shifts.find(s => s.day_of_week === dayOfWeek);
@@ -179,7 +179,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
       indicators.push(<div key={`closure-${day}`} className="w-2 h-2 rounded-full bg-orange-500"></div>);
       tooltip = `ปิดคลินิก: ${closure.reason}`;
     } else if (isClinicOff) {
-      // Clinic-level weekly off day — takes priority over personal schedule
+      // วันหยุดประจำสัปดาห์ของคลินิก (มีความสำคัญสูงกว่าตารางเวรส่วนตัว)
       cellBg = "bg-orange-50";
       textColor = "text-orange-600";
       indicators.push(<div key={`off-${day}`} className="w-2 h-2 rounded-full bg-orange-500"></div>);
@@ -198,7 +198,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
           tooltip = `${leave.leaveType}: ${leave.reason}`;
         }
       } else {
-         // Rejected - treat as normal day but show a clear rejected dot
+         // กรณีไม่อนุมัติการลา ให้แสดงเป็นวันทำงานปกติพร้อมจุดแจ้งเตือน
          indicators.push(
            <div key="rejected" title="ไม่อนุมัติ" className="w-2 h-2 flex items-center justify-center rounded-full bg-red-100 border border-red-400">
              <div className="w-1 h-1 rounded-full bg-red-500"></div>
@@ -223,7 +223,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
     const isPast = dateStr < todayStr;
     const isToday = dateStr === todayStr;
 
-    // Is it clickable? (Not past, not closed, no leave, and not a regular off day)
+    // ตรวจสอบว่าคลิกขอลาได้หรือไม่ (ต้องไม่ใช่วันที่ผ่านมาแล้ว วันปิดคลินิก หรือวันหยุด)
     const isClickable = !isPast && !closure && !isClinicOff && !leave && baseShift && !baseShift.is_off;
 
     return (
@@ -258,7 +258,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
           </div>
         )}
 
-        {/* Tooltip on Hover */}
+        {/* กล่องข้อความรายละเอียดเมื่อนำเมาส์ไปชี้ */}
         {tooltip && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
             {tooltip}
@@ -307,9 +307,9 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
   }
 
   return (
-    <div style={{ fontFamily: "Prompt, sans-serif" }}>
+    <div style={{ fontFamily: "Sarabun, sans-serif" }}>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ fontFamily: "Playfair Display, serif", color: "#1A365D" }}>ปฏิทินและการลางาน</h1>
+        <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ปฏิทินและการลางาน</h1>
         <p className="text-sm" style={{ color: "#4A6080" }}>ตรวจสอบตารางทำงานและส่งคำขอลางานได้ที่นี่</p>
       </div>
 
@@ -323,7 +323,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-        {/* Calendar Header */}
+        {/* ส่วนหัวของปฏิทิน */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <div className="flex items-center gap-2">
             <select
@@ -341,7 +341,7 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
               style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%231A365D%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '10px' }}
             >
               {[...Array(5)].map((_, i) => {
-                const year = new Date().getFullYear() + i - 1; // From last year to 3 years ahead
+                const year = new Date().getFullYear() + i - 1; // แสดงตัวเลือกปีตั้งแต่ปีที่แล้วไปจนถึงอีก 3 ปีข้างหน้า
                 return <option key={year} value={year}>{year + 543}</option>;
               })}
             </select>
@@ -353,14 +353,14 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
           </div>
         </div>
 
-        {/* Legend */}
+        {/* คำอธิบายสัญลักษณ์สี */}
         <div className="flex flex-wrap gap-4 mb-4 text-xs">
           <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-red-500" /> ลาเต็มวัน</div>
           <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-yellow-400" /> รออนุมัติ</div>
           <div className="flex items-center gap-1.5 text-gray-600"><div className="w-2 h-2 rounded-full bg-orange-500" /> คลินิกปิด</div>
         </div>
 
-        {/* Calendar Grid */}
+        {/* ตารางปฏิทิน */}
         <div className="grid grid-cols-7 gap-px bg-gray-100 border border-gray-100 rounded-xl overflow-hidden">
           {["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"].map(day => (
             <div key={day} className="bg-gray-50 py-3 text-center text-xs font-semibold text-gray-500">
@@ -368,22 +368,22 @@ export default function DoctorCalendar({ doctor }: DoctorCalendarProps) {
             </div>
           ))}
           
-          {/* Empty cells before start of month */}
+          {/* ช่องว่างก่อนวันแรกของเดือน */}
           {Array.from({ length: firstDayOfMonth }).map((_, i) => (
             <div key={`empty-${i}`} className="bg-gray-50 min-h-[60px]" />
           ))}
           
-          {/* Days */}
+          {/* วันที่ในเดือน */}
           {Array.from({ length: daysInMonth }).map((_, i) => renderCalendarCell(i + 1))}
           
-          {/* Empty cells after end of month */}
+          {/* ช่องว่างหลังวันสุดท้ายของเดือน */}
           {Array.from({ length: (7 - ((firstDayOfMonth + daysInMonth) % 7)) % 7 }).map((_, i) => (
             <div key={`empty-end-${i}`} className="bg-gray-50 min-h-[60px]" />
           ))}
         </div>
       </div>
 
-      {/* Leave Request Modal */}
+      {/* หน้าต่างส่งคำขอลางาน */}
       {leaveModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">

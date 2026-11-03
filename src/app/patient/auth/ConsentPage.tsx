@@ -28,7 +28,7 @@ export default function ConsentPage({ onAccept, onBack, loading, error }: Consen
 
   return (
     <AuthShell title="นโยบายความเป็นส่วนตัว" sub="กรุณาอ่านและยินยอมก่อนดำเนินการต่อ">
-      {/* Icon header */}
+      {/* ส่วนหัวแสดงไอคอน */}
       <div className="flex flex-col items-center mb-5">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
@@ -44,7 +44,7 @@ export default function ConsentPage({ onAccept, onBack, loading, error }: Consen
         </p>
       </div>
 
-      {/* Scrollable policy content */}
+      {/* เนื้อหานโยบายที่เลื่อนอ่านได้ */}
       <div
         ref={scrollRef}
         className="rounded-2xl border overflow-y-auto text-sm leading-relaxed px-5 py-4 mb-4"
@@ -57,7 +57,7 @@ export default function ConsentPage({ onAccept, onBack, loading, error }: Consen
       >
         <PolicyContent />
 
-        {/* Bottom marker */}
+        {/* จุดตรวจสอบการเลื่อนอ่านจนสุดด้านล่าง */}
         <div className="flex items-center gap-2 mt-6 pt-4" style={{ borderTop: "1px solid rgba(26,54,93,0.08)" }}>
           <ShieldCheck size={16} style={{ color: "#22C55E" }} />
           <span className="text-xs font-medium" style={{ color: "#22C55E" }}>
@@ -66,7 +66,7 @@ export default function ConsentPage({ onAccept, onBack, loading, error }: Consen
         </div>
       </div>
 
-      {/* Scroll hint */}
+      {/* ข้อความแนะนำให้เลื่อนอ่านด้านล่าง */}
       {!hasScrolledToBottom && (
         <div
           className="flex items-center justify-center gap-1.5 text-xs py-2 rounded-xl mb-3 animate-pulse"
@@ -77,7 +77,7 @@ export default function ConsentPage({ onAccept, onBack, loading, error }: Consen
         </div>
       )}
 
-      {/* Consent checkbox */}
+      {/* ช่องติ๊กยอมรับข้อตกลง */}
       <label
         className="flex items-start gap-3 p-4 rounded-xl cursor-pointer transition-all"
         style={{
@@ -101,7 +101,7 @@ export default function ConsentPage({ onAccept, onBack, loading, error }: Consen
         </span>
       </label>
 
-      {/* Buttons */}
+      {/* ปุ่มดำเนินการ */}
       <div className="flex gap-3 mt-5">
         <button
           onClick={onBack}
@@ -131,7 +131,7 @@ export default function ConsentPage({ onAccept, onBack, loading, error }: Consen
   );
 }
 
-/* ─── Policy Text Content ──────────────────────────────────────────────────── */
+/*  */
 
 function PolicyContent() {
   const sectionTitle = "text-sm font-bold mb-2";

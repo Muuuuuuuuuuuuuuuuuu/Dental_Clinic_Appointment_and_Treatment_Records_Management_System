@@ -1,4 +1,4 @@
-// ─── Patient-specific types ───────────────────────────────────────────────────
+// 
 
 import { Smile, Sparkles, Shield, Award, Heart, Calendar, Syringe, Baby, Zap, Scissors, Crown, Layers, Star , Clock } from "lucide-react";
 
@@ -36,22 +36,22 @@ export interface TreatmentRecord {
   odontogramData?: Record<number, string>;
 }
 
-// ─── Service type for landing page ────────────────────────────────────────────
+// 
 
 export interface ServiceItem {
-  icon: any; // Allow various Lucide icons
+  icon: any; // รองรับไอคอนจากไลบรารี Lucide
   title: string;
   desc: string;
   price: string;
   color: string;
   type: "general" | "complex" | "variable";
-  baseTimeMins: number; // minimum time in minutes
+  baseTimeMins: number; // ระยะเวลาขั้นต่ำ (นาที)
 }
 
-// Helper to map string icon names from DB to actual Lucide components
+// ฟังก์ชันแปลงชื่อไอคอนจากฐานข้อมูลเป็นคอมโพเนนต์ไอคอน
 export const getIconComponent = (iconName: string): any => {
   const icons: Record<string, any> = { Smile, Sparkles, Syringe, Shield, Heart, Award, Baby, Calendar, Zap, Scissors, Crown, Layers, Star, Activity, Clock };
-  return icons[iconName] || Smile; // Fallback to Smile
+  return icons[iconName] || Smile; // กรณีสำรอง to Smile
 };
 
 export interface DoctorItem {
@@ -69,7 +69,7 @@ export interface ReviewItem {
   service: string;
 }
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
+// 
 
 export function calcAge(dob: string) {
   if (!dob) return "";
@@ -97,7 +97,7 @@ export const patientStatusColor: Record<string, { bg: string; text: string }> = 
 };
 
 
-// ─── Auth constants ───────────────────────────────────────────────────────────
+// 
 
 import { User, Stethoscope, Users, Settings } from "lucide-react";
 
@@ -138,7 +138,7 @@ export interface RegForm {
   email: string; password: string; confirmPassword: string;
 }
 
-// ─── Navigation ───────────────────────────────────────────────────────────────
+// 
 
 import { Home, Bell, FileText, Activity } from "lucide-react";
 
@@ -151,7 +151,7 @@ export const NAV_ITEMS = [
   { key: "profile",      label: "ข้อมูลส่วนตัว",     icon: User },
 ];
 
-// ─── Shared UI constants ──────────────────────────────────────────────────────
+// 
 
 export const inputCls = "w-full px-5 py-4 rounded-xl border text-base outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/40";
 export const inputStyle = { backgroundColor: "#F0F4F8", borderColor: "rgba(26,54,93,0.15)", color: "#1A365D" };

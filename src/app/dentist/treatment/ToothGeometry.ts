@@ -1,4 +1,4 @@
-// SVG Geometries extracted for teeth visualization, supporting standard and supernumerary/crowded teeth
+// ข้อมูลพิกัดและรูปทรง SVG สำหรับวาดผังฟันปกติและฟันเกิน
 export interface ToothPathData {
   name: string;
   type: string;
@@ -82,17 +82,17 @@ export const TOOTH_SHAPES: ToothPathData[] = [
 ];
 
 export interface SupernumeraryTooth {
-  id: string; // e.g. "11S", "21S", "mesiodens", "13S"
+  id: string; // ตัวอย่างรหัสเช่น "11S", "21S", "mesiodens", "13S"
   label: string; // e.g. "Mesiodens (ฟันเกินตรงกลาง)", "ซี่ 13S (เขี้ยวซ้อน)"
   type: "mesiodens" | "supernumerary" | "crowded";
   quadrant: 1 | 2 | 3 | 4;
-  shapeIndex: number; // 0..7 (maps to TOOTH_SHAPES)
-  transform?: string; // SVG transform attribute e.g. translate(x, y)
+  shapeIndex: number; // ลำดับ 0..7 (เชื่อมกับรูปทรงฟันใน TOOTH_SHAPES)
+  transform?: string; // ค่าพิกัดการวางตำแหน่ง SVG เช่น translate(x, y)
   status?: "normal" | "red" | "blue" | "cross";
   insertAfterIndex?: number;
 }
 
-// Arch progression unit tangents in Quadrant 1 (teeth 0..7)
+// เวกเตอร์แนวโค้งของขากรรไกรในจตุภาคที่ 1 (ซี่ที่ 0..7)
 export const ARCH_TANGENTS: { x: number; y: number }[] = [
   { x: -0.96, y: 0.26 }, // 11
   { x: -0.87, y: 0.49 }, // 12
@@ -104,7 +104,7 @@ export const ARCH_TANGENTS: { x: number; y: number }[] = [
   { x: -0.08, y: 1.00 }  // 18
 ];
 
-// Optimal outer/buccal positions for +S badges on each tooth in Quadrant 1
+// ตำแหน่งด้านนอกสำหรับวางป้ายฟันเกิน (+S) ของแต่ละซี่ในจตุภาคที่ 1
 export const TOOTH_BADGE_POSITIONS: { x: number; y: number }[] = [
   { x: 180, y: -2 }, // 11
   { x: 125, y: 12 }, // 12
@@ -116,20 +116,20 @@ export const TOOTH_BADGE_POSITIONS: { x: number; y: number }[] = [
   { x: 5, y: 265 }   // 18
 ];
 
-// Outward offsets for extra teeth created at S+ positions (buccal margin)
+// ระยะเยื้องด้านนอกสำหรับวางซี่ฟันเกิน
 export const EXTRA_TOOTH_OFFSETS: { x: number; y: number }[] = [
-  { x: -6, y: -26 },  // 11 (central incisor)
-  { x: -14, y: -22 }, // 12 (lateral incisor)
-  { x: -18, y: -18 }, // 13 (canine)
-  { x: -22, y: -14 }, // 14 (premolar 1)
-  { x: -24, y: -8 },  // 15 (premolar 2)
-  { x: -26, y: 0 },   // 16 (molar 1)
-  { x: -26, y: 0 },   // 17 (molar 2)
-  { x: -26, y: 0 },   // 18 (molar 3)
+  { x: -6, y: -26 },  // ซี่ 11 (ฟันตัดซี่กลาง)
+  { x: -14, y: -22 }, // ซี่ 12 (ฟันตัดซี่ข้าง)
+  { x: -18, y: -18 }, // ซี่ 13 (ฟันเขี้ยว)
+  { x: -22, y: -14 }, // ซี่ 14 (ฟันกรามน้อยซี่ที่ 1)
+  { x: -24, y: -8 },  // ซี่ 15 (ฟันกรามน้อยซี่ที่ 2)
+  { x: -26, y: 0 },   // ซี่ 16 (ฟันกรามซี่ที่ 1)
+  { x: -26, y: 0 },   // ซี่ 17 (ฟันกรามซี่ที่ 2)
+  { x: -26, y: 0 },   // ซี่ 18 (ฟันกรามซี่ที่ 3 / ฟันคุด)
 ];
 
 /**
- * Calculates smooth offset (x, y) for a tooth at toothIndex (0..7) in a quadrant
+ * คำนวณระยะเยื้อง (x, y) ของซี่ฟันแต่ละซี่ในจตุภาค (ลำดับ 0..7)
  */
 export function calculateToothShift(
   _quadrant: 1 | 2 | 3 | 4,
@@ -140,7 +140,7 @@ export function calculateToothShift(
 }
 
 /**
- * Calculates the exact centered transform for an extra tooth so it sits cleanly at S+ position
+ * คำนวณตำแหน่งพิกัดของซี่ฟันเกินเพื่อวางในตำแหน่ง +S
  */
 export function getExtraToothTransform(
   tooth: SupernumeraryTooth,
@@ -154,7 +154,7 @@ export function getExtraToothTransform(
   return `translate(${offset.x}, ${offset.y})`;
 }
 
-// Common clinically-encountered presets for supernumerary & crowded teeth
+// ตำแหน่งฟันเกินและฟันซ้อนที่พบบ่อยในทางคลินิก
 export const PRESET_SUPERNUMERARY: Omit<SupernumeraryTooth, "status">[] = [
   {
     id: "11S",
@@ -215,7 +215,7 @@ export const PRESET_SUPERNUMERARY: Omit<SupernumeraryTooth, "status">[] = [
 ];
 
 /**
- * Creates a generic supernumerary tooth object for ANY tooth number (e.g. 34 -> 34S, or 34S-2 for twin extra tooth).
+ * สร้างออบเจกต์ข้อมูลซี่ฟันเกินสำหรับหมายเลขซี่ฟันที่ระบุ (เช่น 34 -> 34S หรือ 34S-2)
  */
 export function createCustomSupernumerary(toothNum: number, index: number = 1): SupernumeraryTooth {
   const quad = Math.floor(toothNum / 10) as 1 | 2 | 3 | 4;
@@ -239,7 +239,7 @@ export function createCustomSupernumerary(toothNum: number, index: number = 1): 
 }
 
 /**
- * Returns all active supernumerary teeth belonging to a specific tooth slot (e.g. 11 -> 11S, 11S-2, mesiodens).
+ * ดึงรายการซี่ฟันเกินทั้งหมดที่อยู่ในตำแหน่งของซี่ฟันนั้น (เช่น 11 -> 11S, 11S-2, mesiodens)
  */
 export function getActiveExtrasForTooth(toothNum: number, activeExtraTeeth: SupernumeraryTooth[]): SupernumeraryTooth[] {
   const prefix = `${toothNum}S`;
@@ -251,7 +251,7 @@ export function getActiveExtrasForTooth(toothNum: number, activeExtraTeeth: Supe
 }
 
 /**
- * Returns a human-friendly anatomical description of where a supernumerary tooth is located/crowded.
+ * คืนค่าคำอธิบายตำแหน่งทางกายวิภาคของซี่ฟันเกินหรือฟันซ้อน
  */
 export function getExtraToothLocation(id: string): string {
   if (id === "mesiodens" || id === "11S" || id.startsWith("11S-") || id.startsWith("mesiodens-")) {
@@ -282,7 +282,7 @@ export interface ToothSequenceBox {
 }
 
 /**
- * Returns a mini list of adjacent teeth boxes showing exactly where an extra tooth sits in sequence.
+ * คืนค่ารายการซี่ฟันข้างเคียงเพื่อแสดงลำดับตำแหน่งที่ซี่ฟันเกินแทรกอยู่
  */
 export function getAdjacentToothBoxes(id: string): ToothSequenceBox[] {
   if (id === "mesiodens" || id === "11S" || id.startsWith("11S-")) {
@@ -301,7 +301,7 @@ export function getAdjacentToothBoxes(id: string): ToothSequenceBox[] {
     const lastDigit = num % 10;
     const quad = Math.floor(num / 10);
 
-    // Q1 (18 down to 11)
+    // จตุภาคที่ 1 (เรียงจากซี่ 18 ไป 11)
     if (quad === 1) {
       if (lastDigit === 8) {
         return [
@@ -322,7 +322,7 @@ export function getAdjacentToothBoxes(id: string): ToothSequenceBox[] {
       return boxes;
     }
 
-    // Q2 (21 up to 28)
+    // จตุภาคที่ 2 (เรียงจากซี่ 21 ไป 28)
     if (quad === 2) {
       if (lastDigit === 8) {
         return [
@@ -343,7 +343,7 @@ export function getAdjacentToothBoxes(id: string): ToothSequenceBox[] {
       return boxes;
     }
 
-    // Q4 (48 down to 41)
+    // จตุภาคที่ 4 (เรียงจากซี่ 48 ไป 41)
     if (quad === 4) {
       if (lastDigit === 8) {
         return [
@@ -363,7 +363,7 @@ export function getAdjacentToothBoxes(id: string): ToothSequenceBox[] {
       return boxes;
     }
 
-    // Q3 (31 up to 38)
+    // จตุภาคที่ 3 (เรียงจากซี่ 31 ไป 38)
     if (quad === 3) {
       if (lastDigit === 8) {
         return [
@@ -398,8 +398,8 @@ export interface ToothGridItem {
 }
 
 /**
- * Builds the upper tooth row sequence (18 down to 11, then 21 up to 28),
- * inserting active (including twin/multiple) and optionally preview/inactive supernumerary teeth in their exact anatomical positions.
+ * สร้างลำดับแถวฟันบน (ซี่ 18 ถึง 11 และ 21 ถึง 28)
+ * พร้อมแทรกซี่ฟันเกินเข้าตามตำแหน่งจริงในขากรรไกร
  */
 export function getUpperToothRowItems(
   activeExtraTeeth: SupernumeraryTooth[],
@@ -445,7 +445,7 @@ export function getUpperToothRowItems(
     }
   };
 
-  // 18S (Distomolar Q1, sits distal to 18)
+  // 18S (ฟันเกินด้านหลังซี่ 18 ในจตุภาคที่ 1)
   addExtrasForSlot("18S", getActiveExtrasForTooth(18, activeExtraTeeth), "ฟันเกินท้ายฟันกราม 18 (Distomolar)", "18S", "Distal");
 
   const q1 = [18, 17, 16, 15, 14, 13, 12, 11];
@@ -461,7 +461,7 @@ export function getUpperToothRowItems(
     }
   }
 
-  // Midline between 11 and 21: Mesiodens / 11S (Only ONE slot, sits directly at the central midline)
+  // แนวกึ่งกลางระหว่างซี่ 11 และ 21: ฟันเกินกึ่งกลาง (Mesiodens / 11S)
   addExtrasForSlot(
     "11S", 
     getActiveExtrasForTooth(11, activeExtraTeeth), 
@@ -483,15 +483,15 @@ export function getUpperToothRowItems(
     }
   }
 
-  // 28S (Distomolar Q2, sits distal to 28)
+  // 28S (ฟันเกินด้านหลังซี่ 28 ในจตุภาคที่ 2)
   addExtrasForSlot("28S", getActiveExtrasForTooth(28, activeExtraTeeth), "ฟันเกินท้ายฟันกราม 28 (Distomolar)", "28S", "Distal");
 
   return items;
 }
 
 /**
- * Builds the lower tooth row sequence (48 down to 41, then 31 up to 38),
- * inserting active (including twin/multiple) and optionally preview/inactive supernumerary teeth in their exact anatomical positions.
+ * สร้างลำดับแถวฟันล่าง (ซี่ 48 ถึง 41 และ 31 ถึง 38)
+ * พร้อมแทรกซี่ฟันเกินเข้าตามตำแหน่งจริงในขากรรไกร
  */
 export function getLowerToothRowItems(
   activeExtraTeeth: SupernumeraryTooth[],
@@ -537,7 +537,7 @@ export function getLowerToothRowItems(
     }
   };
 
-  // 48S (Distomolar Q4)
+  // 48S (ฟันเกินด้านหลังซี่ 48 ในจตุภาคที่ 4)
   addExtrasForSlot("48S", getActiveExtrasForTooth(48, activeExtraTeeth), "ฟันเกินท้ายฟันกราม 48 (Distomolar)", "48S", "Distal");
 
   const q4 = [48, 47, 46, 45, 44, 43, 42, 41];
@@ -566,7 +566,7 @@ export function getLowerToothRowItems(
     }
   }
 
-  // 38S (Distomolar Q3)
+  // 38S (ฟันเกินด้านหลังซี่ 38 ในจตุภาคที่ 3)
   addExtrasForSlot("38S", getActiveExtrasForTooth(38, activeExtraTeeth), "ฟันเกินท้ายฟันกราม 38 (Distomolar)", "38S", "Distal");
 
   return items;

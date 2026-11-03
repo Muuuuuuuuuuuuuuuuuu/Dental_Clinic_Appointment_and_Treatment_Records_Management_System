@@ -4,7 +4,7 @@ import { supabase } from '../utils/supabaseClient';
 import { Appointment, ACTIVE_APPOINTMENT_STATUSES } from '../../shared/data';
 
 /**
- * 📅 Appointment API Module
+ * โมดูลจัดการข้อมูลนัดหมาย
  * จัดการระบบนัดหมาย, คิว, และตารางเวลา
  */
 let globalUpdateChannel: any = null;
@@ -22,7 +22,7 @@ export function notifyAppointmentsUpdated() {
       payload: { timestamp: Date.now() },
     }).catch(console.error);
   } else {
-    // If not fully joined yet, it might drop the message, but setting up a single channel reduces the chance of drops.
+    // หากยังเชื่อมต่อช่องสัญญาณไม่เสร็จให้หน่วงเวลาส่งเล็กน้อยเพื่อป้องกันข้อความตกหล่น
     setTimeout(() => {
       globalUpdateChannel.send({
         type: 'broadcast',
@@ -95,27 +95,35 @@ export async function getAppointments(date?: string) {
       }
 
       if (tr && tr.treatment_detail) {
-        const servicesData = tr.treatment_detail.map((td: any) => ({
-          serviceId: td.service_id,
-          name: td.service?.service_name || td.diagnosis || 'ไม่ระบุ',
-          locationCode: td.location_code,
-          qty: td.quantity,
-          price: td.actual_price
-        }));
+        const seenDetailKeys = new Set<string>();
+        const servicesData = tr.treatment_detail
+          .filter((td: any) => {
+            const key = `${td.service_id}-${td.location_code || ''}`;
+            if (seenDetailKeys.has(key)) return false;
+            seenDetailKeys.add(key);
+            return true;
+          })
+          .map((td: any) => ({
+            serviceId: td.service_id,
+            name: td.service?.service_name || td.diagnosis || 'ไม่ระบุ',
+            locationCode: td.location_code,
+            qty: td.quantity,
+            price: td.actual_price
+          }));
         detailedServices = [...detailedServices, ...servicesData];
       }
       
       if (tr && tr.treatment_product) {
         const productServices = tr.treatment_product.map((tp: any) => ({
           serviceId: `prod-${tp.product_id}`,
-          name: `💊 ${tp.product?.product_name || 'ไม่ระบุ'}`,
+          name: tp.product?.product_name || 'ไม่ระบุ',
           qty: tp.quantity,
           price: tp.actual_price
         }));
         detailedServices = [...detailedServices, ...productServices];
       }
 
-      // Calculate true cost from treatment records if they exist
+      // คำนวณค่าใช้จ่ายจริงจากรายการหัตถการและเวชภัณฑ์ที่บันทึกไว้
       if (detailedServices.length > 0) {
         cost = detailedServices.reduce((sum, s) => sum + (s.price * s.qty), 0);
       }
@@ -281,7 +289,7 @@ export async function getPatientAppointments(patientId?: number) {
 // --- Patient-specific: ดึงเฉพาะประวัติการรักษาของคนไข้ที่ล็อกอินอยู่ ---
 
 export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id?: number }) {
-  // 1. Conflict Check (Backend Level)
+  // 1. ตรวจสอบคิวซ้ำในระดับฐานข้อมูล
   if (appointment.doctorId && appointment.date) {
     const { data: overlapping } = await supabase.from('appointment')
       .select('appointment_date, start_time, end_time_est, appointment_status')
@@ -309,12 +317,12 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
     }
   }
 
-  // 2. Resolve Patient ID
+  // 2. ค้นหาและระบุรหัสคนไข้ (patient_id)
   let finalPatientId = appointment.patientId;
   if (!finalPatientId) {
     const { data: patData } = await supabase.from('patient').select('patient_id, users!inner(profile!inner(first_name, last_name, phone_number, citizen_id))');
     if (patData && patData.length > 0) {
-      // 🐛 BUG FIX: Use strict matching. Match by Citizen ID first, fallback to phone number.
+      // ตรวจสอบข้อมูลคนไข้โดยเทียบจากเลขบัตรประชาชนก่อน หากไม่พบจึงเทียบจากเบอร์โทรศัพท์
       const matched = patData.find((p: any) =>
         (appointment.walkInRegistration && p.users?.profile?.citizen_id === appointment.walkInRegistration.citizenId) ||
         (appointment.patientPhone && p.users?.profile?.phone_number === appointment.patientPhone)
@@ -325,10 +333,10 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
     if (!finalPatientId) {
       if (appointment.walkInRegistration) {
         const reg = appointment.walkInRegistration;
-        let finalUserId = crypto.randomUUID(); // Default to mock ID
+        let finalUserId = crypto.randomUUID(); // สร้างรหัสผู้ใช้ชั่วคราวเป็นค่าเริ่มต้น
 
         if (reg.email && reg.password) {
-          // Scenario A: Create real Auth user
+          // กรณีที่ 1: สร้างบัญชีผู้ใช้งานจริงในระบบ Auth
           const adminAuthClient = createClient(
             import.meta.env.VITE_SUPABASE_URL || '',
             import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -344,7 +352,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
           }
         }
 
-        // Upsert Profile
+        // บันทึกหรืออัปเดตข้อมูลในตาราง profile
         await supabase.from('profile').upsert({
           citizen_id: reg.citizenId,
           first_name: reg.firstName,
@@ -355,7 +363,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
           current_address: reg.address || null
         }, { onConflict: 'citizen_id' });
 
-        // Upsert Users
+        // บันทึกหรืออัปเดตข้อมูลในตาราง users
         await supabase.from('users').upsert({
           user_id: finalUserId,
           citizen_id: reg.citizenId,
@@ -367,7 +375,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
         const { data: newPat } = await supabase.from('patient').insert({ user_id: finalUserId }).select().single();
         finalPatientId = newPat.patient_id;
       } else {
-        // Fallback for old mock logic
+        // กรณีสำรอง for old mock logic
         const mockUserId = crypto.randomUUID();
         const mockCitizenId = '99' + Math.floor(Math.random() * 100000000000).toString().padStart(11, '0');
         const names = appointment.patientName.split(' ');
@@ -389,7 +397,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
     }
   }
 
-  // Update patient's health data if provided in the appointment booking
+  // อัปเดตข้อมูลสุขภาพและประวัติแพ้ยาของคนไข้หากมีการระบุมาพร้อมการจอง
   if (finalPatientId && (appointment.allergies || appointment.conditions)) {
     if (appointment.allergies && appointment.allergies !== 'ไม่มี' && appointment.allergies !== 'ไม่มีประวัติ') {
       await supabase.from('patient_allergy').delete().eq('patient_id', finalPatientId);
@@ -407,7 +415,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
     }
   }
 
-  // Update emergency contact if provided
+  // อัปเดตข้อมูลผู้ติดต่อฉุกเฉินหากมีการระบุ
   if (finalPatientId && (appointment.emergencyName || appointment.emergencyPhone || appointment.emergencyRelationship)) {
     const ecUpdates: Record<string, any> = {};
     if (appointment.emergencyName) ecUpdates.contact_name = appointment.emergencyName;
@@ -433,7 +441,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
   }
 
 
-  // 2.5 Conflict Check (Patient Level)
+  // 2.5 ตรวจสอบไม่ให้คนไข้คนเดิมจองเวลาซ้ำซ้อนกัน
   if (finalPatientId) {
     const { data: overlappingPat } = await supabase.from('appointment')
       .select('appointment_date, start_time, end_time_est, appointment_status')
@@ -461,7 +469,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
     }
   }
 
-  // 3. Resolve Service ID
+  // 3. ค้นหารหัสบริการ (service_id)
   let finalServiceId = appointment.serviceId;
   let basePrice = 0;
   if (!finalServiceId) {
@@ -472,7 +480,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
         finalServiceId = matchedSvc.service_id;
         basePrice = matchedSvc.base_price || 0;
       } else {
-        // Fallback safely only if absolutely necessary, but preferably throw error
+        // กรณีสำรอง safely only if absolutely necessary, but preferably throw error
         finalServiceId = svcData[0]?.service_id || 1;
         basePrice = svcData[0]?.base_price || 0;
       }
@@ -486,16 +494,16 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
 
   let finalDoctorId = appointment.doctorId;
   if (!finalDoctorId && appointment.date) {
-    // 1. Get dentists who provide this service
+    // 1. ดึงรายชื่อทันตแพทย์ที่ให้บริการหัตถการนี้
     const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', finalServiceId);
     if (dsData && dsData.length > 0) {
       const capableDentists = dsData.map((d: any) => d.dentist_id);
 
-      // 2. Check who is working on this day of week
+      // 2. ตรวจสอบว่าทันตแพทย์ท่านใดเข้าเวรในวันดังกล่าว
       const dateObj = new Date(appointment.date!);
       const dayOfWeekInt = dateObj.getDay();
 
-      // Get all dentists for these IDs
+      // ดึงข้อมูลทันตแพทย์ทั้งหมดตามรหัสที่พบ
       const { data: dentists } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', capableDentists);
       const userIds = dentists?.map(d => d.user_id) || [];
 
@@ -505,7 +513,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
         .eq('is_off', false);
 
       if (schedules && schedules.length > 0) {
-        // Map user_id to dentist_id and keep shift times
+        // เชื่อมโยงรหัสผู้ใช้กับรหัสทันตแพทย์พร้อมเก็บเวลาเข้าเวร
         const workingDentists = schedules.map(s => {
           const d = dentists?.find(x => x.user_id === s.user_id);
           return {
@@ -515,7 +523,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
           };
         }).filter(x => x.dentist_id);
 
-        // 3. Filter out busy dentists (check shift times, appointments, and leaves)
+        // 3. คัดกรองทันตแพทย์ที่ติดคิวหรือลางานออก
         let availableDentists = workingDentists.map(d => d.dentist_id as number);
         const [hh, mm] = (appointment.time || "00:00").split(':').map(Number);
         const startMins = (hh * 60) + mm;
@@ -525,7 +533,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
           const dId = doc.dentist_id as number;
           let isBusy = false;
 
-          // Check if outside shift
+          // ตรวจสอบว่าอยู่นอกเวลาเข้าเวรหรือไม่
           if (doc.start_shift && doc.end_shift) {
             const [sH, sM] = doc.start_shift.split(':').map(Number);
             const shiftStart = sH * 60 + sM;
@@ -537,7 +545,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
           }
 
           if (!isBusy) {
-            // Check appointments
+            // ตรวจสอบว่ามีนัดหมายอื่นซ้อนทับหรือไม่
             const { data: overlapping } = await supabase.from('appointment')
               .select('start_time, end_time_est, appointment_status')
               .eq('dentist_id', dId)
@@ -563,7 +571,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
           }
         }
 
-        // Assign a random available dentist
+        // สุ่มเลือกทันตแพทย์ที่ว่างอยู่
         if (availableDentists.length > 0) {
           finalDoctorId = availableDentists[Math.floor(Math.random() * availableDentists.length)];
         } else {
@@ -575,7 +583,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
     }
   }
 
-  // Calculate end_time_est based on durationMins (default to 30 if not provided)
+  // คำนวณเวลาสิ้นสุดโดยประมาณจากระยะเวลาหัตถการ (ค่าเริ่มต้น 30 นาที)
   const duration = appointment.durationMins || 30;
   const [hh, mm] = (appointment.time || "00:00").split(':').map(Number);
   const totalMins = (hh * 60) + mm + duration;
@@ -583,7 +591,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
   const endMm = totalMins % 60;
   const endTimeStr = `${String(endHh).padStart(2, '0')}:${String(endMm).padStart(2, '0')}:00`;
 
-  // 4. Insert or Update Appointment
+  // 4. บันทึกหรืออัปเดตข้อมูลนัดหมาย
   const apptPayload = {
       patient_id: finalPatientId,
       dentist_id: finalDoctorId || null,
@@ -608,7 +616,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
 
   if (apptErr) throw apptErr;
 
-  // 5. Insert or Update Appointment Detail
+  // 5. บันทึกหรืออัปเดตรายละเอียดบริการของนัดหมาย
   let priceAtBooking = null;
   if (finalServiceId) {
     const { data: svcData } = await supabase.from('service').select('base_price').eq('service_id', finalServiceId).maybeSingle();
@@ -629,7 +637,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
     if (detailErr) console.error("Error inserting appointment detail:", detailErr);
   }
 
-  // 6. Insert or Update Treatment Record to map Doctor (if selected)
+  // 6. บันทึกหรืออัปเดตระเบียนการรักษาเพื่อระบุทันตแพทย์ผู้รับผิดชอบ
   if (finalDoctorId) {
     const { data: existingTr } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', newAppt.appointment_id).maybeSingle();
     if (existingTr) {
@@ -672,11 +680,11 @@ export async function updateAppointmentStatus(id: number, status: string, reason
 
 
 export async function checkAppointmentConflicts(userId: string, date: string, startTime?: string, endTime?: string) {
-  // First, find the dentist_id for the given userId
+  // ค้นหารหัสทันตแพทย์ (dentist_id) จากรหัสผู้ใช้ (user_id)
   const { data: dentistData } = await supabase.from('dentist').select('dentist_id').eq('user_id', userId).single();
 
   if (!dentistData) {
-    // Not a dentist (likely staff), no direct patient appointments
+    // กรณีไม่ใช่ทันตแพทย์ (เช่น พนักงาน) จะไม่มีคิวนัดหมายคนไข้โดยตรง
     return { hasConflict: false, count: 0 };
   }
 
@@ -686,10 +694,10 @@ export async function checkAppointmentConflicts(userId: string, date: string, st
     .select('appointment_id', { count: 'exact' })
     .eq('dentist_id', dentistId)
     .eq('appointment_date', date)
-    .in('appointment_status', ACTIVE_APPOINTMENT_STATUSES); // Active statuses
+    .in('appointment_status', ACTIVE_APPOINTMENT_STATUSES); // สถานะนัดหมายที่ยังมีผลอยู่
 
   if (startTime && endTime) {
-    // Overlap condition: (existing_start < new_end) AND (existing_end > new_start)
+    // เงื่อนไขเวลาซ้อนทับกัน: (เวลาเริ่มเดิม < เวลาจบใหม่) และ (เวลาจบเดิม > เวลาเริ่มใหม่)
     query = query.lt('start_time', endTime).gt('end_time_est', startTime);
   }
 
@@ -704,7 +712,7 @@ export async function checkAppointmentConflicts(userId: string, date: string, st
 
 
 export async function updateAppointmentDetails(id: number, updates: any) {
-  // Fetch old data
+  // ดึงข้อมูลนัดหมายเดิม
   const { data: oldAppt } = await supabase.from('appointment')
     .select('appointment_date, start_time, dentist_id')
     .eq('appointment_id', id)
@@ -718,7 +726,7 @@ export async function updateAppointmentDetails(id: number, updates: any) {
   if (updates.status) payload.appointment_status = updates.status;
   if (updates.time) {
     payload.start_time = updates.time;
-    // Calculate end_time_est
+    // คำนวณเวลาสิ้นสุดโดยประมาณ
     const duration = updates.durationMins || 30;
     const [hh, mm] = updates.time.split(':').map(Number);
     const totalMins = (hh * 60) + mm + duration;
@@ -746,18 +754,18 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
   const dateObj = new Date(date);
   const dayOfWeek = dateObj.getDay();
 
-  // 0. Check if clinic is closed
+  // 0. ตรวจสอบว่าคลินิกปิดทำการในวันดังกล่าวหรือไม่
   const { data: holiday } = await supabase.from('clinic_holiday').select('holiday_id').eq('holiday_date', date).maybeSingle();
-  if (holiday) return []; // Clinic is closed, no slots available
+  if (holiday) return []; // คลินิกปิดทำการ ไม่มีช่วงเวลาว่าง
 
-  // 1. Get target doctors
+  // 1. ดึงรายชื่อทันตแพทย์เป้าหมาย
   let targetDoctorIds: number[] = [];
   if (doctorId) {
     targetDoctorIds = [doctorId];
   } else {
     let query = supabase.from('dentist').select('dentist_id');
     if (serviceId) {
-      // Only doctors providing this service
+      // คัดเฉพาะทันตแพทย์ที่ให้บริการหัตถการนี้
       const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
       if (dsData) {
         targetDoctorIds = dsData.map(d => d.dentist_id);
@@ -770,23 +778,23 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
 
   if (targetDoctorIds.length === 0) return [];
 
-  // Fetch all users to map dentist_id to user_id
+  // ดึงข้อมูลผู้ใช้ทั้งหมดเพื่อเชื่อมโยงรหัสทันตแพทย์กับรหัสผู้ใช้
   const { data: dentistUsers } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', targetDoctorIds);
   const userIds = dentistUsers ? dentistUsers.map(d => d.user_id) : [];
 
-  // Fetch approved leaves
+  // ดึงรายการใบลาที่อนุมัติแล้ว
   const { data: leaves } = await supabase.from('leave_record')
     .select('user_id, leave_period')
     .in('user_id', userIds)
     .eq('leave_date', date)
     .eq('is_approved', true);
 
-  // Fetch shifts for this day of week
+  // ดึงตารางเวรประจำวันในสัปดาห์
   const { data: shifts } = await supabase.from('schedule')
     .select('users!inner(dentist(dentist_id)), start_shift, end_shift, is_off')
     .eq('day_of_week', dayOfWeek);
 
-  // Fetch appointments for the date
+  // ดึงรายการนัดหมายทั้งหมดในวันที่เลือก
   const { data: appointments } = await supabase.from('appointment')
     .select('dentist_id, patient_id, start_time, end_time_est')
     .eq('appointment_date', date)
@@ -798,11 +806,11 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
     const dUser = dentistUsers?.find(du => du.dentist_id === dId);
     if (!dUser) continue;
 
-    // Check leave
+    // ตรวจสอบการลางาน
     const docLeave = leaves?.find(l => l.user_id === dUser.user_id);
-    if (docLeave) continue; // Skip if on leave (now only full-day leaves)
+    if (docLeave) continue; // ข้ามทันตแพทย์ที่ลางานในวันนั้น
 
-    // Find shift
+    // ค้นหากะการทำงาน
     const shift = shifts?.find((s: any) => s.users?.dentist?.[0]?.dentist_id === dId);
     if (!shift || shift.is_off || !shift.start_shift || !shift.end_shift) continue;
 
@@ -815,15 +823,15 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
     const docApps = appointments?.filter(a => a.dentist_id === dId) || [];
     const patApps = patientId ? (appointments?.filter(a => a.patient_id === patientId) || []) : [];
 
-    // Check if date is today and calculate current minutes
+    // ตรวจสอบว่าเป็นวันนี้หรือไม่เพื่อคำนวณเวลาปัจจุบันเป็นนาที
     const isToday = new Date().toISOString().split('T')[0] === date;
     const now = new Date();
     const currentMin = now.getHours() * 60 + now.getMinutes();
 
-    // Generate 30 min slots
+    // สร้างช่วงเวลาว่างทีละ 30 นาที
     for (let min = shiftStartMin; min <= shiftEndMin - 30; min += 30) {
 
-      // Prevent booking past times for today
+      // ป้องกันไม่ให้จองเวลาที่ผ่านไปแล้วของวันนี้
       if (isToday && min <= currentMin) continue;
 
       const slotStart = min;
@@ -831,7 +839,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
 
       let overlap = false;
 
-      // Check doctor overlap
+      // ตรวจสอบว่าเวลาซ้อนทับกับคิวอื่นของแพทย์หรือไม่
       for (const app of docApps) {
         if (!app.start_time || !app.end_time_est) continue;
         const [aSh, aSm] = app.start_time.split(':').map(Number);
@@ -845,7 +853,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
         }
       }
 
-      // Check patient overlap (if patient is selected)
+      // ตรวจสอบว่าเวลาซ้อนทับกับคิวอื่นของคนไข้หรือไม่
       if (!overlap && patApps.length > 0) {
         for (const app of patApps) {
           if (!app.start_time || !app.end_time_est) continue;
@@ -882,7 +890,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
   const dateObj = new Date(date);
   const dayOfWeek = dateObj.getDay();
 
-  // 1. Get daily hours
+  // 1. ดึงเวลาเปิด-ปิดทำการรายวัน
   const dailyHours = await getDailyHours();
   const dayHours = dailyHours[dayOfWeek.toString()];
   if (!dayHours) return [];
@@ -892,7 +900,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
   const clinicOpenMin = openH * 60 + openM;
   const clinicCloseMin = closeH * 60 + closeM;
 
-  // 0. Check if clinic is closed
+  // 0. ตรวจสอบว่าคลินิกปิดทำการในวันดังกล่าวหรือไม่
   const { data: holiday } = await supabase.from('clinic_holiday').select('holiday_id').eq('holiday_date', date).maybeSingle();
 
   let targetDoctorIds: number[] = [];
@@ -911,23 +919,23 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
     }
   }
 
-  // Fetch all users to map dentist_id to user_id
+  // ดึงข้อมูลผู้ใช้ทั้งหมดเพื่อเชื่อมโยงรหัสทันตแพทย์กับรหัสผู้ใช้
   const { data: dentistUsers } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', targetDoctorIds);
   const userIds = dentistUsers ? dentistUsers.map(d => d.user_id) : [];
 
-  // Fetch approved leaves
+  // ดึงรายการใบลาที่อนุมัติแล้ว
   const { data: leaves } = await supabase.from('leave_record')
     .select('user_id, leave_period')
     .in('user_id', userIds)
     .eq('leave_date', date)
     .eq('is_approved', true);
 
-  // Fetch shifts for this day of week
+  // ดึงตารางเวรประจำวันในสัปดาห์
   const { data: shifts } = await supabase.from('schedule')
     .select('users!inner(dentist(dentist_id)), start_shift, end_shift, is_off')
     .eq('day_of_week', dayOfWeek);
 
-  // Fetch appointments for the date
+  // ดึงรายการนัดหมายทั้งหมดในวันที่เลือก
   const { data: appointments } = await supabase.from('appointment')
     .select('dentist_id, patient_id, start_time, end_time_est')
     .eq('appointment_date', date)
@@ -959,7 +967,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
     const slotStart = min;
     const slotEnd = min + 30;
 
-    // Check patient overlap globally
+    // ตรวจสอบเวลาซ้อนทับของคนไข้กับคลินิก
     let patientOverlap = false;
     for (const app of patApps) {
       if (!app.start_time || !app.end_time_est) continue;
@@ -1018,7 +1026,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
 
       if (min >= leaveStartMin && min < leaveEndMin) continue;
 
-      // Check doctor appointments
+      // ตรวจสอบคิวนัดหมายของทันตแพทย์
       const docApps = appointments?.filter(a => a.dentist_id === dId) || [];
       let docOverlap = false;
       for (const app of docApps) {
