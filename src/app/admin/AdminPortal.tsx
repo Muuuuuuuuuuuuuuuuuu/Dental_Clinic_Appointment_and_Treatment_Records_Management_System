@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import AdminDashboard from "./dashboard/AdminDashboard";
 import UserProfile from "../shared/components/UserProfile";
-import ScheduleHub from "./hubs/ScheduleHub";
-import ClinicHub from "./hubs/ClinicHub";
-import UsersHub from "./hubs/UsersHub";
+import ScheduleHub from "./schedule/ScheduleHub";
+import ClinicHub from "./clinic/ClinicHub";
+import UsersHub from "./users/UsersHub";
 
 import {
   Home, LogOut, Smile, Menu, Calendar, Clipboard, Users, BookOpen, Bell

@@ -1,9 +1,10 @@
+import SubViewWrapper from '../components/SubViewWrapper';
 import React, { useState, useEffect } from "react";
 import { Calendar, FileText, ArrowLeft, ChevronRight, Bell, Settings } from "lucide-react";
 import { getLeaveRequests } from "../../shared/supabaseApi";
-import ScheduleManagement from "../schedule/ScheduleManagement";
-import LeaveApprovals from "../leave/LeaveApprovals";
-import ClinicSettingsManagement from "../settings/ClinicSettingsManagement";
+import ScheduleManagement from "./ScheduleManagement";
+import LeaveApprovals from "./LeaveApprovals";
+import ClinicSettingsManagement from "../clinic/ClinicSettingsManagement";
 
 type ScheduleSubView = null | "schedule" | "leaves" | "clinic_settings";
 
@@ -130,16 +131,3 @@ export default function ScheduleHub() {
   );
 }
 
-function SubViewWrapper({ onBack, children }: { onBack: () => void; children: React.ReactNode }) {
-  return (
-    <div>
-      <button onClick={onBack}
-        className="flex items-center gap-2 text-sm font-medium mb-4 px-3 py-1.5 rounded-lg transition-colors hover:bg-white/80"
-        style={{ color: "#4A6080" }}>
-        <ArrowLeft size={16} />
-        กลับไปเลือกหมวดหมู่
-      </button>
-      {children}
-    </div>
-  );
-}

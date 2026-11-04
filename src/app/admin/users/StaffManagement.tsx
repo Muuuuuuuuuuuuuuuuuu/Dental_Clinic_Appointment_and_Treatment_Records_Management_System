@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from "react";
 import StatusBadge from "../../shared/components/StatusBadge";
-import { Plus, Edit3, Trash2, CheckCircle, X } from "lucide-react";
+import AdminModal from "../components/AdminModal";
+import { Plus, Edit3, Trash2, CheckCircle } from "lucide-react";
 
 import { StaffInfo } from "../../shared/data";
 import { getStaff, addStaff, updateStaff } from "../../shared/supabaseApi";
 
 export default function StaffManagement() {
+  // ==============================================================================
+  // 1. [STATE & FETCH] ประกาศตัวแปรและดึงข้อมูลจาก Supabase
+  // ==============================================================================
   const [staff, setStaff] = useState<StaffInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -18,7 +22,6 @@ export default function StaffManagement() {
     email: "", 
     phone: "", 
     password: "", 
-    salary: "",
     gender: "",
     birthDate: "",
     address: "",
@@ -26,40 +29,6 @@ export default function StaffManagement() {
     startDate: "",
     employmentStatus: "ปฏิบัติงานปกติ"
   });
-
-  const open = (s?: StaffInfo) => {
-    setEditing(s ?? null);
-    setForm(s ? { 
-      firstName: s.firstName || "",
-      lastName: s.lastName || "",
-      citizenId: s.citizenId || "", 
-      email: s.email, 
-      phone: s.phone, 
-      password: "", 
-      salary: s.salary || "",
-      gender: s.gender || "",
-      birthDate: s.birthDate || "",
-      address: s.address || "",
-      role: s.role || "ผู้ช่วยทันตแพทย์",
-      startDate: s.startDate || "",
-      employmentStatus: s.employmentStatus || "ปฏิบัติงานปกติ"
-    } : { 
-      firstName: "", 
-      lastName: "", 
-      citizenId: "", 
-      email: "", 
-      phone: "", 
-      password: "", 
-      salary: "",
-      gender: "",
-      birthDate: "",
-      address: "",
-      role: "ผู้ช่วยทันตแพทย์",
-      startDate: new Date().toISOString().split('T')[0],
-      employmentStatus: "ปฏิบัติงานปกติ"
-    });
-    setShowModal(true);
-  };
 
   useEffect(() => {
     fetchStaff();
@@ -74,6 +43,41 @@ export default function StaffManagement() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ==============================================================================
+  // 2. [HANDLERS & ACTIONS] ฟังก์ชันจัดการข้อมูล (เปิดฟอร์ม, บันทึก, เปลี่ยนสถานะ)
+  // ==============================================================================
+  const open = (s?: StaffInfo) => {
+    setEditing(s ?? null);
+    setForm(s ? { 
+      firstName: s.firstName || "",
+      lastName: s.lastName || "",
+      citizenId: s.citizenId || "", 
+      email: s.email, 
+      phone: s.phone, 
+      password: "", 
+      gender: s.gender || "",
+      birthDate: s.birthDate || "",
+      address: s.address || "",
+      role: s.role || "ผู้ช่วยทันตแพทย์",
+      startDate: s.startDate || "",
+      employmentStatus: s.employmentStatus || "ปฏิบัติงานปกติ"
+    } : { 
+      firstName: "", 
+      lastName: "", 
+      citizenId: "", 
+      email: "", 
+      phone: "", 
+      password: "", 
+      gender: "", 
+      birthDate: "", 
+      address: "", 
+      role: "ผู้ช่วยทันตแพทย์",
+      startDate: new Date().toISOString().split('T')[0],
+      employmentStatus: "ปฏิบัติงานปกติ"
+    });
+    setShowModal(true);
   };
 
   const save = async () => {
@@ -114,19 +118,24 @@ export default function StaffManagement() {
     }
   };
 
+  // ==============================================================================
+  // 3. [TABLE UI] ส่วนแสดงผลตารางรายชื่อพนักงานบนหน้าจอ
+  // ==============================================================================
   return (
     <div>
+      {/* ส่วนหัวหน้าจอ */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จัดการพนักงาน</h1>
           <p className="text-sm" style={{ color: "#4A6080" }}>พนักงานทั้งหมด {staff.length} คน</p>
         </div>
-        <button onClick={() => open()} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white"
+        <button onClick={() => open()} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
           style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
           <Plus size={15} /> เพิ่มพนักงาน
         </button>
       </div>
       
+      {/* ตารางแสดงข้อมูล */}
       <div className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -170,101 +179,97 @@ export default function StaffManagement() {
         </div>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(26,54,93,0.4)", backdropFilter: "blur(4px)" }}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
-                {editing ? "แก้ไขข้อมูลพนักงาน" : "เพิ่มพนักงานใหม่"}
-              </h2>
-              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} style={{ color: "#4A6080" }} /></button>
+      {/* ============================================================================== */}
+      {/* 4. [MODAL FORM] หน้าต่างป๊อปอัปสำหรับเพิ่ม/แก้ไขข้อมูลพนักงาน (ใช้ AdminModal กลาง) */}
+      {/* ============================================================================== */}
+      <AdminModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? "แก้ไขข้อมูลพนักงาน" : "เพิ่มพนักงานใหม่"}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ชื่อ</label>
+              <input type="text" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
             </div>
-            
-            <div className="space-y-4 overflow-y-auto max-h-[60vh] pr-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ชื่อ</label>
-                  <input type="text" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>นามสกุล</label>
-                  <input type="text" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เลขบัตรประชาชน (13 หลัก)</label>
-                  <input type="text" value={form.citizenId} onChange={e => setForm(f => ({ ...f, citizenId: e.target.value.replace(/\D/g, "").slice(0, 13) }))} maxLength={13} placeholder="กรอกตัวเลข 13 หลัก" disabled={!!editing} className={`w-full px-3 py-2.5 rounded-xl text-sm outline-none ${editing ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เพศ</label>
-                  <select value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}>
-                    <option value="">- เลือกเพศ -</option>
-                    <option value="ชาย">ชาย</option>
-                    <option value="หญิง">หญิง</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>วันเกิด</label>
-                  <input type="date" value={form.birthDate} onChange={e => setForm(f => ({ ...f, birthDate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์</label>
-                  <input type="tel" maxLength={10} placeholder="กรอกตัวเลข 10 หลัก" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ที่อยู่ปัจจุบัน (ไม่บังคับ)</label>
-                <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} rows={2} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>อีเมล</label>
-                  <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!!editing} className={`w-full px-3 py-2.5 rounded-xl text-sm outline-none ${editing ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-                {!editing && (
-                  <div>
-                    <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตั้งรหัสผ่าน (ปล่อยว่าง = password123)</label>
-                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} placeholder="password123" />
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตำแหน่ง</label>
-                <input type="text" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>วันที่เริ่มงาน</label>
-                  <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>สถานะการทำงาน</label>
-                  <select value={form.employmentStatus} onChange={e => setForm(f => ({ ...f, employmentStatus: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}>
-                    <option value="ปฏิบัติงานปกติ">ปฏิบัติงานปกติ</option>
-                    <option value="พักงาน">พักงาน</option>
-                    <option value="ลาออก">ลาออก</option>
-                  </select>
-                </div>
-              </div>
-
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>นามสกุล</label>
+              <input type="text" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
             </div>
+          </div>
 
-            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>ยกเลิก</button>
-              <button onClick={save} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>บันทึก</button>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เลขบัตรประชาชน (13 หลัก)</label>
+              <input type="text" value={form.citizenId} onChange={e => setForm(f => ({ ...f, citizenId: e.target.value.replace(/\D/g, "").slice(0, 13) }))} maxLength={13} placeholder="กรอกตัวเลข 13 หลัก" disabled={!!editing} className={`w-full px-3 py-2.5 rounded-xl text-sm outline-none ${editing ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เพศ</label>
+              <select value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}>
+                <option value="">- เลือกเพศ -</option>
+                <option value="ชาย">ชาย</option>
+                <option value="หญิง">หญิง</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>วันเกิด</label>
+              <input type="date" value={form.birthDate} onChange={e => setForm(f => ({ ...f, birthDate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เบอร์โทรศัพท์</label>
+              <input type="tel" maxLength={10} placeholder="กรอกตัวเลข 10 หลัก" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ที่อยู่ปัจจุบัน (ไม่บังคับ)</label>
+            <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} rows={2} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>อีเมล</label>
+              <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!!editing} className={`w-full px-3 py-2.5 rounded-xl text-sm outline-none ${editing ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+            </div>
+            {!editing && (
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตั้งรหัสผ่าน (ปล่อยว่าง = password123)</label>
+                <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} placeholder="password123" />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตำแหน่ง</label>
+            <input type="text" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>วันที่เริ่มงาน</label>
+              <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>สถานะการทำงาน</label>
+              <select value={form.employmentStatus} onChange={e => setForm(f => ({ ...f, employmentStatus: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}>
+                <option value="ปฏิบัติงานปกติ">ปฏิบัติงานปกติ</option>
+                <option value="พักงาน">พักงาน</option>
+                <option value="ลาออก">ลาออก</option>
+              </select>
             </div>
           </div>
         </div>
-      )}
+
+        {/* ปุ่มกดยกเลิกและบันทึก */}
+        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100 flex-shrink-0">
+          <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors hover:bg-gray-50" style={{ border: "1.5px solid rgba(26,54,93,0.2)", color: "#4A6080" }}>ยกเลิก</button>
+          <button onClick={save} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>บันทึก</button>
+        </div>
+      </AdminModal>
     </div>
   );
 }

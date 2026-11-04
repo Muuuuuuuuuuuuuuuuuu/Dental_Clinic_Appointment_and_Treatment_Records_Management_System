@@ -1,10 +1,11 @@
+import SubViewWrapper from '../components/SubViewWrapper';
 import React, { useState, useEffect } from "react";
 import { Shield, UserCheck, Users, Smile, ArrowLeft, ChevronRight } from "lucide-react";
 import { getAdmins, getDentists, getStaff, getPatients } from "../../shared/supabaseApi";
-import AdminManagement from "../users/AdminManagement";
-import DentistManagement from "../users/DentistManagement";
-import StaffManagement from "../users/StaffManagement";
-import PatientManagement from "../users/PatientManagement";
+import AdminManagement from "./AdminManagement";
+import DentistManagement from "./DentistManagement";
+import StaffManagement from "./StaffManagement";
+import PatientManagement from "./PatientManagement";
 
 type UsersSubView = null | "admins" | "dentists" | "staff" | "patients";
 
@@ -106,16 +107,3 @@ export default function UsersHub() {
   );
 }
 
-function SubViewWrapper({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
-  return (
-    <div>
-      <button onClick={onBack}
-        className="flex items-center gap-2 text-sm font-medium mb-4 px-3 py-1.5 rounded-lg transition-colors hover:bg-white/80"
-        style={{ color: "#4A6080" }}>
-        <ArrowLeft size={16} />
-        กลับไปเลือกหมวดหมู่
-      </button>
-      {children}
-    </div>
-  );
-}

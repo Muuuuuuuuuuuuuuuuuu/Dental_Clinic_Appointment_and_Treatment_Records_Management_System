@@ -1,9 +1,10 @@
+import SubViewWrapper from '../components/SubViewWrapper';
 import React, { useState, useEffect } from "react";
 import { Settings, ArrowLeft, ChevronRight, Clock, Package } from "lucide-react";
 import { getServices } from "../../shared/supabaseApi";
-import ServiceManagement from "../settings/ServiceManagement";
-import ClinicSettingsManagement from "../settings/ClinicSettingsManagement";
-import ProductManagement from "../settings/ProductManagement";
+import ServiceManagement from "./ServiceManagement";
+import ClinicSettingsManagement from "./ClinicSettingsManagement";
+import ProductManagement from "./ProductManagement";
 
 type ClinicSubView = null | "services" | "settings" | "products";
 
@@ -97,16 +98,3 @@ export default function ClinicHub() {
   );
 }
 
-function SubViewWrapper({ onBack, children }: { onBack: () => void; children: React.ReactNode }) {
-  return (
-    <div>
-      <button onClick={onBack}
-        className="flex items-center gap-2 text-sm font-medium mb-4 px-3 py-1.5 rounded-lg transition-colors hover:bg-white/80"
-        style={{ color: "#4A6080" }}>
-        <ArrowLeft size={16} />
-        กลับไปเลือกหมวดหมู่
-      </button>
-      {children}
-    </div>
-  );
-}
