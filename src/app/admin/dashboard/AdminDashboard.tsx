@@ -148,9 +148,9 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
   const activeOrtho = appointments.filter(a => (a.service.includes("จัดฟัน") || a.service.includes("รากเทียม")) && !["ยกเลิก", "เสร็จสิ้น"].includes(a.status)).length;
 
   return (
-    <div className="animate-fade-in flex flex-col" style={{ height: "calc(100vh - 7rem)" }}>
+    <div className="animate-fade-in space-y-4 pb-12">
       {/* แถวที่ 1: ส่วนหัวและปุ่มควบคุม */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3 flex-shrink-0">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>ภาพรวมระบบ</h1>
           <p className="text-xs" style={{ color: "#4A6080" }}>
@@ -180,7 +180,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
       </div>
 
       {/* แถวที่ 2: การ์ดสรุปตัวเลขสำคัญ */}
-      <div className="grid grid-cols-4 gap-3 mb-3 flex-shrink-0">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "นัดหมาย", val: filteredAppts.length, icon: Calendar, bg: "#E8F4FF", ic: "#1D6FA4" },
           { label: "รายได้", val: `฿${revenue.toLocaleString()}`, icon: TrendingUp, bg: "#E8FFF0", ic: "#1B7A3E" },
@@ -202,7 +202,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
       </div>
 
       {/* แถวที่ 3: กราฟสถิติแสดงผลคู่กัน */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* กราฟจำนวนนัดหมาย */}
         <div className="rounded-xl bg-white p-4 flex flex-col" style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}>
           <div className="flex items-center justify-between mb-2 flex-shrink-0">
@@ -213,7 +213,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
               <span className="text-[9px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">คลิกแท่งกราฟ</span>
             )}
           </div>
-          <div className="flex-1 min-h-0">
+          <div className="h-64 sm:h-72 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} barSize={timeframe === "month" ? 10 : timeframe === "today" ? 10 : 16}
                 onClick={handleChartClick} style={{ cursor: timeframe !== "today" ? 'pointer' : 'default' }}>
@@ -235,7 +235,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
               กราฟรายได้ ({timeframe === "today" ? "รายชั่วโมง" : timeframe === "month" ? "รายเดือน" : "7 วัน"})
             </h3>
           </div>
-          <div className="flex-1 min-h-0">
+          <div className="h-64 sm:h-72 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} onClick={handleChartClick} style={{ cursor: timeframe !== "today" ? 'pointer' : 'default' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,54,93,0.06)" vertical={false} />
@@ -251,7 +251,7 @@ export default function AdminDashboard({ setView }: { setView: (v: AdminView) =>
       </div>
 
       {/* แถวที่ 4: แถบสรุปสถานะ เคสต่อเนื่อง และปุ่มดูรายการนัดหมาย */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-shrink-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* สรุปสถานะนัดหมายแบบแนวนอน */}
         <div className="lg:col-span-5 rounded-xl bg-white px-4 py-3 flex flex-col justify-center" style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}>
           <div className="flex items-center justify-between mb-2">

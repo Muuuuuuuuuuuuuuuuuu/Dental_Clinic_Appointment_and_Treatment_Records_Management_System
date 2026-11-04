@@ -1,6 +1,6 @@
 // 
 
-import { Smile, Sparkles, Shield, Award, Heart, Calendar, Syringe, Baby, Zap, Scissors, Crown, Layers, Star , Clock } from "lucide-react";
+import { Smile, Sparkles, Shield, Award, Heart, Calendar, Syringe, Baby, Zap, Scissors, Crown, Layers, Star, Clock } from "lucide-react";
 
 export type View =
   | "landing" | "login" | "register" | "otp" | "consent" | "forgot-password"
@@ -101,31 +101,35 @@ export const patientStatusColor: Record<string, { bg: string; text: string }> = 
 
 import { User, Stethoscope, Users, Settings } from "lucide-react";
 
-export const ROLE_TABS: { key: UserRole; label: string; icon: any; demos: {label: string, email: string, pass: string}[] }[] = [
-  { key: "patient", label: "คนไข้", icon: User, demos: [
-    { label: "สมหญิง", email: "somying@example.com", pass: "12345678" },
-    { label: "สมศักดิ์", email: "somsak@example.com", pass: "12345678" },
-    { label: "ศรีวรรณ", email: "sriwan@example.com", pass: "12345678" },
-    { label: "อนุชา", email: "anucha@example.com", pass: "12345678" },
-    { label: "กัลยา", email: "kanya@example.com", pass: "12345678" },
-    { label: "สุรชัย", email: "surachai@example.com", pass: "12345678" },
-    { label: "วรรณา", email: "wanna@example.com", pass: "12345678" },
-    { label: "ณัฐพงศ์", email: "nattapong@example.com", pass: "12345678" },
-    { label: "อารยา", email: "araya@example.com", pass: "12345678" }
-  ]},
-  { key: "doctor", label: "ทันตแพทย์", icon: Stethoscope, demos: [
-    { label: "ทพญ. อรนุช", email: "dr.ornuch@clinic.com", pass: "12345678" },
-    { label: "ทพ. วิชัย", email: "dr.wichai@clinic.com", pass: "12345678" },
-    { label: "ทพญ. พิมพ์ใจ", email: "dr.pimjai@clinic.com", pass: "12345678" },
-    { label: "ทพ. ศิริชัย", email: "dr.sirichai@clinic.com", pass: "12345678" },
-    { label: "ทพญ. นภาพร", email: "dr.napaporn@clinic.com", pass: "12345678" }
-  ]},
-  { key: "staff", label: "พนักงาน", icon: Users, demos: [
-    { label: "รัตนา (ต้อนรับ)", email: "rattana@clinic.com", pass: "12345678" }
-  ]},
-  { key: "admin", label: "ผู้ดูแลระบบ", icon: Settings, demos: [
-    { label: "Admin 1 (คลินิกหลัก)", email: "admin@clinic.com", pass: "12345678" }
-  ]}
+export const ROLE_TABS: { key: UserRole; label: string; icon: any; demos: { label: string, email: string, pass: string }[] }[] = [
+  {
+    key: "patient", label: "คนไข้", icon: User, demos: [
+      { label: "สมหญิง", email: "somying@example.com", pass: "12345678" },
+      { label: "สมศักดิ์", email: "somsak@example.com", pass: "12345678" },
+      { label: "อนุชา", email: "anucha@example.com", pass: "12345678" },
+      { label: "กัลยา", email: "kanya@example.com", pass: "12345678" },
+      { label: "สุรชัย", email: "surachai@example.com", pass: "12345678" }
+    ]
+  },
+  {
+    key: "doctor", label: "ทันตแพทย์", icon: Stethoscope, demos: [
+      { label: "ทพญ. อรนุช", email: "dr.ornuch@clinic.com", pass: "12345678" },
+      { label: "ทพ. วิชัย", email: "dr.wichai@clinic.com", pass: "12345678" },
+      { label: "ทพญ. พิมพ์ใจ", email: "dr.pimjai@clinic.com", pass: "12345678" },
+      { label: "ทพ. ศิริชัย", email: "dr.sirichai@clinic.com", pass: "12345678" },
+      { label: "ทพญ. นภาพร", email: "dr.napaporn@clinic.com", pass: "12345678" }
+    ]
+  },
+  {
+    key: "staff", label: "พนักงาน", icon: Users, demos: [
+      { label: "รัตนา (ต้อนรับ)", email: "rattana@clinic.com", pass: "12345678" }
+    ]
+  },
+  {
+    key: "admin", label: "ผู้ดูแลระบบ", icon: Settings, demos: [
+      { label: "Admin 1 (คลินิกหลัก)", email: "admin@clinic.com", pass: "12345678" }
+    ]
+  }
 ];
 
 export const REG_STEPS = ["ข้อมูลบัญชี", "ยืนยัน OTP", "ข้อมูลส่วนตัว", "ข้อมูลการติดต่อ", "ข้อมูลสุขภาพ"];
@@ -143,12 +147,12 @@ export interface RegForm {
 import { Home, Bell, FileText, Activity } from "lucide-react";
 
 export const NAV_ITEMS = [
-  { key: "dashboard",    label: "แดชบอร์ด",         icon: Home },
-  { key: "booking",      label: "จองนัดหมาย",        icon: Calendar },
-  { key: "appointments", label: "รายการนัดหมาย",     icon: Bell },
-  { key: "history",      label: "ประวัติการรักษา",   icon: FileText },
-  { key: "record",       label: "สุขภาพฟันของฉัน",   icon: Activity },
-  { key: "profile",      label: "ข้อมูลส่วนตัว",     icon: User },
+  { key: "dashboard", label: "แดชบอร์ด", icon: Home },
+  { key: "booking", label: "จองนัดหมาย", icon: Calendar },
+  { key: "appointments", label: "รายการนัดหมาย", icon: Bell },
+  { key: "history", label: "ประวัติการรักษา", icon: FileText },
+  { key: "record", label: "สุขภาพฟันของฉัน", icon: Activity },
+  { key: "profile", label: "ข้อมูลส่วนตัว", icon: User },
 ];
 
 // 
