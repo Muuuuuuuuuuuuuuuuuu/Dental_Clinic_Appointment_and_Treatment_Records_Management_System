@@ -234,15 +234,9 @@ export default function AdminManagement() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตำแหน่ง</label>
-                  <input type="text" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
-                <div>
-                  <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>เงินเดือน</label>
-                  <input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
-                </div>
+              <div>
+                <label className="text-xs font-medium block mb-1" style={{ color: "#4A6080" }}>ตำแหน่ง</label>
+                <input type="text" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

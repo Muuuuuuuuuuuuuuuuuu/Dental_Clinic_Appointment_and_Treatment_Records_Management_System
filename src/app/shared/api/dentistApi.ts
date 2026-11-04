@@ -251,7 +251,9 @@ export async function getLandingDoctors() {
       name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
       specialty: d.specialization || 'ทันตแพทย์',
       img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format',
-      years: `ประสบการณ์ ${expYears} ปี`
+      years: `ประสบการณ์ ${expYears} ปี`,
+      university: d.university || "ทันตแพทยศาสตรบัณฑิต",
+      graduationYear: d.graduation_year
     };
   });
 }

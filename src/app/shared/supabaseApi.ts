@@ -33,7 +33,7 @@ export async function getAdmins() {
     email,
     account_status,
     profile (first_name, last_name, phone_number, citizen_id, gender, birth_date, current_address),
-    staff (position, salary, employment_status, hire_date)
+    staff (position, employment_status, hire_date)
   `).eq('role', 'admin');
 
   if (error) {

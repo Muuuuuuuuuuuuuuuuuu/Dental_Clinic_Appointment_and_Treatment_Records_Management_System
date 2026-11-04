@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getPatientProfileByUserId } from '../supabaseApi';
 import { supabase } from '../utils/supabaseClient';
-import { RegForm } from '../../patient/types';
 
 /**
  * โมดูลจัดการระบบยืนยันตัวตน
@@ -43,8 +42,8 @@ export async function changeEmail(currentPassword: string, newEmail: string) {
   });
   if (updateErr) throw new Error("ไม่สามารถเปลี่ยนอีเมลได้: " + updateErr.message);
 
-  const { error: profileErr } = await supabase.from('patients').update({ email: newEmail }).eq('user_id', user.id);
-  if (profileErr) console.warn("Failed to update email in patients table", profileErr);
+  const { error: profileErr } = await supabase.from('users').update({ email: newEmail }).eq('user_id', user.id);
+  if (profileErr) console.warn("Failed to update email in users table", profileErr);
 
   return true;
 }
@@ -69,173 +68,6 @@ export async function loginPatient(email: string, pass: string) {
   }
   return profile;
 }
-
-export async function checkEmailExists(email: string): Promise<boolean> {
-  const { data } = await supabase.from('users').select('user_id').eq('email', email);
-  return data !== null && data.length > 0;
-}
-export async function requestRegistrationOTP(form: RegForm) {
-  // สมัครสมาชิกผ่านระบบยืนยันตัวตนของ Supabase พร้อมส่งอีเมลรหัส OTP
-  const { data, error } = await supabase.auth.signUp({
-    email: form.email,
-    password: form.password,
-  });
-  if (error) throw error;
-
-  // หากอีเมลนี้มีในระบบแล้ว Supabase จะคืนค่า identities เป็นอาเรย์ว่าง
-  // เพื่อแจ้งเตือนให้ผู้ใช้ทราบว่าอีเมลนี้ถูกใช้งานแล้ว
-  if (data?.user?.identities && data.user.identities.length === 0) {
-    throw new Error("อีเมลนี้ได้ลงทะเบียนไว้แล้ว โปรดเข้าสู่ระบบ หรือใช้อีเมลอื่น (หากกำลังทดสอบ โปรดลบยูสเซอร์เก่าใน Supabase ก่อน)");
-  }
-
-  return true;
-}
-export async function resendOTP(email: string) {
-  const { error } = await supabase.auth.resend({
-    type: 'signup',
-    email: email
-  });
-  if (error) {
-    // Supabase Free Tier จำกัดการส่งอีเมล 2 ครั้ง/ชั่วโมง
-    if (error.message?.toLowerCase().includes('rate limit') || error.status === 429) {
-      throw new Error('ส่งรหัสได้เกินกำหนดแล้ว (สูงสุด 2 ครั้ง/ชั่วโมง) กรุณารอสักครู่แล้วลองใหม่');
-    }
-    if (error.message?.toLowerCase().includes('email not confirmed')) {
-      throw new Error('ไม่พบบัญชีที่รอยืนยัน กรุณาเริ่มสมัครสมาชิกใหม่');
-    }
-    throw new Error(error.message || 'ไม่สามารถส่งรหัส OTP ได้ กรุณาลองใหม่อีกครั้ง');
-  }
-  return true;
-}
-export async function verifyOTP(email: string, otp: string) {
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token: otp,
-    type: 'signup'
-  });
-  if (error) throw error;
-  return true;
-}
-
-export async function cancelRegistration() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    try {
-      const adminAuthClient = createClient(
-        import.meta.env.VITE_SUPABASE_URL || '',
-        import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-      );
-      await adminAuthClient.auth.admin.deleteUser(user.id);
-    } catch (e) {
-      console.error("Failed to delete user on cancel", e);
-    }
-  }
-  await supabase.auth.signOut();
-}
-
-export async function savePatientData(form: RegForm) {
-  // ดึงข้อมูลผู้ใช้หลังจากยืนยันรหัส OTP สำเร็จ
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) throw new Error("ไม่พบข้อมูลผู้ใช้ที่ยืนยันตัวตนแล้ว กรุณาเข้าสู่ระบบใหม่");
-
-  const userId = user.id;
-  const cleanIdCard = form.idCard.replace(/-/g, "");
-
-  // gender ต้องเป็น 'ชาย' หรือ 'หญิง' เท่านั้น (ตาม CHECK constraint)
-  const validGender = (form.gender === 'ชาย' || form.gender === 'หญิง') ? form.gender : null;
-  // ตรวจสอบว่ามีประวัติเดิมจากเลขบัตรประชาชนหรือไม่ (เพื่อเชื่อมบัญชี Walk-in)
-  const { data: oldUser } = await supabase.from('users').select('user_id').eq('citizen_id', cleanIdCard).maybeSingle();
-
-  // บันทึกหรืออัปเดตข้อมูลโปรไฟล์
-  const { error: pErr } = await supabase.from('profile').upsert({
-    citizen_id: cleanIdCard,
-    first_name: form.firstName,
-    last_name: form.lastName,
-    phone_number: form.phone || null,
-    gender: validGender,
-    birth_date: form.dob || null,
-    current_address: form.address || null
-  }, { onConflict: 'citizen_id' });
-  if (pErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลส่วนตัว: ${pErr.message}`);
-
-  // บันทึกหรืออัปเดตข้อมูลตารางผู้ใช้
-  const { error: uErr } = await supabase.from('users').upsert({
-    user_id: userId,
-    citizen_id: cleanIdCard,
-    email: form.email,
-    role: 'คนไข้',
-    account_status: 'active'
-  }, { onConflict: 'user_id' });
-  if (uErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลบัญชี: ${uErr.message}`);
-
-  let returnedPatientId: number;
-
-  if (oldUser && oldUser.user_id !== userId) {
-    // เชื่อมโยงบัญชี: กรณีคนไข้เคยมาทำฟันแบบ Walk-in แล้วมาสมัครสมาชิกออนไลน์ภายหลัง
-    const { data: linkedPat } = await supabase.from('patient').update({ user_id: userId }).eq('user_id', oldUser.user_id).select('patient_id').maybeSingle();
-    if (linkedPat) {
-      returnedPatientId = linkedPat.patient_id;
-    } else {
-      const { data: patData } = await supabase.from('patient').insert({ user_id: userId }).select('patient_id').single();
-      returnedPatientId = patData.patient_id;
-    }
-    // ลบข้อมูลชั่วคราวเดิมเพื่อไม่ให้ซ้ำซ้อน
-    await supabase.from('users').delete().eq('user_id', oldUser.user_id);
-  } else {
-    // ตรวจสอบว่ามีข้อมูลในตารางคนไข้หรือยังก่อนเพิ่มข้อมูลใหม่
-    const { data: existingPatient } = await supabase
-      .from('patient')
-      .select('patient_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (!existingPatient) {
-      // เพิ่มข้อมูลลงตารางคนไข้หากยังไม่มี
-      const { data: patData, error: patErr } = await supabase.from('patient').insert({
-        user_id: userId
-      }).select('patient_id').single();
-
-      if (patErr) throw new Error(`ข้อผิดพลาดบันทึกข้อมูลคนไข้: ${patErr.message}`);
-      returnedPatientId = patData.patient_id;
-    } else {
-      // หากมีข้อมูลคนไข้อยู่แล้วให้ใช้รหัสคนไข้เดิม
-      returnedPatientId = existingPatient.patient_id;
-    }
-  }
-
-  // บันทึกข้อมูลผู้ติดต่อฉุกเฉิน
-  if (form.emergencyName || form.emergencyPhone) {
-    await supabase.from('emergency_contact').delete().eq('patient_id', returnedPatientId);
-    await supabase.from('emergency_contact').insert({
-      patient_id: returnedPatientId,
-      contact_name: form.emergencyName || '-',
-      contact_phone: form.emergencyPhone || '-',
-      relationship: form.emergencyRelationship || 'ไม่ได้ระบุ'
-    });
-  }
-
-  // บันทึกประวัติการแพ้ยาและโรคประจำตัว
-  if (form.allergies && form.allergies !== 'ไม่มี' && form.allergies !== 'ไม่มีประวัติ' && form.allergies !== '-') {
-    await supabase.from('patient_allergy').delete().eq('patient_id', returnedPatientId);
-    const allergies = form.allergies.split(',').map(s => s.trim()).filter(s => s);
-    for (const a of allergies) {
-      await supabase.from('patient_allergy').insert({ patient_id: returnedPatientId, allergy_name: a });
-    }
-  }
-
-  if (form.conditions && form.conditions !== 'ไม่มี' && form.conditions !== 'ไม่มีประวัติ' && form.conditions !== '-') {
-    await supabase.from('patient_disease').delete().eq('patient_id', returnedPatientId);
-    const diseases = form.conditions.split(',').map(s => s.trim()).filter(s => s);
-    for (const d of diseases) {
-      await supabase.from('patient_disease').insert({ patient_id: returnedPatientId, disease_name: d });
-    }
-  }
-
-
-  return returnedPatientId;
-}
-
-// --- ประวัติการทำงานของทันตแพทย์ ---
 
 // ============================================================================
 // PASSWORD RESET (ลืมรหัสผ่าน)
