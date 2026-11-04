@@ -3,7 +3,7 @@ import { User, Settings, Edit3 } from "lucide-react";
 
 import { DentistInfo, ServiceInfo } from "../../shared/data";
 import { getDentists, changePassword, getServices } from "../../shared/supabaseApi";
-import { supabase } from "../../shared/utils/supabaseClient";
+import { supabase } from "../../shared/api/supabaseClient";
 
 export default function DoctorProfile({ doctor }: { doctor: DentistInfo | null }) {
   const [allServices, setAllServices] = useState<ServiceInfo[]>([]);

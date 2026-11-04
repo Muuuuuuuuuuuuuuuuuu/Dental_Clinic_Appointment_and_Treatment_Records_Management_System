@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from './supabaseClient';
 import { DentistInfo } from '../data';
 
 /**

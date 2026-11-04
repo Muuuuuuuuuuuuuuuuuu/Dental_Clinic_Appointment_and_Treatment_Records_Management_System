@@ -3,9 +3,9 @@ import { CheckCircle, Clock, AlertTriangle, PhoneCall, XCircle, Search, Filter, 
 import { Appointment, DentistInfo, STATUS_COLORS, hasHealthAlert } from "../../shared/data";
 import {  getDentists, updateAppointmentStatus, updateAppointmentDetails } from "../../shared/supabaseApi";
 import { useRealtimeAppointments } from "../../shared/useRealtimeAppointments";
-import { supabase } from "../../shared/utils/supabaseClient";
+import { supabase } from "../../shared/api/supabaseClient";
 
-type TabView = "confirm" | "reschedule" | "transfer" | "all";
+type TabView = "risk" | "reschedule" | "transfer" | "all";
 
 export default function AppointmentManagementView({
   appointments: initialAppointments
@@ -15,7 +15,7 @@ export default function AppointmentManagementView({
   const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [dentists, setDentists] = useState<DentistInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabView>("confirm");
+  const [activeTab, setActiveTab] = useState<TabView>("risk");
   const [searchQuery, setSearchQuery] = useState("");
 
   // สถานะการเปิด-ปิดหน้าต่างป๊อปอัป state
@@ -104,8 +104,8 @@ export default function AppointmentManagementView({
   
   const displayAppointments = useMemo(() => {
     let list = appointments;
-    if (activeTab === "confirm") {
-      list = activeAppointments.filter(a => a.status === "รอการยืนยัน");
+    if (activeTab === "risk") {
+      list = activeAppointments.filter(a => hasHealthAlert(a.conditions) || hasHealthAlert(a.allergies) || a.status === "รอการยืนยัน");
     } else if (activeTab === "reschedule" || activeTab === "transfer") {
       list = activeAppointments;
     }
@@ -121,7 +121,7 @@ export default function AppointmentManagementView({
 
 
   const TABS = [
-    { key: "confirm" as TabView, label: "รอยืนยันคิว", icon: CheckCircle },
+    { key: "risk" as TabView, label: "เคสเฝ้าระวัง / เสี่ยง", icon: AlertTriangle },
     { key: "transfer" as TabView, label: "ย้ายเคส", icon: ArrowRightLeft },
     { key: "reschedule" as TabView, label: "เลื่อน/ยกเลิกนัด", icon: Clock },
     { key: "all" as TabView, label: "นัดหมายทั้งหมด", icon: CalendarDays }
@@ -140,7 +140,7 @@ export default function AppointmentManagementView({
       <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>จัดการนัดหมาย</h1>
-          <p className="text-sm" style={{ color: "#4A6080" }}>ยืนยันเคสที่มีความเสี่ยง, ย้ายเคส, เลื่อนคิว และยกเลิกนัดหมาย</p>
+          <p className="text-sm" style={{ color: "#4A6080" }}>คัดกรองเคสที่มีความเสี่ยงสุขภาพ, ย้ายเคส, เลื่อนคิว และยกเลิกนัดหมาย</p>
         </div>
         {(activeTab === "all" || activeTab === "transfer" || activeTab === "reschedule") && (
           <div className="relative w-full md:w-80">
@@ -187,7 +187,7 @@ export default function AppointmentManagementView({
           </div>
         ) : (
           displayAppointments.map(a => (
-            <div key={a.id} className="rounded-2xl bg-white p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all hover:shadow-md" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.04)", borderLeft: activeTab === "confirm" ? "4px solid #F57F17" : "none" }}>
+            <div key={a.id} className="rounded-2xl bg-white p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all hover:shadow-md" style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.04)", borderLeft: activeTab === "risk" ? "4px solid #F57F17" : "none" }}>
               <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
                 {/* กล่องแสดงวันและเวลา */}
                 <div className="bg-gray-50 px-4 py-3 rounded-xl flex flex-col items-center justify-center min-w-[120px] border border-gray-100">
@@ -206,7 +206,7 @@ export default function AppointmentManagementView({
                         {a.status}
                       </span>
                     )}
-                    {activeTab === "confirm" && (hasHealthAlert(a.conditions) || hasHealthAlert(a.allergies)) && (
+                    {activeTab === "risk" && (hasHealthAlert(a.conditions) || hasHealthAlert(a.allergies)) && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
                         มีความเสี่ยงสุขภาพ
                       </span>
@@ -242,17 +242,19 @@ export default function AppointmentManagementView({
               
               {/* ปุ่มดำเนินการตามหมวดหมู่ที่เลือก */}
               <div className="flex flex-col sm:flex-row gap-2 min-w-[160px] md:justify-end">
-                {activeTab === "confirm" && (
+                {activeTab === "risk" && (
                   <>
-                    <button onClick={() => onUpdateAppt(a.id, { status: "ยืนยันการจอง" })}
-                      className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:opacity-90"
-                      style={{ backgroundColor: "#22C55E", boxShadow: "0 4px 12px rgba(34, 197, 94, 0.2)" }}>
-                      <CheckCircle size={16} /> ยืนยันคิว
-                    </button>
+                    {a.status === "รอการยืนยัน" && (
+                      <button onClick={() => onUpdateAppt(a.id, { status: "ยืนยันการจอง" })}
+                        className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:opacity-90"
+                        style={{ backgroundColor: "#22C55E", boxShadow: "0 4px 12px rgba(34, 197, 94, 0.2)" }}>
+                        <CheckCircle size={16} /> ยืนยันคิว
+                      </button>
+                    )}
                     <button onClick={() => handleCancelAppt(a)}
                       className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:bg-red-50"
                       style={{ color: "#EF4444", border: "1px solid #FECACA" }}>
-                      <XCircle size={16} /> ปฏิเสธ
+                      <XCircle size={16} /> ปฏิเสธ/ยกเลิก
                     </button>
                   </>
                 )}

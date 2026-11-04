@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getDailyHours } from '../supabaseApi';
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from './supabaseClient';
 import { Appointment, ACTIVE_APPOINTMENT_STATUSES } from '../../shared/data';
 
 /**
@@ -150,7 +150,7 @@ export async function getAppointments(date?: string) {
       date: d.appointment_date,
       time: d.start_time?.slice(0, 5) || '00:00',
       endTime: d.end_time_est?.slice(0, 5) || d.start_time?.slice(0, 5) || '00:00',
-      status: d.appointment_status || 'รอการยืนยัน',
+      status: d.appointment_status || 'ยืนยันการจอง',
       conditions: d.patient?.patient_disease && d.patient.patient_disease.length > 0 
         ? d.patient.patient_disease.map((a: any) => a.disease_name).join(', ') 
         : 'ไม่มี',
@@ -268,7 +268,7 @@ export async function getPatientAppointments(patientId?: number) {
       date: d.appointment_date,
       time: d.start_time?.slice(0, 5) || '00:00',
       endTime: d.end_time_est?.slice(0, 5) || d.start_time?.slice(0, 5) || '00:00',
-      status: d.appointment_status || 'รอการยืนยัน',
+      status: d.appointment_status || 'ยืนยันการจอง',
       conditions: d.patient?.patient_disease && d.patient.patient_disease.length > 0 
         ? d.patient.patient_disease.map((a: any) => a.disease_name).join(', ') 
         : 'ไม่มี',

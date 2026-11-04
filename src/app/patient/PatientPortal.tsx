@@ -3,7 +3,7 @@ import { Info } from "lucide-react";
 import { View, UserRole, PatientUser } from "./types";
 import { Appointment, getClinicStatus, ClinicStatus } from "../shared/data";
 import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
-import { supabase } from "../shared/utils/supabaseClient";
+import { supabase } from "../shared/api/supabaseClient";
 import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
 
 // ─── หน้าเข้าสู่ระบบและสมัครสมาชิก ────────────────────────────────────────────

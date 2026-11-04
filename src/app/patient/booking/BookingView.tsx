@@ -448,7 +448,10 @@ export default function BookingView({
     
     const finalHealthRisk = (isReturning && healthData.hasChanges === false) ? hasExistingCondition : newRiskSelected;
     
-    const initialStatus = finalHealthRisk ? "รอการยืนยัน" : "ยืนยันการจอง";
+    // ปรับปรุงเป็น Instant Booking (ยืนยันการจองทันที) ตามคำแนะนำอาจารย์ เพื่อลดขั้นตอนซ้ำซ้อน
+    // หากคนไข้มีความเสี่ยงสุขภาพ ระบบจะแสดง Risk Alert ให้เจ้าหน้าที่โทรตรวจสอบโดยเฉพาะ
+    const initialStatus = "ยืนยันการจอง";
+    setIsPending(Boolean(finalHealthRisk));
 
     try {
       let finalServiceTitle = serviceTitle;
@@ -538,6 +541,12 @@ export default function BookingView({
         <p className="text-sm font-semibold mb-6" style={{ color: "#1A365D" }}>
           วันที่ {selDay} {today.toLocaleDateString("th-TH", { month: "long", year: "numeric" })} เวลา {selTime} - {endTimeStr} น.
         </p>
+        {isPending && (
+          <div className="max-w-md mx-auto mb-6 p-3 rounded-xl text-xs bg-amber-50 text-amber-800 border border-amber-200 text-left flex items-start gap-2">
+            <span className="text-base leading-none">⚠️</span>
+            <span><strong>หมายเหตุความปลอดภัย:</strong> บันทึกประวัติสุขภาพของท่านเรียบร้อยแล้ว หากมีประวัติแพ้ยาหรือโรคประจำตัวที่ต้องเตรียมตัวเป็นพิเศษ เจ้าหน้าที่อาจโทรสอบถามเพิ่มเติมก่อนถึงวันนัดหมาย</span>
+          </div>
+        )}
         <div className="flex gap-3 justify-center">
           <button onClick={() => setView("appointments")} className="px-6 py-2.5 rounded-xl text-sm font-medium text-white"
             style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>ดูรายการนัดหมาย</button>

@@ -35,7 +35,7 @@ export default function ProductManagement() {
     setLoading(true);
     try {
       // ดึงข้อมูลเวชภัณฑ์ทั้งหมดรวมถึงรายการที่ปิดใช้งานสำหรับผู้ดูแลระบบ
-      const { supabase } = await import('../../shared/utils/supabaseClient');
+      const { supabase } = await import('../../shared/api/supabaseClient');
       const { data } = await supabase.from('product').select('*').order('product_type', { ascending: true });
       if (data) {
         setProducts(data.map((d: any) => ({

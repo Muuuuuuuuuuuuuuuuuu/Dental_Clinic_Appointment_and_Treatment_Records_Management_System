@@ -119,7 +119,7 @@ export default function PaymentView({
             const today = new Date().toISOString().split('T')[0];
             const future = appts.filter(a => 
               a.id !== selectedAppt.id && 
-              (a.date > today || (!a.date && a.status === 'รอการยืนยัน'))
+              (a.date > today || (!a.date && (a.status === 'ยืนยันการจอง' || a.status === 'รอการยืนยัน')))
             );
             setHasFutureAppointment(future.length > 0);
           });
@@ -836,7 +836,7 @@ export default function PaymentView({
                             doctorId: isBound ? followUp.doctorId : undefined,
                             date: isOpenTicket ? '' : followUpDate,
                             time: isOpenTicket ? '' : followUpTime,
-                            status: isOpenTicket ? 'รอการยืนยัน' : 'ยืนยันการจอง',
+                            status: 'ยืนยันการจอง',
                             source: 'doctor',
                             note: isBound ? `แพทย์ประจำเคส: ${followUp.doctorName}` : ''
                           } as any);

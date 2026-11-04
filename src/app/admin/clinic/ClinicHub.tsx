@@ -61,33 +61,49 @@ export default function ClinicHub() {
         <p className="text-sm" style={{ color: "#4A6080" }}>เลือกหมวดหมู่ที่ต้องการจัดการ</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 w-full">
         {CARD_DEFS.map((card) => (
           <button
             key={card.key}
             onClick={() => setSubView(card.key)}
-            className="group text-left bg-white rounded-2xl overflow-hidden shadow-sm border transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+            className="group flex flex-col justify-between text-left bg-white rounded-2xl overflow-hidden shadow-sm border transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
             style={{ borderColor: "rgba(26,54,93,0.08)" }}
           >
-            <div className="p-6 pb-4" style={{ background: card.gradient }}>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3"
-                style={{ backgroundColor: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }}>
-                <card.icon size={24} color="white" />
+            {/* ส่วนหัวการ์ด */}
+            <div className="p-4 sm:p-5 pb-3.5" style={{ background: card.gradient }}>
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5"
+                style={{ backgroundColor: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }}
+              >
+                <card.icon size={20} color="white" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-0.5">{card.title}</h3>
+              <h3 className="text-base font-bold text-white tracking-wide">{card.title}</h3>
             </div>
-            <div className="p-6 pt-4">
-              <p className="text-sm mb-4 leading-relaxed" style={{ color: "#4A6080" }}>
+
+            {/* ส่วนเนื้อหาของการ์ด */}
+            <div className="p-4 sm:p-5 pt-3.5 flex-1 flex flex-col justify-between">
+              <p className="text-xs leading-relaxed mb-4 min-h-[36px]" style={{ color: "#4A6080" }}>
                 {card.desc}
               </p>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold px-3 py-1.5 rounded-full"
-                  style={{ backgroundColor: card.bgLight, color: card.key === "settings" ? "#D97706" : "#5B4DC7" }}>
-                  {card.key === "settings" ? "ข้อมูลทั่วไป" : (counts[card.key] !== undefined ? `${counts[card.key]} ${card.countLabel}` : "กำลังโหลด...")}
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <span
+                  className="text-xs font-semibold px-2.5 py-1 rounded-full truncate"
+                  style={{
+                    backgroundColor: card.bgLight,
+                    color: card.key === "settings" ? "#D97706" : card.key === "products" ? "#059669" : "#5B4DC7",
+                  }}
+                >
+                  {card.key === "settings"
+                    ? "ข้อมูลทั่วไป"
+                    : counts[card.key] !== undefined
+                    ? `${counts[card.key]} ${card.countLabel}`
+                    : "กำลังโหลด..."}
                 </span>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 group-hover:translate-x-1"
-                  style={{ backgroundColor: "#F0F4F8" }}>
-                  <ChevronRight size={16} style={{ color: "#4A6080" }} />
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 group-hover:translate-x-1 shrink-0"
+                  style={{ backgroundColor: "#F0F4F8" }}
+                >
+                  <ChevronRight size={14} style={{ color: "#4A6080" }} />
                 </div>
               </div>
             </div>

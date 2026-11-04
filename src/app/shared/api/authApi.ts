@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getPatientProfileByUserId } from '../supabaseApi';
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from './supabaseClient';
 
 /**
  * โมดูลจัดการระบบยืนยันตัวตน

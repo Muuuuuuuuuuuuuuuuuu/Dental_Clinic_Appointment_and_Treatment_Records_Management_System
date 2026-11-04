@@ -173,7 +173,7 @@ export default function WalkInBooking({ onAddAppt }: { onAddAppt?: (appt: Appoin
       doctorId: form.doctorId,
       date: form.openAppt ? "" : form.date,
       time: form.openAppt ? "" : form.time, 
-      status: form.openAppt ? (hasHealthRisk ? "รอการยืนยัน" : "ยืนยันการจอง") : "เช็คอินเรียบร้อย",
+      status: form.openAppt ? "ยืนยันการจอง" : "เช็คอินเรียบร้อย",
       conditions: patientInfo?.underlyingDisease || "ไม่มี", 
       allergies: patientInfo?.allergyHistory || "ไม่มี",
       note: form.note
