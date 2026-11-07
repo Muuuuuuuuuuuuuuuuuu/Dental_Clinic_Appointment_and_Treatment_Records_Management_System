@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle2, ShieldAlert, UploadCloud, User, Activity, CheckSquare } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ShieldAlert, User, Activity, CheckSquare } from 'lucide-react';
 import { PatientUser } from '../types';
 
 export interface HealthChecklistData {
@@ -7,13 +7,15 @@ export interface HealthChecklistData {
   emergencyPhone: string;
   emergencyRelationship: string;
   hasAllergy: boolean | null;
-  allergies: string[];
-  allergyOther: string;
+  allergiesText: string;
+  allergies?: string[];
+  allergyOther?: string;
   hasCondition: boolean | null;
-  conditions: string[];
-  conditionOther: string;
-  hasMedications: boolean | null;
-  medicationNote: string;
+  conditionsText: string;
+  conditions?: string[];
+  conditionOther?: string;
+  hasMedications?: boolean | null;
+  medicationNote?: string;
   consent: boolean;
   hasChanges: boolean | null;
 }
@@ -27,7 +29,7 @@ interface Props {
 export default function HealthChecklistForm({ user, data, onChange }: Props) {
   const [formData, setFormData] = useState<HealthChecklistData>(data);
 
-  // Check if returning user (has valid non-empty data that isn't just the default 'ไม่มี')
+  // ตรวจสอบว่าเคยมีข้อมูลสุขภาพในระบบหรือไม่
   const isReturning = Boolean(user && (
     (user.conditions && user.conditions !== 'ไม่มี' && user.conditions.trim() !== '') || 
     (user.allergies && user.allergies !== 'ไม่มี' && user.allergies.trim() !== '') || 
@@ -42,9 +44,19 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
       valid = true;
     } else {
       // ตรวจสอบความครบถ้วนของแบบฟอร์ม
-      const hasEmergency = formData.emergencyName.trim() !== '' && formData.emergencyPhone.trim() !== '' && formData.emergencyRelationship.trim() !== '';
-      const validAllergy = formData.hasAllergy === false || (formData.hasAllergy === true && formData.allergies.length > 0 && (!formData.allergies.includes('แพ้อื่นๆ') || formData.allergyOther.trim() !== ''));
-      const validCondition = formData.hasCondition === false || (formData.hasCondition === true && formData.conditions.length > 0 && (!formData.conditions.includes('โรคอื่นๆ') || formData.conditionOther.trim() !== ''));
+      const hasEmergency =
+        formData.emergencyName.trim() !== '' &&
+        formData.emergencyPhone.trim() !== '' &&
+        formData.emergencyRelationship.trim() !== '';
+      
+      const validAllergy =
+        formData.hasAllergy === false ||
+        (formData.hasAllergy === true && (formData.allergiesText || '').trim() !== '');
+      
+      const validCondition =
+        formData.hasCondition === false ||
+        (formData.hasCondition === true && (formData.conditionsText || '').trim() !== '');
+      
       const validConsent = formData.consent;
       
       valid = hasEmergency && validAllergy && validCondition && validConsent;
@@ -52,26 +64,6 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
     
     onChange(formData, valid);
   }, [formData, isReturning]);
-
-  const handleAllergyToggle = (val: string) => {
-    let newArr = [...formData.allergies];
-    if (newArr.includes(val)) {
-      newArr = newArr.filter(a => a !== val);
-    } else {
-      newArr.push(val);
-    }
-    setFormData({ ...formData, allergies: newArr });
-  };
-
-  const handleConditionToggle = (val: string) => {
-    let newArr = [...formData.conditions];
-    if (newArr.includes(val)) {
-      newArr = newArr.filter(c => c !== val);
-    } else {
-      newArr.push(val);
-    }
-    setFormData({ ...formData, conditions: newArr });
-  };
 
   const inputStyle = "w-full px-4 py-3 rounded-xl border text-base outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/40 bg-[#F0F4F8] border-transparent text-[#1A365D]";
 
@@ -88,8 +80,8 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
       </div>
 
       <div className="bg-[#F8FAFC] rounded-xl p-4 border border-[#E2E8F0] space-y-2">
-        <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">โรคประจำตัว:</span> {user?.conditions}</p>
-        <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">ประวัติแพ้ยา:</span> {user?.allergies}</p>
+        <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">โรคประจำตัว:</span> {user?.conditions || 'ไม่มี'}</p>
+        <p className="text-sm text-[#4A6080]"><span className="font-semibold text-[#1A365D]">ประวัติแพ้ยา:</span> {user?.allergies || 'ไม่มี'}</p>
       </div>
 
       <div className="space-y-3 pt-2">
@@ -117,9 +109,17 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
                 emergencyName: user?.emergencyName || '',
                 emergencyPhone: user?.emergencyPhone || '',
                 emergencyRelationship: user?.emergencyRelationship || '',
-                hasAllergy: null, allergies: [], allergyOther: '',
-                hasCondition: null, conditions: [], conditionOther: '',
-                hasMedications: null, medicationNote: '', consent: false
+                hasAllergy: user?.allergies && user.allergies !== 'ไม่มี' && user.allergies !== 'ไม่มีประวัติ' ? true : null,
+                allergiesText: user?.allergies && user.allergies !== 'ไม่มี' && user.allergies !== 'ไม่มีประวัติ' ? user.allergies : '',
+                allergies: [],
+                allergyOther: '',
+                hasCondition: user?.conditions && user.conditions !== 'ไม่มี' && user.conditions !== 'ไม่มีประวัติ' ? true : null,
+                conditionsText: user?.conditions && user.conditions !== 'ไม่มี' && user.conditions !== 'ไม่มีประวัติ' ? user.conditions : '',
+                conditions: [],
+                conditionOther: '',
+                hasMedications: null,
+                medicationNote: '',
+                consent: false
               });
             }
           }}
@@ -152,7 +152,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
           <div className="p-6 space-y-8">
         
-        {/* ส่วนที่ 1 */}
+        {/* ส่วนที่ 1: ข้อมูลผู้ติดต่อฉุกเฉิน */}
         <section className="space-y-4">
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
             <User size={18} className="text-[#FF8C9A]" /> ส่วนที่ 1: ข้อมูลผู้ติดต่อฉุกเฉิน
@@ -175,7 +175,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
         <hr className="border-[#E2E8F0]" />
 
-        {/* ส่วนที่ 2 */}
+        {/* ส่วนที่ 2: ประวัติการแพ้ยาและสารเคมี */}
         <section className="space-y-4">
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
             <AlertCircle size={18} className="text-[#FF8C9A]" /> ส่วนที่ 2: ประวัติการแพ้ยาและสารเคมี
@@ -183,33 +183,41 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
           
           <div className="space-y-3 md:pl-7">
             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-transparent hover:bg-[#F8FAFC] transition-all">
-              <input type="radio" checked={formData.hasAllergy === false} onChange={() => setFormData({...formData, hasAllergy: false, allergies: [], allergyOther: ''})} className="w-5 h-5 accent-[#FF8C9A]" />
+              <input
+                type="radio"
+                name="hasAllergy"
+                checked={formData.hasAllergy === false}
+                onChange={() => setFormData({ ...formData, hasAllergy: false, allergiesText: '', allergies: [], allergyOther: '' })}
+                className="w-5 h-5 accent-[#FF8C9A]"
+              />
               <span className="font-semibold text-[#1A365D]">ไม่เคยมีประวัติแพ้ยา หรือสารเคมีใดๆ</span>
             </label>
             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-transparent hover:bg-[#F8FAFC] transition-all">
-              <input type="radio" checked={formData.hasAllergy === true} onChange={() => setFormData({...formData, hasAllergy: true})} className="w-5 h-5 accent-[#FF8C9A]" />
+              <input
+                type="radio"
+                name="hasAllergy"
+                checked={formData.hasAllergy === true}
+                onChange={() => setFormData({ ...formData, hasAllergy: true })}
+                className="w-5 h-5 accent-[#FF8C9A]"
+              />
               <span className="font-semibold text-[#1A365D]">มีประวัติแพ้ยา หรือสารเคมี</span>
             </label>
 
             {formData.hasAllergy === true && (
               <div className="ml-8 mt-2 space-y-3 p-4 bg-[#FFF0F2] rounded-xl border border-[#FFE0E4] animate-fade-in">
-                <p className="text-sm font-semibold text-[#E0314C] mb-3">กรุณาเลือกว่าคุณแพ้ยาหรือสารเคมีชนิดใดบ้าง (เลือกได้มากกว่า 1 ข้อ)</p>
-                {['ยาแก้ปวด / ยาแก้อักเสบ (เช่น แอสไพริน, ไอบูโพรเฟน, เพนิซิลลิน)', 'ยาชาสำหรับทำฟัน', 'ยางลาเท็กซ์ (ถุงมือแพทย์)'].map(item => (
-                  <label key={item} className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-white transition-all">
-                    <input type="checkbox" checked={formData.allergies.includes(item)} onChange={() => handleAllergyToggle(item)} className="mt-1 w-4 h-4 accent-[#E0314C]" />
-                    <div><p className="font-medium text-[#1A365D]">{item}</p></div>
-                  </label>
-                ))}
-
-                <label className="flex flex-col gap-2 p-2 rounded-lg hover:bg-white transition-all">
-                  <div className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" checked={formData.allergies.includes('แพ้อื่นๆ')} onChange={() => handleAllergyToggle('แพ้อื่นๆ')} className="w-4 h-4 accent-[#E0314C]" />
-                    <p className="font-medium text-[#1A365D]">แพ้อื่นๆ (โปรดระบุ)</p>
-                  </div>
-                  {formData.allergies.includes('แพ้อื่นๆ') && (
-                    <input type="text" className={`${inputStyle} mt-1`} value={formData.allergyOther} onChange={e => setFormData({...formData, allergyOther: e.target.value})} placeholder="ระบุสิ่งที่แพ้..." />
-                  )}
+                <label className="block text-sm font-semibold text-[#E0314C]">
+                  ระบุรายละเอียดตัวยา สารเคมี หรือยาชาที่แพ้:
                 </label>
+                <textarea
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/40 bg-white border-[#FFE0E4] text-[#1A365D] placeholder:text-[#4A6080]/60 resize-none shadow-sm"
+                  value={formData.allergiesText}
+                  onChange={(e) => setFormData({ ...formData, allergiesText: e.target.value })}
+                  placeholder="เช่น แพ้ยาแก้ปวดไอบูโพรเฟน, เพนิซิลลิน, ยาชาสำหรับทำฟัน, ถุงมือยางลาเท็กซ์ (ระบุอาการที่แพ้เพิ่มเติมได้)"
+                />
+                <p className="text-xs text-[#E0314C]/80">
+                  * ข้อมูลนี้สำคัญอย่างยิ่ง เพื่อให้ทันตแพทย์เตรียมยาและสารทางทันตกรรมที่ปลอดภัยสำหรับคุณ
+                </p>
               </div>
             )}
           </div>
@@ -217,7 +225,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
         <hr className="border-[#E2E8F0]" />
 
-        {/* ส่วนที่ 3 */}
+        {/* ส่วนที่ 3: ภาวะสุขภาพและโรคประจำตัว */}
         <section className="space-y-4">
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
             <Activity size={18} className="text-[#FF8C9A]" /> ส่วนที่ 3: ภาวะสุขภาพและโรคประจำตัว
@@ -225,39 +233,41 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
           
           <div className="space-y-3 md:pl-7">
             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-transparent hover:bg-[#F8FAFC] transition-all">
-              <input type="radio" checked={formData.hasCondition === false} onChange={() => setFormData({...formData, hasCondition: false, conditions: [], conditionOther: ''})} className="w-5 h-5 accent-[#FF8C9A]" />
+              <input
+                type="radio"
+                name="hasCondition"
+                checked={formData.hasCondition === false}
+                onChange={() => setFormData({ ...formData, hasCondition: false, conditionsText: '', conditions: [], conditionOther: '' })}
+                className="w-5 h-5 accent-[#FF8C9A]"
+              />
               <span className="font-semibold text-[#1A365D]">ไม่มี ภาวะสุขภาพหรือโรคประจำตัวใดๆ</span>
             </label>
             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-transparent hover:bg-[#F8FAFC] transition-all">
-              <input type="radio" checked={formData.hasCondition === true} onChange={() => setFormData({...formData, hasCondition: true})} className="w-5 h-5 accent-[#FF8C9A]" />
+              <input
+                type="radio"
+                name="hasCondition"
+                checked={formData.hasCondition === true}
+                onChange={() => setFormData({ ...formData, hasCondition: true })}
+                className="w-5 h-5 accent-[#FF8C9A]"
+              />
               <span className="font-semibold text-[#1A365D]">มี โรคประจำตัว หรือ ภาวะสุขภาพ</span>
             </label>
 
             {formData.hasCondition === true && (
               <div className="ml-8 mt-2 space-y-3 p-4 bg-[#FFF0F2] rounded-xl border border-[#FFE0E4] animate-fade-in">
-                <p className="text-sm font-semibold text-[#E0314C] mb-3">กรุณาเลือกทุกข้อที่ตรงกับคุณ (เพื่อให้ทันตแพทย์ประเมินความเสี่ยงและวางแผนการรักษาได้อย่างปลอดภัย)</p>
-                {[
-                  'กลุ่มเลือดและหัวใจ: ทานยาละลายลิ่มเลือด / โรคหัวใจ / ความดันโลหิตสูง / เคยทำบอลลูนหัวใจ',
-                  'กลุ่มเบาหวาน: โรคเบาหวาน (ทั้งที่คุมได้และคุมไม่ได้)',
-                  'กลุ่มกระดูกและมะเร็ง: โรคกระดูกพรุน / ทานหรือฉีดยารักษากระดูก / มีประวัติฉายแสงรักษามะเร็ง',
-                  'กลุ่มทางเดินหายใจและโรคติดต่อ: หอบหืดรุนแรง / โรคติดต่อทางเดินหายใจ / โรคติดต่อทางเลือด',
-                  'สำหรับสุภาพสตรี: กำลังตั้งครรภ์ หรือ ให้นมบุตร'
-                ].map(item => (
-                  <label key={item} className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-white transition-all">
-                    <input type="checkbox" checked={formData.conditions.includes(item)} onChange={() => handleConditionToggle(item)} className="mt-1 w-4 h-4 accent-[#E0314C]" />
-                    <div><p className="font-medium text-[#1A365D]">{item}</p></div>
-                  </label>
-                ))}
-                
-                <label className="flex flex-col gap-2 p-2 rounded-lg hover:bg-white transition-all">
-                  <div className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" checked={formData.conditions.includes('โรคอื่นๆ')} onChange={() => handleConditionToggle('โรคอื่นๆ')} className="w-4 h-4 accent-[#E0314C]" />
-                    <p className="font-medium text-[#1A365D]">โรคประจำตัวอื่นๆ (โปรดระบุ)</p>
-                  </div>
-                  {formData.conditions.includes('โรคอื่นๆ') && (
-                    <input type="text" className={`${inputStyle} mt-1`} value={formData.conditionOther} onChange={e => setFormData({...formData, conditionOther: e.target.value})} placeholder="ระบุโรคประจำตัว..." />
-                  )}
+                <label className="block text-sm font-semibold text-[#E0314C]">
+                  ระบุโรคประจำตัว ยาที่ทานประจำ หรือภาวะสุขภาพ:
                 </label>
+                <textarea
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/40 bg-white border-[#FFE0E4] text-[#1A365D] placeholder:text-[#4A6080]/60 resize-none shadow-sm"
+                  value={formData.conditionsText}
+                  onChange={(e) => setFormData({ ...formData, conditionsText: e.target.value })}
+                  placeholder="เช่น ทานยาละลายลิ่มเลือด, โรคหัวใจ, ความดันโลหิตสูง, เบาหวาน, โรคกระดูกพรุน, หอบหืด, กำลังตั้งครรภ์/ให้นมบุตร"
+                />
+                <p className="text-xs text-[#E0314C]/80">
+                  * โปรดระบุชื่อยาประจำตัว (โดยเฉพาะยาละลายลิ่มเลือดหรือยารักษากระดูก) เพื่อการวางแผนหัตถการอย่างปลอดภัย
+                </p>
               </div>
             )}
           </div>
@@ -265,7 +275,7 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
         <hr className="border-[#E2E8F0]" />
 
-        {/* ส่วนที่ 4 */}
+        {/* ส่วนที่ 4: ความยินยอม (E-Consent) */}
         <section className="space-y-4">
           <h4 className="font-bold text-[#1A365D] flex items-center gap-2">
             <CheckSquare size={18} className="text-[#FF8C9A]" /> ส่วนที่ 4: ความยินยอม (E-Consent)

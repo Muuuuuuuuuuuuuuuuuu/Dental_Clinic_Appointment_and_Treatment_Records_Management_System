@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity, Clock } from "lucide-react";
-import { getLandingServices } from "../../shared/supabaseApi";
+import { ChevronRight, Clock } from "lucide-react";
+import { getLandingServices } from "@/app/shared/supabaseApi";
 
-const iconMap: Record<string, any> = { Smile, Sparkles, Shield, Award, Heart, Calendar, Zap, Scissors, Crown, Layers, Star, Syringe, Baby, Activity, Clock };
+
 
 export default function Services({ onCTA }: { onCTA: () => void }) {
   const [hovered, setHovered] = useState<number | null>(null);

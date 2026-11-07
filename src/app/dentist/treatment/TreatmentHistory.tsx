@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { DentistInfo } from "../../shared/data";
-import { getDentistTreatmentHistory } from "../../shared/supabaseApi";
-import { Calendar, Search, FileText, CheckCircle, Smile } from "lucide-react";
+import { DentistInfo } from "@/app/shared/data";
+import { getDentistTreatmentHistory } from "@/app/shared/supabaseApi";
+import { Calendar, Search, FileText } from "lucide-react";
 
 export default function TreatmentHistory({ doctor }: { doctor: DentistInfo | null }) {
   const [history, setHistory] = useState<any[]>([]);

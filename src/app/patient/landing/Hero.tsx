@@ -1,4 +1,4 @@
-import { Calendar, ChevronRight, Star } from "lucide-react";
+import { Calendar, ChevronRight } from "lucide-react";
 import ClinicStatusBadge from "./ClinicStatus";
 
 export default function Hero({ onCTA }: { onCTA: () => void }) {

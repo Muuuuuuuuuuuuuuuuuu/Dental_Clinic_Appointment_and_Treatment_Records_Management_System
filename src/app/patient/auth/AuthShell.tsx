@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Smile, Clock } from "lucide-react";
-import { getWeeklyOffDays, getDailyHours } from "../../shared/supabaseApi";
+import { getWeeklyOffDays, getDailyHours } from "@/app/shared/supabaseApi";
 
 export default function AuthShell({ children, title, sub }: { children: React.ReactNode; title: string; sub: string }) {
   const DAY_SHORT = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];

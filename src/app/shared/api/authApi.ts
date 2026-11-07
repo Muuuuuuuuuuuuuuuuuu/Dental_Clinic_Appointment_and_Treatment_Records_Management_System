@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { getPatientProfileByUserId } from '../supabaseApi';
 import { supabase } from './supabaseClient';
 
@@ -74,13 +73,6 @@ export async function loginPatient(email: string, pass: string) {
 // ============================================================================
 
 /**
- * สร้าง OTP 6 หลักแบบสุ่ม
- */
-function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-/**
  * ขั้นตอนที่ 1: ส่ง OTP ตัวเลข 6 หลักไปยังอีเมลผ่าน Supabase
  * - ตรวจสอบว่าอีเมลมีอยู่ในระบบหรือไม่
  * - Supabase จะส่งตัวเลข OTP 6 หลักไปทางอีเมลโดยอัตโนมัติ
@@ -106,8 +98,6 @@ export async function sendPasswordResetOTP(email: string): Promise<void> {
     throw new Error("ไม่สามารถส่ง OTP ได้ กรุณาตรวจสอบอีเมลและลองใหม่อีกครั้ง");
   }
 }
-
-
 
 /**
  * ขั้นตอนที่ 2: ตรวจสอบ OTP ว่าถูกต้องผ่าน Supabase Auth
@@ -147,6 +137,4 @@ export async function resetPassword(email: string, newPassword: string): Promise
   }
 
   return true;
-
 }
-

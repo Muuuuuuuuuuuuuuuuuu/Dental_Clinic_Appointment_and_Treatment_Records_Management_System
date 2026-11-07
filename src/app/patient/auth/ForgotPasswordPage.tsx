@@ -9,7 +9,7 @@ import {
   sendPasswordResetOTP,
   verifyPasswordResetOTP,
   resetPassword,
-} from "../../shared/supabaseApi";
+} from "@/app/shared/supabaseApi";
 
 type Step = "email" | "otp" | "reset" | "done";
 

@@ -1,35 +1,34 @@
 import { createClient } from '@supabase/supabase-js';
 import { getDailyHours } from '../supabaseApi';
 import { supabase } from './supabaseClient';
-import { Appointment, ACTIVE_APPOINTMENT_STATUSES } from '../../shared/data';
+import { Appointment, ACTIVE_APPOINTMENT_STATUSES } from "@/app/shared/data";
 
 /**
  * โมดูลจัดการข้อมูลนัดหมาย
  * จัดการระบบนัดหมาย, คิว, และตารางเวลา
  */
-let globalUpdateChannel: any = null;
+/**
+ * แจ้งเตือนการเปลี่ยนแปลงข้อมูลนัดหมาย
+ * รองรับทั้ง CustomEvent ภายในแท็บ, BroadcastChannel ข้ามแท็บ, และ Storage Event
+ */
+let apptBroadcastChannel: BroadcastChannel | null = null;
+if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+  try {
+    apptBroadcastChannel = new BroadcastChannel('icemu-updates');
+  } catch (e) {}
+}
 
 export function notifyAppointmentsUpdated() {
-  if (!globalUpdateChannel) {
-    globalUpdateChannel = supabase.channel('icemu-updates', { config: { broadcast: { self: true } } });
-    globalUpdateChannel.subscribe(); // เปิด realtime ให้ฝั่งพนักงานรับ event ได้
-  }
-
-  if (globalUpdateChannel.state === 'joined') {
-    globalUpdateChannel.send({
-      type: 'broadcast',
-      event: 'appointments-updated',
-      payload: { timestamp: Date.now() },
-    }).catch(console.error);
-  } else {
-    // หากยังเชื่อมต่อช่องสัญญาณไม่เสร็จให้หน่วงเวลาส่งเล็กน้อยเพื่อป้องกันข้อความตกหล่น
-    setTimeout(() => {
-      globalUpdateChannel.send({
-        type: 'broadcast',
-        event: 'appointments-updated',
-        payload: { timestamp: Date.now() },
-      }).catch(console.error);
-    }, 500);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('appointments-updated'));
+    if (apptBroadcastChannel) {
+      try {
+        apptBroadcastChannel.postMessage({ type: 'appointments-updated', timestamp: Date.now() });
+      } catch (e) {}
+    }
+    try {
+      localStorage.setItem('icemu-sync-update', Date.now().toString());
+    } catch (e) {}
   }
 }
 
@@ -44,7 +43,7 @@ export async function getAppointments(date?: string) {
       patient_disease (disease_name)
     ),
     appointment_detail ( service (service_name) ),
-    dentist ( users ( profile (first_name, last_name) ) ),
+    dentist ( staff ( users ( profile (first_name, last_name) ) ) ),
     treatment_record ( attending_dentist_id, doctor_note, odontogram_data, payment (total_amount, payment_status), treatment_detail ( service_id, location_code, quantity, actual_price, service (service_name) ), treatment_product ( product_id, quantity, actual_price, product (product_name, unit) ) )
   `);
 
@@ -63,8 +62,9 @@ export async function getAppointments(date?: string) {
     let doctorName = 'รอระบุแพทย์';
     let doctorId = d.dentist_id || 0;
 
-    if (d.dentist?.users?.profile) {
-      doctorName = `${d.dentist.users.profile.first_name} ${d.dentist.users.profile.last_name}`;
+    const dentistProfile = d.dentist?.staff?.users?.profile || d.dentist?.users?.profile;
+    if (dentistProfile) {
+      doctorName = `${dentistProfile.first_name} ${dentistProfile.last_name}`;
     }
 
     let cost = d.appointment_detail?.[0]?.price_at_booking || d.appointment_detail?.[0]?.service?.base_price || 0;
@@ -198,8 +198,8 @@ export async function getPatientAppointments(patientId?: number) {
       patient_disease (disease_name)
     ),
     appointment_detail ( service (service_name) ),
-    dentist ( users ( profile (first_name, last_name) ) ),
-    treatment_record ( attending_dentist_id, doctor_note, payment (total_amount, payment_status), attending_dentist:dentist ( users ( profile (first_name, last_name) ) ), treatment_detail ( service_id, location_code, quantity, actual_price, service (service_name) ) )
+    dentist ( staff ( users ( profile (first_name, last_name) ) ) ),
+    treatment_record ( attending_dentist_id, doctor_note, payment (total_amount, payment_status), attending_dentist:dentist ( staff ( users ( profile (first_name, last_name) ) ) ), treatment_detail ( service_id, location_code, quantity, actual_price, service (service_name) ) )
   `).eq('patient_id', targetPatientId);
 
   if (error) {
@@ -214,8 +214,9 @@ export async function getPatientAppointments(patientId?: number) {
     let doctorName = 'รอระบุแพทย์';
     let doctorId = d.dentist_id || 0;
 
-    if (d.dentist?.users?.profile) {
-      doctorName = `${d.dentist.users.profile.first_name} ${d.dentist.users.profile.last_name}`;
+    const dentistProfile = d.dentist?.staff?.users?.profile || d.dentist?.users?.profile;
+    if (dentistProfile) {
+      doctorName = `${dentistProfile.first_name} ${dentistProfile.last_name}`;
     }
     let cost = 0;
     let paid = false;
@@ -226,7 +227,7 @@ export async function getPatientAppointments(patientId?: number) {
     if (d.treatment_record) {
       const tr = Array.isArray(d.treatment_record) ? d.treatment_record[0] : d.treatment_record;
       if (tr) {
-        const docProf = tr.attending_dentist?.users?.profile;
+        const docProf = tr.attending_dentist?.staff?.users?.profile || tr.attending_dentist?.users?.profile;
         if (docProf) {
           doctorName = `${docProf.first_name} ${docProf.last_name}`;
           doctorId = tr.attending_dentist_id;
@@ -471,26 +472,18 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
 
   // 3. ค้นหารหัสบริการ (service_id)
   let finalServiceId = appointment.serviceId;
-  let basePrice = 0;
   if (!finalServiceId) {
     const { data: svcData } = await supabase.from('service').select('service_id, service_name, base_price');
     if (svcData) {
       const matchedSvc = svcData.find((s: any) => appointment.service.includes(s.service_name) || s.service_name.includes(appointment.service));
       if (matchedSvc) {
         finalServiceId = matchedSvc.service_id;
-        basePrice = matchedSvc.base_price || 0;
       } else {
         // กรณีสำรอง safely only if absolutely necessary, but preferably throw error
         finalServiceId = svcData[0]?.service_id || 1;
-        basePrice = svcData[0]?.base_price || 0;
       }
     }
-  } else {
-    const { data: svcData } = await supabase.from('service').select('base_price').eq('service_id', finalServiceId).maybeSingle();
-    if (svcData) {
-      basePrice = svcData.base_price || 0;
-    }
-  }
+  } else {  }
 
   let finalDoctorId = appointment.doctorId;
   if (!finalDoctorId && appointment.date) {
@@ -504,18 +497,22 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
       const dayOfWeekInt = dateObj.getDay();
 
       // ดึงข้อมูลทันตแพทย์ทั้งหมดตามรหัสที่พบ
-      const { data: dentists } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', capableDentists);
-      const userIds = dentists?.map(d => d.user_id) || [];
+      const { data: dentists } = await supabase.from('dentist').select('dentist_id, staff_id').in('dentist_id', capableDentists);
+      const staffIds = dentists?.map(d => d.staff_id).filter(Boolean) || [];
 
-      const { data: schedules } = await supabase.from('schedule').select('user_id, start_shift, end_shift')
-        .in('user_id', userIds)
+      let scheduleQuery = supabase.from('schedule').select('staff_id, start_shift, end_shift')
         .eq('day_of_week', dayOfWeekInt)
         .eq('is_off', false);
+      
+      if (staffIds.length > 0) {
+        scheduleQuery = scheduleQuery.in('staff_id', staffIds);
+      }
+      const { data: schedules } = await scheduleQuery;
 
       if (schedules && schedules.length > 0) {
-        // เชื่อมโยงรหัสผู้ใช้กับรหัสทันตแพทย์พร้อมเก็บเวลาเข้าเวร
+        // เชื่อมโยงรหัสผู้ปฏิบัติงานกับรหัสทันตแพทย์พร้อมเก็บเวลาเข้าเวร
         const workingDentists = schedules.map(s => {
-          const d = dentists?.find(x => x.user_id === s.user_id);
+          const d = dentists?.find(x => s.staff_id && x.staff_id && s.staff_id === x.staff_id);
           return {
             dentist_id: d?.dentist_id,
             start_shift: s.start_shift,
@@ -661,11 +658,6 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
   return { ...newAppt, assignedDoctorId: finalDoctorId };
 }
 export async function updateAppointmentStatus(id: number, status: string, reason?: string) {
-  const { data: oldAppt } = await supabase.from('appointment')
-    .select('appointment_status')
-    .eq('appointment_id', id)
-    .single();
-
   const { data, error } = await supabase.from('appointment').update({ appointment_status: status }).eq('appointment_id', id).select().single();
   if (error) {
     console.error("Failed to update appointment status:", error);
@@ -679,16 +671,25 @@ export async function updateAppointmentStatus(id: number, status: string, reason
 }
 
 
-export async function checkAppointmentConflicts(userId: string, date: string, startTime?: string, endTime?: string) {
-  // ค้นหารหัสทันตแพทย์ (dentist_id) จากรหัสผู้ใช้ (user_id)
-  const { data: dentistData } = await supabase.from('dentist').select('dentist_id').eq('user_id', userId).single();
-
-  if (!dentistData) {
-    // กรณีไม่ใช่ทันตแพทย์ (เช่น พนักงาน) จะไม่มีคิวนัดหมายคนไข้โดยตรง
-    return { hasConflict: false, count: 0 };
+export async function checkAppointmentConflicts(identifier: string | number, date: string, startTime?: string, endTime?: string) {
+  let dentistId: number | null = null;
+  if (typeof identifier === 'number') {
+    dentistId = identifier;
+  } else if (identifier.length > 20) {
+    // ลองหาจาก staff ก่อน
+    const { data: staffData } = await supabase.from('staff').select('dentist(dentist_id)').eq('user_id', identifier).maybeSingle();
+    dentistId = staffData?.dentist?.[0]?.dentist_id || null;
+    if (!dentistId) {
+      const { data: staffData2 } = await supabase.from('staff').select('staff_id, dentist(dentist_id)').eq('staff_id', Number(identifier) || 0).maybeSingle();
+      dentistId = staffData2?.dentist?.[0]?.dentist_id || null;
+    }
+  } else {
+    dentistId = parseInt(identifier, 10);
   }
 
-  const dentistId = dentistData.dentist_id;
+  if (!dentistId) {
+    return { hasConflict: false, count: 0 };
+  }
 
   let query = supabase.from('appointment')
     .select('appointment_id', { count: 'exact' })
@@ -712,14 +713,7 @@ export async function checkAppointmentConflicts(userId: string, date: string, st
 
 
 export async function updateAppointmentDetails(id: number, updates: any) {
-  // ดึงข้อมูลนัดหมายเดิม
-  const { data: oldAppt } = await supabase.from('appointment')
-    .select('appointment_date, start_time, dentist_id')
-    .eq('appointment_id', id)
-    .single();
-
   const payload: any = {};
-  let actionType = 'RESCHEDULE';
 
   if (updates.date) payload.appointment_date = updates.date;
   if (updates.doctorId) payload.dentist_id = updates.doctorId;
@@ -735,11 +729,7 @@ export async function updateAppointmentDetails(id: number, updates: any) {
     payload.end_time_est = `${String(endHh).padStart(2, '0')}:${String(endMm).padStart(2, '0')}:00`;
   }
 
-  if (updates.doctorId && (!updates.date && !updates.time)) {
-    actionType = 'TRANSFER';
-  } else if (updates.doctorId && (updates.date || updates.time)) {
-    actionType = 'RESCHEDULE_AND_TRANSFER';
-  }
+
 
   const { error } = await supabase.from('appointment').update(payload).eq('appointment_id', id);
   if (error) throw error;
@@ -778,20 +768,24 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
 
   if (targetDoctorIds.length === 0) return [];
 
-  // ดึงข้อมูลผู้ใช้ทั้งหมดเพื่อเชื่อมโยงรหัสทันตแพทย์กับรหัสผู้ใช้
-  const { data: dentistUsers } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', targetDoctorIds);
-  const userIds = dentistUsers ? dentistUsers.map(d => d.user_id) : [];
+  // ดึงข้อมูล staff ทั้งหมดเพื่อเชื่อมโยงรหัสทันตแพทย์
+  const { data: dentistUsers } = await supabase.from('dentist').select('dentist_id, staff_id').in('dentist_id', targetDoctorIds);
+  const staffIds = dentistUsers ? dentistUsers.map(d => d.staff_id).filter(Boolean) : [];
 
   // ดึงรายการใบลาที่อนุมัติแล้ว
-  const { data: leaves } = await supabase.from('leave_record')
-    .select('user_id, leave_period')
-    .in('user_id', userIds)
+  let leavesQuery = supabase.from('leave_record')
+    .select('staff_id, leave_period')
     .eq('leave_date', date)
     .eq('is_approved', true);
 
+  if (staffIds.length > 0) {
+    leavesQuery = leavesQuery.in('staff_id', staffIds);
+  }
+  const { data: leaves } = await leavesQuery;
+
   // ดึงตารางเวรประจำวันในสัปดาห์
   const { data: shifts } = await supabase.from('schedule')
-    .select('users!inner(dentist(dentist_id)), start_shift, end_shift, is_off')
+    .select('staff_id, start_shift, end_shift, is_off')
     .eq('day_of_week', dayOfWeek);
 
   // ดึงรายการนัดหมายทั้งหมดในวันที่เลือก
@@ -807,11 +801,11 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
     if (!dUser) continue;
 
     // ตรวจสอบการลางาน
-    const docLeave = leaves?.find(l => l.user_id === dUser.user_id);
+    const docLeave = leaves?.find(l => l.staff_id && dUser.staff_id && l.staff_id === dUser.staff_id);
     if (docLeave) continue; // ข้ามทันตแพทย์ที่ลางานในวันนั้น
 
     // ค้นหากะการทำงาน
-    const shift = shifts?.find((s: any) => s.users?.dentist?.[0]?.dentist_id === dId);
+    const shift = shifts?.find((s: any) => s.staff_id && dUser.staff_id && s.staff_id === dUser.staff_id);
     if (!shift || shift.is_off || !shift.start_shift || !shift.end_shift) continue;
 
     const [startH, startM] = shift.start_shift.split(':').map(Number);
@@ -919,20 +913,24 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
     }
   }
 
-  // ดึงข้อมูลผู้ใช้ทั้งหมดเพื่อเชื่อมโยงรหัสทันตแพทย์กับรหัสผู้ใช้
-  const { data: dentistUsers } = await supabase.from('dentist').select('dentist_id, user_id').in('dentist_id', targetDoctorIds);
-  const userIds = dentistUsers ? dentistUsers.map(d => d.user_id) : [];
+  // ดึงข้อมูล staff ทั้งหมดเพื่อเชื่อมโยงรหัสทันตแพทย์
+  const { data: dentistUsers } = await supabase.from('dentist').select('dentist_id, staff_id').in('dentist_id', targetDoctorIds);
+  const staffIds = dentistUsers ? dentistUsers.map(d => d.staff_id).filter(Boolean) : [];
 
   // ดึงรายการใบลาที่อนุมัติแล้ว
-  const { data: leaves } = await supabase.from('leave_record')
-    .select('user_id, leave_period')
-    .in('user_id', userIds)
+  let leavesQuery = supabase.from('leave_record')
+    .select('staff_id, leave_period')
     .eq('leave_date', date)
     .eq('is_approved', true);
 
+  if (staffIds.length > 0) {
+    leavesQuery = leavesQuery.in('staff_id', staffIds);
+  }
+  const { data: leaves } = await leavesQuery;
+
   // ดึงตารางเวรประจำวันในสัปดาห์
   const { data: shifts } = await supabase.from('schedule')
-    .select('users!inner(dentist(dentist_id)), start_shift, end_shift, is_off')
+    .select('staff_id, start_shift, end_shift, is_off')
     .eq('day_of_week', dayOfWeek);
 
   // ดึงรายการนัดหมายทั้งหมดในวันที่เลือก
@@ -998,10 +996,10 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
       const dUser = dentistUsers?.find(du => du.dentist_id === dId);
       if (!dUser) continue;
 
-      const docLeave = leaves?.find(l => l.user_id === dUser.user_id);
+      const docLeave = leaves?.find(l => l.staff_id && dUser.staff_id && l.staff_id === dUser.staff_id);
       if (docLeave && docLeave.leave_period === 'เต็มวัน') continue;
 
-      const shift = shifts?.find((s: any) => s.users?.dentist?.[0]?.dentist_id === dId);
+      const shift = shifts?.find((s: any) => s.staff_id && dUser.staff_id && s.staff_id === dUser.staff_id);
       if (shift && shift.is_off) continue;
 
       let shiftStartMin = clinicOpenMin;

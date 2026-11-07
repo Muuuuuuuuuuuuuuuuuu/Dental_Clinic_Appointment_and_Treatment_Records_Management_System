@@ -1,178 +1,145 @@
 import { useState, useEffect } from "react";
-import DoctorProfile from "./profile/DoctorProfile";
+import { Menu } from "lucide-react";
+import { DocView, DentistInfo, Appointment } from "@/app/shared/data";
+import { getDentists } from "@/app/shared/supabaseApi";
+import { useRealtimeAppointments } from "@/app/shared/useRealtimeAppointments";
+import { useIdleTimeout } from "@/app/shared/useIdleTimeout";
 
-import DoctorCalendar from "./schedule/DoctorCalendar";
+// ─── หน้าย่อยระบบทันตแพทย์ (Views & Sub-modules) ─────────────────────────────────
+import DentistDashboardView from "./dashboard";
+import DentistProfileView from "./profile";
+import DentistScheduleView from "./schedule";
+import DentistPatientsView from "./patients";
+import { TreatmentQueue, TreatmentHistory } from "./treatment";
 
-import PatientRecords from "./patients/PatientRecords";
+// ─── โครงสร้างเลย์เอาต์ (Layout & Components) ──────────────────────────────────
+import { DentistSidebar, DentistStatusBanner } from "./layout";
 
-import TreatmentQueue from "./treatment/TreatmentQueue";
-
-import DoctorDashboard from "./dashboard/DoctorDashboard";
-
-import TreatmentHistory from "./treatment/TreatmentHistory";
-
-import {
-  Home, Calendar, Users, FileText, LogOut, Smile, ChevronRight,
-  AlertTriangle, Clock, CheckCircle, User, Send, ClipboardList,
-  CalendarX, Menu, X, Plus, Check, Megaphone
-} from "lucide-react";
-import {
-  getClinicStatus, DocView, DentistInfo, ClinicStatus, Appointment
-} from "../shared/data";
-
-import { getDentists, getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../shared/supabaseApi";
-import { useRealtimeAppointments } from "../shared/useRealtimeAppointments";
-import { useIdleTimeout } from "../shared/useIdleTimeout";
-
-function PortalStatusBanner() {
-  const [s, setS] = useState<ClinicStatus | null>(null);
-  useEffect(() => {
-    Promise.all([getWeeklyOffDays(), getClinicClosures(), getClinicSettings(), getDailyHours()]).then(([offDays, closures, settings, dh]) => {
-      setS(getClinicStatus(new Date(), closures, offDays, settings, dh));
-    }).catch(console.error);
-  }, []);
-  if (!s || s.type === "open") return null;
-  return (
-    <div className="px-5 lg:px-8 pt-4">
-      <div className="rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-sm"
-        style={{ backgroundColor: s.type === "special" ? "#FFF3E0" : "#F1F5F9", border: `1px solid ${s.type === "special" ? "#FED7AA" : "#E2E8F0"}` }}>
-        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.dotColor }} />
-        <span className="font-medium" style={{ color: s.type === "special" ? "#92400E" : "#475569" }}>{s.label}</span>
-        <span className="text-xs" style={{ color: s.type === "special" ? "#B45309" : "#64748B" }}>— {s.sublabel}</span>
-      </div>
-    </div>
-  );
-}
-
-
-
-const DOC_NAV = [
-  { key: "dashboard" as DocView, label: "แดชบอร์ด",          icon: Home },
-  { key: "queue"     as DocView, label: "คิวการรักษา",        icon: Users },
-  { key: "records"   as DocView, label: "เวชระเบียน",         icon: FileText },
-  { key: "history"   as DocView, label: "ประวัติการทำงาน",      icon: ClipboardList },
-  { key: "calendar"  as DocView, label: "ปฏิทินและการลางาน",   icon: Calendar },
-  { key: "profile"   as DocView, label: "ข้อมูลส่วนตัว",     icon: User },
-];
-
-
-// ─── แถบเมนูด้านข้าง ──────────────────────────────────────────────────────────
-
-function DoctorSidebar({ view, setView, onLogout, doctor }: { view: DocView; setView: (v: DocView) => void; onLogout: () => void; doctor: DentistInfo | null }) {
-  return (
-    <div className="flex flex-col h-full py-6 px-4" style={{ backgroundColor: "#1A365D" }}>
-      <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-          <Smile size={16} color="white" />
-        </div>
-        <div>
-          <div className="font-bold text-sm text-white" style={{ fontFamily: "Sarabun, sans-serif" }}>คลินิกสุภัทร</div>
-          <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em" }}>DENTAL CLINIC</div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 px-3 py-3 rounded-2xl mb-6" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
-        {doctor ? (
-          <>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-              {doctor.name[4] || "ท"}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{doctor.name}</p>
-              <p className="text-xs truncate" style={{ color: "#FFB3BC" }}>{doctor.specialty}</p>
-            </div>
-          </>
-        ) : (
-          <div className="min-w-0 text-white text-xs">Loading...</div>
-        )}
-      </div>
-
-      <nav className="flex-1 space-y-1">
-        {DOC_NAV.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setView(key)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left"
-            style={{ backgroundColor: view === key ? "#FF8C9A" : "transparent", color: view === key ? "white" : "rgba(255,255,255,0.65)" }}>
-            <Icon size={17} /> {label}
-          </button>
-        ))}
-      </nav>
-
-      <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <button onClick={onLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-red-500/10 transition-all"
-          style={{ color: "rgba(255,140,154,0.8)" }}>
-          <LogOut size={16} /> ออกจากระบบ
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── หน้าหลักระบบทันตแพทย์ ────────────────────────────────────────────────────
-
-export default function DoctorPortal({
-  onLogout,
-  loginEmail,
-  appointments: initialAppointments
-}: {
+interface DoctorPortalProps {
   onLogout: () => void;
   loginEmail?: string;
   appointments?: Appointment[];
-}) {
+}
+
+/**
+ * 🦷 [DOCTOR / DENTIST PORTAL ROOT]
+ * ศูนย์กลางการทำงานของทันตแพทย์ (Dashboard, Treatment Queue, Records, History, Schedule, Profile)
+ */
+export default function DoctorPortal({
+  onLogout,
+  loginEmail,
+  appointments: initialAppointments,
+}: DoctorPortalProps) {
   const { appointments: sharedAppointments } = useRealtimeAppointments();
   const appointments = sharedAppointments || initialAppointments;
   const [view, setView] = useState<DocView>("dashboard");
   const [sideOpen, setSideOpen] = useState(false);
+  const [doctor, setDoctor] = useState<DentistInfo | null>(null);
 
   useIdleTimeout(() => {
     alert("ระบบได้ทำการออกจากระบบอัตโนมัติเนื่องจากไม่มีการใช้งาน");
     onLogout();
   }, 30);
 
-  const [doctor, setDoctor] = useState<DentistInfo | null>(null);
-
   useEffect(() => {
-    getDentists().then(d => {
-      if (loginEmail) {
-        const doc = d.find(x => x.email === loginEmail);
-        setDoctor(doc || d[0]);
-      } else {
-        setDoctor(d[0]);
-      }
-    }).catch(console.error);
+    getDentists()
+      .then((d) => {
+        if (loginEmail) {
+          const doc = d.find((x) => x.email === loginEmail);
+          setDoctor(doc || d[0]);
+        } else {
+          setDoctor(d[0]);
+        }
+      })
+      .catch(console.error);
   }, [loginEmail]);
 
   return (
-    <div className="min-h-screen flex" style={{ fontFamily: "Sarabun, sans-serif", backgroundColor: "#F0F4F8" }}>
-      {sideOpen && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setSideOpen(false)} />}
+    <div
+      className="min-h-screen flex"
+      style={{
+        fontFamily: "Sarabun, sans-serif",
+        backgroundColor: "#F0F4F8",
+      }}
+    >
+      {sideOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setSideOpen(false)}
+        />
+      )}
 
-      <aside className="fixed top-0 left-0 h-full z-40 transition-transform duration-300 lg:translate-x-0 hidden lg:block" style={{ width: 250 }}>
-        <DoctorSidebar view={view} setView={setView} onLogout={onLogout} doctor={doctor} />
+      {/* Sidebar Desktop */}
+      <aside
+        className="fixed top-0 left-0 h-full z-40 transition-transform duration-300 lg:translate-x-0 hidden lg:block"
+        style={{ width: 250 }}
+      >
+        <DentistSidebar
+          view={view}
+          setView={setView}
+          onLogout={onLogout}
+          doctor={doctor}
+        />
       </aside>
+
+      {/* Sidebar Mobile Drawer */}
       {sideOpen && (
         <aside className="fixed top-0 left-0 h-full z-40" style={{ width: 250 }}>
-          <DoctorSidebar view={view} setView={v => { setView(v); setSideOpen(false); }} onLogout={onLogout} doctor={doctor} />
+          <DentistSidebar
+            view={view}
+            setView={(v) => {
+              setView(v);
+              setSideOpen(false);
+            }}
+            onLogout={onLogout}
+            doctor={doctor}
+          />
         </aside>
       )}
 
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:ml-[250px]">
-        <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b bg-white" style={{ borderColor: "rgba(26,54,93,0.1)" }}>
-          <button onClick={() => setSideOpen(true)} style={{ color: "#1A365D" }}><Menu size={20} /></button>
-          <span className="font-bold text-sm" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>คลินิกสุภัทร • ทันตแพทย์</span>
+        {/* Mobile Top Navbar */}
+        <div
+          className="lg:hidden flex items-center justify-between px-4 h-14 border-b bg-white"
+          style={{ borderColor: "rgba(26,54,93,0.1)" }}
+        >
+          <button onClick={() => setSideOpen(true)} style={{ color: "#1A365D" }}>
+            <Menu size={20} />
+          </button>
+          <span
+            className="font-bold text-sm"
+            style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}
+          >
+            คลินิกสุภัทร • ทันตแพทย์
+          </span>
           {doctor && (
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-              {doctor.name[4] || "ท"}
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
+              style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}
+            >
+              {(doctor.firstName?.trim() || doctor.name?.replace(/^(ทพญ\.|ทพ\.|นพ\.|พญ\.|ดร\.|นาย|นางสาว|นาง)\s*/i, "").trim())?.[0] || "ท"}
             </div>
           )}
         </div>
-        <PortalStatusBanner />
+
+        <DentistStatusBanner />
+
         <main className="flex-1 p-5 lg:p-8">
-          {view === "dashboard" && <DoctorDashboard setView={setView} doctor={doctor} appointments={appointments} />}
-          {view === "queue"     && <TreatmentQueue doctor={doctor} appointments={appointments} />}
-          {view === "records"   && <PatientRecords doctorId={doctor?.id} />}
-          {view === "history"   && <TreatmentHistory doctor={doctor} />}
-          {view === "calendar"  && <DoctorCalendar doctor={doctor} />}
-          {view === "profile"   && <DoctorProfile doctor={doctor} />}
+          {view === "dashboard" && (
+            <DentistDashboardView
+              setView={setView}
+              doctor={doctor}
+              appointments={appointments}
+            />
+          )}
+          {view === "queue" && (
+            <TreatmentQueue doctor={doctor} appointments={appointments} />
+          )}
+          {view === "records" && <DentistPatientsView doctorId={doctor?.id} />}
+          {view === "history" && <TreatmentHistory doctor={doctor} />}
+          {view === "calendar" && <DentistScheduleView doctor={doctor} />}
+          {view === "profile" && <DentistProfileView doctor={doctor} />}
         </main>
       </div>
     </div>

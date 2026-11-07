@@ -1,0 +1,99 @@
+import React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+interface CalendarHeaderProps {
+  currentDate: Date;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onResetMonth: () => void;
+  onChangeMonth: (m: number) => void;
+  onChangeYear: (y: number) => void;
+}
+
+/**
+ * 🎛️ [CALENDAR COMPONENT] ส่วนควบคุมเดือน/ปี และคำอธิบายสัญลักษณ์สี
+ */
+export default function CalendarHeader({
+  currentDate,
+  onPrevMonth,
+  onNextMonth,
+  onResetMonth,
+  onChangeMonth,
+  onChangeYear,
+}: CalendarHeaderProps) {
+  const monthNames = [
+    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+  ];
+
+  return (
+    <div>
+      {/* แถบเลือกเดือน/ปี และปุ่มเลื่อน */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-3">
+        <div className="flex items-center gap-2">
+          <select
+            value={currentDate.getMonth()}
+            onChange={(e) => onChangeMonth(Number(e.target.value))}
+            className="text-base font-bold text-gray-800 bg-transparent border-none cursor-pointer focus:ring-0 p-0 pr-4"
+          >
+            {monthNames.map((m, i) => (
+              <option key={m} value={i}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select
+            value={currentDate.getFullYear()}
+            onChange={(e) => onChangeYear(Number(e.target.value))}
+            className="text-base font-bold text-gray-800 bg-transparent border-none cursor-pointer focus:ring-0 p-0 pr-4"
+          >
+            {[...Array(5)].map((_, i) => {
+              const year = new Date().getFullYear() + i - 1;
+              return (
+                <option key={year} value={year}>
+                  {year + 543}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onPrevMonth}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-600"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={onResetMonth}
+            className="px-2.5 py-1 text-xs font-medium hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-700 border border-gray-200"
+          >
+            เดือนปัจจุบัน
+          </button>
+          <button
+            type="button"
+            onClick={onNextMonth}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-600"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* คำอธิบายสัญลักษณ์สี */}
+      <div className="flex flex-wrap gap-4 mb-3 text-[11px]">
+        <div className="flex items-center gap-1.5 text-gray-600">
+          <div className="w-2 h-2 rounded-full bg-red-500" /> ลาเต็มวัน
+        </div>
+        <div className="flex items-center gap-1.5 text-gray-600">
+          <div className="w-2 h-2 rounded-full bg-yellow-400" /> รออนุมัติ
+        </div>
+        <div className="flex items-center gap-1.5 text-gray-600">
+          <div className="w-2 h-2 rounded-full bg-orange-500" /> คลินิกปิด
+        </div>
+      </div>
+    </div>
+  );
+}

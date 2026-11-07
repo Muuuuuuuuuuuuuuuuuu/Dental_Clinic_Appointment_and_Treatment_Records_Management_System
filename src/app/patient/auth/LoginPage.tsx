@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ChevronLeft, RefreshCw, UserPlus, ChevronDown, ChevronUp } from "lucide-react";
 import AuthShell, { Field } from "./AuthShell";
 import { UserRole, PatientUser, ROLE_TABS, inputCls, inputStyle } from "../types";
-import { loginPatient, supabase } from "../../shared/supabaseApi";
+import { supabase, getPatientProfileByUserId } from "@/app/shared/supabaseApi";
 
 export default function LoginPage({
   onLogin, onLoginRole, onRegister, onForgotPassword, onBack,
@@ -22,7 +22,7 @@ export default function LoginPage({
   const [showDemos, setShowDemos] = useState(false);
 
   // รวมบัญชีตัวอย่างจากทุกบทบาทเข้าด้วยกัน
-  const allDemos = ROLE_TABS.flatMap(tab => tab.demos.map(demo => ({ ...demo, roleLabel: tab.label })));
+
 
   const fillDemo = (demo: {label: string, email: string, pass: string}) => {
     setEmail(demo.email);
@@ -55,12 +55,17 @@ export default function LoginPage({
         throw new Error(msg || "ไม่สามารถเข้าสู่ระบบได้");
       }
 
-      // ตรวจสอบบทบาทผู้ใช้จากตาราง users (หากไม่พบให้เป็นคนไข้)
+      // ตรวจสอบบทบาทผู้ใช้และสถานะการใช้งานจากตาราง users
       const { data: userData } = await supabase
         .from('users')
-        .select('role')
+        .select('role, account_status')
         .eq('user_id', authData.user.id)
         .single();
+
+      if (userData?.account_status === 'inactive') {
+        await supabase.auth.signOut();
+        throw new Error("บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อเคาน์เตอร์คลินิก");
+      }
 
       const role = userData?.role || "patient";
       // รองรับชื่อบทบาททั้งภาษาไทยและภาษาอังกฤษ
@@ -68,7 +73,6 @@ export default function LoginPage({
 
       if (isPatient) {
         // ดึงข้อมูลโปรไฟล์โดยใช้รหัสผู้ใช้ที่ยืนยันตัวตนแล้ว
-        const { getPatientProfileByUserId } = await import("../../shared/supabaseApi");
         const profile = await getPatientProfileByUserId(authData.user.id) as any;
         
         if (!profile) {

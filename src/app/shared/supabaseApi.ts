@@ -1,14 +1,6 @@
-import { supabase } from './api/supabaseClient';
-export { supabase };
-
 // ============================================================================
-// ศูนย์รวม API ของระบบคลินิกทันตกรรมสุภัทร (Central API Facade)
-// รวบรวมและส่งออกโมดูล API ทั้งหมด 6 ด้านจากโฟลเดอร์ ./api/
+// ศูนย์รวม API ของระบบคลินิกทันตกรรมสุภัทร (Central API Facade - Backward Compatible)
+// ส่งต่อจากโมดูล src/app/shared/api/
 // ============================================================================
 
-export * from './api/authApi';         // 1. ระบบยืนยันตัวตน, ล็อกอิน, รหัสผ่าน
-export * from './api/appointmentApi';  // 2. ระบบนัดหมาย, คิว, การเช็คเวลาชน
-export * from './api/treatmentApi';    // 3. ระบบบันทึกการรักษา, ผังฟัน Odontogram, ใบเสร็จ
-export * from './api/dentistApi';      // 4. ระบบข้อมูลทันตแพทย์และแพทย์หน้าเว็บ
-export * from './api/usersApi';        // 5. ระบบจัดการผู้ใช้ (แอดมิน, พนักงาน, คนไข้)
-export * from './api/clinicApi';       // 6. ระบบคลินิก (บริการ, เวลาทำการ, ตารางเวร, วันลา, วันหยุด)
+export * from './api';

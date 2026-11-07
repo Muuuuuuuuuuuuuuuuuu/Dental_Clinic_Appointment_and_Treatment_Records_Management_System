@@ -1,6 +1,6 @@
 // 
 
-import { Smile, Sparkles, Shield, Award, Heart, Calendar, Syringe, Baby, Zap, Scissors, Crown, Layers, Star, Clock } from "lucide-react";
+import { Smile, Sparkles, Shield, Award, Heart, Calendar, Syringe, Baby, Zap, Scissors, Crown, Layers, Star, Clock, Activity } from "lucide-react";
 
 export type View =
   | "landing" | "login" | "register" | "otp" | "consent" | "forgot-password"
@@ -24,8 +24,6 @@ export interface PatientAppointment {
   durationMins?: number;
 }
 
-
-
 export interface TreatmentRecord {
   id: number; service: string; doctor: string; date: string; time: string;
   cost: string; notes: string;
@@ -39,19 +37,18 @@ export interface TreatmentRecord {
 // 
 
 export interface ServiceItem {
-  icon: any; // รองรับไอคอนจากไลบรารี Lucide
+  icon: any;
   title: string;
   desc: string;
   price: string;
   color: string;
   type: "general" | "complex" | "variable";
-  baseTimeMins: number; // ระยะเวลาขั้นต่ำ (นาที)
+  baseTimeMins: number;
 }
 
-// ฟังก์ชันแปลงชื่อไอคอนจากฐานข้อมูลเป็นคอมโพเนนต์ไอคอน
 export const getIconComponent = (iconName: string): any => {
   const icons: Record<string, any> = { Smile, Sparkles, Syringe, Shield, Heart, Award, Baby, Calendar, Zap, Scissors, Crown, Layers, Star, Activity, Clock };
-  return icons[iconName] || Smile; // กรณีสำรอง to Smile
+  return icons[iconName] || Smile;
 };
 
 export interface DoctorItem {
@@ -95,7 +92,6 @@ export const patientStatusColor: Record<string, { bg: string; text: string }> = 
   "เสร็จสิ้น": { bg: "#E8FFF0", text: "#1B7A3E" },
   "ไม่มาตามนัด": { bg: "#F3F4F6", text: "#4B5563" },
 };
-
 
 // 
 
@@ -144,7 +140,7 @@ export interface RegForm {
 
 // 
 
-import { Home, Bell, FileText, Activity } from "lucide-react";
+import { Home, Bell, FileText } from "lucide-react";
 
 export const NAV_ITEMS = [
   { key: "dashboard", label: "แดชบอร์ด", icon: Home },
@@ -152,7 +148,6 @@ export const NAV_ITEMS = [
   { key: "appointments", label: "รายการนัดหมาย", icon: Bell },
   { key: "history", label: "ประวัติการรักษา", icon: FileText },
   { key: "record", label: "สุขภาพฟันของฉัน", icon: Activity },
-  { key: "profile", label: "ข้อมูลส่วนตัว", icon: User },
 ];
 
 // 

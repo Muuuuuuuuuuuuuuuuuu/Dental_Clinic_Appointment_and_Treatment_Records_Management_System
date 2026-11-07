@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { ClinicStatus, getClinicStatus } from "../../shared/data";
-import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "../../shared/supabaseApi";
+import { ClinicStatus, getClinicStatus } from "@/app/shared/data";
+import { getWeeklyOffDays, getClinicClosures, getClinicSettings, getDailyHours } from "@/app/shared/supabaseApi";
 
 export default function ClinicStatusBadge({ compact = false }: { compact?: boolean }) {
   const [s, setS] = useState<ClinicStatus | null>(null);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { MapPin, Phone } from "lucide-react";
-import { getDailyHours, getWeeklyOffDays, DayHours } from "../../shared/supabaseApi";
+import { getDailyHours, getWeeklyOffDays, DayHours } from "@/app/shared/supabaseApi";
 
 export default function Contact({ onCTA }: { onCTA: () => void }) {
   const [dailyHours, setDailyHours] = useState<Record<string, DayHours>>({});

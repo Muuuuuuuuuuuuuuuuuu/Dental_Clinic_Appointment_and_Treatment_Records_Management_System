@@ -25,8 +25,8 @@ export async function getPatientTreatmentRecords(patientId?: number) {
   const { data, error } = await supabase.from('treatment_record').select(`
     *,
     odontogram_data,
-    appointment!inner(start_time, appointment_status, dentist ( users ( profile (first_name, last_name) ) ), appointment_detail ( service (service_name) )),
-    attending_dentist:dentist ( users ( profile (first_name, last_name) ) ),
+    appointment!inner(start_time, appointment_status, dentist ( staff ( users ( profile (first_name, last_name) ) ) ), appointment_detail ( service (service_name) )),
+    attending_dentist:dentist ( staff ( users ( profile (first_name, last_name) ) ) ),
     payment (
       payment_id,
       total_amount,
@@ -46,7 +46,7 @@ export async function getPatientTreatmentRecords(patientId?: number) {
   }
 
   return data.map((d: any) => {
-    const dr = d.attending_dentist?.users?.profile || (d.appointment && !Array.isArray(d.appointment) ? d.appointment.dentist?.users?.profile : undefined);
+    const dr = d.attending_dentist?.staff?.users?.profile || d.attending_dentist?.users?.profile || (d.appointment && !Array.isArray(d.appointment) ? (d.appointment.dentist?.staff?.users?.profile || d.appointment.dentist?.users?.profile) : undefined);
     const appt = d.appointment ? (Array.isArray(d.appointment) ? d.appointment[0] : d.appointment) : undefined;
     const apptDetail = appt?.appointment_detail ? (Array.isArray(appt.appointment_detail) ? appt.appointment_detail[0] : appt.appointment_detail) : undefined;
     const pay = d.payment ? (Array.isArray(d.payment) ? d.payment[0] : d.payment) : undefined;
@@ -316,7 +316,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
   const { data: apptData } = await supabase.from('appointment').select('patient_id, treatment_record(treatment_id)').eq('appointment_id', apptId).maybeSingle();
   const trData = apptData?.treatment_record;
   let treatmentId = Array.isArray(trData) ? trData[0]?.treatment_id : (trData as any)?.treatment_id;
-  let patientId = apptData?.patient_id;
+
 
   if (treatmentId) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -399,7 +399,7 @@ export async function processPaymentApi(apptId: number, finalCost: number, metho
 export async function getPatientHistory(patientId: number) {
   const { data, error } = await supabase.from('treatment_record').select(`
     *,
-    dentist ( title_name, users ( profile (first_name, last_name) ) ),
+    dentist ( title_name, staff ( users ( profile (first_name, last_name) ) ) ),
     treatment_detail ( tooth_number, diagnosis, actual_price, service (service_name) )
   `).eq('patient_id', patientId);
 
@@ -407,7 +407,7 @@ export async function getPatientHistory(patientId: number) {
 
   return data.map((d: any) => {
     const td = d.treatment_detail?.[0] || {};
-    const dp = d.dentist?.users?.profile;
+    const dp = d.dentist?.staff?.users?.profile || d.dentist?.users?.profile;
     const doctorName = dp ? `${d.dentist?.title_name || ''} ${dp.first_name} ${dp.last_name}` : 'ไม่ระบุ';
 
     return {
@@ -431,7 +431,7 @@ export async function getTreatmentRecords(patientName?: string) {
   let query = supabase.from('treatment_record').select(`
     *,
     appointment!inner(start_time, appointment_status),
-    attending_dentist:dentist ( users ( profile (first_name, last_name) ) ),
+    attending_dentist:dentist ( staff ( users ( profile (first_name, last_name) ) ) ),
     patient!inner ( users ( profile (first_name, last_name) ) ),
     treatment_detail ( actual_price, diagnosis, tooth_number, service (service_name) ),
     payment (total_amount)
@@ -446,7 +446,7 @@ export async function getTreatmentRecords(patientName?: string) {
   if (error) return [];
 
   return data.map((d: any) => {
-    const dr = d.dentist?.users?.profile;
+    const dr = d.attending_dentist?.staff?.users?.profile || d.attending_dentist?.users?.profile || d.dentist?.users?.profile;
     const detail = d.treatment_detail?.[0]; // ใช้รายการหัตถการหลักของระเบียนการรักษานั้น
     const srvName = detail?.service?.service_name || detail?.diagnosis || 'ไม่ระบุบริการ';
     const costAmt = d.payment?.[0]?.total_amount || detail?.actual_price || 0;
@@ -468,9 +468,14 @@ export async function getTreatmentRecords(patientName?: string) {
 
 
 // --- การลงทะเบียนคนไข้ใหม่ ---
-export async function getProducts(type?: string) {
-  let query = supabase.from('product').select('*').eq('is_active', true).order('product_name', { ascending: true });
+
+export async function getProducts(type?: string, includeInactive: boolean = false) {
+  let query = supabase.from('product').select('*');
+  if (!includeInactive) {
+    query = query.eq('is_active', true);
+  }
   if (type) query = query.eq('product_type', type);
+  query = query.order('product_type', { ascending: true }).order('product_name', { ascending: true });
   
   const { data, error } = await query;
   if (error) {

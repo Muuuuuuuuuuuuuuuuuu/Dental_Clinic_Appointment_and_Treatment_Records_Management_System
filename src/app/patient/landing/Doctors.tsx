@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Award, GraduationCap } from "lucide-react";
-import { getLandingDoctors } from "../../shared/supabaseApi";
+import { getLandingDoctors } from "@/app/shared/supabaseApi";
 
 export default function Doctors({ onCTA }: { onCTA: () => void }) {
   const [doctors, setDoctors] = useState<any[]>([]);

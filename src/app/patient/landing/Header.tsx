@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Menu, Smile, User, Calendar, ChevronRight } from "lucide-react";
+import { X, Menu, Smile, User, Calendar } from "lucide-react";
 import ClinicStatusBadge from "./ClinicStatus";
 
 export default function Header({ onLoginClick, isLoggedIn, onPortal }: { onLoginClick: () => void; isLoggedIn: boolean; onPortal: () => void }) {

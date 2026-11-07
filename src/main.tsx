@@ -1,8 +1,8 @@
 import { createRoot } from "react-dom/client";
 import { toast, Toaster } from "sonner";
-import App from "./app/patient/PatientPortal";
-import { initTimeSimulation, TimeSimulationWidget } from "./app/shared/utils/timeSimulation";
-import "./styles/index.css";
+import App from "./App";
+import { initTimeSimulation, TimeSimulationWidget } from "@/app/shared/utils/timeSimulation";
+import "@/styles/index.css";
 
 // แทนที่คำสั่ง alert() ของเบราว์เซอร์ด้วยแถบแจ้งเตือน (Toast) บนหน้าเว็บ
 if (typeof window !== "undefined") {

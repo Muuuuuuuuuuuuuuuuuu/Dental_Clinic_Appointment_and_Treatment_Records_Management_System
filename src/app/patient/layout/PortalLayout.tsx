@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Menu, Smile, LogOut, Home } from "lucide-react";
+import { Menu, Smile, LogOut, Home, ChevronRight } from "lucide-react";
 import { PatientUser, View, NAV_ITEMS } from "../types";
+import { PatientStatusBanner } from "./PatientStatusBanner";
 
 function SidebarContent({ user, view, setView, onLogout, onMainSite }:
   { user: PatientUser; view: View; setView: (v: View) => void; onLogout: () => void; onMainSite: () => void }) {
   return (
     <div className="flex flex-col h-full py-6 px-4">
-      {/* โลโก้คลินิก */}
-      <div className="flex items-center gap-3 px-2 mb-8">
+      {/* โลโก้คลินิกด้านบนสุด */}
+      <div className="flex items-center gap-3 px-2 ">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
           <Smile size={16} color="white" />
         </div>
@@ -17,45 +18,83 @@ function SidebarContent({ user, view, setView, onLogout, onMainSite }:
         </div>
       </div>
 
-      {/* รูปโปรไฟล์ผู้ใช้ */}
-      <div className="flex items-center gap-3 px-3 py-3 rounded-2xl mb-6" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
-        <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-          style={{ background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)" }}>
-          {user.firstName[0]}
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-white truncate">{user.firstName} {user.lastName}</p>
-          <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.5)" }}>{user.email}</p>
-        </div>
-      </div>
-
-      {/* เมนูนำทาง */}
-      <nav className="flex-1 space-y-1">
+      {/* เมนูนำทาง (อยู่ชิดด้านบน ระดับสายตา) */}
+      <nav className="flex-1 space-y-1 overflow-y-auto pr-1 mt-10" style={{ scrollbarWidth: "none" }}>
         {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
           const active = view === key;
           return (
-            <button key={key} onClick={() => setView(key as View)}
+            <button
+              key={key}
+              type="button"
+              onClick={() => setView(key as View)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left"
               style={{
                 backgroundColor: active ? "#FF8C9A" : "transparent",
                 color: active ? "white" : "rgba(255,255,255,0.65)",
-              }}>
+              }}
+            >
               <Icon size={17} /> {label}
             </button>
           );
         })}
       </nav>
 
-      <div className="space-y-1 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <button onClick={onMainSite}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"
-          style={{ color: "rgba(255,255,255,0.5)" }}>
-          <Home size={16} /> หน้าหลักเว็บไซต์
+      {/* โซนโปรไฟล์คนไข้และออกจากระบบ (วางไว้ล่างสุด คลิกเข้าโปรไฟล์ได้เหมือนปุ่ม) */}
+      <div className="mt-4 pt-4 flex-shrink-0 space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        {/* ปุ่มโปรไฟล์คนไข้ */}
+        <button
+          type="button"
+          onClick={() => setView("profile")}
+          title="คลิกเพื่อดูและแก้ไขข้อมูลส่วนตัว"
+          className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-all group border ${
+            view === "profile"
+              ? "bg-[#FF8C9A] border-[#FF8C9A] text-white shadow-md"
+              : "bg-white/[0.06] border-white/10 text-white hover:bg-white/10 hover:border-white/20"
+          }`}
+        >
+          <div
+            className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${
+              view === "profile"
+                ? "bg-white text-[#FF8C9A]"
+                : "bg-gradient-to-br from-[#FF8C9A] to-[#FF6B7E] text-white"
+            }`}
+          >
+            {user.firstName[0]}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold truncate leading-tight">
+              {user.firstName} {user.lastName}
+            </p>
+            <p
+              className={`text-[11px] truncate mt-0.5 ${
+                view === "profile" ? "text-white/80" : "text-white/50"
+              }`}
+            >
+              {user.email}
+            </p>
+          </div>
+          <ChevronRight
+            size={16}
+            className={`flex-shrink-0 transition-transform group-hover:translate-x-0.5 ${
+              view === "profile" ? "text-white" : "text-white/40 group-hover:text-white"
+            }`}
+          />
         </button>
-        <button onClick={onLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all hover:bg-red-500/10"
-          style={{ color: "rgba(255,140,154,0.8)" }}>
-          <LogOut size={16} /> ออกจากระบบ
+
+        <button
+          type="button"
+          onClick={onMainSite}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all hover:bg-white/5"
+          style={{ color: "rgba(255,255,255,0.6)" }}
+        >
+          <Home size={15} /> หน้าหลักเว็บไซต์
+        </button>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 transition-colors"
+        >
+          <LogOut size={15} /> ออกจากระบบ
         </button>
       </div>
     </div>
@@ -102,6 +141,8 @@ export default function PortalLayout({
             {user.firstName[0]}
           </div>
         </div>
+
+        <PatientStatusBanner />
 
         <main className="flex-1 p-5 lg:p-8">{children}</main>
       </div>

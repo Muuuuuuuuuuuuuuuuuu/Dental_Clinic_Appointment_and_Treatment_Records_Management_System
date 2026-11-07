@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, ChevronLeft, KeyRound } from "lucide-react";
 import AuthShell, { Field } from "./AuthShell";
 import { inputCls, inputStyle } from "../types";
-import { supabase } from "../../shared/supabaseApi";
+import { supabase } from "@/app/shared/supabaseApi";
 
 interface FirstTimePasswordPageProps {
   userEmail?: string;

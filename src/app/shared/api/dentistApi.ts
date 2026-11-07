@@ -12,24 +12,50 @@ import { DentistInfo } from '../data';
  * @returns {Promise<DentistInfo[]>} อาร์เรย์ของข้อมูลทันตแพทย์
  */
 export async function getDentists(): Promise<DentistInfo[]> {
-  const { data, error } = await supabase.from('dentist').select(`
+  let { data, error } = await supabase.from('dentist').select(`
     *,
-    users (
-      email,
-      account_status,
-      profile (first_name, last_name, phone_number, citizen_id, gender, birth_date, current_address)
+    staff (
+      staff_id,
+      position,
+      user_id,
+      users (
+        user_id,
+        email,
+        account_status,
+        profile (first_name, last_name, phone_number, citizen_id, gender, birth_date, current_address)
+      )
     ),
     dentist_service (
       service_id
     )
   `);
+
   if (error) {
+    const fallback = await supabase.from('dentist').select(`
+      *,
+      users (
+        email,
+        account_status,
+        profile (first_name, last_name, phone_number, citizen_id, gender, birth_date, current_address)
+      ),
+      dentist_service (
+        service_id
+      )
+    `);
+    data = fallback.data;
+    error = fallback.error;
+  }
+
+  if (error || !data) {
     console.error("getDentists error:", error);
     return [];
   }
 
   return data.map((d: any) => {
-    const p = d.users?.profile;
+    const userObj = d.staff?.users || d.users;
+    const p = userObj?.profile;
+    const staffId = d.staff_id || d.staff?.staff_id;
+    const userId = userObj?.user_id || d.staff?.user_id || d.user_id;
     
     // คำนวณอายุงานจาก graduation_year
     let expYears = 0;
@@ -40,6 +66,7 @@ export async function getDentists(): Promise<DentistInfo[]> {
 
     return {
       id: d.dentist_id,
+      staffId: staffId,
       name: p ? `${d.title_name || ''} ${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       titleName: d.title_name || 'ทพ.',
       firstName: p?.first_name || '',
@@ -54,11 +81,11 @@ export async function getDentists(): Promise<DentistInfo[]> {
       graduationYear: d.graduation_year,
       imageUrl: d.image_url || '',
       startDate: d.start_date || '',
-      email: d.users?.email || '',
+      email: userObj?.email || '',
       phone: p?.phone_number || '',
       citizenId: p?.citizen_id || '',
-      active: d.users?.account_status === 'active',
-      userId: d.user_id,
+      active: userObj?.account_status === 'active',
+      userId: userId,
       serviceIds: d.dentist_service?.map((ds: any) => ds.service_id) || [],
       defaultRoom: d.default_room
     };
@@ -139,8 +166,20 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
     account_status: dentist.active ? 'active' : 'inactive'
   });
 
-  const { data, error } = await supabase.from('dentist').insert({
+  // สร้าง staff record ให้ทันตแพทย์ (position = 'ทันตแพทย์')
+  let staffId: number | undefined;
+  const { data: staffData } = await supabase.from('staff').insert({
     user_id: realUserId,
+    position: 'ทันตแพทย์',
+    employment_status: dentist.active ? 'ปฏิบัติงานปกติ' : 'พักงาน',
+    hire_date: dentist.startDate || new Date().toISOString().split('T')[0]
+  }).select('staff_id').maybeSingle();
+
+  if (staffData) {
+    staffId = staffData.staff_id;
+  }
+
+  const dentistInsert: any = {
     title_name: dentist.titleName || 'ทพ.',
     specialization: dentist.specialty,
     license_number: dentist.license,
@@ -148,7 +187,17 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
     image_url: dentist.imageUrl || null,
     start_date: dentist.startDate || null,
     graduation_year: dentist.graduationYear || null,
-  }).select().single();
+  };
+  if (staffId) dentistInsert.staff_id = staffId;
+  dentistInsert.user_id = realUserId;
+
+  let { data, error } = await supabase.from('dentist').insert(dentistInsert).select().single();
+  if (error && error.message?.includes('user_id')) {
+    delete dentistInsert.user_id;
+    const retry = await supabase.from('dentist').insert(dentistInsert).select().single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) throw error;
 
@@ -160,6 +209,7 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
   return { 
     ...dentist, 
     id: data.dentist_id, 
+    staffId: staffId || data.staff_id,
     userId: realUserId,
     name: `${dentist.titleName || ''} ${dentist.firstName || ''} ${dentist.lastName || ''}`.trim()
   };
@@ -186,10 +236,15 @@ export async function updateDentist(id: number, updates: Partial<DentistInfo>): 
     if (error) throw error;
   }
 
-  const { data: dentistData } = await supabase.from('dentist').select('user_id').eq('dentist_id', id).single();
-  if (dentistData?.user_id) {
+  const { data: dentistData } = await supabase.from('dentist').select('staff_id, staff(user_id)').eq('dentist_id', id).single() as any;
+  const staffObj = Array.isArray(dentistData?.staff) ? dentistData?.staff[0] : dentistData?.staff;
+  const realUserId = staffObj?.user_id;
+  if (realUserId) {
     if (updates.active !== undefined) {
-      await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', dentistData.user_id);
+      await supabase.from('users').update({ account_status: updates.active ? 'active' : 'inactive' }).eq('user_id', realUserId);
+      if (dentistData?.staff_id) {
+        await supabase.from('staff').update({ employment_status: updates.active ? 'ปฏิบัติงานปกติ' : 'พักงาน' }).eq('staff_id', dentistData.staff_id);
+      }
     }
 
     const profileUpdates: any = {};
@@ -201,7 +256,7 @@ export async function updateDentist(id: number, updates: Partial<DentistInfo>): 
     if (updates.address !== undefined) profileUpdates.current_address = updates.address;
 
     if (Object.keys(profileUpdates).length > 0) {
-      const { data: userData } = await supabase.from('users').select('citizen_id').eq('user_id', dentistData.user_id).single();
+      const { data: userData } = await supabase.from('users').select('citizen_id').eq('user_id', realUserId).single();
       if (userData?.citizen_id) {
         await supabase.from('profile').update(profileUpdates).eq('citizen_id', userData.citizen_id);
       }
@@ -224,17 +279,29 @@ export async function updateDentist(id: number, updates: Partial<DentistInfo>): 
  * @param id รหัสทันตแพทย์
  */
 export async function deleteDentist(id: number): Promise<void> {
+  const { data: dentistData } = await supabase.from('dentist').select('staff_id').eq('dentist_id', id).single();
   await supabase.from('dentist').delete().eq('dentist_id', id);
+  if (dentistData?.staff_id) {
+    await supabase.from('staff').delete().eq('staff_id', dentistData.staff_id);
+  }
 }
 
 /**
  * ดึงข้อมูลหมอสำหรับหน้า Landing Page
  */
 export async function getLandingDoctors() {
-  const { data, error } = await supabase.from('dentist').select('*, users(profile(first_name, last_name))');
-  if (error) {
-    console.error("getLandingDoctors error:", error);
-    return [];
+  let { data, error } = await supabase.from('dentist').select(`
+    *,
+    staff (
+      staff_id,
+      user_id,
+      users ( profile (first_name, last_name) )
+    )
+  `);
+
+  if (error || !data) {
+    const fallback = await supabase.from('dentist').select('*, users(profile(first_name, last_name))');
+    data = fallback.data || [];
   }
 
   const currentYear = new Date().getFullYear();
@@ -244,11 +311,14 @@ export async function getLandingDoctors() {
     if (d.graduation_year) {
       expYears = Math.max(0, currentYear - d.graduation_year);
     }
+    const userObj = d.staff?.users || d.users;
+    const p = userObj?.profile;
     
     return {
       id: d.dentist_id,
-      userId: d.user_id,
-      name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
+      staffId: d.staff_id || d.staff?.staff_id,
+      userId: userObj?.user_id || d.user_id,
+      name: `${d.title_name || ''} ${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ',
       specialty: d.specialization || 'ทันตแพทย์',
       img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format',
       years: `ประสบการณ์ ${expYears} ปี`,
@@ -263,19 +333,39 @@ export async function getLandingDoctors() {
  * @param serviceId รหัสบริการ
  */
 export async function getDentistsByService(serviceId: number) {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('dentist_service')
-    .select('dentist_id, dentist(dentist_id, user_id, title_name, specialization, image_url, users(profile(first_name, last_name)))')
+    .select(`
+      dentist_id, 
+      dentist (
+        dentist_id,
+        staff_id,
+        title_name, 
+        specialization, 
+        image_url, 
+        staff (
+          user_id,
+          users ( profile (first_name, last_name) )
+        )
+      )
+    `)
     .eq('service_id', serviceId);
-  if (error || !data) return [];
+
+  if (error || !data) {
+    console.error("getDentistsByService error:", error);
+    return [];
+  }
 
   return data.map((row: any) => {
     const d = row.dentist;
     if (!d) return null;
+    const userObj = d.staff?.users || d.users;
+    const p = userObj?.profile;
     return {
       id: d.dentist_id,
-      userId: d.user_id,
-      name: `${d.title_name || ''} ${d.users?.profile?.first_name} ${d.users?.profile?.last_name}`,
+      staffId: d.staff_id || d.staff?.staff_id,
+      userId: userObj?.user_id || d.user_id,
+      name: `${d.title_name || ''} ${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ',
       specialty: d.specialization || 'ทันตแพทย์',
       img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format'
     };

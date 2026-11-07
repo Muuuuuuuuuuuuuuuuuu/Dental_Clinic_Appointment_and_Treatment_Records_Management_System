@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { AdminInfo, StaffInfo, PatientInfo } from '../data';
+import { notifyAppointmentsUpdated } from './appointmentApi';
 
 // --- ข้อมูลผู้ดูแลระบบ ---
 export async function getAdmins() {
@@ -138,7 +139,7 @@ export async function getStaff() {
       role,
       profile (first_name, last_name, phone_number, citizen_id, gender, birth_date, current_address)
     )
-  `).neq('users.role', 'admin');
+  `).neq('users.role', 'admin').neq('users.role', 'ทันตแพทย์');
   if (error) {
     console.error("getStaff error:", error);
     return [];
@@ -270,6 +271,7 @@ export async function getPatients() {
     *,
     users (
       email,
+      account_status,
       profile (first_name, last_name, phone_number)
     ),
     emergency_contact (contact_name, contact_phone, relationship),
@@ -297,6 +299,8 @@ export async function getPatients() {
       name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
+      userId: d.user_id,
+      active: d.users?.account_status !== 'inactive',
       allergyHistory: allergies,
       underlyingDisease: diseases,
       emergencyContactName: ec?.contact_name || '',
@@ -332,6 +336,7 @@ export async function searchPatientByKeyword(keyword: string): Promise<PatientIn
     *,
     users (
       email,
+      account_status,
       profile (first_name, last_name, phone_number)
     ),
     emergency_contact (contact_name, contact_phone, relationship),
@@ -357,6 +362,8 @@ export async function searchPatientByKeyword(keyword: string): Promise<PatientIn
       name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
+      userId: d.user_id,
+      active: d.users?.account_status !== 'inactive',
       allergyHistory: allergies,
       underlyingDisease: diseases,
       emergencyContactName: ec?.contact_name || '',
@@ -669,6 +676,8 @@ export async function updatePatientProfile(userId: string, updates: {
       }
     }
   }
+
+  notifyAppointmentsUpdated();
 }
 
 export async function updatePatientInfoByPatientId(patientId: number, updates: {
@@ -715,5 +724,23 @@ export async function updatePatientInfoByPatientId(patientId: number, updates: {
       }
     }
   }
+
+  notifyAppointmentsUpdated();
 }
 
+export async function updatePatientStatus(patientId: number, active: boolean): Promise<void> {
+  const { data: patientData, error: pErr } = await supabase
+    .from('patient')
+    .select('user_id')
+    .eq('patient_id', patientId)
+    .single();
+
+  if (pErr || !patientData?.user_id) throw new Error('ไม่พบข้อมูลผู้ใช้ของคนไข้');
+
+  const { error } = await supabase
+    .from('users')
+    .update({ account_status: active ? 'active' : 'inactive', updated_at: new Date().toISOString() })
+    .eq('user_id', patientData.user_id);
+
+  if (error) throw error;
+}
