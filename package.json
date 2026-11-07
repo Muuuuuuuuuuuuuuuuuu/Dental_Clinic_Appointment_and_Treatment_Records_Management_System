@@ -69,5 +69,6 @@
     "overrides": {
       "vite": "6.3.5"
     }
-  }
+  },
+  "description": "ระบบจัดการนัดหมายและประวัติการรักษาออนไลน์ คลินิกทันตกรรมสุภัทร (Dental Clinic Management System)"
 }

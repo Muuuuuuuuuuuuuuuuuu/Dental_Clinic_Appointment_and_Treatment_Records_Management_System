@@ -1,22 +1,39 @@
+<!DOCTYPE html>
+<html lang="th">
+<!--
+    ==============================================================================
+    ไฟล์หน้าหลัก HTML (index.html)
+    หน้าที่: เป็นหน้าเว็บโครงสร้างหลัก (Single Page Application - SPA) ที่เบราว์เซอร์จะเปิดเป็นหน้าแรก
+    การทำงาน:
+      - สร้าง <div id="root"></div> สำหรับให้ React เข้ามา Render หน้าจอทั้งหมด
+      - เรียกสคริปต์หลักจาก /src/main.tsx ในการเริ่มต้นระบบ
+    ==============================================================================
+  -->
 
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Dental Clinic Website Design</title>
-      <meta name="description" content="A clean, user-friendly dental clinic website enabling easy appointment booking with intuitive navigation and instant chat support for patient inquiries." />
-      <meta name="robots" content="noindex, nofollow" />
-      <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
-      
-    </head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>คลินิกทันตกรรมสุภัทร (Supat Dental Clinic)</title>
+  <meta name="description"
+    content="ระบบจัดการนัดหมายและประวัติการรักษาออนไลน์ คลินิกทันตกรรมสุภัทร สะดวก รวดเร็ว ตรวจสอบคิวได้แบบเรียลไทม์" />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
 
-    <body>
-      
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-      
-    </body>
-  </html>
-  
+    #root {
+      height: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- พื้นที่แสดงผลของแอปพลิเคชัน React ทั้งระบบ -->
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
