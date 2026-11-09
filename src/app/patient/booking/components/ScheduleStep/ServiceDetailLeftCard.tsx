@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, CheckCircle, Smile } from "lucide-react";
+import { Clock, Smile } from "lucide-react";
 import { ServiceDetail, iconMap } from "../../data/serviceDetailsData";
 
 interface ServiceDetailLeftCardProps {
@@ -118,18 +118,25 @@ export default function ServiceDetailLeftCard({
             key={i}
             style={{
               display: "flex",
+              alignItems: "flex-start",
               gap: 8,
               fontSize: 13,
               color: "#4A6080",
-              marginBottom: 6,
-              alignItems: "flex-start",
+              marginBottom: 8,
+              lineHeight: 1.6,
             }}
           >
-            <CheckCircle
-              size={13}
-              style={{ color: "#22C55E", flexShrink: 0, marginTop: 2 }}
-            />
-            {b}
+            <span
+              style={{
+                color: "#22C55E",
+                fontSize: 16,
+                lineHeight: "20px",
+                flexShrink: 0,
+              }}
+            >
+              •
+            </span>
+            <span style={{ flex: 1 }}>{b}</span>
           </div>
         ))}
       </DetailCard>

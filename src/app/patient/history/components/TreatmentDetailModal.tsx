@@ -85,25 +85,21 @@ export default function TreatmentDetailModal({
             <button
               type="button"
               onClick={() => setActiveModalTab("advice")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeModalTab === "advice"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeModalTab === "advice"
                   ? "bg-white text-[#1A365D] shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
-              }`}
+                }`}
             >
-              <Stethoscope size={13} className="text-blue-600" />
               <span>ผลการรักษา & คำแนะนำ</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveModalTab("receipt")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeModalTab === "receipt"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeModalTab === "receipt"
                   ? "bg-white text-[#1A365D] shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
-              }`}
+                }`}
             >
-              <Receipt size={13} className="text-emerald-600" />
               <span>สลิปใบเสร็จ</span>
             </button>
           </div>

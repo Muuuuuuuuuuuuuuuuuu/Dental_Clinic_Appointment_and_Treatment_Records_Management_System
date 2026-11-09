@@ -1,3 +1,10 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+/* ซ่อนปุ่มรูปลูกตาของเบราว์เซอร์ Microsoft Edge เพื่อไม่ให้แสดงซ้อนกับปุ่มของระบบ */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+}
+

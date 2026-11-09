@@ -111,9 +111,9 @@ export default function PatientBookingView({
           doctorName={
             selDoctor === "any" || selDoctor === null
               ? landingDoctors.find((d) => d.id === matchedDoctor)?.name ||
-                "ไม่ระบุแพทย์"
+              "ไม่ระบุแพทย์"
               : landingDoctors.find((d) => d.id === selDoctor)?.name ||
-                "ไม่ระบุแพทย์"
+              "ไม่ระบุแพทย์"
           }
           selDay={selDay}
           selTime={selTime}
@@ -198,7 +198,7 @@ export default function PatientBookingView({
                 selDoctor === "any" || selDoctor === null
                   ? "จัดแพทย์ให้อัตโนมัติ"
                   : landingDoctors.find((d) => d.id === selDoctor)?.name ||
-                    "ไม่ระบุ"
+                  "ไม่ระบุ"
               }
               dateStr={`${selDay} ${today.toLocaleDateString("th-TH", {
                 month: "long",

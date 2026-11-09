@@ -197,7 +197,7 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
               setRole("patient");
               setIsLoggedIn(true);
 
-              // ตรวจการเปลี่ยนรหัสผ่านครั้งแรก และ consent
+              // ตรวจการเปลี่ยนรหัสผ่านครั้งแรก
               const identifiers = [
                 session.user.id,
                 session.user.email,
@@ -210,13 +210,8 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
                 identifiers,
                 session.user
               );
-              const mustAcceptConsent = !hasAcceptedConsent(
-                identifiers,
-                session.user
-              );
-              if (mustChangePwd) setNeedsPasswordChange(true);
-              if (mustAcceptConsent) setNeedsConsent(true);
-              if (mustChangePwd || mustAcceptConsent) {
+              if (mustChangePwd) {
+                setNeedsPasswordChange(true);
                 return;
               }
 
@@ -317,10 +312,8 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
       authUser?.email,
     ];
     const mustChangePwd = needsFirstTimePasswordChange(identifiers, authUser);
-    const mustAcceptConsent = !hasAcceptedConsent(identifiers, authUser);
     setNeedsPasswordChange(mustChangePwd);
-    setNeedsConsent(mustAcceptConsent);
-    if (!mustChangePwd && !mustAcceptConsent) {
+    if (!mustChangePwd) {
       updateView("dashboard");
     }
   };
@@ -343,9 +336,7 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
     ];
     markPasswordChanged(identifiers);
     setNeedsPasswordChange(false);
-    if (!needsConsent) {
-      updateView("dashboard");
-    }
+    updateView("dashboard");
   };
 
   const handleConsentAccepted = async () => {

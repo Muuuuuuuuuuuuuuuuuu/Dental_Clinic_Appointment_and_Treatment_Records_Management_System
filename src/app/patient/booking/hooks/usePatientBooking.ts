@@ -20,6 +20,7 @@ import {
   SERVICE_DETAILS,
   DEFAULT_SERVICE_DETAIL,
   ServiceDetail,
+  getServiceDetail,
 } from "../data/serviceDetailsData";
 
 interface UsePatientBookingProps {
@@ -67,8 +68,8 @@ export function usePatientBooking({
       user?.allergies && user.allergies !== "ไม่มี" && user.allergies !== "ไม่มีประวัติ"
         ? true
         : user?.allergies === "ไม่มี"
-        ? false
-        : null,
+          ? false
+          : null,
     allergiesText:
       user?.allergies && user.allergies !== "ไม่มี" && user.allergies !== "ไม่มีประวัติ"
         ? user.allergies
@@ -79,8 +80,8 @@ export function usePatientBooking({
       user?.conditions && user.conditions !== "ไม่มี" && user.conditions !== "ไม่มีประวัติ"
         ? true
         : user?.conditions === "ไม่มี"
-        ? false
-        : null,
+          ? false
+          : null,
     conditionsText:
       user?.conditions && user.conditions !== "ไม่มี" && user.conditions !== "ไม่มีประวัติ"
         ? user.conditions
@@ -233,11 +234,11 @@ export function usePatientBooking({
           landingDoctors.find((d) => d.id === selDoctor);
         const isFullLeave = selDocData
           ? upcomingLeaves.some(
-              (l) =>
-                l.user_id === selDocData.userId &&
-                l.leave_date === dateStr &&
-                l.leave_period === "เต็มวัน"
-            )
+            (l) =>
+              l.user_id === selDocData.userId &&
+              l.leave_date === dateStr &&
+              l.leave_period === "เต็มวัน"
+          )
           : false;
 
         if (shift && shift.isOff) {
@@ -264,22 +265,22 @@ export function usePatientBooking({
 
   const patientEndTimeStr = selTime
     ? (() => {
-        const [h, m] = selTime.split(":").map(Number);
-        const tot = h * 60 + m + estTime;
-        return `${Math.floor(tot / 60)
-          .toString()
-          .padStart(2, "0")}:${(tot % 60).toString().padStart(2, "0")}`;
-      })()
+      const [h, m] = selTime.split(":").map(Number);
+      const tot = h * 60 + m + estTime;
+      return `${Math.floor(tot / 60)
+        .toString()
+        .padStart(2, "0")}:${(tot % 60).toString().padStart(2, "0")}`;
+    })()
     : "";
 
   const endTimeStr = selTime
     ? (() => {
-        const [h, m] = selTime.split(":").map(Number);
-        const tot = h * 60 + m + totalDuration;
-        return `${Math.floor(tot / 60)
-          .toString()
-          .padStart(2, "0")}:${(tot % 60).toString().padStart(2, "0")}`;
-      })()
+      const [h, m] = selTime.split(":").map(Number);
+      const tot = h * 60 + m + totalDuration;
+      return `${Math.floor(tot / 60)
+        .toString()
+        .padStart(2, "0")}:${(tot % 60).toString().padStart(2, "0")}`;
+    })()
     : "";
 
   // ดึงเวลาว่างรายวัน
@@ -506,8 +507,8 @@ export function usePatientBooking({
 
     const isReturning = Boolean(
       user &&
-        (hasHealthAlert(user.allergies, user.conditions) ||
-          (user.emergencyName && user.emergencyName.trim() !== ""))
+      (hasHealthAlert(user.allergies, user.conditions) ||
+        (user.emergencyName && user.emergencyName.trim() !== ""))
     );
     const hasExistingCondition =
       user && hasHealthAlert(user.allergies, user.conditions);
@@ -566,12 +567,12 @@ export function usePatientBooking({
           healthData.hasChanges === false
             ? user?.allergies || "ไม่มี"
             : healthData.hasAllergy === false
-            ? "ไม่มี"
-            : healthData.allergiesText?.trim() ||
+              ? "ไม่มี"
+              : healthData.allergiesText?.trim() ||
               [
                 ...(healthData.allergies || []).filter((a) => a !== "แพ้อื่นๆ"),
                 ...(healthData.allergies?.includes("แพ้อื่นๆ") &&
-                healthData.allergyOther
+                  healthData.allergyOther
                   ? [`อื่นๆ: ${healthData.allergyOther}`]
                   : []),
               ].join(", ") ||
@@ -580,12 +581,12 @@ export function usePatientBooking({
           healthData.hasChanges === false
             ? user?.conditions || "ไม่มี"
             : healthData.hasCondition === false
-            ? "ไม่มี"
-            : healthData.conditionsText?.trim() ||
+              ? "ไม่มี"
+              : healthData.conditionsText?.trim() ||
               [
                 ...(healthData.conditions || []).filter((c) => c !== "โรคอื่นๆ"),
                 ...(healthData.conditions?.includes("โรคอื่นๆ") &&
-                healthData.conditionOther
+                  healthData.conditionOther
                   ? [`อื่นๆ: ${healthData.conditionOther}`]
                   : []),
               ].join(", ") ||
@@ -645,8 +646,7 @@ export function usePatientBooking({
 
   const serviceTitle =
     selService !== null ? servicesData[selService]?.title || "" : "";
-  const detail: ServiceDetail =
-    SERVICE_DETAILS[serviceTitle] || DEFAULT_SERVICE_DETAIL;
+  const detail: ServiceDetail = getServiceDetail(serviceTitle);
 
   return {
     step,

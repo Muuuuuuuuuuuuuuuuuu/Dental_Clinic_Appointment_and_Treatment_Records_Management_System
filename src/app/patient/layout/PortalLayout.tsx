@@ -46,18 +46,16 @@ function SidebarContent({ user, view, setView, onLogout, onMainSite }:
           type="button"
           onClick={() => setView("profile")}
           title="คลิกเพื่อดูและแก้ไขข้อมูลส่วนตัว"
-          className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-all group border ${
-            view === "profile"
+          className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-all group border ${view === "profile"
               ? "bg-[#FF8C9A] border-[#FF8C9A] text-white shadow-md"
               : "bg-white/[0.06] border-white/10 text-white hover:bg-white/10 hover:border-white/20"
-          }`}
+            }`}
         >
           <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${
-              view === "profile"
+            className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${view === "profile"
                 ? "bg-white text-[#FF8C9A]"
                 : "bg-gradient-to-br from-[#FF8C9A] to-[#FF6B7E] text-white"
-            }`}
+              }`}
           >
             {user.firstName[0]}
           </div>
@@ -66,18 +64,16 @@ function SidebarContent({ user, view, setView, onLogout, onMainSite }:
               {user.firstName} {user.lastName}
             </p>
             <p
-              className={`text-[11px] truncate mt-0.5 ${
-                view === "profile" ? "text-white/80" : "text-white/50"
-              }`}
+              className={`text-[11px] truncate mt-0.5 ${view === "profile" ? "text-white/80" : "text-white/50"
+                }`}
             >
               {user.email}
             </p>
           </div>
           <ChevronRight
             size={16}
-            className={`flex-shrink-0 transition-transform group-hover:translate-x-0.5 ${
-              view === "profile" ? "text-white" : "text-white/40 group-hover:text-white"
-            }`}
+            className={`flex-shrink-0 transition-transform group-hover:translate-x-0.5 ${view === "profile" ? "text-white" : "text-white/40 group-hover:text-white"
+              }`}
           />
         </button>
 

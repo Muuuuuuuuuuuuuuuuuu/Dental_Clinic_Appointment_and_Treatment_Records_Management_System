@@ -4,7 +4,6 @@ import { usePatientAuthFlow, PatientPortalProps } from "./hooks/usePatientAuthFl
 // ─── หน้าเข้าสู่ระบบและสมัครสมาชิก ────────────────────────────────────────────
 import LoginPage from "./auth/LoginPage";
 import ForgotPasswordPage from "./auth/ForgotPasswordPage";
-import ConsentPage from "./auth/ConsentPage";
 import FirstTimePasswordPage from "./auth/FirstTimePasswordPage";
 
 // ─── โครงสร้างหน้าเว็บฝั่งคนไข้ ───────────────────────────────────────────────
@@ -56,20 +55,6 @@ export default function PatientPortal(props: PatientPortalProps = {}) {
         onSuccess={p.handleFirstTimePasswordChanged}
         onBack={() => {
           p.setNeedsPasswordChange(false);
-          p.setNeedsConsent(false);
-          p.handleLogout();
-        }}
-      />
-    );
-  }
-
-  // ─── หน้าให้ความยินยอมข้อมูลส่วนบุคคล (PDPA) สำหรับการเข้าใช้งานครั้งแรก ─────
-  if (p.needsConsent && p.isLoggedIn && p.role === "patient") {
-    return (
-      <ConsentPage
-        onAccept={p.handleConsentAccepted}
-        onBack={() => {
-          p.setNeedsConsent(false);
           p.handleLogout();
         }}
       />

@@ -27,14 +27,14 @@ export default function BookingStepIndicator({ step }: BookingStepIndicatorProps
                 i < currentStepIndex
                   ? "#E8FFF0"
                   : i === currentStepIndex
-                  ? "#FF8C9A"
-                  : "rgba(26,54,93,0.06)",
+                    ? "#FF8C9A"
+                    : "rgba(26,54,93,0.06)",
               color:
                 i < currentStepIndex
                   ? "#1B7A3E"
                   : i === currentStepIndex
-                  ? "white"
-                  : "#4A6080",
+                    ? "white"
+                    : "#4A6080",
             }}
           >
             {i < currentStepIndex ? <Check size={11} /> : <span>{i + 1}</span>}

@@ -51,11 +51,10 @@ export default function OdontogramLegend({
               <button
                 type="button"
                 onClick={() => setIsChild(false)}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${
-                  !isChild
+                className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${!isChild
                     ? 'bg-white text-slate-800 shadow-xs'
                     : 'text-slate-400 hover:text-slate-600'
-                }`}
+                  }`}
                 title="ชุดฟันแท้ (Adult)"
               >
                 ฟันแท้
@@ -63,11 +62,10 @@ export default function OdontogramLegend({
               <button
                 type="button"
                 onClick={() => setIsChild(true)}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${
-                  isChild
+                className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${isChild
                     ? 'bg-white text-slate-800 shadow-xs'
                     : 'text-slate-400 hover:text-slate-600'
-                }`}
+                  }`}
                 title="ชุดฟันน้ำนม (Child)"
               >
                 ฟันน้ำนม
@@ -77,26 +75,7 @@ export default function OdontogramLegend({
         </div>
       </div>
 
-      {/* Patient View Mode Banner */}
-      {currentMode === "patient" && (
-        <div className="mb-4 space-y-2.5 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-50/70 to-indigo-50/70 border border-blue-100 text-[11px] text-blue-900">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Eye size={13} className="text-blue-600 shrink-0" />
-              <span>โหมดมุมมองคนไข้: คลิกที่ซี่ฟันเพื่อตรวจดูสถานะและประวัติการรักษาของซี่นั้น</span>
-            </span>
-            {historyCount > 0 && (
-              <button
-                type="button"
-                onClick={onToggleFullTimeline}
-                className="text-blue-700 hover:text-blue-900 font-bold underline shrink-0 ml-2"
-              >
-                {showFullTimeline ? "ซ่อนประวัติทั้งหมด" : `ดูประวัติทั้งหมด (${historyCount})`}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+
 
       {/* คำอธิบายสัญลักษณ์สี */}
       <div className="flex flex-wrap items-center justify-center gap-3.5 text-xs text-slate-600 mb-3 px-2">

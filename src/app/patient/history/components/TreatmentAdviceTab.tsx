@@ -44,8 +44,7 @@ export default function TreatmentAdviceTab({
       <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
           <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <FileText size={14} className="text-blue-600" />
-            <span>บันทึกการรักษาของแพทย์ (Clinical Note)</span>
+            <span>บันทึกการรักษาของแพทย์ </span>
           </span>
         </div>
         {selected.notes ? (
@@ -63,8 +62,7 @@ export default function TreatmentAdviceTab({
       <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 shadow-2xs space-y-2">
         <div className="flex items-center justify-between pb-1.5 border-b border-amber-200/50">
           <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-            <AlertCircle size={14} className="text-amber-600" />
-            <span>คำแนะนำการดูแลหลังการรักษา (Post-Care Advice)</span>
+            <span>คำแนะนำการดูแลหลังการรักษา </span>
           </span>
         </div>
         {selected.recommendations ? (
@@ -75,7 +73,7 @@ export default function TreatmentAdviceTab({
           <div className="text-xs text-amber-900 leading-relaxed pl-1 space-y-1">
             <p>• ดูแลรักษาความสะอาดช่องปากและแปรงฟันอย่างถูกวิธี</p>
             <p>• หลีกเลี่ยงการเคี้ยวของแข็งหรือเหนียวจัดบริเวณที่ได้รับการรักษา</p>
-            <p>• หากมีอาการปวด บวม หรือมีอาการผิดปกติ สามารถติดต่อคลินิกเพื่อพบแพทย์ได้ทันที</p>
+            <p>• หากมีอาการปวด บวมหรือมีอาการผิดปกติ สามารถติดต่อคลินิกเพื่อพบแพทย์ได้ทันที</p>
           </div>
         )}
       </div>
@@ -94,8 +92,8 @@ export default function TreatmentAdviceTab({
                 </span>
                 <span className="font-bold text-slate-800 text-[11px] px-2 py-0.5 rounded-md bg-slate-100">
                   {s.locationCode &&
-                  s.locationCode !== "NONE" &&
-                  s.locationCode !== "MOUTH"
+                    s.locationCode !== "NONE" &&
+                    s.locationCode !== "MOUTH"
                     ? `ซี่ ${s.locationCode}`
                     : "ทั้งช่องปาก"}
                 </span>
@@ -130,7 +128,6 @@ export default function TreatmentAdviceTab({
           onClick={onSwitchToReceipt}
           className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-slate-200"
         >
-          <Receipt size={14} className="text-emerald-600" />
           <span>ดูสลิปใบเสร็จรับเงิน (฿{netTotal.toLocaleString()})</span>
         </button>
       </div>

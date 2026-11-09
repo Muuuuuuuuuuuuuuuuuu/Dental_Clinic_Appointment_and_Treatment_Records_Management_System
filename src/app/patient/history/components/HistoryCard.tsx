@@ -24,12 +24,6 @@ export default function HistoryCard({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: "#E8FFF0" }}
-          >
-            <CheckCircle size={18} style={{ color: "#22C55E" }} />
-          </div>
           <div>
             <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>
               {h.service}
