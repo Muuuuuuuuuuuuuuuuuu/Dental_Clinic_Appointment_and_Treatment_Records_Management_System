@@ -113,37 +113,38 @@ export default function FirstTimePasswordPage({
           </div>
         )}
 
-        <Field label="รหัสผ่านใหม่">
-          <div className="relative">
-            <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
-            <input
-              type={showNewPass ? "text" : "password"}
-              placeholder="กรอกรหัสผ่านใหม่"
-              value={newPass}
-              onChange={(e) => setNewPass(e.target.value)}
-              className={`${inputCls} pl-10 pr-10`}
-              style={inputStyle}
-            />
-            <button
-              type="button"
-              onClick={() => setShowNewPass(!showNewPass)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2"
-              style={{ color: "#4A6080" }}
-            >
-              {showNewPass ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
-          </div>
-        </Field>
+        <div className="space-y-2">
+          <Field label="รหัสผ่านใหม่">
+            <div className="relative">
+              <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
+              <input
+                type={showNewPass ? "text" : "password"}
+                placeholder="ระบุรหัสผ่านอย่างน้อย 8 ตัว"
+                value={newPass}
+                onChange={(e) => setNewPass(e.target.value)}
+                className={`${inputCls} pl-10 pr-10`}
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPass(!showNewPass)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                style={{ color: "#4A6080" }}
+              >
+                {showNewPass ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </Field>
 
-        {/* รายการเงื่อนไขรหัสผ่านที่ต้องผ่านครบทุกข้อ */}
-        <PasswordChecklist password={newPass} />
+          <PasswordChecklist password={newPass} />
+        </div>
 
-        <Field label="ยืนยันรหัสผ่านใหม่">
+        <Field label="ยืนยันรหัสผ่าน">
           <div className="relative">
             <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
             <input
               type={showConfirmPass ? "text" : "password"}
-              placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
+              placeholder="ระบุรหัสผ่านอีกครั้ง"
               value={confirmPass}
               onChange={(e) => setConfirmPass(e.target.value)}
               className={`${inputCls} pl-10 pr-10`}

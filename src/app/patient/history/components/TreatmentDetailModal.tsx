@@ -86,8 +86,8 @@ export default function TreatmentDetailModal({
               type="button"
               onClick={() => setActiveModalTab("advice")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeModalTab === "advice"
-                  ? "bg-white text-[#1A365D] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                ? "bg-white text-[#1A365D] shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
                 }`}
             >
               <span>ผลการรักษา & คำแนะนำ</span>
@@ -96,8 +96,8 @@ export default function TreatmentDetailModal({
               type="button"
               onClick={() => setActiveModalTab("receipt")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeModalTab === "receipt"
-                  ? "bg-white text-[#1A365D] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                ? "bg-white text-[#1A365D] shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
                 }`}
             >
               <span>สลิปใบเสร็จ</span>
@@ -135,16 +135,6 @@ export default function TreatmentDetailModal({
             netTotal={netTotal}
           />
         )}
-
-        {/* ปุ่มปิดด้านล่าง */}
-        <div className="receipt-no-print p-3 bg-slate-50 border-t border-slate-100 flex items-center">
-          <button
-            onClick={onClose}
-            className="w-full py-2.5 bg-white hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs border border-slate-200 transition-colors shadow-2xs"
-          >
-            ปิด
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 import React from "react";
-import { Clock, Smile } from "lucide-react";
-import { ServiceDetail, iconMap } from "../../data/serviceDetailsData";
+import { ServiceDetail } from "../../data/serviceDetailsData";
 
 interface ServiceDetailLeftCardProps {
   serviceTitle: string;
@@ -48,68 +47,41 @@ export default function ServiceDetailLeftCard({
   serviceTitle,
   estTime,
   price,
-  iconName,
   detail,
 }: ServiceDetailLeftCardProps) {
-  const Icon = (iconName && iconMap[iconName]) || Smile;
-
   return (
     <div className="flex flex-col gap-3">
       {/* ป้ายชื่อบริการ */}
       <div
         style={{
           borderRadius: 16,
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
+          padding: "14px 16px",
           background: "linear-gradient(135deg,#FFF0F2,#FFF8F9)",
           border: "1px solid rgba(255,140,154,0.25)",
         }}
       >
-        <div
+        <p
           style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            backgroundColor: "white",
-            boxShadow: "0 2px 8px rgba(255,140,154,0.2)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
+            fontWeight: 700,
+            fontSize: 14,
+            color: "#1A365D",
+            marginBottom: 4,
           }}
         >
-          <Icon size={20} style={{ color: "#FF8C9A" }} />
-        </div>
-        <div>
-          <p
-            style={{
-              fontWeight: 700,
-              fontSize: 14,
-              color: "#1A365D",
-              marginBottom: 2,
-            }}
-          >
-            {serviceTitle}
-          </p>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 12,
-              color: "#4A6080",
-              marginBottom: 2,
-            }}
-          >
-            <Clock size={12} style={{ color: "#FF8C9A" }} />
-            <span>ใช้เวลาประมาณ {estTime} นาที</span>
-          </div>
-          <p style={{ fontSize: 12, color: "#FF8C9A", fontWeight: 600 }}>
-            {price}
-          </p>
-        </div>
+          {serviceTitle}
+        </p>
+        <p
+          style={{
+            fontSize: 12,
+            color: "#4A6080",
+            marginBottom: 4,
+          }}
+        >
+          ใช้เวลาประมาณ {estTime} นาที
+        </p>
+        <p style={{ fontSize: 12, color: "#FF8C9A", fontWeight: 600 }}>
+          {price}
+        </p>
       </div>
 
       <DetailCard title={`ประโยชน์ของ${serviceTitle}`} accent="#22C55E">

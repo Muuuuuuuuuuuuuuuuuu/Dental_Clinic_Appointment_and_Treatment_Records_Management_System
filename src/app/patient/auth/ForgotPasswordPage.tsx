@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import {
   CheckCircle, ChevronLeft, Mail, Lock, Eye, EyeOff,
-  AlertCircle, RefreshCw, ShieldCheck,
+  AlertCircle, RefreshCw,
 } from "lucide-react";
 import AuthShell, { Field } from "./AuthShell";
 import { inputCls, inputStyle } from "../types";
@@ -190,7 +190,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
   //  เสร็จสิ้น ────────────────────────────────────────────────────── */
   if (step === "done") {
     return (
-      <AuthShell title="เปลี่ยนรหัสผ่านสำเร็จ" sub="คุณสามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้แล้ว">
+      <AuthShell title="เปลี่ยนรหัสผ่านสำเร็จ" sub="ใช้รหัสผ่านใหม่เข้าสู่ระบบได้ทันที">
         <div className="text-center py-6">
           <div
             className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5"
@@ -202,10 +202,10 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
             className="text-xl font-semibold mb-2"
             style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}
           >
-            เปลี่ยนรหัสผ่านเรียบร้อย!
+            เปลี่ยนรหัสผ่านเรียบร้อย
           </h3>
           <p className="text-sm mb-6" style={{ color: "#4A6080" }}>
-            กรุณาเข้าสู่ระบบอีกครั้งด้วยรหัสผ่านใหม่ของคุณ
+            สามารถกลับไปหน้าเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้เลย
           </p>
           <button
             onClick={() => { onSuccess?.(); }}
@@ -219,10 +219,10 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
     );
   }
 
-  /*  */
+  /* Step 1: Email */
   if (step === "email") {
     return (
-      <AuthShell title="ลืมรหัสผ่าน" sub="กรอกอีเมลที่ลงทะเบียนไว้ ระบบจะส่งรหัส OTP ไปยังอีเมลของคุณ">
+      <AuthShell title="ลืมรหัสผ่าน" sub="ระบุอีเมลที่ใช้สมัครสมาชิก เพื่อรับรหัส OTP">
         <StepIndicator />
         <ErrorBanner />
         <Field label="อีเมล">
@@ -245,7 +245,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
           className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70 mt-4"
           style={btnGradient}
         >
-          {loading ? "กำลังส่ง OTP ไปยังอีเมล..." : "ส่งรหัส OTP ไปยังอีเมล"}
+          {loading ? "กำลังส่งรหัส OTP..." : "ส่งรหัส OTP ไปยังอีเมล"}
         </button>
         <button
           onClick={onBack}
@@ -258,18 +258,17 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
     );
   }
 
-  /*  */
+  /* Step 2: OTP */
   if (step === "otp") {
     return (
-      <AuthShell title="ยืนยัน OTP" sub={`ระบบได้ส่งรหัส OTP 6 หลักไปยัง ${email} แล้ว`}>
+      <AuthShell title="ยืนยัน OTP" sub={`ส่งรหัส 6 หลักไปยังอีเมล ${email} แล้ว`}>
         <StepIndicator />
 
-        {/* แจ้งเตือนให้ตรวจสอบอีเมล */}
         <div
-          className="p-4 rounded-xl mb-6 text-sm text-center"
+          className="p-3.5 rounded-xl mb-6 text-sm text-center"
           style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}
         >
-          กรุณาตรวจสอบกล่องจดหมายอีเมลของคุณ (รวมถึงโฟลเดอร์ Spam/Junk)
+          ตรวจสอบรหัสในกล่องจดหมาย หรือโฟลเดอร์ Spam / Junk
         </div>
 
         <ErrorBanner />
@@ -324,56 +323,48 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
     );
   }
 
-  /*  */
+  /* Step 3: Reset Password */
   return (
-    <AuthShell title="ตั้งรหัสผ่านใหม่" sub="กรุณากรอกรหัสผ่านใหม่ที่คุณต้องการ">
+    <AuthShell title="ตั้งรหัสผ่านใหม่" sub="กำหนดรหัสผ่านสำหรับใช้งานครั้งถัดไป">
       <StepIndicator />
-
-      {/* ป้ายแสดงความปลอดภัย */}
-      <div
-        className="flex items-center gap-2 p-3 rounded-xl mb-6 text-sm"
-        style={{ backgroundColor: "#E8FFF0", color: "#1B7A3E" }}
-      >
-        <ShieldCheck size={16} />
-        ยืนยันตัวตนสำเร็จ — กรุณาตั้งรหัสผ่านใหม่
-      </div>
 
       <ErrorBanner />
 
       <div className="space-y-4">
-        <Field label="รหัสผ่านใหม่">
-          <div className="relative">
-            <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
-            <input
-              type={showNewPass ? "text" : "password"}
-              value={newPass}
-              onChange={(e) => { setNewPass(e.target.value); setError(""); }}
-              placeholder="กรอกรหัสผ่านใหม่"
-              className={`${inputCls} pl-10 pr-10`}
-              style={inputStyle}
-            />
-            <button
-              type="button"
-              onClick={() => setShowNewPass(!showNewPass)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2"
-              style={{ color: "#4A6080" }}
-            >
-              {showNewPass ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
-          </div>
-        </Field>
+        <div className="space-y-2">
+          <Field label="รหัสผ่านใหม่">
+            <div className="relative">
+              <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
+              <input
+                type={showNewPass ? "text" : "password"}
+                value={newPass}
+                onChange={(e) => { setNewPass(e.target.value); setError(""); }}
+                placeholder="ระบุรหัสผ่านอย่างน้อย 8 ตัว"
+                className={`${inputCls} pl-10 pr-10`}
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPass(!showNewPass)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                style={{ color: "#4A6080" }}
+              >
+                {showNewPass ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </Field>
 
-        {/* รายการเงื่อนไขรหัสผ่านที่ต้องผ่านครบทุกข้อ */}
-        <PasswordChecklist password={newPass} />
+          <PasswordChecklist password={newPass} />
+        </div>
 
-        <Field label="ยืนยันรหัสผ่านใหม่">
+        <Field label="ยืนยันรหัสผ่าน">
           <div className="relative">
             <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
             <input
               type={showConfirmPass ? "text" : "password"}
               value={confirmPass}
               onChange={(e) => { setConfirmPass(e.target.value); setError(""); }}
-              placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
+              placeholder="ระบุรหัสผ่านอีกครั้ง"
               className={`${inputCls} pl-10 pr-10`}
               style={inputStyle}
               onKeyDown={(e) => e.key === "Enter" && doResetPassword()}

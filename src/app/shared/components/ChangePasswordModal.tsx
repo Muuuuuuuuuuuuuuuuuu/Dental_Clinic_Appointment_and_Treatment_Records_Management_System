@@ -208,7 +208,7 @@ export default function ChangePasswordModal({
                 setChangeError("");
               }}
               className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-hidden focus:border-[#FF8C9A] focus:ring-2 focus:ring-[#FF8C9A]/20 transition-all bg-[#F8FAFC]"
-              placeholder="กรอกรหัสผ่านใหม่"
+              placeholder="ระบุรหัสผ่านอย่างน้อย 8 ตัว"
               required
             />
             <div className="mt-2">
@@ -218,7 +218,7 @@ export default function ChangePasswordModal({
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              ยืนยันรหัสผ่านใหม่
+              ยืนยันรหัสผ่าน
             </label>
             <input
               type="password"

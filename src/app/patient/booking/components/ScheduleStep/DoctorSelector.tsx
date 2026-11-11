@@ -45,20 +45,6 @@ export default function DoctorSelector({
             : "none",
         }}
       >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            backgroundColor: "#FFF0F2",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <UserPlus size={16} style={{ color: "#FF8C9A" }} />
-        </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontWeight: 700, fontSize: 13, color: "#1A365D" }}>
             เลือกทันตแพทย์เอง

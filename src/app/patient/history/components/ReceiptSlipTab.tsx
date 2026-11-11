@@ -60,12 +60,6 @@ export default function ReceiptSlipTab({
 
       {/* ข้อมูลรายการชำระเงิน */}
       <div className="divide-y divide-slate-100 text-xs">
-        <div className="flex items-center justify-between gap-3 py-1.5">
-          <span className="text-slate-400 font-medium shrink-0">รหัสอ้างอิง</span>
-          <span className="font-semibold text-slate-600 text-right font-mono text-[11px]">
-            #{refNo}
-          </span>
-        </div>
 
         <div className="flex items-center justify-between gap-3 py-1.5">
           <span className="text-slate-400 font-medium shrink-0">สถานพยาบาล</span>
@@ -79,19 +73,10 @@ export default function ReceiptSlipTab({
           </span>
         </div>
 
-        {cashierName && (
-          <div className="flex items-center justify-between gap-3 py-1.5">
-            <span className="text-slate-400 font-medium shrink-0">ผู้รับชำระเงิน</span>
-            <span className="font-bold text-emerald-800 text-right truncate">
-              {cashierName}
-            </span>
-          </div>
-        )}
-
         <div className="flex items-center justify-between gap-3 py-1.5">
           <span className="text-slate-400 font-medium shrink-0">ช่องทางชำระ</span>
           <span className="font-semibold text-slate-800 text-right">
-            ชำระผ่าน {payMethod}
+            {payMethod}
           </span>
         </div>
       </div>
@@ -159,7 +144,7 @@ export default function ReceiptSlipTab({
 
       <div className="pt-2 text-center">
         <p className="text-[9px] text-slate-400">
-          e-Slip ออกโดยระบบคลินิกทันตกรรมสุภัทร • ตรวจสอบย้อนหลังได้ 100%
+          ขอบคุณที่ใช้บริการ คลินิกทันตกรรมสุภัทร
         </p>
       </div>
     </div>

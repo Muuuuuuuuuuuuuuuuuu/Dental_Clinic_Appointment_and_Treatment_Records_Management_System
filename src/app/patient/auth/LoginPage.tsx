@@ -16,7 +16,6 @@ export default function LoginPage({
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showDemos, setShowDemos] = useState(false);
@@ -125,14 +124,14 @@ export default function LoginPage({
   };
 
   return (
-    <AuthShell title="เข้าสู่ระบบ" sub="เข้าสู่ระบบคลินิกทันตกรรมสุภัทร">
+    <AuthShell title="เข้าสู่ระบบ" sub="คลินิกทันตกรรมสุภัทร">
       <form onSubmit={submit} className="space-y-4">
         {error && (
           <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}>
             <AlertCircle size={15} /> {error}
           </div>
         )}
-        <Field label="อีเมล (สำหรับเข้าสู่ระบบ)">
+        <Field label="อีเมล">
           <div className="relative">
             <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
             <input type="email" placeholder="example@email.com" value={email} onChange={e => setEmail(e.target.value)}
@@ -155,12 +154,7 @@ export default function LoginPage({
           </div>
         </Field>
 
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: "#4A6080" }}>
-            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
-              className="w-4 h-4 rounded" style={{ accentColor: "#FF8C9A" }} />
-            จดจำการเข้าสู่ระบบ
-          </label>
+        <div className="flex items-center justify-end">
           <button type="button" onClick={onForgotPassword} className="text-sm font-medium hover:opacity-70 transition-opacity" style={{ color: "#FF8C9A" }}>
             ลืมรหัสผ่าน?
           </button>

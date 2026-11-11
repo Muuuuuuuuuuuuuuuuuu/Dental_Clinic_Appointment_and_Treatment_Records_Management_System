@@ -36,7 +36,7 @@ export default function BookingSuccessState({
         <CheckCircle size={36} style={{ color: "#22C55E" }} />
       </div>
       <h2 className="text-2xl font-bold mb-2 font-sans text-[#1A365D]">
-        จองนัดหมายสำเร็จ!
+        จองนัดหมายสำเร็จ
       </h2>
       <p className="text-sm mb-2 text-[#4A6080]">
         {serviceTitle} กับ {doctorName}

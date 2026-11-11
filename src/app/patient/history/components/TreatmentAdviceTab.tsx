@@ -1,5 +1,4 @@
 import React from "react";
-import { FileText, AlertCircle, Pill, Receipt } from "lucide-react";
 
 interface TreatmentAdviceTabProps {
   selected: any;
@@ -20,24 +19,18 @@ export default function TreatmentAdviceTab({
   onSwitchToReceipt,
 }: TreatmentAdviceTabProps) {
   return (
-    <div className="overflow-y-auto p-4 sm:p-5 space-y-4">
+    <div className="overflow-y-auto px-4 pt-3 pb-4 sm:px-5 sm:pt-3.5 sm:pb-5 space-y-4">
       {/* ส่วนหัวการ์ดบริการ */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/70 border border-blue-100 flex items-start justify-between gap-3">
+      <div className="px-4 py-3 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/70 border border-blue-100">
         <div>
-          <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-md">
-            {dateStr}
-          </span>
-          <h3 className="font-extrabold text-base text-[#1A365D] mt-1.5 leading-tight">
-            {selected.service}
+          <h3 className="font-extrabold text-base text-[#1A365D] leading-tight">
+            {String(selected.service || "").replace(/\s*\(ซี่\s*[^)]*\)/g, "")}
           </h3>
           <p className="text-xs text-slate-600 mt-1 flex items-center gap-1">
             <span>แพทย์ผู้รักษา:</span>
             <strong className="text-slate-800">{doctorName}</strong>
           </p>
         </div>
-        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
-          เสร็จสิ้น
-        </span>
       </div>
 
       {/* 1. Doctor's Clinical Note */}
@@ -107,7 +100,6 @@ export default function TreatmentAdviceTab({
       {selected.extraProducts && selected.extraProducts.length > 0 && (
         <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
           <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 pb-1 border-b border-slate-100">
-            <Pill size={14} className="text-emerald-600" />
             <span>ยาและเวชภัณฑ์ที่ได้รับ</span>
           </span>
           <div className="divide-y divide-slate-100 text-xs">
@@ -120,17 +112,6 @@ export default function TreatmentAdviceTab({
           </div>
         </div>
       )}
-
-      {/* ปุ่มสลับไปดูใบเสร็จรับเงิน */}
-      <div className="pt-1">
-        <button
-          type="button"
-          onClick={onSwitchToReceipt}
-          className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-slate-200"
-        >
-          <span>ดูสลิปใบเสร็จรับเงิน (฿{netTotal.toLocaleString()})</span>
-        </button>
-      </div>
     </div>
   );
 }

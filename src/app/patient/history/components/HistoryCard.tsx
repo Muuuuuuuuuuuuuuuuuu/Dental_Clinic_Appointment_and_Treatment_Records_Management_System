@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle, Clock, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { thDate } from "../hooks/usePatientHistory";
 
 interface HistoryCardProps {
@@ -26,7 +26,7 @@ export default function HistoryCard({
         <div className="flex items-start gap-4">
           <div>
             <p className="font-semibold text-sm" style={{ color: "#1A365D" }}>
-              {h.service}
+              {String(h.service || "").replace(/\s*\(ซี่\s*[^)]*\)/g, "")}
             </p>
             <p className="text-xs mt-0.5" style={{ color: "#4A6080" }}>
               {h.doctorName || (h as any).doctor}
@@ -35,7 +35,7 @@ export default function HistoryCard({
               className="text-xs mt-0.5 flex items-center gap-1"
               style={{ color: "#4A6080" }}
             >
-              <Clock size={10} /> {h.date && thDate(h.date)} เวลา {h.time} น.
+              {h.date && thDate(h.date)} เวลา {h.time} น.
             </p>
           </div>
         </div>
