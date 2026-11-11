@@ -3,6 +3,7 @@ import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, ChevronLeft, KeyRound } f
 import AuthShell, { Field } from "./AuthShell";
 import { inputCls, inputStyle } from "../types";
 import { supabase } from "@/app/shared/supabaseApi";
+import { getPasswordErrorMessage, PasswordChecklist } from "@/app/shared/utils/passwordPolicy";
 
 interface FirstTimePasswordPageProps {
   userEmail?: string;
@@ -32,8 +33,9 @@ export default function FirstTimePasswordPage({
       return;
     }
 
-    if (newPass.length < 6) {
-      setError("รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+    const pwError = getPasswordErrorMessage(newPass);
+    if (pwError) {
+      setError(pwError);
       return;
     }
 
@@ -111,7 +113,7 @@ export default function FirstTimePasswordPage({
           </div>
         )}
 
-        <Field label="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)">
+        <Field label="รหัสผ่านใหม่">
           <div className="relative">
             <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
             <input
@@ -132,6 +134,9 @@ export default function FirstTimePasswordPage({
             </button>
           </div>
         </Field>
+
+        {/* รายการเงื่อนไขรหัสผ่านที่ต้องผ่านครบทุกข้อ */}
+        <PasswordChecklist password={newPass} />
 
         <Field label="ยืนยันรหัสผ่านใหม่">
           <div className="relative">

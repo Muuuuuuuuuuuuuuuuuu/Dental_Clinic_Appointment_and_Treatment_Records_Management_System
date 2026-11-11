@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { StaffInfo } from "@/app/shared/data";
 import { changePassword, supabase } from "@/app/shared/supabaseApi";
+import { getPasswordErrorMessage } from "@/app/shared/utils/passwordPolicy";
 
 export function useStaffProfile(user: StaffInfo | null) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -24,8 +25,9 @@ export function useStaffProfile(user: StaffInfo | null) {
       setChangeError("กรุณากรอกรหัสผ่านเดิม");
       return;
     }
-    if (newPassword.length < 6) {
-      setChangeError("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
+    const pwError = getPasswordErrorMessage(newPassword);
+    if (pwError) {
+      setChangeError(pwError);
       return;
     }
     if (newPassword !== confirmPassword) {

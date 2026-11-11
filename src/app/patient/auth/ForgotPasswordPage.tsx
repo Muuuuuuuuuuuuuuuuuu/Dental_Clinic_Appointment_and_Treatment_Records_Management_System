@@ -10,6 +10,7 @@ import {
   verifyPasswordResetOTP,
   resetPassword,
 } from "@/app/shared/supabaseApi";
+import { getPasswordErrorMessage, PasswordChecklist } from "@/app/shared/utils/passwordPolicy";
 
 type Step = "email" | "otp" | "reset" | "done";
 
@@ -109,7 +110,8 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
   const doResetPassword = async () => {
     setError("");
     if (!newPass) { setError("กรุณากรอกรหัสผ่านใหม่"); return; }
-    if (newPass.length < 6) { setError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"); return; }
+    const pwError = getPasswordErrorMessage(newPass);
+    if (pwError) { setError(pwError); return; }
     if (newPass !== confirmPass) { setError("รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง"); return; }
 
     setLoading(true);
@@ -346,7 +348,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
               type={showNewPass ? "text" : "password"}
               value={newPass}
               onChange={(e) => { setNewPass(e.target.value); setError(""); }}
-              placeholder="กรอกรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)"
+              placeholder="กรอกรหัสผ่านใหม่"
               className={`${inputCls} pl-10 pr-10`}
               style={inputStyle}
             />
@@ -360,6 +362,9 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
             </button>
           </div>
         </Field>
+
+        {/* รายการเงื่อนไขรหัสผ่านที่ต้องผ่านครบทุกข้อ */}
+        <PasswordChecklist password={newPass} />
 
         <Field label="ยืนยันรหัสผ่านใหม่">
           <div className="relative">

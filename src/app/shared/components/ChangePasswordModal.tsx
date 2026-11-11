@@ -7,6 +7,7 @@ import {
   resetPassword,
 } from "@/app/shared/api/authApi";
 import { supabase } from "@/app/shared/api/supabaseClient";
+import { getPasswordErrorMessage, PasswordChecklist } from "@/app/shared/utils/passwordPolicy";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -74,8 +75,9 @@ export default function ChangePasswordModal({
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (newPassword.length < 6) {
-      setChangeError("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
+    const pwError = getPasswordErrorMessage(newPassword);
+    if (pwError) {
+      setChangeError(pwError);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -201,11 +203,17 @@ export default function ChangePasswordModal({
             <input
               type="password"
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={(e) => {
+                setNewPassword(e.target.value);
+                setChangeError("");
+              }}
               className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-hidden focus:border-[#FF8C9A] focus:ring-2 focus:ring-[#FF8C9A]/20 transition-all bg-[#F8FAFC]"
-              placeholder="อย่างน้อย 6 ตัวอักษร"
+              placeholder="กรอกรหัสผ่านใหม่"
               required
             />
+            <div className="mt-2">
+              <PasswordChecklist password={newPassword} />
+            </div>
           </div>
 
           <div>
