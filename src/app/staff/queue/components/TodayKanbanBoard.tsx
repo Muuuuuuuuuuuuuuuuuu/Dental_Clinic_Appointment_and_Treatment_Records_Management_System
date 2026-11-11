@@ -47,9 +47,8 @@ export default function TodayKanbanBoard({
           toCheckIn.map((a) => (
             <div
               key={a.id}
-              className="rounded-2xl bg-white p-4 shadow-xs border border-blue-50 relative overflow-hidden group"
+              className="rounded-2xl bg-white p-4 shadow-xs border border-gray-100 group"
             >
-              <div className="absolute top-0 left-0 w-1 h-full bg-blue-400" />
               <div className="flex justify-between items-start mb-2">
                 <span className="text-sm font-bold" style={{ color: "#1D6FA4" }}>
                   {a.time} น.
@@ -119,12 +118,8 @@ export default function TodayKanbanBoard({
             return (
               <div
                 key={a.id}
-                className="rounded-2xl bg-white p-4 shadow-xs border border-gray-100 relative overflow-hidden group"
+                className="rounded-2xl bg-white p-4 shadow-xs border border-gray-100 group"
               >
-                <div
-                  className="absolute top-0 left-0 w-1 h-full"
-                  style={{ backgroundColor: colorObj.dot }}
-                />
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-sm font-bold" style={{ color: "#1A365D" }}>
                     {a.time} น.
@@ -189,16 +184,15 @@ export default function TodayKanbanBoard({
             <div
               key={a.id}
               onClick={() => setView && setView("payment")}
-              className="rounded-2xl bg-white p-4 shadow-xs border border-green-50 relative overflow-hidden cursor-pointer hover:shadow-md hover:border-green-200 transition-all active:scale-[0.98]"
+              className="rounded-2xl bg-white p-4 shadow-xs border border-gray-100 cursor-pointer hover:shadow-md hover:border-teal-200 transition-all active:scale-[0.98]"
             >
-              <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500" />
               <div className="flex justify-between items-start mb-2">
                 <span className="text-sm font-bold" style={{ color: "#1A365D" }}>
                   {a.time} น.
                 </span>
                 <span
                   className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: "#FFFDE7", color: "#B45309" }}
+                  style={{ backgroundColor: "#F0FDFA", color: "#0F766E" }}
                 >
                   {a.status}
                 </span>

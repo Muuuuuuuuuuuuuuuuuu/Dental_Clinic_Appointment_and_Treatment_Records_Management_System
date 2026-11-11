@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronRight, CheckCircle } from "lucide-react";
+import { Search, ChevronRight, CheckCircle } from "lucide-react";
 
 interface PatientSearchStepProps {
   searchKeyword: string;
@@ -22,7 +22,10 @@ export default function PatientSearchStep({
   searchError,
 }: PatientSearchStepProps) {
   return (
-    <div className="space-y-4 max-w-xl mx-auto py-8">
+    <div
+      className="max-w-xl mx-auto my-4 bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 space-y-4"
+      style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
+    >
       <div className="text-center mb-6">
         <h3 className="text-lg font-bold text-[#1A365D] mb-2">ค้นหาประวัติคนไข้</h3>
         <p className="text-sm text-[#4A6080]">
@@ -33,13 +36,18 @@ export default function PatientSearchStep({
       {!patientInfo && (
         <div className="flex gap-2">
           <div className="relative flex-1">
+            <Search
+              size={16}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: "#4A6080" }}
+            />
             <input
               type="text"
               value={searchKeyword}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="พิมพ์ชื่อ-สกุล / เลขบัตรฯ / เบอร์โทร / อีเมล"
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/30"
-              style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}
+              className="w-full pl-10 pr-4 py-3 rounded-xl text-sm bg-white border-[1.5px] border-slate-300 outline-none transition-all focus:border-[#FF8C9A] focus:ring-2 focus:ring-[#FF8C9A]/30"
+              style={{ color: "#1A365D" }}
             />
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React from "react";
-import { UserPlus, AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { RegForm } from "../hooks/usePatientRegister";
 import FormField, { inputCls, inputStyle } from "./FormField";
 
@@ -14,8 +14,28 @@ interface RegisterFormStepProps {
   onSubmit: () => void;
 }
 
+function FormSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-slate-50/60 rounded-xl border border-rose-100/80 overflow-hidden">
+      <h3
+        className="text-sm font-bold px-3.5 py-2 text-white"
+        style={{ backgroundColor: "#E16076" }}
+      >
+        {title}
+      </h3>
+      <div className="p-3">{children}</div>
+    </div>
+  );
+}
+
 /**
- * 📝 [REGISTER STEP - FORM] ฟอร์มกรอกข้อมูลคนไข้ใหม่ โดยใช้ FormField Reusable Component
+ * [REGISTER STEP - FORM] ฟอร์มกรอกข้อมูลคนไข้ใหม่ โดยใช้ FormField Reusable Component
  */
 export function RegisterFormStep({
   form,
@@ -30,17 +50,8 @@ export function RegisterFormStep({
   return (
     <div className="w-full max-w-6xl mx-auto bg-white rounded-2xl p-4 lg:p-6 shadow-sm border border-gray-100">
       {/* Header ส่วนบน แบบกะทัดรัด */}
-      <div className="flex items-center gap-3 mb-3.5 pb-2.5 border-b border-gray-100">
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{
-            background:
-              "linear-gradient(135deg,rgba(255,140,154,0.15),rgba(255,107,126,0.15))",
-          }}
-        >
-          <UserPlus size={18} style={{ color: "#FF8C9A" }} />
-        </div>
-        <div className="flex-1 min-w-0">
+      <div className="mb-3.5 pb-2.5 border-b border-gray-100">
+        <div className="min-w-0">
           <h1
             className="text-lg font-bold leading-tight"
             style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}
@@ -48,7 +59,7 @@ export function RegisterFormStep({
             ลงทะเบียนคนไข้ใหม่
           </h1>
           <p className="text-xs truncate" style={{ color: "#4A6080" }}>
-            กรอกข้อมูลเพื่อสร้างประวัติในระบบ — พนักงานเป็นผู้ดำเนินการแทนคนไข้ พร้อมยืนยันอีเมลผ่าน OTP
+            กรอกข้อมูลเพื่อสร้างประวัติในระบบ
           </p>
         </div>
       </div>
@@ -67,14 +78,7 @@ export function RegisterFormStep({
         {/* คอลัมน์ซ้าย: ข้อมูลส่วนตัว + ข้อมูลติดต่อ/บัญชี */}
         <div className="space-y-3">
           {/* ส่วนที่ 1: ข้อมูลส่วนตัว */}
-          <div className="bg-slate-50/60 rounded-xl p-3 border border-slate-100/80">
-            <h3
-              className="text-xs font-bold mb-2 pb-1 border-b flex items-center gap-1.5"
-              style={{ color: "#1A365D", borderColor: "rgba(26,54,93,0.08)" }}
-            >
-              <span className="w-1.5 h-3 rounded-full bg-[#FF8C9A]"></span>
-              ข้อมูลส่วนตัว (Personal Information)
-            </h3>
+          <FormSection title="ข้อมูลส่วนตัว">
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2.5">
                 <FormField
@@ -147,17 +151,10 @@ export function RegisterFormStep({
                 </div>
               </div>
             </div>
-          </div>
+          </FormSection>
 
           {/* ส่วนที่ 2: ข้อมูลการติดต่อและบัญชี */}
-          <div className="bg-slate-50/60 rounded-xl p-3 border border-slate-100/80">
-            <h3
-              className="text-xs font-bold mb-2 pb-1 border-b flex items-center gap-1.5"
-              style={{ color: "#1A365D", borderColor: "rgba(26,54,93,0.08)" }}
-            >
-              <span className="w-1.5 h-3 rounded-full bg-[#FF8C9A]"></span>
-              ข้อมูลการติดต่อและบัญชีเข้าสู่ระบบ (Contact & Account)
-            </h3>
+          <FormSection title="ข้อมูลการติดต่อและบัญชีเข้าสู่ระบบ">
             <div className="space-y-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <FormField
@@ -176,7 +173,6 @@ export function RegisterFormStep({
                   value={form.email}
                   onChange={(v) => set("email", v.trim())}
                   placeholder="example@email.com"
-                  sublabel="ระบบจะส่ง OTP 6 หลักเพื่อยืนยัน"
                 />
               </div>
 
@@ -217,21 +213,14 @@ export function RegisterFormStep({
                 />
               </div>
             </div>
-          </div>
+          </FormSection>
         </div>
 
         {/* คอลัมน์ขวา: ผู้ติดต่อฉุกเฉิน + ข้อมูลสุขภาพ + ปุ่มดำเนินการต่อ */}
         <div className="space-y-3 flex flex-col justify-between">
           <div className="space-y-3">
             {/* ส่วนที่ 3: ผู้ติดต่อฉุกเฉิน */}
-            <div className="bg-slate-50/60 rounded-xl p-3 border border-slate-100/80">
-              <h3
-                className="text-xs font-bold mb-2 pb-1 border-b flex items-center gap-1.5"
-                style={{ color: "#1A365D", borderColor: "rgba(26,54,93,0.08)" }}
-              >
-                <span className="w-1.5 h-3 rounded-full bg-[#FF8C9A]"></span>
-                ผู้ติดต่อฉุกเฉิน (Emergency Contact)
-              </h3>
+            <FormSection title="ผู้ติดต่อฉุกเฉิน">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <FormField
                   label="ชื่อ-นามสกุล"
@@ -256,17 +245,10 @@ export function RegisterFormStep({
                   placeholder="เช่น บิดา, มารดา, คู่สมรส"
                 />
               </div>
-            </div>
+            </FormSection>
 
             {/* ส่วนที่ 4: ข้อมูลสุขภาพ */}
-            <div className="bg-slate-50/60 rounded-xl p-3 border border-slate-100/80">
-              <h3
-                className="text-xs font-bold mb-2 pb-1 border-b flex items-center gap-1.5"
-                style={{ color: "#1A365D", borderColor: "rgba(26,54,93,0.08)" }}
-              >
-                <span className="w-1.5 h-3 rounded-full bg-[#FF8C9A]"></span>
-                ข้อมูลสุขภาพ (Health Information)
-              </h3>
+            <FormSection title="ข้อมูลสุขภาพ">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <FormField
                   label="ประวัติแพ้ยา / อาหาร / สารเคมี"
@@ -281,36 +263,26 @@ export function RegisterFormStep({
                   placeholder="ระบุโรคประจำตัว หรือพิมพ์ 'ไม่มี'"
                 />
               </div>
-            </div>
+            </FormSection>
           </div>
 
-          {/* ปุ่มดำเนินการต่อ อยู่ด้านล่างคอลัมน์ขวา ลงตัวพอดี */}
+          {/* ปุ่มดำเนินการต่อ */}
           <div className="pt-1">
-            <div className="flex items-center justify-between gap-3 bg-rose-50/50 border border-rose-100/80 rounded-xl p-2.5">
-              <div className="text-[11px] text-[#4A6080] leading-snug hidden sm:block pl-1">
-                <span className="text-red-400 font-semibold">*</span> ตรวจสอบข้อมูลให้ถูกต้องก่อนกดส่ง OTP
-              </div>
-              <button
-                onClick={onSubmit}
-                disabled={loading}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-white transition-all hover:opacity-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-sm ml-auto"
-                style={{
-                  background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)",
-                  boxShadow: "0 4px 14px rgba(255,140,154,0.35)",
-                }}
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    กำลังส่ง OTP...
-                  </>
-                ) : (
-                  <>
-                    ดำเนินการต่อ (ส่ง OTP ไปที่อีเมล) <ArrowRight size={16} />
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={onSubmit}
+              disabled={loading}
+              className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+              style={{ backgroundColor: "#E16076" }}
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  กำลังส่ง OTP...
+                </>
+              ) : (
+                "ดำเนินการต่อ"
+              )}
+            </button>
           </div>
         </div>
       </div>

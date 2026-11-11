@@ -30,9 +30,8 @@ export default function StatCards({ appts, setView }: StatCardsProps) {
       {stats.map((s) => (
         <div
           key={s.label}
-          className={`rounded-2xl bg-white p-4 ${
-            s.action ? "cursor-pointer hover:shadow-md transition-shadow" : ""
-          }`}
+          className={`rounded-2xl bg-white p-4 ${s.action ? "cursor-pointer hover:shadow-md transition-shadow" : ""
+            }`}
           style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
           onClick={() => s.action && setView(s.action)}
         >
