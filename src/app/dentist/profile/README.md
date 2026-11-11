@@ -1,7 +1,8 @@
 # 👤 Dentist Profile Module — Architecture & Structure
 
-> โมดูลหน้าข้อมูลส่วนตัวของทันตแพทย์ (Doctor Profile)
-> ใช้สถาปัตยกรรมแบบ **Positional Sections Pattern** สไตล์เดียวกับ `admin/profile`
+> โมดูลหน้าข้อมูลส่วนตัวของทันตแพทย์ (Dentist Profile)
+> เข้าถึงได้จากการคลิกการ์ดชื่อโปรไฟล์ด้านบนของ Sidebar ทันตแพทย์
+> ใช้สถาปัตยกรรมแบบ **Single-File Component** มาตรฐานเดียวกับ `admin/profile` รวมการ์ดซ้าย-ขวา และป๊อปอัป จบในไฟล์เดียว (~190 บรรทัด) ไม่มีโฟลเดอร์ย่อยมากวนใจ
 
 ---
 
@@ -9,32 +10,22 @@
 
 ```text
 src/app/dentist/profile/
-├── README.md                                         ← 🗺️ เอกสารโครงสร้างของโมดูลโปรไฟล์ทันตแพทย์
-├── index.tsx                                         ← 🏢 [LAYOUT ROOT] (~40 บรรทัด)
-│
-└── sections/                                         ← 📦 Positional Sections
-    ├── Header/                                       ← 1. ส่วนหัวของหน้า
-    │   ├── components/
-    │   │   └── TitleBar.tsx                          ← หัวข้อ "ข้อมูลส่วนตัว"
-    │   └── index.tsx
-    │
-    ├── Content/                                      ← 2. เนื้อหาหลักแบ่ง ซ้าย - ขวา
-    │   ├── components/
-    │   │   ├── LeftProfileCard/                      ← 👈 ฝั่งซ้าย
-    │   │   │   ├── components/
-    │   │   │   │   └── AvatarBox.tsx                 ← วงกลมรูปโปรไฟล์, ชื่อ, ความเชี่ยวชาญ, เลขใบอนุญาต
-    │   │   │   └── index.tsx
-    │   │   └── RightInfoCards/                       ← 👉 ฝั่งขวา
-    │   │       ├── components/
-    │   │       │   ├── ProfessionalInfoCard.tsx      ← ข้อมูลวิชาชีพ (View Only)
-    │   │       │   ├── ServicesProvidedCard.tsx      ← รายการบริการที่รับตรวจรักษา
-    │   │       │   └── ContactInfoCard.tsx           ← ข้อมูลติดต่อ และปุ่มเปลี่ยนรหัสผ่าน
-    │   │       └── index.tsx
-    │   └── index.tsx                                 ← Grid Layout 2 คอลัมน์ (ซ้าย 1 ส่วน : ขวา 2 ส่วน)
-    │
-    └── Modals/                                       ← 3. รวมหน้าต่างป๊อปอัป
-        ├── components/
-        │   └── ChangePasswordModal.tsx               ← ฟอร์มเปลี่ยนรหัสผ่าน
-        └── index.tsx
+├── README.md               ← 🗺️ เอกสารโครงสร้างของโมดูลโปรไฟล์ทันตแพทย์
+├── DentistProfileView.tsx  ← 🏢 [MAIN VIEW] หน้าข้อมูลส่วนตัวทันตแพทย์ทั้งหมด (รวมการ์ดซ้าย-ขวา และป๊อปอัป)
+└── index.ts                ← ส่งออก DentistProfileView
 ```
 
+---
+
+## 🎯 Quick Edit Guide (อยากแก้ไขจุดไหน ไปที่ไฟล์ไหน?)
+
+| สิ่งที่ต้องการแก้ไข | บรรทัดใน [`DentistProfileView.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/dentist/profile/DentistProfileView.tsx) |
+| :--- | :--- |
+| **หัวข้อหน้า "ข้อมูลส่วนตัว"** | ส่วนบนสุดของไฟล์ |
+| **รูป Avatar / ความเชี่ยวชาญ / อีเมล** | คอลัมน์ซ้าย (`lg:col-span-1`) |
+| **ปุ่มเปลี่ยนอีเมล / เปลี่ยนรหัสผ่าน** | กล่องปุ่มจัดการบัญชี |
+| **บริการที่รับรักษา (Badges)** | กล่องรายการบริการที่รับตรวจรักษา |
+| **ข้อมูลติดต่อ (เบอร์โทร, ที่อยู่)** | กล่องข้อมูลติดต่อ |
+| **ข้อมูลส่วนตัว (บัตรปชช., เพศ, วันเกิด)** | ตัวแปร `personalFields` ในคอลัมน์ขวา |
+| **ข้อมูลวิชาชีพ (ใบอนุญาต, ประสบการณ์)** | ตัวแปร `professionalFields` ในคอลัมน์ขวา |
+| **ข้อมูลการจ้างงาน (ตำแหน่ง, วันเริ่มงาน)** | ตัวแปร `employmentFields` ในคอลัมน์ขวา |

@@ -1,8 +1,8 @@
 # 📅 Dentist Schedule Module — Architecture & Structure
 
-> โมดูลปฏิทินและการลางานของทันตแพทย์ (Doctor Calendar)
-> ตรวจสอบตารางเวรปกติรายสัปดาห์ ปฏิทินปฏิบัติงานรายเดือน และส่งคำขอลางาน
-> ใช้สถาปัตยกรรมแบบ **Positional Sections Pattern** สไตล์เดียวกับ `admin/schedule`
+> โมดูลปฏิทินและการลางานของทันตแพทย์ (Dentist Schedule & Leaves)
+> ตรงกับเมนู **"ปฏิทินและการลางาน"** (key: `calendar`) บน Sidebar
+> สถาปัตยกรรมแบบ **View + Brain (Hook)** สไตล์เดียวกับ Dashboard
 
 ---
 
@@ -10,33 +10,16 @@
 
 ```text
 src/app/dentist/schedule/
-├── README.md                                         ← 🗺️ แผนผังคู่มือโครงสร้างของโมดูลปฏิทินทันตแพทย์
-├── index.tsx                                         ← 🏢 [LAYOUT ROOT] (~55 บรรทัด)
-├── hooks/
-│   └── useDoctorCalendar.ts                          ← 🧠 Hook รวมตรรกะการดึงข้อมูลกะ, วันปิดคลินิก, ส่งคำขอลา
+├── README.md               ← 🗺️ เอกสารโครงสร้างของโมดูลปฏิทินทันตแพทย์
+├── DentistScheduleView.tsx ← 🏢 [MAIN VIEW] หน้าปฏิทินเวรและส่งคำขอลางาน
+├── useDoctorCalendar.ts    ← 🧠 [BRAIN] Hook คำนวณวันในปฏิทินและส่งใบลา (วางคู่กับ View)
+├── index.ts                ← ส่งออก DentistScheduleView และ useDoctorCalendar
 │
-└── sections/                                         ← 📦 Positional Sections
-    ├── Header/                                       ← 1. แถบหัวเรื่อง
-    │   ├── components/
-    │   │   └── TitleBar.tsx                          ← หัวข้อ "ปฏิทินและการลางาน" และคำอธิบาย
-    │   └── index.tsx
-    │
-    ├── Content/                                      ← 2. เนื้อหาหลัก
-    │   ├── components/
-    │   │   ├── RegularScheduleCard/                  ← ⏰ ตารางเวรประจำสัปดาห์ (ย่อ/ขยายได้)
-    │   │   │   └── index.tsx
-    │   │   ├── LeaveSummaryCard/                     ← 📊 สรุปการลางานในปีนี้ (รออนุมัติ, อนุมัติ, ไม่อนุมัติ)
-    │   │   │   └── index.tsx
-    │   │   └── ActualCalendar/                       ← 📅 ปฏิทินปฏิบัติงานรายเดือนจริง
-    │   │       ├── components/
-    │   │       │   ├── CalendarHeader.tsx            ← ตัวเลือกเดือน/ปี, ปุ่มเลื่อน, คำอธิบายสี
-    │   │       │   └── CalendarCell.tsx              ← ช่องวัน 1 ช่องพร้อมเงื่อนไขคลิกส่งใบลา
-    │   │       └── index.tsx
-    │   └── index.tsx                                 ← ประกอบตารางเวร + สรุปใบลา + ปฏิทินเดือน
-    │
-    └── Modals/                                       ← 3. รวมหน้าต่าง Popups
-        ├── components/
-        │   └── LeaveRequestModal.tsx                 ← ฟอร์มป๊อปอัปส่งคำขอลางาน
-        └── index.tsx
+└── components/             ← 📦 ชิ้นส่วน UI ปฏิทิน
+    ├── RegularScheduleCard.tsx  ← การ์ดตารางเวร 7 วันประจำสัปดาห์
+    ├── LeaveSummaryCard.tsx     ← การ์ดสรุปคำขอลาของหมอ
+    ├── ActualCalendarCard.tsx   ← การ์ดปฏิทินปฏิบัติงานจริงรายเดือน
+    ├── CalendarHeader.tsx       ← แถบเลือกเดือน/ปี
+    ├── CalendarCell.tsx         ← ช่องแสดงข้อมูลรายวันในปฏิทิน
+    └── LeaveRequestModal.tsx    ← ป๊อปอัปส่งคำขอลางาน
 ```
-

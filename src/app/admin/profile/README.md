@@ -2,7 +2,7 @@
 
 > โมดูลหน้าข้อมูลส่วนตัวของผู้ดูแลระบบ (Admin Profile)
 > เข้าถึงได้จากการคลิกการ์ดชื่อโปรไฟล์ด้านบนของ Sidebar แอดมิน
-> ใช้สถาปัตยกรรมแบบ **Positional Sections Pattern** แบ่งตามตำแหน่งสายตา (Header, Content, Modals) เหมือนกับ `schedule`
+> ใช้สถาปัตยกรรมแบบ **Single-File Component** โค้ดทั้งหมดรวมอยู่ในไฟล์เดียวอย่างเป็นระเบียบ (~160 บรรทัด) อ่านเข้าใจง่าย จบในที่เดียว ไม่มีการซอยโฟลเดอร์เกินจำเป็น
 
 ---
 
@@ -10,47 +10,20 @@
 
 ```text
 src/app/admin/profile/
-├── README.md                                         ← 🗺️ เอกสารโครงสร้างของโมดูลโปรไฟล์
-├── index.tsx                                         ← 🏢 [LAYOUT ROOT] (~45 บรรทัด) รวม Header, Content, Modals
-│
-└── sections/                                         ← 📦 Positional Sections
-    ├── Header/                                       ← 1. ส่วนหัวหน้า
-    │   ├── components/
-    │   │   └── TitleBar.tsx                          ← หัวข้อ "ข้อมูลส่วนตัว" และคำอธิบาย
-    │   └── index.tsx                                 ← คุมพื้นที่ Header
-    │
-    ├── Content/                                      ← 2. ส่วนเนื้อหากลางหน้าจอ (แบ่ง ซ้าย - ขวา)
-    │   ├── components/
-    │   │   ├── LeftProfileCard/                      ← 👈 ฝั่งซ้าย: ข้อมูลบัญชีและปุ่มจัดการ
-    │   │   │   ├── components/
-    │   │   │   │   ├── AvatarBox.tsx                 ← วงกลมรูปโปรไฟล์ ตัวอักษร "ผ", ชื่อ, ป้ายผู้ดูแลระบบ
-    │   │   │   │   └── ProfileActions.tsx            ← ปุ่มเปลี่ยนอีเมล และ ปุ่มเปลี่ยนรหัสผ่าน
-    │   │   │   └── index.tsx                         ← ประกอบกล่องฝั่งซ้าย
-    │   │   └── RightInfoCards/                       ← 👉 ฝั่งขวา: การ์ดรายละเอียด
-    │   │       ├── components/
-    │   │       │   ├── PersonalInfoCard.tsx          ← ข้อมูลส่วนตัว (View Only)
-    │   │       │   └── EmploymentInfoCard.tsx        ← ข้อมูลการจ้างงาน
-    │   │       └── index.tsx                         ← ประกอบกล่องฝั่งขวา
-    │   └── index.tsx                                 ← Grid Layout 2 คอลัมน์ (ซ้าย 1 ส่วน, ขวา 2 ส่วน)
-    │
-    └── Modals/                                       ← 3. ส่วนหน้าต่าง Popups / Modals
-        ├── components/
-        │   ├── ChangePasswordModal.tsx               ← ป๊อปอัปเปลี่ยนรหัสผ่าน พร้อมตรวจสอบความถูกต้อง
-        │   └── ChangeEmailModal.tsx                  ← ป๊อปอัปเปลี่ยนอีเมล พร้อมส่งลิงก์ยืนยัน
-        └── index.tsx                                 ← รวมศูนย์การแสดงผล Modals ทั้งหมด
+├── README.md              ← 🗺️ เอกสารโครงสร้างของโมดูลโปรไฟล์
+├── AdminProfileView.tsx   ← 🏢 [MAIN VIEW] หน้าข้อมูลส่วนตัวแอดมินทั้งหมด (รวมการ์ดซ้าย-ขวา และป๊อปอัป)
+└── index.ts               ← ส่งออก AdminProfileView
 ```
 
 ---
 
 ## 🎯 Quick Edit Guide (อยากแก้ไขจุดไหน ไปที่ไฟล์ไหน?)
 
-| สิ่งที่ต้องการแก้ไข | ไฟล์ที่ต้องแก้ |
+| สิ่งที่ต้องการแก้ไข | บรรทัดใน [`AdminProfileView.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/profile/AdminProfileView.tsx) |
 | :--- | :--- |
-| **โครงสร้างภาพรวมทั้งหน้า** (ความกว้าง, ระยะห่าง) | `src/app/admin/profile/index.tsx` |
-| **หัวข้อหน้า / คำอธิบาย** | `sections/Header/components/TitleBar.tsx` |
-| **รูปวงกลม, ชื่อ, ป้ายบทบาท** | `sections/Content/components/LeftProfileCard/components/AvatarBox.tsx` |
-| **ปุ่มเปลี่ยนอีเมล / ปุ่มเปลี่ยนรหัสผ่าน** | `sections/Content/components/LeftProfileCard/components/ProfileActions.tsx` |
-| **ฟิลด์ข้อมูลส่วนตัว** (เลขบัตร, วันเกิด, ที่อยู่ ฯลฯ) | `sections/Content/components/RightInfoCards/components/PersonalInfoCard.tsx` |
-| **ฟิลด์ข้อมูลการจ้างงาน** (ตำแหน่ง, วันเริ่มงาน, สถานะ) | `sections/Content/components/RightInfoCards/components/EmploymentInfoCard.tsx` |
-| **แบบฟอร์มเปลี่ยนรหัสผ่าน** | `sections/Modals/components/ChangePasswordModal.tsx` |
-| **แบบฟอร์มเปลี่ยนอีเมล** | `sections/Modals/components/ChangeEmailModal.tsx` |
+| **หัวข้อหน้า "ข้อมูลส่วนตัว"** | ส่วนบนสุดของไฟล์ |
+| **รูป Avatar / ป้ายผู้ดูแลระบบ / อีเมล** | คอลัมน์ซ้าย (`lg:col-span-1`) |
+| **ปุ่มเปลี่ยนอีเมล / เปลี่ยนรหัสผ่าน** | กล่องปุ่มจัดการบัญชี |
+| **ข้อมูลติดต่อ (เบอร์โทร, ที่อยู่)** | กล่องข้อมูลติดต่อ |
+| **ข้อมูลส่วนตัว (เลขบัตรปชช., เพศ, วันเกิด)** | ตัวแปร `personalFields` ในคอลัมน์ขวา |
+| **ข้อมูลการจ้างงาน (ตำแหน่ง, วันเริ่มงาน, สถานะ)** | ตัวแปร `employmentFields` ในคอลัมน์ขวา |

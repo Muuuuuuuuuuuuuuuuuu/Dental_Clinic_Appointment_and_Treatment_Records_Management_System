@@ -1,7 +1,6 @@
 import { DentistInfo } from "@/app/shared/data";
-import { useDoctorCalendar } from "./hooks/useDoctorCalendar";
+import { useDoctorCalendar } from "./useDoctorCalendar";
 import {
-  ScheduleTitleBar,
   RegularScheduleCard,
   LeaveSummaryCard,
   ActualCalendarCard,
@@ -51,7 +50,17 @@ export default function DentistScheduleView({ doctor }: DoctorCalendarProps) {
   return (
     <div style={{ fontFamily: "Sarabun, sans-serif" }}>
       {/* 1. ส่วนหัวหน้า */}
-      <ScheduleTitleBar />
+      <div className="mb-4">
+        <h1
+          className="text-xl font-bold"
+          style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}
+        >
+          ปฏิทินและการลางาน
+        </h1>
+        <p className="text-xs" style={{ color: "#4A6080" }}>
+          ตรวจสอบตารางทำงานและส่งคำขอลางานได้ที่นี่
+        </p>
+      </div>
 
       {/* 2. เนื้อหา: ตารางเวรประจำ + สรุปการลางาน ในบรรทัดเดียวกัน แล้วตามด้วยปฏิทินรายเดือน */}
       <div className="space-y-4">

@@ -8,11 +8,12 @@ import { useIdleTimeout } from "@/app/shared/hooks/useIdleTimeout";
 import AdminDashboardView from "./dashboard";
 import AdminProfileView from "./profile";
 import ScheduleManagementView from "./schedule";
-import ClinicManagementView from "./clinic";
-import UserManagementView from "./users";
+import ClinicManagementView from "./clinicManage";
+import UserManagementView from "./userManage";
 
-// ─── โครงสร้างเลย์เอาต์ (Layout & Components) ──────────────────────────────────
-import { AdminStatusBanner, AdminSidebar } from "./layout";
+// ─── โครงสร้างเลย์เอาต์กรอบนอก (Layout Frame & Sidebar) ────────────────────────
+import { AdminStatusBanner } from "./AdminStatusBanner";
+import { AdminSidebar } from "./AdminSidebar";
 
 interface AdminPortalProps {
   appointments?: Appointment[];

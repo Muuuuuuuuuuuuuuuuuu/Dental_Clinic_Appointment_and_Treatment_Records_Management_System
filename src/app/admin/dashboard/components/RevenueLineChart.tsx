@@ -1,6 +1,6 @@
 import React from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Timeframe } from "../hooks/useDashboardData";
+import { Timeframe } from "../useDashboardData";
 
 interface RevenueLineChartProps {
   chartData: any[];

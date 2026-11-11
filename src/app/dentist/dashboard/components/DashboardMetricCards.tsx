@@ -1,6 +1,47 @@
 import React from "react";
-import { Users, Clock, CreditCard, CheckCircle } from "lucide-react";
-import MetricCardItem from "./MetricCardItem";
+import { Users, Clock, CreditCard, CheckCircle, LucideIcon } from "lucide-react";
+
+interface MetricCardItemProps {
+  label: string;
+  val: number | string;
+  icon: LucideIcon;
+  bg: string;
+  ic: string;
+}
+
+/**
+ * 📊 การ์ดสรุปตัวเลข 1 ช่อง
+ */
+function MetricCardItem({
+  label,
+  val,
+  icon: Icon,
+  bg,
+  ic,
+}: MetricCardItemProps) {
+  return (
+    <div
+      className="rounded-2xl bg-white p-4"
+      style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
+    >
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+        style={{ backgroundColor: bg }}
+      >
+        <Icon size={18} style={{ color: ic }} />
+      </div>
+      <div
+        className="text-2xl font-bold"
+        style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}
+      >
+        {val}
+      </div>
+      <div className="text-xs mt-0.5" style={{ color: "#4A6080" }}>
+        {label}
+      </div>
+    </div>
+  );
+}
 
 interface MetricCardsProps {
   totalPatients: number;
@@ -12,7 +53,7 @@ interface MetricCardsProps {
 /**
  * 📈 [CONTENT COMPONENT] การ์ดสรุปสถิติด่วน 4 ช่องของทันตแพทย์
  */
-export default function MetricCards({
+export default function DashboardMetricCards({
   totalPatients,
   waitingCount,
   pendingPaymentCount,
@@ -40,4 +81,3 @@ export default function MetricCards({
     </div>
   );
 }
-

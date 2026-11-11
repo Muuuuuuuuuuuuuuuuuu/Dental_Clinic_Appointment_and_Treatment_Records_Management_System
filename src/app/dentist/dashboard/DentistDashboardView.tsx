@@ -1,5 +1,5 @@
 import { DocView, DentistInfo, Appointment } from "@/app/shared/data";
-import { useDoctorDashboard } from "./hooks/useDoctorDashboard";
+import { useDoctorDashboard } from "./useDoctorDashboard";
 import {
   DashboardHeader,
   DashboardMetricCards,

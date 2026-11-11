@@ -17,7 +17,7 @@ import {
 } from "./components";
 
 // Subview ทางเลือกสำหรับทางลัดไปหน้าตั้งค่าคลินิก
-import { ClinicSettingsManagement } from "@/app/admin/clinic";
+import { ClinicSettingsManagement } from "@/app/admin/clinicManage";
 
 /**
  * 📅 [SCHEDULE MANAGEMENT MODULE] ตารางเวรและการลา

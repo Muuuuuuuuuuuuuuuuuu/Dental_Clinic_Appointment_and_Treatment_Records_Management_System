@@ -1,5 +1,5 @@
 import { AdminView } from "@/app/shared/data";
-import { useDashboardData } from "./hooks/useDashboardData";
+import { useDashboardData } from "./useDashboardData";
 import {
   DashboardHeader,
   MetricCards,

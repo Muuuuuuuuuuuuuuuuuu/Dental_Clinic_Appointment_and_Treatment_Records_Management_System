@@ -2,7 +2,7 @@
 
 > โมดูลหน้าภาพรวมระบบของผู้ดูแลระบบ (Admin Dashboard)
 > หน้าเริ่มต้นของ Admin Portal แสดงตัวชี้วัดสำคัญ กราฟ และสถานะงานแบบ Real-time
-> ใช้สถาปัตยกรรมแบบ **Positional Sections Pattern** (Header, Content, Modals) สไตล์เดียวกับ `schedule` และ `profile`
+> สถาปัตยกรรมแยกส่วน: **View (หน้าจอ)**, **Brain (Hook คำนวณ)**, และ **Components (หน้าปัดเกจวัด)**
 
 ---
 
@@ -10,42 +10,19 @@
 
 ```text
 src/app/admin/dashboard/
-├── README.md                                         ← 🗺️ เอกสารโครงสร้างของโมดูลแดชบอร์ด
-├── index.tsx                                         ← 🏢 [LAYOUT ROOT] (~70 บรรทัด) รวม Header, Content, Modals
-├── AdminDashboard.tsx                                ← 🔄 Re-export compatibility file
-├── hooks/
-│   └── useDashboardData.ts                           ← 🧠 Hook รวมตรรกะคำนวณสถิติ, กรองนัดหมาย, คำนวณรายได้
+├── README.md                      ← 🗺️ เอกสารโครงสร้างของโมดูลแดชบอร์ด
+├── AdminDashboardView.tsx         ← 🏢 [MAIN VIEW] หน้าแดชบอร์ดรวมภาพทั้งหมด (97 บรรทัด)
+├── useDashboardData.ts            ← 🧠 [BRAIN] Hook คำนวณสถิติ, กรองนัดหมาย, คำนวณรายได้ (วางคู่กับ View เลย!)
+├── index.ts                       ← ส่งออก AdminDashboardView และ useDashboardData
 │
-└── sections/                                         ← 📦 Positional Sections
-    ├── Header/                                       ← 1. แถบควบคุมส่วนบน
-    │   ├── components/
-    │   │   ├── TitleBar.tsx                          ← หัวข้อ "ภาพรวมระบบ" และวันที่ภาษาไทย
-    │   │   └── TimeframeControls.tsx                 ← ตัวเลือกวันที่ (input date) และปุ่มสลับ วัน/สัปดาห์/เดือน
-    │   └── index.tsx                                 ← รวม TitleBar และ TimeframeControls
-    │
-    ├── Content/                                      ← 2. เนื้อหาหลักกลางหน้าจอ
-    │   ├── components/
-    │   │   ├── MetricCards/                          ← 📊 การ์ดตัวเลขสรุป 4 ช่อง
-    │   │   │   ├── components/
-    │   │   │   │   └── MetricCardItem.tsx            ← การ์ดสรุปตัวเลข 1 ใบ
-    │   │   │   └── index.tsx                         ← รวม 4 ใบ (นัดหมาย, รายได้, แพทย์, รออนุมัติ)
-    │   │   ├── Charts/                               ← 📈 กราฟวิเคราะห์
-    │   │   │   ├── components/
-    │   │   │   │   ├── AppointmentBarChart.tsx       ← กราฟแท่งแสดงจำนวนนัดหมาย
-    │   │   │   │   └── RevenueLineChart.tsx          ← กราฟเส้นแสดงรายได้
-    │   │   │   └── index.tsx                         ← Grid แสดงผล 2 กราฟคู่กัน
-    │   │   └── SummaryRow/                           ← 📑 แถบสรุปภาพรวมด้านล่าง
-    │   │       ├── components/
-    │   │       │   ├── StatusRatioCard.tsx           ← แถบสัดส่วนสถานะ (สำเร็จ, รอคิว, ยกเลิก, ไม่มา)
-    │   │       │   ├── ActiveOrthoCard.tsx           ← เคสต่อเนื่อง (จัดฟัน, รากเทียม)
-    │   │       │   └── AppointmentsViewButton.tsx    ← ปุ่มเปิดดูรายการนัดหมาย
-    │   │       └── index.tsx                         ← แถวสรุปสถานะด้านล่าง
-    │   └── index.tsx                                 ← คุมระยะห่างและลำดับของ MetricCards, Charts, SummaryRow
-    │
-    └── Modals/                                       ← 3. รวมหน้าต่าง Popups / Drawers
-        ├── components/
-        │   └── AppointmentsDrawer.tsx                ← แผงสไลด์แสดงรายการนัดหมายทั้งหมดในวันนั้น
-        └── index.tsx                                 ← จัดการการแสดงผล Drawer
+└── components/                    ← 📦 ชิ้นส่วน UI แดชบอร์ด (7 ไฟล์หลัก)
+    ├── DashboardHeader.tsx        ← แถว 1: หัวข้อ "ภาพรวมระบบ" + ตัวเลือกวันที่และปุ่ม วัน/สัปดาห์/เดือน
+    ├── MetricCards.tsx            ← แถว 2: การ์ดสรุปตัวเลข 4 ช่อง (นัดหมาย, รายได้, แพทย์, ลา)
+    ├── AppointmentBarChart.tsx    ← แถว 3 (ซ้าย): กราฟแท่งแสดงจำนวนนัดหมาย
+    ├── RevenueLineChart.tsx       ← แถว 3 (ขวา): กราฟเส้นแสดงรายได้
+    ├── StatusRatioCard.tsx        ← แถว 4 (ซ้าย): แถบสรุปสัดส่วนสถานะเคส (สำเร็จ, รอคิว, ยกเลิก, ไม่มา)
+    ├── AppointmentsViewButton.tsx ← แถว 4 (ขวา): ปุ่มการ์ดสีชมพูกดเปิดดูรายการนัดหมาย
+    └── AppointmentsDrawer.tsx     ← [DRAWER] ลิ้นชักสไลด์แสดงรายการนัดหมายวันนี้
 ```
 
 ---
@@ -54,14 +31,12 @@ src/app/admin/dashboard/
 
 | สิ่งที่ต้องการแก้ไข | ไฟล์ที่ต้องแก้ |
 | :--- | :--- |
-| **โครงสร้างภาพรวมทั้งหน้า** | `src/app/admin/dashboard/index.tsx` |
-| **สูตรคำนวณสถิติ / การดึงข้อมูล** | `hooks/useDashboardData.ts` |
-| **หัวข้อ / วันที่ภาษาไทย** | `sections/Header/components/TitleBar.tsx` |
-| **ตัวเลือกวันที่ / ปุ่ม วัน/สัปดาห์/เดือน** | `sections/Header/components/TimeframeControls.tsx` |
-| **สไตล์หรือข้อมูลการ์ดตัวเลข 4 ช่อง** | `sections/Content/components/MetricCards/` |
-| **กราฟแท่งนัดหมาย** | `sections/Content/components/Charts/components/AppointmentBarChart.tsx` |
-| **กราฟเส้นรายได้** | `sections/Content/components/Charts/components/RevenueLineChart.tsx` |
-| **แถบสัดส่วนสถานะเคส** | `sections/Content/components/SummaryRow/components/StatusRatioCard.tsx` |
-| **การ์ดเคสต่อเนื่อง** | `sections/Content/components/SummaryRow/components/ActiveOrthoCard.tsx` |
-| **ปุ่มดูรายการนัดหมาย** | `sections/Content/components/SummaryRow/components/AppointmentsViewButton.tsx` |
-| **แผงสไลด์ดูรายการนัดหมาย** | `sections/Modals/components/AppointmentsDrawer.tsx` |
+| **โครงสร้างภาพรวมหน้าแดชบอร์ด** | [`AdminDashboardView.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/dashboard/AdminDashboardView.tsx) |
+| **สูตรคำนวณสถิติ / การดึงข้อมูล** | [`useDashboardData.ts`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/dashboard/useDashboardData.ts) |
+| **หัวข้อ / ปฏิทินเลือกวัน / ปุ่มวัน-สัปดาห์-เดือน** | [`components/DashboardHeader.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/dashboard/components/DashboardHeader.tsx) |
+| **การ์ดตัวเลข 4 ช่อง** | [`components/MetricCards.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/dashboard/components/MetricCards.tsx) |
+| **กราฟแท่งนัดหมาย** | [`components/AppointmentBarChart.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/dashboard/components/AppointmentBarChart.tsx) |
+| **กราฟเส้นรายได้** | [`components/RevenueLineChart.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/dashboard/components/RevenueLineChart.tsx) |
+| **แถบสัดส่วนสถานะเคส** | [`components/StatusRatioCard.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/dashboard/components/StatusRatioCard.tsx) |
+| **ปุ่มดูรายการนัดหมายสีชมพู** | [`components/AppointmentsViewButton.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/dashboard/components/AppointmentsViewButton.tsx) |
+| **ลิ้นชักสไลด์นัดหมาย** | [`components/AppointmentsDrawer.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/dashboard/components/AppointmentsDrawer.tsx) |

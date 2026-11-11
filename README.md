@@ -46,14 +46,15 @@
 ---
 
 ### 🛡️ 4. ฝั่งผู้ดูแลระบบ (Admin Portal) -> `src/app/admin/`
-* **แถบเมนูด้านข้าง (Sidebar):** `src/app/admin/layout/AdminSidebar.tsx`
+* **แถบเมนูด้านข้าง (Sidebar):** `src/app/admin/AdminSidebar.tsx`
+* **แถบแจ้งสถานะคลินิก (Status Banner):** `src/app/admin/AdminStatusBanner.tsx`
 * **แดชบอร์ดสถิติผู้บริหาร (Analytics):** `src/app/admin/dashboard/AdminDashboardView.tsx`
 * **ตารางเวรและการลา (Schedule & Leave):** `src/app/admin/schedule/ScheduleManagementView.tsx` *(จัดเวร / อนุมัติการลา)*
-* **จัดการคลินิก (Clinic Settings):** `src/app/admin/clinic/ClinicManagementView.tsx`
-  * ⚙️ *จัดการบริการทันตกรรม:* `src/app/admin/clinic/components/ServiceSettings/`
-  * ⏰ *เวลาเปิด-ปิดและวันหยุดคลินิก:* `src/app/admin/clinic/components/TimeHolidaySettings/`
-  * 💊 *จัดการยาและสินค้า:* `src/app/admin/clinic/components/ProductSettings/`
-* **จัดการผู้ใช้งาน (User Management):** `src/app/admin/users/UserManagementView.tsx` *(จัดการ หมอ / พนักงาน / คนไข้ / แอดมิน)*
+* **จัดการคลินิก (Clinic Settings):** `src/app/admin/clinicManage/ClinicManagementView.tsx`
+  * ⚙️ *จัดการบริการทันตกรรม:* `src/app/admin/clinicManage/services/`
+  * ⏰ *เวลาเปิด-ปิดและวันหยุดคลินิก:* `src/app/admin/clinicManage/settings/`
+  * 💊 *จัดการยาและสินค้า:* `src/app/admin/clinicManage/products/`
+* **จัดการผู้ใช้งาน (User Management):** `src/app/admin/userManage/UserManagementView.tsx` *(โฟลเดอร์แยก 4 บทบาท: `admins/`, `dentists/`, `staff/`, `patients/`)*
 * **ข้อมูลส่วนตัวแอดมิน (Profile):** `src/app/admin/profile/AdminProfileView.tsx`
 
 ---

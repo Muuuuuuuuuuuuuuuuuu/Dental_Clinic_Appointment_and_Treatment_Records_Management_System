@@ -7,13 +7,15 @@ import { useIdleTimeout } from "@/app/shared/useIdleTimeout";
 
 // ─── หน้าย่อยระบบทันตแพทย์ (Views & Sub-modules) ─────────────────────────────────
 import DentistDashboardView from "./dashboard";
-import DentistProfileView from "./profile";
+import DentistQueueView from "./queue";
+import DentistRecordsView from "./records";
+import DentistHistoryView from "./history";
 import DentistScheduleView from "./schedule";
-import DentistPatientsView from "./patients";
-import { TreatmentQueue, TreatmentHistory } from "./treatment";
+import DentistProfileView from "./profile";
 
 // ─── โครงสร้างเลย์เอาต์ (Layout & Components) ──────────────────────────────────
-import { DentistSidebar, DentistStatusBanner } from "./layout";
+import DentistSidebar from "./DentistSidebar";
+import DentistStatusBanner from "./DentistStatusBanner";
 
 interface DoctorPortalProps {
   onLogout: () => void;
@@ -134,10 +136,10 @@ export default function DoctorPortal({
             />
           )}
           {view === "queue" && (
-            <TreatmentQueue doctor={doctor} appointments={appointments} />
+            <DentistQueueView doctor={doctor} appointments={appointments} />
           )}
-          {view === "records" && <DentistPatientsView doctorId={doctor?.id} />}
-          {view === "history" && <TreatmentHistory doctor={doctor} />}
+          {view === "records" && <DentistRecordsView doctorId={doctor?.id} />}
+          {view === "history" && <DentistHistoryView doctor={doctor} />}
           {view === "calendar" && <DentistScheduleView doctor={doctor} />}
           {view === "profile" && <DentistProfileView doctor={doctor} />}
         </main>
