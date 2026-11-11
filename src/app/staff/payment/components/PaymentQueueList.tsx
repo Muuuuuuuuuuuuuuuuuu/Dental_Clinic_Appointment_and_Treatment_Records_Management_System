@@ -64,8 +64,8 @@ export default function PaymentQueueList({
                     onClick={() => onSelectAppt(a.id)}
                     className={`w-full text-left p-3 rounded-xl transition-all border ${
                       isSelected
-                        ? "border-orange-400 bg-orange-50"
-                        : "border-gray-100 bg-gray-50 hover:border-gray-300"
+                        ? "border-[#1D6FA4] bg-[#F0F7FC] shadow-sm ring-1 ring-[#1D6FA4]/30"
+                        : "border-gray-200 bg-white hover:border-gray-300 hover:bg-slate-50"
                     }`}
                   >
                     <div className="flex justify-between items-start mb-1">
@@ -74,7 +74,7 @@ export default function PaymentQueueList({
                       </p>
                       <ChevronRight
                         size={16}
-                        style={{ color: isSelected ? "#F57F17" : "#CBD5E1" }}
+                        style={{ color: isSelected ? "#1D6FA4" : "#CBD5E1" }}
                       />
                     </div>
                     <p className="text-xs truncate" style={{ color: "#4A6080" }}>
@@ -83,7 +83,9 @@ export default function PaymentQueueList({
                             .map(
                               (s: any) =>
                                 `${s.name}${
-                                  s.locationCode && s.locationCode !== "MOUTH"
+                                  s.locationCode &&
+                                  s.locationCode !== "MOUTH" &&
+                                  s.locationCode !== "ทั้งปาก"
                                     ? ` (ซี่ ${s.locationCode})`
                                     : ""
                                 }`
@@ -94,7 +96,7 @@ export default function PaymentQueueList({
                         : a.service}
                     </p>
                     <div className="flex justify-between items-center mt-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded text-white bg-gradient-to-r from-orange-400 to-orange-500">
+                      <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200/80">
                         รอชำระเงิน
                       </span>
                       <span className="text-[10px]" style={{ color: "#94A3B8" }}>
@@ -144,7 +146,9 @@ export default function PaymentQueueList({
                           .map(
                             (s: any) =>
                               `${s.name}${
-                                s.locationCode && s.locationCode !== "MOUTH"
+                                s.locationCode &&
+                                s.locationCode !== "MOUTH" &&
+                                s.locationCode !== "ทั้งปาก"
                                   ? ` (ซี่ ${s.locationCode})`
                                   : ""
                               }`

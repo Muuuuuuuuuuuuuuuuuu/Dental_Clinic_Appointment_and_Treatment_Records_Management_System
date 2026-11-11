@@ -66,7 +66,7 @@ export default function PatientSearchTab() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="ค้นหาชื่อ, HN, หรือเบอร์โทรศัพท์..."
+          placeholder="ชื่อ หรือเบอร์โทรศัพท์..."
           className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none"
           style={{
             backgroundColor: "white",
@@ -109,12 +109,6 @@ export default function PatientSearchTab() {
                     <h3 className="font-semibold" style={{ color: "#1A365D" }}>
                       {p.name}
                     </h3>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}
-                    >
-                      {p.hn}
-                    </span>
                     {!isEditing && (
                       <button
                         onClick={() => {

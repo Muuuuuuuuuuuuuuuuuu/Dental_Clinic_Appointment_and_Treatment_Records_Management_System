@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Appointment, DentistInfo, hasHealthAlert } from "@/app/shared/data";
 import {
   getDentists,
@@ -8,6 +8,22 @@ import {
 import { useRealtimeAppointments } from "@/app/shared/useRealtimeAppointments";
 
 export type TabView = "risk" | "reschedule" | "transfer" | "all";
+
+function getNow(): Date {
+  const mockDatetime =
+    typeof window !== "undefined" ? localStorage.getItem("supat_mock_date") : null;
+  if (mockDatetime) {
+    return new Date(mockDatetime.includes("T") ? mockDatetime : `${mockDatetime}T08:00:00`);
+  }
+  return new Date();
+}
+
+function getTodayStr(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export function useStaffAppointments(initialAppointments?: Appointment[]) {
   const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
@@ -120,17 +136,65 @@ export function useStaffAppointments(initialAppointments?: Appointment[]) {
     (a) => !["เสร็จสิ้น", "ยกเลิก", "ไม่มาตามนัด"].includes(a.status)
   );
 
+  // ตรวจสอบและปรับสถานะนัดหมายที่เลยเวลาแล้วเป็น "ไม่มาตามนัด" อัตโนมัติ
+  const processedExpiredIds = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (loading || appointments.length === 0) return;
+
+    const now = getNow();
+    const expirableStatuses = ["รอการยืนยัน", "ยืนยันการจอง"];
+
+    const toExpire = appointments.filter((a) => {
+      if (processedExpiredIds.current.has(a.id)) return false;
+      if (!expirableStatuses.includes(a.status)) return false;
+      if (!a.date || !a.time) return false;
+      const apptDateTime = new Date(`${a.date}T${a.time}:00`);
+      return apptDateTime < now;
+    });
+
+    if (toExpire.length === 0) return;
+
+    toExpire.forEach((a) => processedExpiredIds.current.add(a.id));
+
+    setAppointments((prev) =>
+      prev.map((a) =>
+        toExpire.some((e) => e.id === a.id) ? { ...a, status: "ไม่มาตามนัด" } : a
+      )
+    );
+
+    toExpire.forEach((a) => {
+      updateAppointmentStatus(a.id, "ไม่มาตามนัด", "เลยเวลานัดหมาย").catch(console.error);
+    });
+  }, [loading, appointments, setAppointments]);
+
+  const isUpcoming = (a: Appointment, now: Date, todayStr: string) => {
+    if (!a.date) return false;
+    if (a.date < todayStr) return false;
+    if (a.date === todayStr && a.time) {
+      const apptDateTime = new Date(`${a.date}T${a.time}:00`);
+      return apptDateTime >= now;
+    }
+    return true;
+  };
+
   const displayAppointments = useMemo(() => {
+    const now = getNow();
+    const todayStr = getTodayStr(now);
+    const upcomingActiveAppointments = activeAppointments.filter((a) =>
+      isUpcoming(a, now, todayStr)
+    );
+
     let list = appointments;
     if (activeTab === "risk") {
-      list = activeAppointments.filter(
+      list = upcomingActiveAppointments.filter(
         (a) =>
           hasHealthAlert(a.conditions) ||
           hasHealthAlert(a.allergies) ||
           a.status === "รอการยืนยัน"
       );
     } else if (activeTab === "reschedule" || activeTab === "transfer") {
-      list = activeAppointments;
+      list = upcomingActiveAppointments;
     }
 
     if (searchQuery) {
@@ -138,14 +202,23 @@ export function useStaffAppointments(initialAppointments?: Appointment[]) {
       list = list.filter(
         (a) =>
           a.patientName.toLowerCase().includes(q) ||
-          a.hn.toLowerCase().includes(q) ||
-          a.doctorName.toLowerCase().includes(q)
+          (a.hn && a.hn.toLowerCase().includes(q)) ||
+          (a.doctorName && a.doctorName.toLowerCase().includes(q))
       );
     }
 
-    return list.sort(
+    if (activeTab === "all") {
+      return [...list].sort(
+        (a, b) =>
+          new Date(`${b.date}T${b.time || "00:00"}`).getTime() -
+          new Date(`${a.date}T${a.time || "00:00"}`).getTime()
+      );
+    }
+
+    return [...list].sort(
       (a, b) =>
-        new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime()
+        new Date(`${a.date}T${a.time || "00:00"}`).getTime() -
+        new Date(`${b.date}T${b.time || "00:00"}`).getTime()
     );
   }, [appointments, activeTab, searchQuery, activeAppointments]);
 

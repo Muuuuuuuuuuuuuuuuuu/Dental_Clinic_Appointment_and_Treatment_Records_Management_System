@@ -1,5 +1,5 @@
 import React from "react";
-import { Receipt, CheckCircle, Banknote, Smartphone, CreditCard } from "lucide-react";
+import { Receipt, Banknote, Smartphone, CreditCard } from "lucide-react";
 import { Appointment, Product } from "@/app/shared/data";
 import { ExtraProductItem } from "../hooks/usePaymentData";
 
@@ -73,7 +73,7 @@ export default function PaymentBillingPanel({
 
   const paymentMethods = [
     { id: "เงินสด", icon: Banknote, label: "เงินสด", bg: "#F0FDF4", border: "#BBF7D0", color: "#166534" },
-    { id: "โอนเงิน", icon: Smartphone, label: "โอนเงิน / PromptPay", bg: "#EFF6FF", border: "#BFDBFE", color: "#1E3A8A" },
+    { id: "โอนเงิน", icon: Smartphone, label: "โอนเงิน / สแกนจ่าย", bg: "#EFF6FF", border: "#BFDBFE", color: "#1E3A8A" },
     { id: "บัตรเครดิต", icon: CreditCard, label: "บัตรเครดิต", bg: "#FDF4FF", border: "#FBCFE8", color: "#831843" },
   ];
 
@@ -83,21 +83,13 @@ export default function PaymentBillingPanel({
       style={{ boxShadow: "0 4px 20px rgba(26,54,93,0.03)" }}
     >
       <div className="flex flex-col h-full max-w-2xl mx-auto w-full">
-        {/* ส่วนหัวคนไข้ */}
+        {/* ส่วนหัว */}
         <div
-          className="flex justify-between items-start mb-4 pb-3"
+          className="flex justify-end items-start mb-4 pb-3"
           style={{ borderBottom: "1px dashed rgba(26,54,93,0.1)" }}
         >
-          <div>
-            <h2 className="text-xl font-bold mb-1" style={{ color: "#1A365D" }}>
-              {selectedAppt.patientName}
-            </h2>
-            <p className="text-xs" style={{ color: "#4A6080" }}>
-              HN: {selectedAppt.hn || "HN-XXXX"}
-            </p>
-          </div>
           <div className="text-right">
-            <p className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 inline-block mb-1">
+            <p className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200/80 inline-block mb-1">
               สถานะ: รอชำระเงิน
             </p>
             <p className="text-xs font-medium" style={{ color: "#1A365D" }}>
@@ -114,7 +106,7 @@ export default function PaymentBillingPanel({
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
             <div>
               <p className="font-semibold text-sm mb-2" style={{ color: "#1A365D" }}>
-                หัตถการ / บริการที่ทำ
+                รายการบริการและสินค้า
               </p>
               {selectedAppt.detailedServices && selectedAppt.detailedServices.length > 0 ? (
                 <div className="space-y-1.5">
@@ -125,13 +117,6 @@ export default function PaymentBillingPanel({
                     const currentPriceStr =
                       adjustedPrices[key] !== undefined ? adjustedPrices[key] : String(s.price);
 
-                    let priceRangeStr = "";
-                    if (srvData && !srvData.is_fixed_price) {
-                      const base = srvData.basePrice ? srvData.basePrice.toLocaleString() : "0";
-                      const max = srvData.maxPrice ? srvData.maxPrice.toLocaleString() : "ไม่จำกัด";
-                      priceRangeStr = ` (฿${base} - ${max})`;
-                    }
-
                     return (
                       <div
                         key={key}
@@ -140,11 +125,8 @@ export default function PaymentBillingPanel({
                         <div className="flex items-center gap-2">
                           <span className="font-medium" style={{ color: "#1D6FA4" }}>
                             {s.name}
-                            <span className="text-[10px] font-normal text-gray-400 ml-1">
-                              {priceRangeStr}
-                            </span>
                           </span>
-                          {s.locationCode && (
+                          {s.locationCode && s.locationCode !== "MOUTH" && s.locationCode !== "ทั้งปาก" && (
                             <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
                               ซี่ {s.locationCode}
                             </span>
@@ -222,19 +204,41 @@ export default function PaymentBillingPanel({
               )}
             </div>
 
-            {selectedAppt.treatmentNotes && (
-              <div>
-                <p className="font-semibold text-xs mb-1" style={{ color: "#1A365D" }}>
-                  บันทึกหัตถการ:
-                </p>
-                <div
-                  className="text-xs p-2.5 bg-white rounded-lg border border-gray-100 whitespace-pre-line"
-                  style={{ color: "#4A6080" }}
-                >
-                  {selectedAppt.treatmentNotes}
+            {selectedAppt.treatmentNotes && (() => {
+              const noteLines = selectedAppt.treatmentNotes
+                .split("\n")
+                .map((l: string) => l.trim())
+                .filter(Boolean);
+              const serviceNames =
+                selectedAppt.detailedServices?.map((s: any) => s.name) ||
+                selectedAppt.treatmentServices ||
+                [selectedAppt.service];
+              const isRedundantNote =
+                noteLines.length > 0 &&
+                noteLines.every((line: string) =>
+                  serviceNames.some(
+                    (name: string) =>
+                      line === `- ทำ ${name}` ||
+                      line === `ทำ ${name}` ||
+                      line === `- ${name}` ||
+                      line === name
+                  )
+                );
+              if (isRedundantNote) return null;
+              return (
+                <div>
+                  <p className="font-semibold text-xs mb-1" style={{ color: "#1A365D" }}>
+                    บันทึกหัตถการ:
+                  </p>
+                  <div
+                    className="text-xs p-2.5 bg-white rounded-lg border border-gray-100 whitespace-pre-line"
+                    style={{ color: "#4A6080" }}
+                  >
+                    {selectedAppt.treatmentNotes}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {selectedAppt.recommendations && (
               <div>
@@ -259,7 +263,7 @@ export default function PaymentBillingPanel({
               onClick={() => setShowProductSelect(!showProductSelect)}
               className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-full hover:bg-blue-100 transition-colors"
             >
-              + เพิ่มสินค้า
+              + เพิ่มสินค้าหรือยา
             </button>
           </div>
 
@@ -381,7 +385,7 @@ export default function PaymentBillingPanel({
           </div>
 
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-medium text-red-500">ส่วนลด (Discount)</span>
+            <span className="text-xs font-medium text-red-500">ส่วนลด</span>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-red-500">- ฿</span>
               <input
@@ -399,7 +403,7 @@ export default function PaymentBillingPanel({
             style={{ borderTop: "1px dashed rgba(26,54,93,0.1)" }}
           >
             <span className="text-sm font-bold" style={{ color: "#1A365D" }}>
-              ยอดชำระสุทธิ (Net Total)
+              ยอดชำระสุทธิ
             </span>
             <span className="text-2xl font-black" style={{ color: "#1B7A3E" }}>
               ฿{netTotal.toLocaleString()}
@@ -459,7 +463,7 @@ export default function PaymentBillingPanel({
             className="flex-[2] py-3 rounded-xl font-bold text-white text-base transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: "linear-gradient(135deg,#22C55E,#16A34A)" }}
           >
-            <CheckCircle size={18} /> รับชำระเงิน ฿{netTotal.toLocaleString()}
+            รับชำระเงิน ฿{netTotal.toLocaleString()}
           </button>
         </div>
       </div>

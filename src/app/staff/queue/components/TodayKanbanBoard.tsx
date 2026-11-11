@@ -1,5 +1,5 @@
 import React from "react";
-import { UserCheck, Clock, CreditCard, Play, AlertTriangle } from "lucide-react";
+import { UserCheck, Play, AlertTriangle } from "lucide-react";
 import { Appointment, STATUS_COLORS, StaffView, hasHealthAlert } from "@/app/shared/data";
 
 interface TodayKanbanBoardProps {
@@ -32,9 +32,6 @@ export default function TodayKanbanBoard({
       {/* คอลัมน์ที่ 1: รอเช็คอิน */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 text-blue-600">
-            <UserCheck size={16} />
-          </div>
           <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>
             รอเช็คอิน ({toCheckIn.length})
           </h2>
@@ -100,9 +97,6 @@ export default function TodayKanbanBoard({
       {/* คอลัมน์ที่ 2: รอเข้าพบ / กำลังรักษา */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-100 text-orange-600">
-            <Clock size={16} />
-          </div>
           <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>
             เช็คอินแล้ว / ระหว่างรักษา ({inQueue.length})
           </h2>
@@ -179,9 +173,6 @@ export default function TodayKanbanBoard({
       {/* คอลัมน์ที่ 3: รอชำระเงิน */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-100 text-green-600">
-            <CreditCard size={16} />
-          </div>
           <h2 className="font-bold text-lg" style={{ color: "#1A365D" }}>
             รอชำระเงิน ({toPay.length})
           </h2>

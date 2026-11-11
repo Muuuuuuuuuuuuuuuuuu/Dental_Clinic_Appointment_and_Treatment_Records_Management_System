@@ -22,7 +22,6 @@ export default function BookingConfirmationStep({
 
   const rows = [
     ["คนไข้", patientInfo?.name || "-"],
-    ["รหัสคนไข้", patientInfo?.hn || "-"],
     ["เบอร์โทร", patientInfo?.phone || "-"],
     ["บริการ", form.service],
     ["ทันตแพทย์", doctorName],

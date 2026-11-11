@@ -37,7 +37,7 @@ export default function TitleBar({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="ค้นหาชื่อคนไข้, HN, ชื่อหมอ..."
+            placeholder="ค้นหาชื่อคนไข้, ชื่อหมอ..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-blue-400 transition-colors"

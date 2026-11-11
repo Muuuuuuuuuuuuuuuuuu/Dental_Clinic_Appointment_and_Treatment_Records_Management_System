@@ -68,9 +68,7 @@ export default function PatientSearchStep({
             >
               <div>
                 <p className="font-bold text-[#1A365D] text-sm">{p.name}</p>
-                <p className="text-xs text-[#4A6080]">
-                  {p.hn} • {p.phone}
-                </p>
+                <p className="text-xs text-[#4A6080]">{p.phone}</p>
               </div>
               <ChevronRight size={16} className="text-[#4A6080]" />
             </button>
@@ -89,7 +87,7 @@ export default function PatientSearchStep({
           <div>
             <p className="font-bold text-[#1A365D] text-lg">{patientInfo.name}</p>
             <p className="text-sm text-[#4A6080]">
-              {patientInfo.hn} • {patientInfo.phone}
+              {patientInfo.phone}
             </p>
           </div>
           <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#E8FFF0] text-[#1B7A3E]">

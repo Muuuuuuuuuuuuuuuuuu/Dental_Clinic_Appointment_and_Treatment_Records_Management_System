@@ -48,9 +48,6 @@ export default function AppointmentCard({
             <p className="text-base font-bold" style={{ color: "#1A365D" }}>
               {a.patientName}
             </p>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
-              HN: {a.hn}
-            </span>
             {activeTab === "all" && (
               <span
                 className="text-[10px] font-bold px-2 py-0.5 rounded-full"

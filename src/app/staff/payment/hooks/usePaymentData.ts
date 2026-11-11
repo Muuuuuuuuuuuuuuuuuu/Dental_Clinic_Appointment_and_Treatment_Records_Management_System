@@ -54,7 +54,13 @@ export function usePaymentData(
   const [showProductSelect, setShowProductSelect] = useState(false);
 
   useEffect(() => {
-    getProducts().then((prods) => setAllProducts(prods || []));
+    getProducts().then((prods) => {
+      const cleanProds = (prods || []).map((p: Product) => ({
+        ...p,
+        name: p.name.replace(/\s*\([A-Za-z\s]+\)/g, "").trim(),
+      }));
+      setAllProducts(cleanProds);
+    });
     getServices().then((data) => {
       const map: Record<number, any> = {};
       data.forEach((s: any) => {
@@ -123,8 +129,8 @@ export function usePaymentData(
     }
     setAdjustedPrices(initialPrices);
     setAdjustedQuantities(initialQuantities);
-
-
+    setExtraProducts([]);
+    setShowProductSelect(false);
   }, [selectedApptId]);
 
   const totalBaseCost = useMemo(() => {
@@ -228,9 +234,9 @@ export function usePaymentData(
     try {
       const newAppt: any = await addAppointment({
         patientId: followUp.patientId,
-        hn: "",
+        hn: followUp.hn || "",
         patientName: followUp.patientName,
-        patientPhone: "",
+        patientPhone: followUp.patientPhone || "",
         service: followUp.service,
         serviceId: followUp.serviceId || 1,
         doctorName: isBound ? followUp.doctorName : "",

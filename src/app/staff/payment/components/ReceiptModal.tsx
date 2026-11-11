@@ -1,5 +1,5 @@
 import React from "react";
-import { Smile, X, Banknote, Smartphone, CreditCard, CalendarPlus, Printer } from "lucide-react";
+import { Smile, X, Banknote, Smartphone, CreditCard } from "lucide-react";
 
 interface ReceiptModalProps {
   receiptData: any | null;
@@ -25,10 +25,6 @@ export default function ReceiptModal({
       style={{ backgroundColor: "rgba(26,54,93,0.6)", backdropFilter: "blur(4px)" }}
     >
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden relative">
-        <div
-          className="h-2 w-full"
-          style={{ background: "linear-gradient(90deg, #1A365D, #1D6FA4)" }}
-        />
         <div className="p-8 pb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -46,7 +42,7 @@ export default function ReceiptModal({
                   คลินิกสุภัทร
                 </h2>
                 <p className="text-[10px]" style={{ color: "#4A6080" }}>
-                  ใบเสร็จรับเงิน #{receiptData.id}
+                  ใบเสร็จรับเงิน
                 </p>
               </div>
             </div>
@@ -80,23 +76,13 @@ export default function ReceiptModal({
             {[
               ["คนไข้", receiptData.patientName],
               [
-                "บริการ",
-                receiptData.detailedServices && receiptData.detailedServices.length > 0
-                  ? receiptData.detailedServices
-                      .map(
-                        (s: any) =>
-                          `${s.name}${
-                            s.locationCode && s.locationCode !== "MOUTH"
-                              ? ` (ซี่ ${s.locationCode})`
-                              : ""
-                          }${s.qty > 1 ? ` x${s.qty}` : ""}`
-                      )
-                      .join(", ")
-                  : receiptData.treatmentServices && receiptData.treatmentServices.length > 0
-                  ? receiptData.treatmentServices.join(", ")
-                  : receiptData.service,
+                "ทันตแพทย์",
+                receiptData.doctorName
+                  ? receiptData.doctorName.startsWith("ทพ")
+                    ? receiptData.doctorName
+                    : `ทพ. ${receiptData.doctorName}`
+                  : "-",
               ],
-              ["ทันตแพทย์", receiptData.doctorName],
               [
                 "วันที่",
                 new Date().toLocaleDateString("th-TH", {
@@ -119,19 +105,6 @@ export default function ReceiptModal({
                 </span>
               </div>
             ))}
-            {receiptData.treatmentNotes && (
-              <div className="pt-1 pb-2 border-b border-dashed border-gray-200">
-                <span className="block text-xs mb-1" style={{ color: "#64748B" }}>
-                  บันทึกการรักษาจากแพทย์
-                </span>
-                <div
-                  className="text-xs font-medium whitespace-pre-line bg-slate-50 rounded-lg p-2.5 border border-slate-100"
-                  style={{ color: "#1A365D" }}
-                >
-                  {receiptData.treatmentNotes}
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="space-y-2 mb-6 border-y border-dashed border-gray-200 py-3">
@@ -143,7 +116,9 @@ export default function ReceiptModal({
               <div key={`svc-${i}`} className="flex justify-between text-xs">
                 <span style={{ color: "#64748B" }}>
                   {s.name}
-                  {s.locationCode && s.locationCode !== "MOUTH" ? ` (ซี่ ${s.locationCode})` : ""}{" "}
+                  {s.locationCode && s.locationCode !== "MOUTH" && s.locationCode !== "ทั้งปาก"
+                    ? ` (ซี่ ${s.locationCode})`
+                    : ""}{" "}
                   {s.qty > 1 ? `x${s.qty}` : ""}
                 </span>
                 <span style={{ color: "#1A365D" }}>
@@ -176,7 +151,7 @@ export default function ReceiptModal({
 
             {receiptData.discount > 0 && (
               <div className="flex justify-between text-xs pt-2">
-                <span className="text-red-500 font-medium">ส่วนลด (Discount)</span>
+                <span className="text-red-500 font-medium">ส่วนลด</span>
                 <span className="text-red-500 font-medium">
                   - ฿{receiptData.discount.toLocaleString()}
                 </span>
@@ -197,7 +172,6 @@ export default function ReceiptModal({
               className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-xs font-bold transition-all hover:opacity-90 whitespace-nowrap"
               style={{ backgroundColor: "#E8F4FF", color: "#1D6FA4" }}
             >
-              <CalendarPlus size={14} className="shrink-0" />
               <span>นัดครั้งถัดไป</span>
             </button>
             <button
@@ -205,7 +179,6 @@ export default function ReceiptModal({
               className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 shadow-md whitespace-nowrap"
               style={{ backgroundColor: "#1B7A3E" }}
             >
-              <Printer size={14} className="shrink-0" />
               <span>ยืนยันและพิมพ์ใบเสร็จ</span>
             </button>
           </div>
