@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { UserRole } from "@/app/patient/types";
+import { UserRole } from "@/app/shared/types";
 import { Appointment } from "@/app/shared/data";
 import { supabase } from "@/app/shared/api/supabaseClient";
 import { useRealtimeAppointments } from "@/app/shared/hooks/useRealtimeAppointments";

@@ -112,3 +112,6 @@ export type DoctorView = "dashboard" | "queue" | "patients" | "schedule" | "leav
 export type DocView = "dashboard" | "queue" | "records" | "history" | "calendar" | "profile" | "announcements" | "tracking";
 export type StaffView = "queue" | "appointments" | "patients" | "walkin" | "payment" | "leave" | "announcements" | "profile" | "tracking";
 
+// บทบาทผู้ใช้งานทั่วทั้งระบบ (ใช้ร่วมกันทุก Portal)
+export type UserRole = "patient" | "doctor" | "staff" | "admin" | null;
+

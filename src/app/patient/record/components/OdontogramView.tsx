@@ -1,6 +1,6 @@
 import React from "react";
-import Odontogram, { ToothStatus } from "@/app/dentist/queue/Odontogram";
-import { SupernumeraryTooth } from "@/app/dentist/queue/ToothGeometry";
+import Odontogram, { ToothStatus } from "@/app/dentist/queue/odontogram/Odontogram";
+import { SupernumeraryTooth } from "@/app/dentist/queue/odontogram/ToothGeometry";
 
 interface OdontogramViewProps {
   mergedToothData: Record<number | string, ToothStatus>;

@@ -1,8 +1,8 @@
-# 📅 Admin Schedule Module — Architecture & Structure
+tecture & Structure
 
 > โมดูลจัดการตารางเวรและการลาของผู้ดูแลระบบ (Admin Schedule & Leave Management)
-> ศูนย์กลางการจัดกะเวลาทำงาน 7 วัน, ปฏิทินปฏิบัติงานจริงรายเดือน, และการอนุมัติคำขอลางาน
-> ใช้สถาปัตยกรรมแบบ **Clean Flat Components Pattern** (View + 6 ชิ้นส่วน UI หลักที่ตรงกับหน้าจอ 1:1)
+> จัดวางโครงสร้างตาม **โซนที่ตาเห็นบนหน้าจอจริง 3 ส่วน (Visual Zoning)**: `header/`, `calendar/`, และ `leave/`
+> โดยตั้งชื่อไฟล์ใน `calendar/` แบบจับคู่ (`Actual...` คู่กับ `Actual...` / `Weekly...` คู่กับ `Weekly...`) เพื่อให้เรียงติดกันและหาง่ายทันที
 
 ---
 
@@ -10,47 +10,36 @@
 
 ```text
 src/app/admin/schedule/
-├── README.md                      ← 🗺️ เอกสารโครงสร้างของโมดูลตารางเวร
-├── ScheduleManagementView.tsx     ← 🏢 [MAIN VIEW] หน้าหลักคุม State และจัดวาง 4 โซนสายตา
-├── index.ts                       ← ส่งออก ScheduleManagementView
+├── README.md                      ← 🗺️ แผนที่อธิบายโครงสร้างของหน้าตารางเวร
+├── ScheduleManagementView.tsx     ← 🏢 [หน้าหลัก ~96 บรรทัด] กล่องใหญ่คุมเลย์เอาต์ บน-กลาง-ล่าง
+├── useScheduleData.ts             ← 🧠 [เบื้องหลัง] ดึงข้อมูล 6 ตารางจาก Supabase + คำนวณกะ/วันลา + บันทึก
+├── index.ts                       ← จุดส่งออกหลักของโมดูล
 │
-└── components/                    ← 📦 ชิ้นส่วน UI ตารางเวร (6 ชิ้นส่วนหลัก)
-    ├── ScheduleHeader.tsx         ← 1. แถบควบคุมบน (ค้นหา, กรองหมอ/พนักงาน, ทางลัดตั้งค่า, ปุ่มบันทึก)
-    ├── WeeklyTemplateCard.tsx     ← 2. การ์ดตารางเวร 7 วัน แม่แบบประจำสัปดาห์ (คอลัมน์ซ้าย)
-    ├── ActualCalendarCard.tsx     ← 3. การ์ดปฏิทินปฏิบัติงานจริงรายเดือน (คอลัมน์ขวา)
-    ├── LeaveApprovalsCard.tsx     ← 4. การ์ดคำขออนุมัติการลา (ด้านล่าง มีแท็บรออนุมัติ / ประวัติ จบในตัว)
-    ├── DayDetailModal.tsx         ← 5. ป๊อปอัปดูรายละเอียดคนเข้าเวรรายวัน (เปิดเมื่อคลิกช่องวันที่)
-    └── EditShiftModal.tsx         ← 6. ป๊อปอัปแก้ไขเวลาเข้า-ออกเวร (เปิดเมื่อคลิกแก้ไขกะ)
+├── header/                        ← 🔝 [ส่วนบนของหน้าจอ]
+│   └── ScheduleHeader.tsx         ← ชื่อหน้า "ตารางเวรและการลา", ช่องค้นหา, ปุ่มกรอง (ทั้งหมด/หมอ/พนักงาน), ปุ่มบันทึก
+│
+├── calendar/                      ← 🗓️ [ส่วนกลางของหน้าจอ] (เรียงคู่กันตามตัวอักษร)
+│   ├── index.ts
+│   ├── ActualCalendarCard.tsx     ← กล่องขวา: ปฏิทินปฏิบัติงานจริงรายเดือน
+│   ├── ActualDayDetailModal.tsx   ← ป๊อปอัปดูคนเข้าเวรรายวัน (คู่กับ ActualCalendarCard)
+│   ├── WeeklyEditShiftModal.tsx   ← ป๊อปอัปแก้เวลากะ (คู่กับ WeeklyTemplateCard)
+│   └── WeeklyTemplateCard.tsx     ← กล่องซ้าย: ตารางเวรประจำสัปดาห์ 7 วัน
+│
+└── leave/                         ← 📋 [ส่วนล่างของหน้าจอ]
+    └── LeaveApprovalsCard.tsx     ← การ์ดคำขออนุมัติการลา (แท็บรออนุมัติ + แท็บประวัติ ครบจบในไฟล์เดียว)
 ```
 
 ---
 
-## 🖥️ Layout Mapping บนหน้าจอจริง
+## 🎯 Quick Edit Guide (อยากแก้ไขตรงไหนบนหน้าจอ เปิดโฟลเดอร์ไหน?)
 
-```text
-+-----------------------------------------------------------------------------------------+
-| 🔝 1. ScheduleHeader (ค้นหาชื่อ, สลับบทบาท, แจ้งเตือนใบลา, ปุ่มตั้งค่า, บันทึกการเปลี่ยนแปลง) |
-+-----------------------------------------------------------------------------------------+
-| 👈 2. WeeklyTemplateCard (ซ้าย)              | 👉 3. ActualCalendarCard (ขวา)            |
-| (ตารางเวรแม่แบบ 7 วัน จันทร์-อาทิตย์)            | (ปฏิทินจริงรายเดือน แสดงวันหยุดและคนลา)     |
-+-----------------------------------------------------------------------------------------+
-| 📋 4. LeaveApprovalsCard (ล่าง)                                                          |
-| (แท็บคำขอลาที่รออนุมัติ พร้อมปุ่มอนุมัติ/ปฏิเสธ + แท็บประวัติการลาที่อนุมัติแล้ว)                 |
-+-----------------------------------------------------------------------------------------+
-| 🪟 5. DayDetailModal (ป๊อปอัปเจาะดูรายวัน)     | 🪟 6. EditShiftModal (ป๊อปอัปแก้ไขเวลากะ)   |
-+-----------------------------------------------------------------------------------------+
-```
-
----
-
-## 🎯 Quick Edit Guide (อยากแก้ไขจุดไหน ไปที่ไฟล์ไหน?)
-
-| สิ่งที่ต้องการแก้ไข | ไฟล์ที่ต้องแก้ |
+| จุดที่เห็นบนหน้าจอ | โฟลเดอร์ / ไฟล์ที่ต้องเปิด |
 | :--- | :--- |
-| **โครงสร้างภาพรวม / จัดวางตำแหน่ง / การบันทึก Supabase** | [`ScheduleManagementView.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/ScheduleManagementView.tsx) |
-| **แถบเครื่องมือบน / ปุ่มค้นหา / ตัวกรองหมอ-พนักงาน** | [`components/ScheduleHeader.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/components/ScheduleHeader.tsx) |
-| **ตารางเวรประจำสัปดาห์ 7 วัน** | [`components/WeeklyTemplateCard.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/components/WeeklyTemplateCard.tsx) |
-| **ปฏิทินปฏิบัติงานจริงรายเดือน** | [`components/ActualCalendarCard.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/components/ActualCalendarCard.tsx) |
-| **กล่องอนุมัติการลา (ปุ่มอนุมัติ/ประวัติ)** | [`components/LeaveApprovalsCard.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/components/LeaveApprovalsCard.tsx) |
-| **หน้าต่างดูรายละเอียดคนเข้าเวรรายวัน** | [`components/DayDetailModal.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/components/DayDetailModal.tsx) |
-| **หน้าต่างแก้ไขเวลากะเข้าเวร** | [`components/EditShiftModal.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/components/EditShiftModal.tsx) |
+| **ตัวกรอบรวมทั้งหมด / การเรียง บน-กลาง-ล่าง** | [`ScheduleManagementView.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/ScheduleManagementView.tsx) |
+| **สูตรคำนวณวันลา / ดึงข้อมูล / กดบันทึกไม่เข้า** | [`useScheduleData.ts`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/useScheduleData.ts) |
+| **ส่วนหัว, ช่องค้นหาชื่อ, ปุ่มทั้งหมด/ทันตแพทย์/พนักงาน** | [`header/ScheduleHeader.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/header/ScheduleHeader.tsx) |
+| **ตารางเวร 7 วัน (ฝั่งซ้าย)** | [`calendar/WeeklyTemplateCard.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/calendar/WeeklyTemplateCard.tsx) |
+| **ป๊อปอัปตั้งค่าเวลาเข้าเวร (เด้งจากฝั่งซ้าย)** | [`calendar/WeeklyEditShiftModal.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/calendar/WeeklyEditShiftModal.tsx) |
+| **ปฏิทินปฏิบัติงานจริง (ฝั่งขวา)** | [`calendar/ActualCalendarCard.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/calendar/ActualCalendarCard.tsx) |
+| **ป๊อปอัปดูรายชื่อคนเข้าเวรประจำวัน (เด้งจากฝั่งขวา)** | [`calendar/ActualDayDetailModal.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/calendar/ActualDayDetailModal.tsx) |
+| **กล่องคำขออนุมัติการลาด้านล่าง (รออนุมัติ / ประวัติ)** | [`leave/LeaveApprovalsCard.tsx`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/admin/schedule/leave/LeaveApprovalsCard.tsx) |

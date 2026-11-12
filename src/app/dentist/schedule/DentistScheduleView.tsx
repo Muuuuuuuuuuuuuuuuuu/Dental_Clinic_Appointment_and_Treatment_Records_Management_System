@@ -1,11 +1,7 @@
 import { DentistInfo } from "@/app/shared/data";
 import { useDoctorCalendar } from "./useDoctorCalendar";
-import {
-  RegularScheduleCard,
-  LeaveSummaryCard,
-  ActualCalendarCard,
-  LeaveRequestModal,
-} from "./components";
+import { RegularScheduleCard, LeaveSummaryCard } from "./top";
+import { ActualCalendarCard, LeaveRequestModal } from "./calendar";
 
 interface DoctorCalendarProps {
   doctor: DentistInfo | null;

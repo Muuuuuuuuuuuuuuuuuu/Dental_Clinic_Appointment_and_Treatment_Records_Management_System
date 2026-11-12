@@ -1,14 +1,8 @@
 import { AdminView } from "@/app/shared/data";
 import { useDashboardData } from "./useDashboardData";
-import {
-  DashboardHeader,
-  MetricCards,
-  AppointmentBarChart,
-  RevenueLineChart,
-  StatusRatioCard,
-  AppointmentsViewButton,
-  AppointmentsDrawer,
-} from "./components";
+import { DashboardHeader, MetricCards } from "./top";
+import { AppointmentBarChart, RevenueLineChart } from "./charts";
+import { StatusRatioCard, AppointmentsViewButton, AppointmentsDrawer } from "./bottom";
 
 interface AdminDashboardProps {
   setView: (v: AdminView) => void;

@@ -1,8 +1,7 @@
 # 🩺 Dentist Module — Full System Architecture
 
 > สถาปัตยกรรมระดับภาพรวมของฝั่ง **ทันตแพทย์ (Dentist)**
-> ออกแบบโฟลเดอร์ให้ **ตรงกับเมนูใน Sidebar 1:1** มาตรฐานเดียวกับโมดูลผู้ดูแลระบบ (`src/app/admin`)
-> ทุกไฟล์มีหน้าที่ชัดเจน (Single Responsibility) ไม่มีโฟลเดอร์ซ้อนลึก และไม่มีไฟล์ผีตกค้าง
+> ออกแบบโฟลเดอร์ให้ **ตรงกับเมนูใน Sidebar 1:1** และใช้หลัก **Visual Zoning (ไร้โฟลเดอร์ `components/` กว้างๆ)** มาตรฐานเดียวกับโมดูลผู้ดูแลระบบ (`src/app/admin`)
 
 ---
 
@@ -12,58 +11,33 @@
 src/app/dentist/
 ├── DentistPortal.tsx          ← 🚪 [ROOT SHELL] สลับ 6 เมนูตาม Sidebar
 ├── DentistSidebar.tsx         ← 🧭 [SIDEBAR] แถบเมนูด้านข้างสีน้ำเงิน
-├── DentistStatusBanner.tsx    ← 🏷️ [STATUS BANNER] แถบสถานะคลินิก
 ├── README.md                  ← 🗺️ แผนผังภาพรวมของระบบทันตแพทย์ (ไฟล์นี้)
 │
-├── 🏠 dashboard/              ← 1. เมนู "แดชบอร์ด" (DentistDashboardView + useDoctorDashboard)
+├── 🏠 dashboard/              ← 1. เมนู "แดชบอร์ด" (แบ่ง top / bottom เหมือน admin/dashboard)
 │   ├── DentistDashboardView.tsx
 │   ├── useDoctorDashboard.ts
-│   ├── README.md
-│   ├── index.ts
-│   └── components/
+│   ├── top/                   ← คำทักทาย + การ์ดสรุป 4 ช่อง
+│   └── bottom/                ← คิววันนี้ + เวลาออกตรวจ
 │
-├── 👥 queue/                  ← 2. เมนู "คิวการรักษา" (ห้องตรวจ, คิวคนไข้, บันทึกเคส, ผังฟัน 32 ซี่)
+├── 👥 queue/                  ← 2. เมนู "คิวการรักษา" (แบ่ง treatment / odontogram ไร้โฟลเดอร์รกตา)
 │   ├── DentistQueueView.tsx   ← หน้าห้องตรวจและคิวคนไข้
-│   ├── Odontogram.tsx         ← ระบบผังฟัน 32 ซี่แบบ Interactive SVG
-│   ├── ToothGeometry.ts       ← พิกัดและรูปทรงเรขาคณิตของฟัน
-│   ├── ToothActionModal.tsx   ← ป๊อปอัปเลือกหัตถการรายซี่
-│   ├── components/            ← ชิ้นส่วนฟอร์มการรักษาและผังฟัน
-│   ├── hooks/                 ← useTreatmentQueue
-│   ├── README.md
-│   └── index.ts
+│   ├── useTreatmentQueue.ts   ← สมองคำนวณคิวและบันทึกการรักษา
+│   ├── treatment/             ← แถบกรอง, การ์ดคิว, ฟอร์มรักษา, ป๊อปอัปยา
+│   └── odontogram/            ← ระบบผังฟัน 32 ซี่ครบวงจร (รวม SVG, ชื่อฟัน, ป๊อปอัป, ประวัติ)
 │
-├── 📋 records/                ← 3. เมนู "เวชระเบียน" (Flat Architecture)
+├── 📋 records/                ← 3. เมนู "เวชระเบียน" (Flat 2 ไฟล์)
 │   ├── DentistRecordsView.tsx ← หน้าค้นหาและแสดงเวชระเบียนคนไข้
-│   ├── PatientCard.tsx        ← การ์ดข้อมูลคนไข้ 1 คน (HN, เบอร์โทร, โรคประจำตัว)
-│   ├── README.md
-│   └── index.ts
+│   └── PatientCard.tsx        ← การ์ดข้อมูลคนไข้ 1 คน
 │
-├── 📜 history/                ← 4. เมนู "ประวัติการทำงาน"
-│   ├── DentistHistoryView.tsx ← หน้าตารางประวัติหัตถการย้อนหลังทั้งหมดของคุณหมอ
-│   ├── README.md
-│   └── index.ts
+├── 📜 history/                ← 4. เมนู "ประวัติการทำงาน" (Single-File)
+│   └── DentistHistoryView.tsx ← หน้าตารางประวัติหัตถการย้อนหลังทั้งหมดของคุณหมอ
 │
-├── 📅 schedule/               ← 5. เมนู "ปฏิทินและการลางาน"
-│   ├── DentistScheduleView.tsx← หน้าปฏิทินเวรและส่งคำขอลางาน
-│   ├── README.md
-│   ├── index.ts
-│   └── components/            ← ปฏิทินรายเดือน, การ์ดเวรประจำ, ป๊อปอัปขอลางาน
+├── 📅 schedule/               ← 5. เมนู "ปฏิทินและการลางาน" (แบ่ง top / calendar เหมือน admin/schedule)
+│   ├── DentistScheduleView.tsx
+│   ├── useDoctorCalendar.ts
+│   ├── top/                   ← การ์ดตารางเวรประจำสัปดาห์ + การ์ดสรุปการลา
+│   └── calendar/              ← ปฏิทินจริงรายเดือน + ช่องวัน + ป๊อปอัปส่งใบลา
 │
-└── 👤 profile/                ← 6. เมนู "ข้อมูลส่วนตัว" (Single-File Architecture)
-    ├── DentistProfileView.tsx ← รวมการ์ดซ้าย-ขวา ป๊อปอัปเปลี่ยนรหัส จบใน ~190 บรรทัด
-    ├── README.md
-    └── index.ts
+└── 👤 profile/                ← 6. เมนู "ข้อมูลส่วนตัว" (Single-File เหมือน admin/profile)
+    └── DentistProfileView.tsx ← รวมการ์ดซ้าย-ขวา ป๊อปอัปเปลี่ยนรหัส จบในไฟล์เดียว
 ```
-
----
-
-## 🎯 Quick Navigation Guide (Sidebar Menu → โฟลเดอร์ที่รับผิดชอบ)
-
-| เมนูบน Sidebar | โฟลเดอร์ที่รับผิดชอบ | หน้าที่การทำงาน |
-| :--- | :--- | :--- |
-| **🏠 แดชบอร์ด** | [`dashboard/`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/dentist/dashboard/DentistDashboardView.tsx) | ภาพรวมคิวตรวจวันนี้ และเวลาออกตรวจของหมอ |
-| **👥 คิวการรักษา** | [`queue/`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/dentist/queue/DentistQueueView.tsx) | คิวตรวจคนไข้, บันทึกการรักษา, ผังฟัน Odontogram 32 ซี่ |
-| **📋 เวชระเบียน** | [`records/`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/dentist/records/DentistRecordsView.tsx) | ค้นหาประวัติคนไข้และดูโรคประจำตัว (Flat 2 ไฟล์) |
-| **📜 ประวัติการทำงาน** | [`history/`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/dentist/history/DentistHistoryView.tsx) | รายการหัตถการทั้งหมดที่เคยรักษา พร้อมระบบค้นหา |
-| **📅 ปฏิทินและการลางาน** | [`schedule/`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/dentist/schedule/DentistScheduleView.tsx) | ตารางเวร 7 วัน, ปฏิทินเดือน, และฟอร์มส่งใบลา |
-| **👤 ข้อมูลส่วนตัว** | [`profile/`](file:///c:/Users/Lenovo/Documents/GitHub/icemu/src/app/dentist/profile/DentistProfileView.tsx) | ข้อมูลส่วนตัว, บริการที่รักษา, วิชาชีพ, ปุ่มเปลี่ยนรหัส |

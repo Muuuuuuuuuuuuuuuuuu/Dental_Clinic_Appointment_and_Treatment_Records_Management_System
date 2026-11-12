@@ -1,11 +1,7 @@
 import { DocView, DentistInfo, Appointment } from "@/app/shared/data";
 import { useDoctorDashboard } from "./useDoctorDashboard";
-import {
-  DashboardHeader,
-  DashboardMetricCards,
-  TodayQueueCard,
-  TodayDutyCard,
-} from "./components";
+import { DashboardHeader, DashboardMetricCards } from "./top";
+import { TodayQueueCard, TodayDutyCard } from "./bottom";
 
 interface DoctorDashboardProps {
   setView: (v: DocView) => void;

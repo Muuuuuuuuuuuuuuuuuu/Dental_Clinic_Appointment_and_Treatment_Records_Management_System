@@ -15,7 +15,6 @@ import StaffProfileView from "./profile";
 
 // ─── โครงสร้างเลย์เอาต์ (Layout & Components) ──────────────────────────────────
 import {
-  StaffStatusBanner,
   StaffSidebar,
   ClockInScreen,
   STAFF_NAV,
@@ -151,8 +150,6 @@ export default function StaffPortal({
             </div>
           </div>
         </div>
-
-        <StaffStatusBanner />
 
         <main className="flex-1 p-5 lg:p-8 h-full">
           {showLockScreen ? (

@@ -1,8 +1,8 @@
 # 📅 Dentist Schedule Module — Architecture & Structure
 
 > โมดูลปฏิทินและการลางานของทันตแพทย์ (Dentist Schedule & Leaves)
-> ตรงกับเมนู **"ปฏิทินและการลางาน"** (key: `calendar`) บน Sidebar
-> สถาปัตยกรรมแบบ **View + Brain (Hook)** สไตล์เดียวกับ Dashboard
+> จัดวางโครงสร้างตาม **โซนที่ตาเห็นบนหน้าจอ (Visual Zoning)**: `top/` และ `calendar/`
+> รูปแบบมาตรฐานเดียวกับ `admin/schedule`
 
 ---
 
@@ -10,16 +10,20 @@
 
 ```text
 src/app/dentist/schedule/
-├── README.md               ← 🗺️ เอกสารโครงสร้างของโมดูลปฏิทินทันตแพทย์
-├── DentistScheduleView.tsx ← 🏢 [MAIN VIEW] หน้าปฏิทินเวรและส่งคำขอลางาน
-├── useDoctorCalendar.ts    ← 🧠 [BRAIN] Hook คำนวณวันในปฏิทินและส่งใบลา (วางคู่กับ View)
-├── index.ts                ← ส่งออก DentistScheduleView และ useDoctorCalendar
+├── README.md                  ← 🗺️ แผนที่อธิบายโครงสร้างของโมดูลปฏิทินทันตแพทย์
+├── DentistScheduleView.tsx    ← 🏢 [หน้าหลัก] วางเรียงโซน top → calendar
+├── useDoctorCalendar.ts       ← 🧠 [สมองกล] คำนวณวันในปฏิทินและส่งใบลา
+├── index.ts                   ← จุดส่งออกหลัก
 │
-└── components/             ← 📦 ชิ้นส่วน UI ปฏิทิน
-    ├── RegularScheduleCard.tsx  ← การ์ดตารางเวร 7 วันประจำสัปดาห์
-    ├── LeaveSummaryCard.tsx     ← การ์ดสรุปคำขอลาของหมอ
-    ├── ActualCalendarCard.tsx   ← การ์ดปฏิทินปฏิบัติงานจริงรายเดือน
-    ├── CalendarHeader.tsx       ← แถบเลือกเดือน/ปี
-    ├── CalendarCell.tsx         ← ช่องแสดงข้อมูลรายวันในปฏิทิน
-    └── LeaveRequestModal.tsx    ← ป๊อปอัปส่งคำขอลางาน
+├── top/                       ← 🔝 [ส่วนบนของหน้าจอ]
+│   ├── index.ts
+│   ├── RegularScheduleCard.tsx ← การ์ดตารางเวร 7 วันประจำสัปดาห์ (ซ้าย)
+│   └── LeaveSummaryCard.tsx    ← การ์ดสรุปคำขอลาของหมอ (ขวา)
+│
+└── calendar/                  ← 🗓️ [ส่วนปฏิทินและป๊อปอัปส่งใบลา]
+    ├── index.ts
+    ├── ActualCalendarCard.tsx  ← การ์ดปฏิทินปฏิบัติงานจริงรายเดือน
+    ├── CalendarHeader.tsx      ← แถบเลือกเดือน/ปี
+    ├── CalendarCell.tsx        ← ช่องแสดงข้อมูลรายวันในปฏิทิน
+    └── LeaveRequestModal.tsx   ← ป๊อปอัปส่งคำขอลางาน (เปิดเมื่อคลิกวันที่)
 ```

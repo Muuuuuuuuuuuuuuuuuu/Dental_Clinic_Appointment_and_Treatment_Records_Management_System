@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { ToothStatus } from "@/app/dentist/queue/Odontogram";
-import { SupernumeraryTooth } from "@/app/dentist/queue/ToothGeometry";
+import { ToothStatus } from "@/app/dentist/queue/odontogram/Odontogram";
+import { SupernumeraryTooth } from "@/app/dentist/queue/odontogram/ToothGeometry";
 import { getPatientTreatmentRecords } from "@/app/shared/supabaseApi";
 
 export const getToothNameTh = (numStr: string, isChild: boolean) => {

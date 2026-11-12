@@ -12,7 +12,6 @@ import ClinicManagementView from "./clinicManage";
 import UserManagementView from "./userManage";
 
 // ─── โครงสร้างเลย์เอาต์กรอบนอก (Layout Frame & Sidebar) ────────────────────────
-import { AdminStatusBanner } from "./AdminStatusBanner";
 import { AdminSidebar } from "./AdminSidebar";
 
 interface AdminPortalProps {
@@ -132,8 +131,6 @@ export default function AdminPortal({
             {adminInfo?.name?.charAt(0) || "ผ"}
           </div>
         </div>
-
-        <AdminStatusBanner />
 
         <main className="flex-1 p-5 lg:p-8">
           {view === "dashboard" && <AdminDashboardView setView={setView} />}

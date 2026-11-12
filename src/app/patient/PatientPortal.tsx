@@ -2,9 +2,9 @@ import { Info } from "lucide-react";
 import { usePatientAuthFlow, PatientPortalProps } from "./hooks/usePatientAuthFlow";
 
 // ─── หน้าเข้าสู่ระบบและสมัครสมาชิก ────────────────────────────────────────────
-import LoginPage from "./auth/LoginPage";
-import ForgotPasswordPage from "./auth/ForgotPasswordPage";
-import FirstTimePasswordPage from "./auth/FirstTimePasswordPage";
+import LoginPage from "@/app/auth/LoginPage";
+import ForgotPasswordPage from "@/app/auth/ForgotPasswordPage";
+import FirstTimePasswordPage from "@/app/auth/FirstTimePasswordPage";
 
 // ─── โครงสร้างหน้าเว็บฝั่งคนไข้ ───────────────────────────────────────────────
 import PortalLayout from "./layout/PortalLayout";
@@ -18,13 +18,13 @@ import PatientDentalRecordView from "./record";
 import PatientProfileView from "./profile";
 
 // ─── ส่วนประกอบหน้าแรกของเว็บไซต์ ─────────────────────────────────────────────
-import Header from "./landing/Header";
-import Hero from "./landing/Hero";
-import Services from "./landing/Services";
-import WhyUs from "./landing/WhyUs";
-import Doctors from "./landing/Doctors";
-import Contact from "./landing/Contact";
-import Footer from "./landing/Footer";
+import Header from "@/app/landing/Header";
+import Hero from "@/app/landing/Hero";
+import Services from "@/app/landing/Services";
+import WhyUs from "@/app/landing/WhyUs";
+import Doctors from "@/app/landing/Doctors";
+import Contact from "@/app/landing/Contact";
+import Footer from "@/app/landing/Footer";
 
 // ─── ไฟล์สไตล์ CSS ────────────────────────────────────────────────────────────
 import "./patient-animations.css";

@@ -1,10 +1,8 @@
 import React from "react";
 import { Appointment, DentistInfo } from "@/app/shared/data";
-import ToothActionModal from "./ToothActionModal";
-import { useTreatmentQueue } from "./hooks/useTreatmentQueue";
-import MedicineModal from "./components/MedicineModal";
-import QueueHeader from "./components/QueueHeader";
-import QueueItem from "./components/QueueItem";
+import { useTreatmentQueue } from "./useTreatmentQueue";
+import { ToothActionModal } from "./odontogram";
+import { MedicineModal, QueueHeader, QueueItem } from "./treatment";
 
 export default function DentistQueueView({
   doctor,

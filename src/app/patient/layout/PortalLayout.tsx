@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Menu, Smile, LogOut, Home, ChevronRight } from "lucide-react";
 import { PatientUser, View, NAV_ITEMS } from "../types";
-import { PatientStatusBanner } from "./PatientStatusBanner";
 
 function SidebarContent({ user, view, setView, onLogout, onMainSite }:
   { user: PatientUser; view: View; setView: (v: View) => void; onLogout: () => void; onMainSite: () => void }) {
@@ -137,8 +136,6 @@ export default function PortalLayout({
             {user.firstName[0]}
           </div>
         </div>
-
-        <PatientStatusBanner />
 
         <main className="flex-1 p-5 lg:p-8">{children}</main>
       </div>

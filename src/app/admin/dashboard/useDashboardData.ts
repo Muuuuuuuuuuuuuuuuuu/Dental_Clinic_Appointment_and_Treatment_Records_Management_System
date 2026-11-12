@@ -56,13 +56,14 @@ export function useDashboardData() {
 
   // กรองนัดหมายตามช่วงเวลาที่เลือก
   const filteredAppts = appointments.filter(a => {
+    if (!a?.date) return false;
     if (timeframe === "today") return a.date === targetDateStr;
     if (timeframe === "week") {
       const targetTime = selectedDate.getTime();
       const pastWeek = new Date(selectedDate);
       pastWeek.setDate(pastWeek.getDate() - 7);
       const apptTime = new Date(a.date).getTime();
-      return apptTime <= targetTime && apptTime >= pastWeek.getTime();
+      return !isNaN(apptTime) && apptTime <= targetTime && apptTime >= pastWeek.getTime();
     }
     if (timeframe === "month") {
       const [y, m] = a.date.split('-');
@@ -100,7 +101,7 @@ export function useDashboardData() {
     ? Array.from({ length: 11 }).map((_, i) => {
       const hour = i + 9;
       const hStr = `${hour.toString().padStart(2, '0')}:00`;
-      const hourAppts = filteredAppts.filter(a => parseInt(a.time.split(':')[0]) === hour);
+      const hourAppts = filteredAppts.filter(a => a.time && parseInt(a.time.split(':')[0]) === hour);
       const hourRev = hourAppts.filter(a => a.status === "เสร็จสิ้น").reduce((s, a) => s + (a.cost ?? 0), 0);
       return { day: hStr, appts: hourAppts.length, revenue: hourRev };
     })
@@ -138,7 +139,7 @@ export function useDashboardData() {
 
   const breakdown = getAppointmentBreakdown(filteredAppts);
   const activeOrtho = appointments.filter(
-    a => (a.service.includes("จัดฟัน") || a.service.includes("รากเทียม")) && !["ยกเลิก", "เสร็จสิ้น"].includes(a.status)
+    a => (a.service?.includes("จัดฟัน") || a.service?.includes("รากเทียม")) && !["ยกเลิก", "เสร็จสิ้น"].includes(a.status)
   ).length;
 
   return {

@@ -15,7 +15,6 @@ import DentistProfileView from "./profile";
 
 // ─── โครงสร้างเลย์เอาต์ (Layout & Components) ──────────────────────────────────
 import DentistSidebar from "./DentistSidebar";
-import DentistStatusBanner from "./DentistStatusBanner";
 
 interface DoctorPortalProps {
   onLogout: () => void;
@@ -124,8 +123,6 @@ export default function DoctorPortal({
             </div>
           )}
         </div>
-
-        <DentistStatusBanner />
 
         <main className="flex-1 p-5 lg:p-8">
           {view === "dashboard" && (

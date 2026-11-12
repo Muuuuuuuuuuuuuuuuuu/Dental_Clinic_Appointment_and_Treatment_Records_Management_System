@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { View, UserRole, PatientUser } from "../types";
+import { View, PatientUser } from "../types";
+import { UserRole } from "@/app/shared/types";
 import { Appointment, getClinicStatus, ClinicStatus } from "@/app/shared/data";
 import {
   getWeeklyOffDays,

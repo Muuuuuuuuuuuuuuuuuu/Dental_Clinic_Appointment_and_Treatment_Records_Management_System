@@ -1,8 +1,8 @@
 # 🏠 Dentist Dashboard Module — Architecture & Structure
 
 > โมดูลแดชบอร์ดภาพรวมของทันตแพทย์ (Dentist Dashboard)
-> ตรงกับเมนู **"แดชบอร์ด"** (key: `dashboard`) บน Sidebar
-> สถาปัตยกรรมแบบ **View + Brain (Hook)** สไตล์เดียวกับ Admin Dashboard
+> จัดวางโครงสร้างตาม **โซนที่ตาเห็นบนหน้าจอ (Visual Zoning)**: `top/` และ `bottom/`
+> รูปแบบมาตรฐานเดียวกับ `admin/dashboard`
 
 ---
 
@@ -10,14 +10,18 @@
 
 ```text
 src/app/dentist/dashboard/
-├── README.md               ← 🗺️ เอกสารโครงสร้างของโมดูลแดชบอร์ดทันตแพทย์
-├── DentistDashboardView.tsx← 🏢 [MAIN VIEW] หน้าจอหลักแดชบอร์ดคุณหมอ
-├── useDoctorDashboard.ts   ← 🧠 [BRAIN] Hook ดึงคิวนัดหมายและคำนวณสถิติด่วน (วางคู่กับ View)
-├── index.ts                ← ส่งออก DentistDashboardView และ useDoctorDashboard
+├── README.md                  ← 🗺️ แผนที่อธิบายโครงสร้างของโมดูลแดชบอร์ดทันตแพทย์
+├── DentistDashboardView.tsx   ← 🏢 [หน้าหลัก] วางเรียงโซน top → bottom
+├── useDoctorDashboard.ts      ← 🧠 [สมองกล] ดึงคิวนัดหมายและคำนวณสถิติด่วน
+├── index.ts                   ← จุดส่งออกหลัก
 │
-└── components/             ← 📦 4 ชิ้นส่วน UI หลัก
-    ├── DashboardHeader.tsx       ← คำทักทายคุณหมอ + วันที่ปัจจุบัน
-    ├── DashboardMetricCards.tsx  ← การ์ดสรุปตัวเลข 4 ช่อง (คนไข้วันนี้, รอตรวจ, รอจ่ายเงิน, เสร็จสิ้น)
-    ├── TodayQueueCard.tsx        ← คิวคนไข้วันนี้ 5 คนแรก พร้อมปุ่มดูทั้งหมด
-    └── TodayDutyCard.tsx         ← เวลาออกตรวจของหมอประจำวัน
+├── top/                       ← 🔝 [ส่วนบนของหน้าจอ]
+│   ├── index.ts
+│   ├── DashboardHeader.tsx    ← คำทักทายคุณหมอ
+│   └── DashboardMetricCards.tsx ← การ์ดสรุปตัวเลข 4 ช่อง (คนไข้วันนี้, รอตรวจ, รอจ่ายเงิน, เสร็จสิ้น)
+│
+└── bottom/                    ← 📋 [ส่วนล่างของหน้าจอ]
+    ├── index.ts
+    ├── TodayQueueCard.tsx     ← คิวคนไข้วันนี้ 5 คนแรก พร้อมปุ่มดูทั้งหมด
+    └── TodayDutyCard.tsx      ← เวลาออกตรวจของหมอประจำวัน
 ```
