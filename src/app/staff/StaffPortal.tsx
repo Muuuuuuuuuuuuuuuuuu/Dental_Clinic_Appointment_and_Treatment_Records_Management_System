@@ -39,7 +39,15 @@ export default function StaffPortal({
   onLogout,
   loginEmail,
 }: StaffPortalProps) {
-  const [view, setView] = useState<StaffView>("queue");
+  const [view, setViewRaw] = useState<StaffView>("queue");
+  const [selectedPaymentApptId, setSelectedPaymentApptId] = useState<number | null>(null);
+
+  const setView = (v: StaffView, apptId?: number) => {
+    if (v === "payment") {
+      setSelectedPaymentApptId(apptId ?? null);
+    }
+    setViewRaw(v);
+  };
   const [sideOpen, setSideOpen] = useState(false);
   const [isClockedIn, setIsClockedIn] = useState(true);
   const [mockNetwork, setMockNetwork] = useState<"clinic" | "home">("clinic");
@@ -172,6 +180,7 @@ export default function StaffPortal({
                 <StaffPaymentView
                   appointments={appointments}
                   onUpdateAppt={onUpdateAppt}
+                  initialApptId={selectedPaymentApptId}
                 />
               )}
               {view === "leave" && <StaffLeaveView staff={staffInfo} />}

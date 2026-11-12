@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Appointment } from "@/app/shared/data";
-import { getPatientAppointments, updateAppointmentStatus } from "@/app/shared/supabaseApi";
+import {
+  getPatientAppointments,
+  updateAppointmentStatus,
+  updateAppointmentDetails,
+} from "@/app/shared/supabaseApi";
 import { PatientUser } from "../../types";
 
 /** ดึงเวลา "ปัจจุบัน" โดยรองรับ Time Travel mock time */
@@ -129,6 +133,50 @@ export function usePatientAppointments(
 
   const doCancel = async (id: number) => {
     const previousAppts = [...appts];
+    const targetAppt = appts.find((a) => a.id === id);
+    const isFollowUpCase =
+      targetAppt &&
+      (targetAppt.service === "ตัดไหม" ||
+        Boolean(
+          targetAppt.note &&
+            (targetAppt.note.includes("แพทย์ประจำเคส") ||
+              targetAppt.note.includes("นัดตัดไหม") ||
+              targetAppt.note.includes("เคสต่อเนื่อง"))
+        ) ||
+        (targetAppt as any).source === "doctor");
+
+    if (isFollowUpCase && targetAppt?.date) {
+      setAppts((apps) =>
+        apps.map((a) =>
+          a.id === id ? { ...a, date: "", time: "", status: "ยืนยันการจอง" } : a
+        )
+      );
+      if (onUpdateAppt) {
+        onUpdateAppt(id, { date: "", time: "", status: "ยืนยันการจอง" });
+      }
+      setCancelId(null);
+
+      try {
+        await updateAppointmentDetails(id, {
+          date: null,
+          time: null,
+          status: "ยืนยันการจอง",
+        });
+      } catch (err) {
+        console.error(err);
+        setAppts(previousAppts);
+        if (onUpdateAppt && targetAppt) {
+          onUpdateAppt(id, {
+            date: targetAppt.date,
+            time: targetAppt.time,
+            status: targetAppt.status,
+          });
+        }
+        alert("ไม่สามารถยกเลิกวันนัดหมายได้ กรุณาลองใหม่อีกครั้ง");
+      }
+      return;
+    }
+
     setAppts((apps) => apps.map((a) => (a.id === id ? { ...a, status: "ยกเลิก" } : a)));
     if (onUpdateAppt) {
       onUpdateAppt(id, { status: "ยกเลิก" });

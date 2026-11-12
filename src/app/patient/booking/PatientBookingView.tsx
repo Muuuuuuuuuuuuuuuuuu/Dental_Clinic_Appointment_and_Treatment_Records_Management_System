@@ -200,11 +200,19 @@ export default function PatientBookingView({
                   : landingDoctors.find((d) => d.id === selDoctor)?.name ||
                   "ไม่ระบุ"
               }
-              dateStr={`${selDay} ${today.toLocaleDateString("th-TH", {
-                month: "long",
-                year: "numeric",
-              })}`}
-              timeStr={`${selTime} – ${endTimeStr} น.`}
+              dateStr={
+                selDay
+                  ? `${selDay} ${targetDate.toLocaleDateString("th-TH", {
+                      month: "long",
+                      year: "numeric",
+                    })}`
+                  : "ยังไม่ได้ระบุวัน"
+              }
+              timeStr={
+                selTime
+                  ? `${selTime} – ${endTimeStr} น.`
+                  : "ยังไม่ได้ระบุเวลา"
+              }
               price={servicesData[selService!]?.price}
               notes={notes}
               isSubmitting={isSubmitting}

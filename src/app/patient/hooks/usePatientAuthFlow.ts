@@ -290,7 +290,11 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
   const addAppt =
     props.addAppt ??
     ((a: Appointment) =>
-      setInternalAppointments((prev) => [...prev, a]));
+      setInternalAppointments((prev) =>
+        prev.some((x) => x.id === a.id)
+          ? prev.map((x) => (x.id === a.id ? { ...x, ...a } : x))
+          : [...prev, a]
+      ));
 
   const handleLogin = async (u: PatientUser) => {
     setUser(u);

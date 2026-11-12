@@ -18,25 +18,27 @@ export default function TimeSlotPicker({
 }: TimeSlotPickerProps) {
   return (
     <div
+      className="bg-white rounded-2xl border border-gray-100"
       style={{
-        borderRadius: 16,
-        backgroundColor: "white",
-        padding: "14px 16px",
+        padding: "12px 14px",
         boxShadow: "0 1px 8px rgba(26,54,93,0.07)",
       }}
     >
       <p
         style={{
-          fontWeight: 700,
-          fontSize: 13,
-          color: "#1A365D",
-          marginBottom: 10,
+          fontWeight: 600,
+          fontSize: 12,
+          color: "#4A6080",
+          marginBottom: 8,
         }}
       >
         เวลาที่ต้องการนัดหมาย
       </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+      <div
+        className="max-h-[190px] overflow-y-auto pr-1"
+        style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}
+      >
         {loadingSlots ? (
           <div
             style={{
@@ -73,11 +75,11 @@ export default function TimeSlotPicker({
                 key={time}
                 disabled={notAvailable}
                 onClick={() => onSelectTime(time)}
-                className="py-2.5 rounded-xl text-sm font-medium transition-all"
+                className="py-2 rounded-xl text-xs font-medium transition-all"
                 style={{
                   backgroundColor:
                     selectedTime === time
-                      ? "#FF8C9A"
+                      ? "#E16076"
                       : notAvailable
                       ? "#F0F4F8"
                       : "white",

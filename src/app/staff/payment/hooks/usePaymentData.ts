@@ -16,13 +16,20 @@ export interface ExtraProductItem {
 
 export function usePaymentData(
   initialAppointments?: Appointment[],
-  onUpdateAppt?: (id: number, updates: Partial<Appointment>) => void
+  onUpdateAppt?: (id: number, updates: Partial<Appointment>) => void,
+  initialApptId?: number | null
 ) {
   const { appointments, refetch: fetchAppointments, setAppointments } = useRealtimeAppointments();
   const [loading] = useState(!initialAppointments);
 
   // คนไข้ที่เลือกเพื่อรับชำระเงิน
-  const [selectedApptId, setSelectedApptId] = useState<number | null>(null);
+  const [selectedApptId, setSelectedApptId] = useState<number | null>(initialApptId ?? null);
+
+  useEffect(() => {
+    if (initialApptId !== undefined) {
+      setSelectedApptId(initialApptId);
+    }
+  }, [initialApptId]);
 
   // สถานะหน้าจอรับชำระเงิน
   const [baseCost] = useState<string>("");
@@ -31,6 +38,18 @@ export function usePaymentData(
 
   // สถานะการคำนวณราคาและส่วนลด
   const [servicesData, setServicesData] = useState<Record<number, any>>({});
+  const [servicesList, setServicesList] = useState<{ id: number; name: string }[]>([
+    { id: 1, name: "ปรึกษาจัดฟันแบบโลหะ (Metal Braces)" },
+    { id: 2, name: "ตรวจสุขภาพช่องปาก" },
+    { id: 3, name: "เคลือบฟลูออไรด์" },
+    { id: 4, name: "ถ่ายภาพรังสีฟัน (X-Ray)" },
+    { id: 5, name: "ผ่าฟันคุด" },
+    { id: 6, name: "รักษารากฟัน" },
+    { id: 7, name: "ขูดหินปูนและขัดฟัน" },
+    { id: 8, name: "อุดฟันสีเหมือนฟัน" },
+    { id: 9, name: "ถอนฟัน" },
+    { id: 9999, name: "ตัดไหม" },
+  ]);
   const [adjustedPrices, setAdjustedPrices] = useState<Record<string, string>>({});
   const [adjustedQuantities, setAdjustedQuantities] = useState<Record<string, number>>({});
 
@@ -39,10 +58,7 @@ export function usePaymentData(
   // สถานะการเปิด-ปิดหน้าต่างป๊อปอัป
   const [receiptData, setReceiptData] = useState<any | null>(null);
   const [followUp, setFollowUp] = useState<Appointment | null>(null);
-  const [isOpenTicket, setIsOpenTicket] = useState(false);
-  const [showLink, setShowLink] = useState(false);
-  const [openTicketId, setOpenTicketId] = useState<number | null>(null);
-  const [isBound, setIsBound] = useState(false);
+  const [isBound, setIsBound] = useState(true);
 
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpTime, setFollowUpTime] = useState("");
@@ -63,15 +79,24 @@ export function usePaymentData(
     });
     getServices().then((data) => {
       const map: Record<number, any> = {};
+      const list: { id: number; name: string }[] = [];
       data.forEach((s: any) => {
-        map[s.service_id || s.id] = s;
+        const sId = s.service_id || s.id;
+        map[sId] = s;
+        list.push({ id: sId, name: s.name || s.service_name });
       });
+      if (!list.some((s) => s.name === "ตัดไหม")) {
+        list.push({ id: 9999, name: "ตัดไหม" });
+      }
       setServicesData(map);
+      if (list.length > 0) {
+        setServicesList(list);
+      }
     });
   }, []);
 
   useEffect(() => {
-    if (!followUp || isOpenTicket || !followUpDate) {
+    if (!followUp || !followUpDate) {
       setTimeSlots([]);
       return;
     }
@@ -88,7 +113,7 @@ export function usePaymentData(
       .finally(() => {
         setIsLoadingSlots(false);
       });
-  }, [followUpDate, isOpenTicket, followUp, isBound]);
+  }, [followUpDate, followUp, isBound]);
 
   useEffect(() => {
     if (initialAppointments) {
@@ -131,7 +156,7 @@ export function usePaymentData(
     setAdjustedQuantities(initialQuantities);
     setExtraProducts([]);
     setShowProductSelect(false);
-  }, [selectedApptId]);
+  }, [selectedApptId, selectedAppt?.id]);
 
   const totalBaseCost = useMemo(() => {
     let srvTotal = parseInt(baseCost || "0", 10);
@@ -224,15 +249,63 @@ export function usePaymentData(
     }
   };
 
+  const openFollowUpModal = (receipt: any) => {
+    if (!receipt) return;
+    const isSurgical =
+      receipt.service?.includes("ผ่า") ||
+      receipt.service?.includes("ถอน") ||
+      receipt.service?.includes("ศัลยกรรม");
+    const sutureMatch = servicesList.find((s) => s.name === "ตัดไหม");
+
+    // คำนวณวันล่วงหน้า 7 วันเป็นค่าเริ่มต้นสำหรับนัดตัดไหม/นัดติดตามผล
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    const defaultDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    setFollowUp({
+      ...receipt,
+      service: isSurgical ? "ตัดไหม" : receipt.service,
+      serviceId: isSurgical && sutureMatch ? sutureMatch.id : receipt.serviceId,
+    });
+    setFollowUpDate(defaultDate);
+    setFollowUpTime("");
+    setIsBound(true);
+  };
+
+  const handleFollowUpServiceChange = (serviceName: string, serviceId?: number) => {
+    setFollowUp((prev) => {
+      if (!prev) return null;
+      let sId = serviceId;
+      if (!sId) {
+        const found = servicesList.find((s) => s.name === serviceName);
+        sId = found?.id || 1;
+      }
+      return {
+        ...prev,
+        service: serviceName,
+        serviceId: sId,
+      };
+    });
+    setFollowUpTime("");
+  };
+
   const handleCreateFollowUp = async () => {
     if (!followUp) return;
-    if (!isOpenTicket && (!followUpDate || !followUpTime)) {
-      alert("กรุณาระบุวันและเวลา หรือเลือกใบนัดแบบเปิด");
+    if (!followUpDate || !followUpTime) {
+      alert("กรุณาระบุวันและเวลาที่ต้องการนัดหมาย");
       return;
     }
     setIsSubmitting(true);
     try {
-      const newAppt: any = await addAppointment({
+      let noteText = "";
+      if (isBound && followUp.doctorName) {
+        noteText = `แพทย์ประจำเคส: ${followUp.doctorName}`;
+      }
+      if (followUp.service === "ตัดไหม") {
+        noteText = noteText ? `${noteText} (นัดตัดไหม)` : "นัดตัดไหม";
+      }
+
+      await addAppointment({
         patientId: followUp.patientId,
         hn: followUp.hn || "",
         patientName: followUp.patientName,
@@ -241,23 +314,17 @@ export function usePaymentData(
         serviceId: followUp.serviceId || 1,
         doctorName: isBound ? followUp.doctorName : "",
         doctorId: isBound ? followUp.doctorId : undefined,
-        date: isOpenTicket ? "" : followUpDate,
-        time: isOpenTicket ? "" : followUpTime,
+        date: followUpDate,
+        time: followUpTime,
         status: "ยืนยันการจอง",
         source: "doctor",
-        note: isBound ? `แพทย์ประจำเคส: ${followUp.doctorName}` : "",
+        note: noteText,
       } as any);
 
-      if (newAppt && (newAppt.appointment_id || newAppt.id)) {
-        setOpenTicketId(newAppt.appointment_id || newAppt.id);
-      }
-
-      if (isOpenTicket) {
-        setShowLink(true);
-      } else {
-        setFollowUp(null);
-        alert("สร้างนัดหมายครั้งถัดไปสำเร็จ");
-      }
+      setFollowUp(null);
+      setFollowUpDate("");
+      setFollowUpTime("");
+      alert("สร้างนัดหมายครั้งถัดไปสำเร็จ");
     } catch (err: any) {
       alert(err.message || "เกิดข้อผิดพลาดในการสร้างนัดหมาย");
     } finally {
@@ -295,11 +362,7 @@ export function usePaymentData(
     confirmAndCompletePayment,
     followUp,
     setFollowUp,
-    isOpenTicket,
-    setIsOpenTicket,
-    showLink,
-    setShowLink,
-    openTicketId,
+    openFollowUpModal,
     isBound,
     setIsBound,
     followUpDate,
@@ -310,6 +373,8 @@ export function usePaymentData(
     timeSlots,
     isLoadingSlots,
     handleCreateFollowUp,
+    servicesList,
+    handleFollowUpServiceChange,
   };
 }
 

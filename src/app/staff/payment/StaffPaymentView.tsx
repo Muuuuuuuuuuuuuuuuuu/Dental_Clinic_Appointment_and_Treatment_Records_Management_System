@@ -10,6 +10,7 @@ import {
 interface PaymentProps {
   appointments?: Appointment[];
   onUpdateAppt?: (id: number, updates: Partial<Appointment>) => void;
+  initialApptId?: number | null;
 }
 
 /**
@@ -19,6 +20,7 @@ interface PaymentProps {
 export default function StaffPaymentView({
   appointments: initialAppointments,
   onUpdateAppt,
+  initialApptId,
 }: PaymentProps) {
   const {
     payable,
@@ -48,11 +50,7 @@ export default function StaffPaymentView({
     confirmAndCompletePayment,
     followUp,
     setFollowUp,
-    isOpenTicket,
-    setIsOpenTicket,
-    showLink,
-    setShowLink,
-    openTicketId,
+    openFollowUpModal,
     isBound,
     setIsBound,
     followUpDate,
@@ -63,7 +61,9 @@ export default function StaffPaymentView({
     timeSlots,
     isLoadingSlots,
     handleCreateFollowUp,
-  } = usePaymentData(initialAppointments, onUpdateAppt);
+    servicesList,
+    handleFollowUpServiceChange,
+  } = usePaymentData(initialAppointments, onUpdateAppt, initialApptId);
 
   return (
     <>
@@ -107,7 +107,7 @@ export default function StaffPaymentView({
       <ReceiptModal
         receiptData={receiptData}
         onClose={() => setReceiptData(null)}
-        onOpenFollowUp={() => setFollowUp(receiptData)}
+        onOpenFollowUp={() => openFollowUpModal(receiptData)}
         onConfirmAndPrint={confirmAndCompletePayment}
       />
 
@@ -115,12 +115,8 @@ export default function StaffPaymentView({
       <FollowUpModal
         followUp={followUp}
         onClose={() => setFollowUp(null)}
-        showLink={showLink}
         isBound={isBound}
         setIsBound={setIsBound}
-        openTicketId={openTicketId}
-        isOpenTicket={isOpenTicket}
-        setIsOpenTicket={setIsOpenTicket}
         followUpDate={followUpDate}
         setFollowUpDate={setFollowUpDate}
         followUpTime={followUpTime}
@@ -129,13 +125,8 @@ export default function StaffPaymentView({
         timeSlots={timeSlots}
         isSubmitting={isSubmitting}
         onSubmit={handleCreateFollowUp}
-        onResetAndBackToReceipt={() => {
-          setFollowUp(null);
-          setFollowUpDate("");
-          setFollowUpTime("");
-          setIsOpenTicket(false);
-          setShowLink(false);
-        }}
+        servicesList={servicesList}
+        onServiceChange={handleFollowUpServiceChange}
       />
     </>
   );

@@ -7,7 +7,7 @@ interface BookingHeaderProps {
 
 export default function BookingHeader({ step }: BookingHeaderProps) {
   return (
-    <div className="space-y-4 mb-6">
+    <div className="space-y-2 mb-3">
       <BookingTitleBar />
       <BookingStepIndicator step={step} />
     </div>

@@ -53,9 +53,10 @@ export default function ServiceDetailLeftCard({
     <div className="flex flex-col gap-3">
       {/* ป้ายชื่อบริการ */}
       <div
+        className="flex flex-wrap items-center justify-between gap-2.5"
         style={{
           borderRadius: 16,
-          padding: "14px 16px",
+          padding: "12px 16px",
           background: "linear-gradient(135deg,#FFF0F2,#FFF8F9)",
           border: "1px solid rgba(255,140,154,0.25)",
         }}
@@ -65,23 +66,24 @@ export default function ServiceDetailLeftCard({
             fontWeight: 700,
             fontSize: 14,
             color: "#1A365D",
-            marginBottom: 4,
           }}
         >
           {serviceTitle}
         </p>
-        <p
-          style={{
-            fontSize: 12,
-            color: "#4A6080",
-            marginBottom: 4,
-          }}
-        >
-          ใช้เวลาประมาณ {estTime} นาที
-        </p>
-        <p style={{ fontSize: 12, color: "#FF8C9A", fontWeight: 600 }}>
-          {price}
-        </p>
+
+        <div className="flex items-center gap-2.5 text-xs">
+          <span style={{ color: "#4A6080" }}>
+            ใช้เวลาประมาณ {estTime} นาที
+          </span>
+          {price && (
+            <>
+              <span style={{ color: "rgba(74,96,128,0.3)" }}>•</span>
+              <span style={{ color: "#E16076", fontWeight: 700 }}>
+                {price}
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
       <DetailCard title={`ประโยชน์ของ${serviceTitle}`} accent="#22C55E">

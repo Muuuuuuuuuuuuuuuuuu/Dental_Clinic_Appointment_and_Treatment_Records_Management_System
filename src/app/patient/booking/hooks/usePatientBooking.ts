@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { View, PatientUser } from "../../types";
 import {
   addAppointment,
@@ -59,6 +59,7 @@ export function usePatientBooking({
   const [monthOffset, setMonthOffset] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBoundDoctor, setIsBoundDoctor] = useState(false);
+  const openTicketLoadedRef = useRef<number | null>(null);
 
   const [healthData, setHealthData] = useState<HealthChecklistData>({
     emergencyName: user?.emergencyName || "",
@@ -132,16 +133,51 @@ export function usePatientBooking({
   useEffect(() => {
     if (servicesData.length === 0) return;
 
-    if (openTicketId) {
+    if (openTicketId && openTicketLoadedRef.current !== openTicketId) {
+      openTicketLoadedRef.current = openTicketId;
       supabase
         .from("appointment")
-        .select("dentist_id, appointment_detail(service_id)")
+        .select("dentist_id, note, appointment_detail(service_id, service(service_name))")
         .eq("appointment_id", openTicketId)
         .single()
         .then(({ data, error }) => {
           if (!error && data) {
+            if (data.note) {
+              setNotes(data.note);
+            }
             const actualServiceId = data.appointment_detail?.[0]?.service_id;
-            if (actualServiceId) {
+            const dbServiceName = (data.appointment_detail?.[0] as any)?.service?.service_name;
+            const isSutureCase =
+              Boolean(data.note && data.note.includes("นัดตัดไหม")) ||
+              dbServiceName === "ตัดไหม";
+
+            if (isSutureCase) {
+              const existingIdx = servicesData.findIndex((s) => s.title === "ตัดไหม");
+              if (existingIdx !== -1) {
+                setSelService(existingIdx);
+              } else {
+                const sutureItem = {
+                  serviceId: actualServiceId || 1,
+                  iconName: "Smile",
+                  title: "ตัดไหม",
+                  desc: "บริการตัดไหมแผลผ่าตัด/ถอนฟันและตรวจแผล",
+                  price: "ไม่มีค่าใช้จ่าย (เคสต่อเนื่อง)",
+                  color: "#FFD6DC",
+                  baseTimeMins: 15,
+                  details: getServiceDetail("ตัดไหม"),
+                };
+                setServicesData((prev) => {
+                  const found = prev.findIndex((s) => s.title === "ตัดไหม");
+                  if (found !== -1) {
+                    setSelService(found);
+                    return prev;
+                  }
+                  const next = [...prev, sutureItem];
+                  setSelService(next.length - 1);
+                  return next;
+                });
+              }
+            } else if (actualServiceId) {
               const idx = servicesData.findIndex(
                 (s) => Number(s.serviceId) === Number(actualServiceId)
               );
@@ -154,13 +190,13 @@ export function usePatientBooking({
             }
           }
         });
-    } else if (initialService !== null && selService === null) {
+    } else if (initialService !== null && selService === null && !openTicketId) {
       const idx = servicesData.findIndex(
         (s) => Number(s.serviceId) === Number(initialService)
       );
       if (idx !== -1) setSelService(idx);
     }
-  }, [openTicketId, servicesData, initialService, selService]);
+  }, [openTicketId, servicesData.length]);
 
   // ดึงแพทย์ที่ให้บริการที่เลือกได้
   useEffect(() => {
@@ -285,6 +321,7 @@ export function usePatientBooking({
 
   // ดึงเวลาว่างรายวัน
   useEffect(() => {
+    if (step !== 1) return;
     if (!selDay || selService === null || !servicesData[selService]) {
       setBackendSlots([]);
       return;
@@ -378,6 +415,7 @@ export function usePatientBooking({
 
   // รีเซ็ตเมื่อเปลี่ยนแพทย์หรือบริการ
   useEffect(() => {
+    if (step !== 1) return;
     setFullyBookedDates(new Set());
     if (selDay !== null) {
       if (dayStatus(selDay).status !== "available") {
@@ -385,7 +423,7 @@ export function usePatientBooking({
         setSelTime(null);
       }
     }
-  }, [selDoctor, selService]);
+  }, [selDoctor, selService, step]);
 
   // ดึงวันที่คิวเต็มทั้งเดือน
   useEffect(() => {
@@ -412,9 +450,10 @@ export function usePatientBooking({
 
   // รีเซ็ตเมื่อเปลี่ยนเดือน
   useEffect(() => {
+    if (step !== 1) return;
     setSelDay(null);
     setSelTime(null);
-  }, [monthOffset]);
+  }, [monthOffset, step]);
 
   // คำนวณช่วงเวลาที่สามารถจองได้
   const availableTimes = backendSlots.map((slot, i) => {
@@ -445,7 +484,7 @@ export function usePatientBooking({
   const canNext = () => {
     if (step === 0) return selService !== null;
     if (step === 1) return selDay !== null && selTime !== null;
-    if (step === 2) return healthValid;
+    if (step === 2) return healthValid && selDay !== null && selTime !== null;
     return false;
   };
 
@@ -453,7 +492,14 @@ export function usePatientBooking({
     if (!canNext()) return;
     if (step === 0) setStep(1);
     else if (step === 1) setStep(2);
-    else if (step === 2) setStep(4);
+    else if (step === 2) {
+      if (!selDay || !selTime) {
+        alert("กรุณาเลือกวันและเวลานัดหมาย");
+        setStep(1);
+        return;
+      }
+      setStep(4);
+    }
   };
 
   const handleBack = () => {
@@ -475,13 +521,6 @@ export function usePatientBooking({
 
   const handleConfirm = async () => {
     if (isSubmitting) return;
-
-    if (isFollowUp || planItemId) {
-      const confirmMsg = `ยืนยันการจองคิวนัดหมายต่อเนื่อง\nวันที่ ${selDay} เวลา ${selTime} น.?\n\n(กรุณาตรวจสอบว่าวันนัดหมายห่างจากรอบที่แล้วตามที่คุณหมอแนะนำ เพื่อให้การรักษาเป็นไปตามแผนครับ)`;
-      if (!window.confirm(confirmMsg)) {
-        return;
-      }
-    }
 
     if (!selDay || !selTime) {
       alert("กรุณาเลือกวันและเวลานัดหมาย");
@@ -633,6 +672,7 @@ export function usePatientBooking({
           time: selTime || "",
           status: initialStatus,
           endTime: "00:00",
+          note: notes,
         });
       }
 

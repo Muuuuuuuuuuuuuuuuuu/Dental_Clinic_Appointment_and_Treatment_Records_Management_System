@@ -30,22 +30,23 @@ export default function BookingConfirmationStep({
   ];
 
   return (
-    <div>
-      <h3 className="font-semibold mb-4" style={{ color: "#1A365D" }}>
+    <div
+      className="max-w-xl mx-auto mt-2 bg-white rounded-2xl p-6 sm:p-8 border border-gray-100"
+      style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
+    >
+      <h3 className="text-base font-bold mb-4" style={{ color: "#1A365D" }}>
         ยืนยันการจอง Walk-in
       </h3>
-      {rows.map(([k, v]) => (
-        <div
-          key={k}
-          className="flex justify-between py-2.5 text-sm"
-          style={{ borderBottom: "1px solid rgba(26,54,93,0.06)" }}
-        >
-          <span style={{ color: "#4A6080" }}>{k}</span>
-          <span className="font-medium" style={{ color: "#1A365D" }}>
-            {v}
-          </span>
-        </div>
-      ))}
+      <div className="divide-y divide-slate-100">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex justify-between gap-4 py-3 text-sm">
+            <span style={{ color: "#4A6080" }}>{k}</span>
+            <span className="font-medium text-right" style={{ color: "#1A365D" }}>
+              {v}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

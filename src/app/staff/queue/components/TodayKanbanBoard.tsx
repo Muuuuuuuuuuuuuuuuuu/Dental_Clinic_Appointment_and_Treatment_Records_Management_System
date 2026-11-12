@@ -5,7 +5,7 @@ import { Appointment, STATUS_COLORS, StaffView, hasHealthAlert } from "@/app/sha
 interface TodayKanbanBoardProps {
   appts: Appointment[];
   onUpdate: (id: number, s: Partial<Appointment>) => void;
-  setView?: (v: StaffView) => void;
+  setView?: (v: StaffView, apptId?: number) => void;
 }
 
 /**
@@ -183,7 +183,7 @@ export default function TodayKanbanBoard({
           toPay.map((a) => (
             <div
               key={a.id}
-              onClick={() => setView && setView("payment")}
+              onClick={() => setView && setView("payment", a.id)}
               className="rounded-2xl bg-white p-4 shadow-xs border border-gray-100 cursor-pointer hover:shadow-md hover:border-teal-200 transition-all active:scale-[0.98]"
             >
               <div className="flex justify-between items-start mb-2">
