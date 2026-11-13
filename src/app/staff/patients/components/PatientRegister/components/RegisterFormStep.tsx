@@ -66,10 +66,11 @@ export function RegisterFormStep({
 
       {err && (
         <div
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs mb-3"
+          className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs mb-3 font-medium border border-rose-200"
           style={{ backgroundColor: "#FFF0F3", color: "#C0392B" }}
         >
-          <AlertCircle size={15} /> {err}
+          <AlertCircle size={16} className="shrink-0" />
+          <span>{err}</span>
         </div>
       )}
 
@@ -87,6 +88,7 @@ export function RegisterFormStep({
                   value={form.firstName}
                   onChange={(v) => set("firstName", v)}
                   placeholder="ไม่ต้องใส่คำนำหน้า"
+                  hasError={Boolean(err && !form.firstName?.trim())}
                 />
                 <FormField
                   label="นามสกุล"
@@ -94,6 +96,7 @@ export function RegisterFormStep({
                   value={form.lastName}
                   onChange={(v) => set("lastName", v)}
                   placeholder="นามสกุล"
+                  hasError={Boolean(err && !form.lastName?.trim())}
                 />
               </div>
 
@@ -108,6 +111,11 @@ export function RegisterFormStep({
                     }
                     placeholder="13 หลัก ไม่ต้องใส่ขีด"
                     maxLength={13}
+                    hasError={Boolean(
+                      err &&
+                        (!form.idCard?.trim() ||
+                          form.idCard.replace(/\D/g, "").length !== 13)
+                    )}
                   />
                 </div>
                 <div className="sm:col-span-3">
@@ -120,7 +128,7 @@ export function RegisterFormStep({
                   <input
                     type="date"
                     className={inputCls}
-                    style={inputStyle(form.dob)}
+                    style={inputStyle(form.dob, Boolean(err && !form.dob))}
                     value={form.dob}
                     onChange={(e) => set("dob", e.target.value)}
                   />
@@ -139,7 +147,7 @@ export function RegisterFormStep({
                   </label>
                   <select
                     className={inputCls}
-                    style={inputStyle(form.gender)}
+                    style={inputStyle(form.gender, Boolean(err && !form.gender))}
                     value={form.gender}
                     onChange={(e) => set("gender", e.target.value)}
                   >
@@ -165,6 +173,11 @@ export function RegisterFormStep({
                   onChange={(v) => set("phone", v.replace(/\D/g, "").slice(0, 10))}
                   placeholder="กรอกตัวเลข 10 หลัก"
                   maxLength={10}
+                  hasError={Boolean(
+                    err &&
+                      (!form.phone?.trim() ||
+                        form.phone.replace(/\D/g, "").length !== 10)
+                  )}
                 />
                 <FormField
                   label="อีเมลสำหรับเข้าสู่ระบบ"
@@ -173,6 +186,11 @@ export function RegisterFormStep({
                   value={form.email}
                   onChange={(v) => set("email", v.trim())}
                   placeholder="example@email.com"
+                  hasError={Boolean(
+                    err &&
+                      (!form.email?.trim() ||
+                        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+                  )}
                 />
               </div>
 
@@ -252,15 +270,19 @@ export function RegisterFormStep({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <FormField
                   label="ประวัติแพ้ยา / อาหาร / สารเคมี"
+                  required
                   value={form.allergies}
                   onChange={(v) => set("allergies", v)}
                   placeholder="ระบุชื่อยา หรือพิมพ์ 'ไม่มี'"
+                  hasError={Boolean(err && !form.allergies?.trim())}
                 />
                 <FormField
                   label="โรคประจำตัว / ภาวะสุขภาพ"
+                  required
                   value={form.conditions}
                   onChange={(v) => set("conditions", v)}
                   placeholder="ระบุโรคประจำตัว หรือพิมพ์ 'ไม่มี'"
+                  hasError={Boolean(err && !form.conditions?.trim())}
                 />
               </div>
             </FormSection>

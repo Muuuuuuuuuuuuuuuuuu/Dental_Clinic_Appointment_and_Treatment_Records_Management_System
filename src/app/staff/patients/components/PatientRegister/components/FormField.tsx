@@ -10,14 +10,19 @@ interface FormFieldProps {
   maxLength?: number;
   sublabel?: string;
   className?: string;
+  hasError?: boolean;
 }
 
 export const inputCls =
   "w-full px-3.5 py-2.5 rounded-xl border transition-all outline-none text-xs sm:text-sm";
 
-export const inputStyle = (val: string) => ({
-  borderColor: val ? "rgba(26,54,93,0.3)" : "rgba(26,54,93,0.12)",
-  backgroundColor: val ? "#fff" : "#FAFAFA",
+export const inputStyle = (val: string, hasError?: boolean) => ({
+  borderColor: hasError
+    ? "#EF4444"
+    : val
+    ? "rgba(26,54,93,0.3)"
+    : "rgba(26,54,93,0.12)",
+  backgroundColor: hasError ? "#FEF2F2" : val ? "#fff" : "#FAFAFA",
   color: "#1A365D",
 });
 
@@ -34,6 +39,7 @@ export function FormField({
   maxLength,
   sublabel,
   className = "",
+  hasError = false,
 }: FormFieldProps) {
   return (
     <div className={className}>
@@ -46,7 +52,7 @@ export function FormField({
       <input
         type={type}
         className={inputCls}
-        style={inputStyle(value)}
+        style={inputStyle(value, hasError)}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

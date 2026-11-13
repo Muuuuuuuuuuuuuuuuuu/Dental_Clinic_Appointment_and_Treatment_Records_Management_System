@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, ChevronLeft, KeyRound } from "lucide-react";
+import { Lock, Eye, EyeOff, AlertCircle, ChevronLeft, Check } from "lucide-react";
 import AuthShell, { Field } from "./AuthShell";
 import { inputCls, inputStyle } from "@/app/patient/types";
 import { supabase } from "@/app/shared/supabaseApi";
@@ -74,34 +74,13 @@ export default function FirstTimePasswordPage({
 
   return (
     <AuthShell
-      title="เปลี่ยนรหัสผ่านสำหรับการเข้าใช้งานครั้งแรก"
-      sub="กรุณาตั้งรหัสผ่านใหม่แทนรหัสผ่านเริ่มต้นเพื่อความปลอดภัยของบัญชี"
+      title="ตั้งรหัสผ่านใหม่"
+      sub={
+        userEmail
+          ? `สำหรับการเข้าใช้งานครั้งแรก (${userEmail})`
+          : "กรุณาตั้งรหัสผ่านใหม่แทนรหัสผ่านเริ่มต้นเพื่อความปลอดภัยของบัญชี"
+      }
     >
-      {/* ส่วนหัวแสดงไอคอนและคำแนะนำ */}
-      <div className="flex flex-col items-center mb-5">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
-          style={{ background: "linear-gradient(135deg, #FFF0F3 0%, #F0F4F8 100%)" }}
-        >
-          <KeyRound size={28} style={{ color: "#FF6B7E" }} />
-        </div>
-        <h3 className="text-base font-semibold text-center" style={{ color: "#1A365D" }}>
-          กำหนดรหัสผ่านส่วนตัวของคุณ
-        </h3>
-        {userEmail && (
-          <p className="text-xs mt-1" style={{ color: "#4A6080" }}>
-            บัญชีผู้ใช้: <strong>{userEmail}</strong>
-          </p>
-        )}
-      </div>
-
-      <div
-        className="p-3.5 rounded-xl mb-4 text-xs leading-relaxed"
-        style={{ backgroundColor: "#F0F4F8", color: "#4A6080", border: "1px solid rgba(26,54,93,0.1)" }}
-      >
-        เนื่องจากคุณเข้าสู่ระบบด้วยรหัสผ่านเริ่มต้นที่พนักงานกำหนดให้ (123456789)
-        ระบบจึงกำหนดให้คุณตั้งรหัสผ่านใหม่ด้วยตนเองก่อนเข้าใช้งานระบบ
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
@@ -139,27 +118,58 @@ export default function FirstTimePasswordPage({
           <PasswordChecklist password={newPass} />
         </div>
 
-        <Field label="ยืนยันรหัสผ่าน">
-          <div className="relative">
-            <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
-            <input
-              type={showConfirmPass ? "text" : "password"}
-              placeholder="ระบุรหัสผ่านอีกครั้ง"
-              value={confirmPass}
-              onChange={(e) => setConfirmPass(e.target.value)}
-              className={`${inputCls} pl-10 pr-10`}
-              style={inputStyle}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPass(!showConfirmPass)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2"
-              style={{ color: "#4A6080" }}
+        <div className="space-y-2">
+          <Field label="ยืนยันรหัสผ่าน">
+            <div className="relative">
+              <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
+              <input
+                type={showConfirmPass ? "text" : "password"}
+                placeholder="ระบุรหัสผ่านอีกครั้ง"
+                value={confirmPass}
+                onChange={(e) => setConfirmPass(e.target.value)}
+                className={`${inputCls} pl-10 pr-10`}
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPass(!showConfirmPass)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                style={{ color: "#4A6080" }}
+              >
+                {showConfirmPass ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </Field>
+
+          <div className="pt-1 pb-0.5">
+            <div
+              className="flex items-center gap-1.5 text-xs transition-colors"
+              style={{
+                color: !confirmPass
+                  ? "#64748B"
+                  : newPass === confirmPass
+                    ? "#16A34A"
+                    : "#EF4444",
+              }}
             >
-              {showConfirmPass ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
+              {!confirmPass ? (
+                <span
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0 mx-0.5"
+                  style={{ backgroundColor: "#CBD5E1" }}
+                />
+              ) : newPass === confirmPass ? (
+                <Check size={12} strokeWidth={2.5} className="flex-shrink-0" />
+              ) : (
+                <AlertCircle size={12} className="flex-shrink-0" />
+              )}
+              <span>
+                {!confirmPass || newPass === confirmPass
+                  ? "รหัสผ่านตรงกัน"
+                  : "รหัสผ่านไม่ตรงกัน"}
+              </span>
+            </div>
           </div>
-        </Field>
+        </div>
 
         <div className="flex gap-3 pt-2">
           <button
@@ -182,10 +192,7 @@ export default function FirstTimePasswordPage({
               boxShadow: "0 4px 20px rgba(255,140,154,0.4)",
             }}
           >
-            <span className="flex items-center justify-center gap-1.5">
-              <CheckCircle2 size={15} />
-              {loading ? "กำลังบันทึก..." : "บันทึกรหัสผ่านใหม่"}
-            </span>
+            {loading ? "กำลังบันทึก..." : "บันทึกรหัสผ่านใหม่"}
           </button>
         </div>
       </form>

@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 import { addPatient, supabase } from "@/app/shared/supabaseApi";
 
 export type RegForm = {
@@ -26,48 +27,292 @@ export type SuccessInfo = {
   loginPassword: string;
 };
 
+export const PENDING_REG_STORAGE_KEY = "supat_pending_patient_reg";
+export const OTP_AWAY_TIMEOUT_MS = 5 * 60 * 1000; // 5 นาที
+
+/**
+ * ดึงเวลาจริงของเครื่อง (Real Wall-Clock Time) ที่ไม่ถูกรบกวนโดยระบบจำลองเวลา (MockDate)
+ */
+export function getRealNow(): number {
+  if (typeof performance !== "undefined" && performance.timeOrigin) {
+    return Math.round(performance.timeOrigin + performance.now());
+  }
+  return Date.now();
+}
+
+interface PendingRegSession {
+  form: RegForm;
+  devOtp: string;
+  createdUserId: string;
+  realOtpSentAt: number;
+  realLeftAt: number | null;
+  realResendCooldownEnd: number;
+  simOtpSentAt: number;
+  simLeftAt: number | null;
+}
+
+const INITIAL_FORM: RegForm = {
+  firstName: "",
+  lastName: "",
+  idCard: "",
+  dob: "",
+  gender: "",
+  phone: "",
+  emergencyName: "",
+  emergencyPhone: "",
+  emergencyRelationship: "",
+  conditions: "",
+  allergies: "",
+  email: "",
+  address: "",
+  password: "123456789",
+};
+
 const calcAge = (dob: string) => {
   if (!dob) return 0;
   const diff = Date.now() - new Date(dob).getTime();
   return new Date(diff).getUTCFullYear() - 1970;
 };
 
-/**
- * 🧑‍⚕️ [HOOK] usePatientRegister
- * จัดการ State และ Business Logic ทั้งหมดของการลงทะเบียนคนไข้ใหม่ (Form, OTP, Done)
- */
+const cleanupUnconfirmedAuthUser = async (userId: string) => {
+  if (!userId) return;
+  try {
+    const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    if (!url || !serviceKey) return;
+
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!existingUser) {
+      const adminClient = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      await adminClient.auth.admin.deleteUser(userId);
+    }
+  } catch (e) {
+    console.warn("Cleanup unconfirmed auth user warning:", e);
+  }
+};
+
+export function isPendingSessionValid(parsed: any): boolean {
+  if (!parsed || typeof parsed !== "object" || !parsed.realOtpSentAt) {
+    return false;
+  }
+  const realNow = getRealNow();
+  const simNow = Date.now();
+
+  const realRef = parsed.realLeftAt || parsed.realOtpSentAt;
+  const realElapsed = realNow - realRef;
+  const totalRealElapsed = realNow - parsed.realOtpSentAt;
+
+  const simRef = parsed.simLeftAt || parsed.simOtpSentAt || simNow;
+  const simElapsed = simNow - simRef;
+
+  // หากเวลาจริงผ่านไปเกิน 5 นาที หรือจำลองเวลาเดินหน้าเกิน 5 นาที ให้ถือว่าหมดเวลาทันที
+  if (
+    realElapsed > OTP_AWAY_TIMEOUT_MS ||
+    totalRealElapsed > OTP_AWAY_TIMEOUT_MS ||
+    simElapsed > OTP_AWAY_TIMEOUT_MS
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function loadInitialSession(): {
+  valid: boolean;
+  session: PendingRegSession | null;
+  expiredUserId?: string;
+} {
+  try {
+    const raw = localStorage.getItem(PENDING_REG_STORAGE_KEY);
+    if (!raw) return { valid: false, session: null };
+    const parsed = JSON.parse(raw);
+    if (isPendingSessionValid(parsed)) {
+      return { valid: true, session: parsed as PendingRegSession };
+    } else {
+      localStorage.removeItem(PENDING_REG_STORAGE_KEY);
+      return { valid: false, session: null, expiredUserId: parsed?.createdUserId };
+    }
+  } catch {
+    localStorage.removeItem(PENDING_REG_STORAGE_KEY);
+    return { valid: false, session: null };
+  }
+}
+
 export function usePatientRegister() {
-  const [step, setStep] = useState<Step>("form");
-  const [form, setForm] = useState<RegForm>({
-    firstName: "",
-    lastName: "",
-    idCard: "",
-    dob: "",
-    gender: "",
-    phone: "",
-    emergencyName: "",
-    emergencyPhone: "",
-    emergencyRelationship: "",
-    conditions: "",
-    allergies: "",
-    email: "",
-    address: "",
-    password: "123456789",
-  });
+  const initial = useMemo(() => loadInitialSession(), []);
+
+  const [step, setStep] = useState<Step>(initial.valid ? "otp" : "form");
+  const [form, setForm] = useState<RegForm>(
+    initial.valid && initial.session ? initial.session.form : INITIAL_FORM
+  );
   const [showFormPass, setShowFormPass] = useState(false);
   const [otp, setOtp] = useState("");
-  const [devOtp, setDevOtp] = useState("");
+  const [devOtp, setDevOtp] = useState(
+    initial.valid && initial.session ? initial.session.devOtp : ""
+  );
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [successInfo, setSuccessInfo] = useState<SuccessInfo | null>(null);
-  const [createdUserId, setCreatedUserId] = useState("");
+  const [createdUserId, setCreatedUserId] = useState(
+    initial.valid && initial.session ? initial.session.createdUserId : ""
+  );
   const [showPass, setShowPass] = useState(false);
   const [copied, setCopied] = useState<"email" | "pass" | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(() => {
+    if (initial.valid && initial.session?.realResendCooldownEnd) {
+      const remaining = Math.ceil(
+        (initial.session.realResendCooldownEnd - getRealNow()) / 1000
+      );
+      return Math.min(60, Math.max(0, remaining));
+    }
+    return 0;
+  });
   const [resendMsg, setResendMsg] = useState("");
 
-  const set = (k: keyof RegForm, v: string) =>
+  // ลบบัญชี Auth ที่ยังไม่ยืนยันหากหมดเวลา 5 นาทีตั้งแต่ตอนโหลดหน้า
+  useEffect(() => {
+    if (initial.expiredUserId) {
+      cleanupUnconfirmedAuthUser(initial.expiredUserId);
+    }
+  }, [initial.expiredUserId]);
+
+  const resetForm = useCallback(() => {
+    localStorage.removeItem(PENDING_REG_STORAGE_KEY);
+    setStep("form");
+    setSuccessInfo(null);
+    setOtp("");
+    setDevOtp("");
+    setCreatedUserId("");
+    setForm(INITIAL_FORM);
+    setErr("");
+    setResendCooldown(0);
+    setResendMsg("");
+  }, []);
+
+  // เมื่อกลับเข้ามาหน้า OTP ทันใน 5 นาที ให้ล้างค่า leftAt และบันทึกสถานะล่าสุด
+  useEffect(() => {
+    if (step === "otp") {
+      try {
+        const raw = localStorage.getItem(PENDING_REG_STORAGE_KEY);
+        const prev: Partial<PendingRegSession> = raw ? JSON.parse(raw) : {};
+        const realNow = getRealNow();
+        const simNow = Date.now();
+        const sessionData: PendingRegSession = {
+          form,
+          devOtp,
+          createdUserId,
+          realOtpSentAt: prev.realOtpSentAt || realNow,
+          realLeftAt: null,
+          realResendCooldownEnd:
+            prev.realResendCooldownEnd || realNow + resendCooldown * 1000,
+          simOtpSentAt: prev.simOtpSentAt || simNow,
+          simLeftAt: null,
+        };
+        localStorage.setItem(PENDING_REG_STORAGE_KEY, JSON.stringify(sessionData));
+      } catch {}
+    }
+  }, [step, form, devOtp, createdUserId]);
+
+  // ตรวจสอบทุกๆ 1 วินาทีขณะอยู่หน้า OTP หากครบ 5 นาทีให้รีเซ็ตกลับไปหน้ากรอกข้อมูลทันที
+  useEffect(() => {
+    if (step !== "otp") return;
+    const interval = setInterval(() => {
+      try {
+        const raw = localStorage.getItem(PENDING_REG_STORAGE_KEY);
+        if (!raw) {
+          resetForm();
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        if (!isPendingSessionValid(parsed)) {
+          cleanupUnconfirmedAuthUser(parsed?.createdUserId);
+          resetForm();
+        }
+      } catch {
+        resetForm();
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [step, resetForm]);
+
+  // เก็บ Ref ล่าสุดสำหรับบันทึกเวลาตอนออกจากหน้านี้ (Unmount)
+  const stateRef = useRef({
+    step,
+    form,
+    devOtp,
+    createdUserId,
+    resendCooldown,
+  });
+  useEffect(() => {
+    stateRef.current = { step, form, devOtp, createdUserId, resendCooldown };
+  }, [step, form, devOtp, createdUserId, resendCooldown]);
+
+  // บันทึกเวลาที่ออกจากหน้านี้เมื่อสลับไปเมนูอื่น หรือสลับแท็บเบราว์เซอร์
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (stateRef.current.step !== "otp") return;
+      try {
+        const raw = localStorage.getItem(PENDING_REG_STORAGE_KEY);
+        if (!raw) return;
+        const parsed: PendingRegSession = JSON.parse(raw);
+
+        if (document.hidden) {
+          parsed.realLeftAt = getRealNow();
+          parsed.simLeftAt = Date.now();
+          localStorage.setItem(PENDING_REG_STORAGE_KEY, JSON.stringify(parsed));
+        } else {
+          if (!isPendingSessionValid(parsed)) {
+            cleanupUnconfirmedAuthUser(parsed.createdUserId);
+            resetForm();
+          } else {
+            parsed.realLeftAt = null;
+            parsed.simLeftAt = null;
+            localStorage.setItem(PENDING_REG_STORAGE_KEY, JSON.stringify(parsed));
+          }
+        }
+      } catch {}
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (stateRef.current.step === "otp") {
+        try {
+          const raw = localStorage.getItem(PENDING_REG_STORAGE_KEY);
+          const prev: Partial<PendingRegSession> = raw ? JSON.parse(raw) : {};
+          const realNow = getRealNow();
+          const simNow = Date.now();
+          const sessionData: PendingRegSession = {
+            form: stateRef.current.form,
+            devOtp: stateRef.current.devOtp,
+            createdUserId: stateRef.current.createdUserId,
+            realOtpSentAt: prev.realOtpSentAt || realNow,
+            realLeftAt: realNow,
+            realResendCooldownEnd:
+              realNow + stateRef.current.resendCooldown * 1000,
+            simOtpSentAt: prev.simOtpSentAt || simNow,
+            simLeftAt: simNow,
+          };
+          localStorage.setItem(
+            PENDING_REG_STORAGE_KEY,
+            JSON.stringify(sessionData)
+          );
+        } catch {}
+      }
+    };
+  }, [resetForm]);
+
+  const set = (k: keyof RegForm, v: string) => {
     setForm((f) => ({ ...f, [k]: v }));
+    setErr("");
+  };
   const age = useMemo(() => calcAge(form.dob), [form.dob]);
 
   // ตัวนับเวลาถอยหลังก่อนกดส่งรหัส OTP ซ้ำ
@@ -79,25 +324,50 @@ export function usePatientRegister() {
 
   const validate = () => {
     setErr("");
-    if (
-      !form.firstName ||
-      !form.lastName ||
-      !form.idCard ||
-      !form.dob ||
-      !form.gender ||
-      !form.phone
-    ) {
-      setErr(
-        "กรุณากรอกข้อมูลสำคัญให้ครบถ้วน (ชื่อ, นามสกุล, เลขบัตร, ว/ด/ป เกิด, เพศ, เบอร์โทร)"
-      );
+    if (!form.firstName || !form.firstName.trim()) {
+      setErr("กรุณากรอกชื่อจริง");
       return false;
     }
-    if (form.idCard.replace(/-/g, "").length < 13) {
-      setErr("เลขประจำตัวประชาชนต้องมี 13 หลัก");
+    if (!form.lastName || !form.lastName.trim()) {
+      setErr("กรุณากรอกนามสกุล");
+      return false;
+    }
+    if (!form.idCard || !form.idCard.trim()) {
+      setErr("กรุณากรอกเลขประจำตัวประชาชน");
+      return false;
+    }
+    if (form.idCard.replace(/\D/g, "").length !== 13) {
+      setErr("เลขประจำตัวประชาชนต้องเป็นตัวเลข 13 หลัก");
+      return false;
+    }
+    if (!form.dob) {
+      setErr("กรุณาระบุวันเกิด");
+      return false;
+    }
+    if (!form.gender) {
+      setErr("กรุณาเลือกเพศ");
+      return false;
+    }
+    if (!form.phone || !form.phone.trim()) {
+      setErr("กรุณากรอกเบอร์โทรศัพท์");
       return false;
     }
     if (form.phone.replace(/\D/g, "").length !== 10) {
       setErr("เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักเท่านั้น");
+      return false;
+    }
+    if (!form.email || !form.email.trim()) {
+      setErr(
+        "กรุณากรอกอีเมลคนไข้ — คนไข้ต้องใช้อีเมลนี้ในการเข้าสู่ระบบ (ไม่ใช้เบอร์โทรศัพท์)"
+      );
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setErr("รูปแบบอีเมลไม่ถูกต้อง กรุณาตรวจสอบอีเมลอีกครั้ง");
+      return false;
+    }
+    if (form.password && form.password.length < 6) {
+      setErr("รหัสผ่านเริ่มต้นต้องมีอย่างน้อย 6 ตัวอักษร");
       return false;
     }
     if (
@@ -107,24 +377,18 @@ export function usePatientRegister() {
       setErr("เบอร์ติดต่อฉุกเฉินต้องเป็นตัวเลข 10 หลักเท่านั้น");
       return false;
     }
-    if (!form.email) {
-      setErr(
-        "กรุณากรอกอีเมลคนไข้ — คนไข้ต้องใช้อีเมลนี้ในการเข้าสู่ระบบ (ไม่ใช้เบอร์โทรศัพท์)"
-      );
+    if (!form.allergies || !form.allergies.trim()) {
+      setErr("กรุณาระบุประวัติแพ้ยา / อาหาร / สารเคมี (หากไม่มีให้พิมพ์ว่า 'ไม่มี')");
       return false;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      setErr("รูปแบบอีเมลไม่ถูกต้อง กรุณาตรวจสอบอีเมลอีกครั้ง");
-      return false;
-    }
-    if (!form.password || form.password.length < 6) {
-      setErr("รหัสผ่านเริ่มต้นต้องมีอย่างน้อย 6 ตัวอักษร");
+    if (!form.conditions || !form.conditions.trim()) {
+      setErr("กรุณาระบุโรคประจำตัว / ภาวะสุขภาพ (หากไม่มีให้พิมพ์ว่า 'ไม่มี')");
       return false;
     }
     return true;
   };
 
-  // ขั้นตอน 1: กรอกฟอร์มเสร็จ → สร้างรหัส OTP และส่งไปที่อีเมลคนไข้
+  // ขั้นตอน 1: กรอกฟอร์มเสร็จ -> ส่งรหัส OTP ไปที่อีเมลคนไข้ (ยังไม่ลงตารางฐานข้อมูลจนกว่าจะยืนยัน OTP)
   const handleSubmitForm = async () => {
     if (!validate()) return;
     setLoading(true);
@@ -134,9 +398,11 @@ export function usePatientRegister() {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setDevOtp(generatedOtp);
 
+    let newUserId = "";
+
     try {
       const { data, error } = await supabase.auth.signUp({
-        email: form.email,
+        email: form.email.trim(),
         password: loginPassword,
         options: {
           data: { must_change_password: true },
@@ -144,102 +410,110 @@ export function usePatientRegister() {
       });
 
       if (data?.user?.id) {
+        newUserId = data.user.id;
         setCreatedUserId(data.user.id);
       }
 
       if (error) {
-        console.warn("Supabase auth signUp warning:", error.message);
+        await supabase.auth.resend({
+          type: "signup",
+          email: form.email.trim(),
+        });
       }
+    } catch (e: any) {
+      console.warn("Supabase auth signUp exception:", e);
+    } finally {
+      const realNow = getRealNow();
+      const simNow = Date.now();
+      const sessionData: PendingRegSession = {
+        form,
+        devOtp: generatedOtp,
+        createdUserId: newUserId,
+        realOtpSentAt: realNow,
+        realLeftAt: null,
+        realResendCooldownEnd: realNow + 60 * 1000,
+        simOtpSentAt: simNow,
+        simLeftAt: null,
+      };
+      localStorage.setItem(PENDING_REG_STORAGE_KEY, JSON.stringify(sessionData));
 
       setStep("otp");
       setResendCooldown(60);
       setResendMsg("");
-    } catch (e: any) {
-      console.warn("Supabase auth signUp exception:", e);
-      setStep("otp");
-      setResendCooldown(60);
-    } finally {
       setLoading(false);
     }
   };
 
-  // สร้างบัญชีจริง ๆ ผ่าน addPatient
+  // บันทึกข้อมูลคนไข้ลงฐานข้อมูลจริง (เรียกเฉพาะเมื่อยืนยัน OTP สำเร็จเท่านั้น)
   const createAccount = async () => {
     const rawId = form.idCard.replace(/-/g, "");
     const loginPassword = form.password || "123456789";
 
-    try {
-      await addPatient({
-        userId: createdUserId,
-        email: form.email,
-        password: loginPassword,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        citizenId: rawId,
-        phone: form.phone,
-        gender: form.gender,
-        dob: form.dob,
-        address: form.address,
-        allergyHistory: form.allergies,
-        underlyingDisease: form.conditions,
-        emergencyContactName: form.emergencyName,
-        emergencyContactPhone: form.emergencyPhone,
-        emergencyContactRelationship: form.emergencyRelationship,
-      });
-      const cleanEmail = form.email.trim().toLowerCase();
-      localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
-      localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
-      setSuccessInfo({
-        name: `${form.firstName} ${form.lastName}`,
-        loginEmail: form.email,
-        loginPassword: loginPassword,
-      });
-      setStep("done");
-    } catch (e: any) {
-      setErr(e.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-    } finally {
-      setLoading(false);
-    }
+    await addPatient({
+      userId: createdUserId,
+      email: form.email.trim(),
+      password: loginPassword,
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      citizenId: rawId,
+      phone: form.phone.trim(),
+      gender: form.gender,
+      dob: form.dob,
+      address: form.address.trim(),
+      allergyHistory: form.allergies.trim(),
+      underlyingDisease: form.conditions.trim(),
+      emergencyContactName: form.emergencyName.trim(),
+      emergencyContactPhone: form.emergencyPhone.trim(),
+      emergencyContactRelationship: form.emergencyRelationship.trim(),
+    });
+
+    const cleanEmail = form.email.trim().toLowerCase();
+    localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
+    localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
+    localStorage.removeItem(PENDING_REG_STORAGE_KEY);
+
+    setSuccessInfo({
+      name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+      loginEmail: form.email.trim(),
+      loginPassword: loginPassword,
+    });
+    setStep("done");
   };
 
-  // ขั้นตอน 2: verify OTP แล้วสร้างบัญชี
+  // ขั้นตอน 2: ยืนยันรหัส OTP แล้วจึงบันทึกข้อมูลคนไข้
   const handleVerifyOTP = async (customCode?: string) => {
-    const code = customCode || otp;
+    const code = (customCode || otp).trim();
     if (!code || code.length < 6) {
-      setErr("กรุณากรอกรหัส OTP 6 หลัก");
+      setErr("กรุณากรอกรหัส OTP ให้ครบ 6 หลัก");
       return;
     }
     setLoading(true);
     setErr("");
 
-    if (code === devOtp || code === "123456") {
-      await createAccount();
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: form.email,
-        token: code,
-        type: "signup",
-      });
-
-      if (error) {
-        const { error: err2 } = await supabase.auth.verifyOtp({
-          email: form.email,
+      if (code !== devOtp) {
+        const { error } = await supabase.auth.verifyOtp({
+          email: form.email.trim(),
           token: code,
-          type: "email",
+          type: "signup",
         });
 
-        if (err2) {
-          throw new Error("รหัส OTP ไม่ถูกต้อง หรือหมดอายุแล้ว กรุณาส่งรหัสใหม่");
+        if (error) {
+          const { error: err2 } = await supabase.auth.verifyOtp({
+            email: form.email.trim(),
+            token: code,
+            type: "email",
+          });
+
+          if (err2) {
+            throw new Error("รหัส OTP ไม่ถูกต้อง หรือหมดอายุแล้ว");
+          }
         }
       }
 
       await createAccount();
     } catch (e: any) {
-      setErr(e.message || "เกิดข้อผิดพลาดในการยืนยัน OTP");
+      setErr(e.message || "เกิดข้อผิดพลาดในการยืนยันรหัส OTP");
     } finally {
       setLoading(false);
     }
@@ -254,46 +528,41 @@ export function usePatientRegister() {
     setDevOtp(newOtp);
 
     try {
-      await supabase.auth.resend({ type: "signup", email: form.email });
+      await supabase.auth.resend({ type: "signup", email: form.email.trim() });
     } catch (e: any) {
       console.warn("Supabase resend warning:", e);
     }
 
-    setResendMsg("ส่งรหัส OTP ใหม่เรียบร้อยแล้ว (กรุณาตรวจใน Inbox หรือ Spam)");
+    const realNow = getRealNow();
+    const simNow = Date.now();
+    try {
+      const raw = localStorage.getItem(PENDING_REG_STORAGE_KEY);
+      if (raw) {
+        const parsed: PendingRegSession = JSON.parse(raw);
+        parsed.devOtp = newOtp;
+        parsed.realOtpSentAt = realNow;
+        parsed.simOtpSentAt = simNow;
+        parsed.realResendCooldownEnd = realNow + 60 * 1000;
+        localStorage.setItem(PENDING_REG_STORAGE_KEY, JSON.stringify(parsed));
+      }
+    } catch {}
+
+    setResendMsg("ส่งรหัส OTP ใหม่ไปที่อีเมลแล้ว");
     setResendCooldown(60);
   }, [form.email, resendCooldown]);
+
+  const handleBackToForm = useCallback(() => {
+    localStorage.removeItem(PENDING_REG_STORAGE_KEY);
+    setStep("form");
+    setOtp("");
+    setErr("");
+    setResendMsg("");
+  }, []);
 
   const copyText = (text: string, type: "email" | "pass") => {
     navigator.clipboard.writeText(text);
     setCopied(type);
     setTimeout(() => setCopied(null), 2000);
-  };
-
-  const resetForm = () => {
-    setStep("form");
-    setSuccessInfo(null);
-    setOtp("");
-    setDevOtp("");
-    setCreatedUserId("");
-    setForm({
-      firstName: "",
-      lastName: "",
-      idCard: "",
-      dob: "",
-      gender: "",
-      phone: "",
-      emergencyName: "",
-      emergencyPhone: "",
-      emergencyRelationship: "",
-      conditions: "",
-      allergies: "",
-      email: "",
-      address: "",
-      password: "123456789",
-    });
-    setErr("");
-    setResendCooldown(0);
-    setResendMsg("");
   };
 
   return {
@@ -316,10 +585,9 @@ export function usePatientRegister() {
     resendMsg,
     handleSubmitForm,
     handleVerifyOTP,
-    createAccount,
     handleResendOTP,
+    handleBackToForm,
     copyText,
     resetForm,
   };
 }
-

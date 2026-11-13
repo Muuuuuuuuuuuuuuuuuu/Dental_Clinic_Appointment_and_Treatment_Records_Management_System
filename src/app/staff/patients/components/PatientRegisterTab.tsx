@@ -1,7 +1,7 @@
 import React from "react";
 import { usePatientRegister } from "./PatientRegister/hooks/usePatientRegister";
 import RegisterFormStep from "./PatientRegister/components/RegisterFormStep";
-import RegisterOtpStep from "./PatientRegister/components/RegisterOtpStep";
+import OTP from "./PatientRegister/components/OTP";
 import RegisterDoneStep from "./PatientRegister/components/RegisterDoneStep";
 
 /**
@@ -30,7 +30,7 @@ export default function StaffRegisterPatient() {
 
   if (r.step === "otp") {
     return (
-      <RegisterOtpStep
+      <OTP
         email={r.form.email}
         otp={r.otp}
         setOtp={r.setOtp}
@@ -38,13 +38,9 @@ export default function StaffRegisterPatient() {
         loading={r.loading}
         resendCooldown={r.resendCooldown}
         resendMsg={r.resendMsg}
-        onBack={() => {
-          r.setStep("form");
-          r.setOtp("");
-        }}
+        onBack={r.handleBackToForm}
         onResendOTP={r.handleResendOTP}
         onVerifyOTP={r.handleVerifyOTP}
-        onSkipOTP={r.createAccount}
       />
     );
   }
