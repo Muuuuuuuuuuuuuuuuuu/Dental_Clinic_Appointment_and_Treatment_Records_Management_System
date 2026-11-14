@@ -25,6 +25,7 @@ export default function Header({ onLoginClick, isLoggedIn, onPortal }: { onLogin
             <Smile size={20} color="white" />
           </div>
           <div>
+
             <div className="font-bold text-base leading-tight" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>คลินิกสุภัทร</div>
             <div className="text-xs" style={{ color: "#4A6080", letterSpacing: "0.05em" }}>SUPHAT CLINIC</div>
           </div>
@@ -32,7 +33,7 @@ export default function Header({ onLoginClick, isLoggedIn, onPortal }: { onLogin
 
         <nav className="hidden md:flex items-center gap-15">
           {[["บริการของเรา", "#services"], ["โปรโมชั่น", "#promotions"], ["ทีมทันตแพทย์", "#doctors"], ["ติดต่อเรา", "#contact"]].map(([l, h]) => (
-            <a key={l} href={h} className="text-base font-medium transition-opacity hover:opacity-60" style={{ color: l === "โปรโมชั่น" ? "#FF8C9A" : "#1A365D" }}>{l}</a>
+            <a key={l} href={h} className="text-base font-medium transition-opacity hover:opacity-60" style={{ color: l === "โปรโมชั่น" ? "#FF8C9A" : "#1A365D" }}>{l}</a> //เปลี่ยนสีตรงคำว่าโปรโมชั่น "โปรโมชั่น" ? "#FF8C9A"
           ))}
           <ClinicStatusBadge compact />
         </nav>

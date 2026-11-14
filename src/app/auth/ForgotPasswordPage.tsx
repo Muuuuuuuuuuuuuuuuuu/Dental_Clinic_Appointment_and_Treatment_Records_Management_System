@@ -146,8 +146,8 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
                   background: isDone
                     ? "linear-gradient(135deg,#22C55E,#16A34A)"
                     : isActive
-                    ? "#FF8C9A"
-                    : "#E2E8F0",
+                      ? "#FF8C9A"
+                      : "#E2E8F0",
                   color: isDone || isActive ? "white" : "#94A3B8",
                 }}
               >
@@ -225,7 +225,7 @@ export default function ForgotPasswordPage({ onBack, onSuccess }: { onBack: () =
       <AuthShell title="ลืมรหัสผ่าน" sub="ระบุอีเมลที่ใช้สมัครสมาชิก เพื่อรับรหัส OTP">
         <StepIndicator />
         <ErrorBanner />
-        <Field label="อีเมล">
+        <Field label="อีเมล์">
           <div className="relative">
             <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
             <input

@@ -8,12 +8,12 @@ export default function AuthShell({ children, title, sub }: { children: React.Re
 
   useEffect(() => {
     Promise.all([getWeeklyOffDays(), getDailyHours()]).then(([offDays, dh]) => {
-      const workDays = [0,1,2,3,4,5,6].filter(i => !offDays.includes(i));
+      const workDays = [0, 1, 2, 3, 4, 5, 6].filter(i => !offDays.includes(i));
       if (workDays.length === 0) {
         setHoursText("ปิดให้บริการ");
         return;
       }
-      
+
       // จัดกลุ่มวันที่มีเวลาทำการเหมือนกันเข้าด้วยกัน
       const groups: { days: number[], open: string, close: string }[] = [];
       workDays.forEach(d => {

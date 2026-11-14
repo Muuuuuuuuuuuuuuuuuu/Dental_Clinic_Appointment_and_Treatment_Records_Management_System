@@ -23,7 +23,7 @@ export default function LoginPage({
   // รวมบัญชีตัวอย่างจากทุกบทบาทเข้าด้วยกัน
 
 
-  const fillDemo = (demo: {label: string, email: string, pass: string}) => {
+  const fillDemo = (demo: { label: string, email: string, pass: string }) => {
     setEmail(demo.email);
     setPass(demo.pass);
     setError("");
@@ -44,7 +44,7 @@ export default function LoginPage({
         email,
         password: pass
       });
-      
+
       if (authError || !authData.user) {
         const msg = authError?.message || "";
         if (msg.includes("Email not confirmed"))
@@ -73,7 +73,7 @@ export default function LoginPage({
       if (isPatient) {
         // ดึงข้อมูลโปรไฟล์โดยใช้รหัสผู้ใช้ที่ยืนยันตัวตนแล้ว
         const profile = await getPatientProfileByUserId(authData.user.id) as any;
-        
+
         if (!profile) {
           throw new Error("INCOMPLETE_PROFILE");
         }
@@ -105,7 +105,7 @@ export default function LoginPage({
         if (role === "admin" || role === "ผู้ดูแลระบบ") mappedRole = "admin";
         else if (role === "dentist" || role === "doctor" || role === "ทันตแพทย์") mappedRole = "doctor";
         else if (role === "staff" || role === "พนักงาน") mappedRole = "staff";
-        
+
         onLoginRole(mappedRole, email);
       }
     } catch (err: any) {
@@ -131,7 +131,7 @@ export default function LoginPage({
             <AlertCircle size={15} /> {error}
           </div>
         )}
-        <Field label="อีเมล">
+        <Field label="อีเมล์">
           <div className="relative">
             <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "#4A6080" }} />
             <input type="email" placeholder="example@email.com" value={email} onChange={e => setEmail(e.target.value)}
@@ -173,7 +173,7 @@ export default function LoginPage({
             {showDemos ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             {showDemos ? "ซ่อนบัญชีตัวอย่าง" : "แสดงบัญชีตัวอย่างสำหรับการทดสอบ"}
           </button>
-          
+
           {showDemos && (
             <div className="w-full flex flex-col gap-2 mt-3 p-4 rounded-xl" style={{ backgroundColor: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
               <p className="text-xs text-center font-medium mb-3" style={{ color: "#1A365D" }}>คลิกเพื่อกรอกข้อมูลอัตโนมัติ</p>

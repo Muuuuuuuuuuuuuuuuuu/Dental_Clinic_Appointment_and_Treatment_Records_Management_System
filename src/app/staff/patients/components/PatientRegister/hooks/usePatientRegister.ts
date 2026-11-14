@@ -98,6 +98,63 @@ const cleanupUnconfirmedAuthUser = async (userId: string) => {
   }
 };
 
+const cleanupUnconfirmedAuthUserByEmail = async (email: string) => {
+  if (!email) return;
+  try {
+    const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    if (!url || !serviceKey) return;
+
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("user_id, email")
+      .eq("email", email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (!existingUser) {
+      const adminClient = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { data: linkData } = await adminClient.auth.admin.generateLink({
+        type: "recovery",
+        email: email.trim().toLowerCase(),
+      });
+      if (linkData?.user?.id && !linkData.user.email_confirmed_at) {
+        await adminClient.auth.admin.deleteUser(linkData.user.id);
+      }
+    }
+  } catch (e) {
+    console.warn("Cleanup unconfirmed user by email warning:", e);
+  }
+};
+
+const ensureUserMetadataByEmail = async (email: string, meta: Record<string, any>) => {
+  if (!email) return;
+  try {
+    const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    if (!url || !serviceKey) return;
+
+    const adminClient = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: linkData } = await adminClient.auth.admin.generateLink({
+      type: "recovery",
+      email: email.trim().toLowerCase(),
+    });
+    if (linkData?.user?.id) {
+      await adminClient.auth.admin.updateUserById(linkData.user.id, {
+        user_metadata: {
+          ...linkData.user.user_metadata,
+          ...meta,
+        },
+      });
+    }
+  } catch (e) {
+    console.warn("Ensure user metadata warning:", e);
+  }
+};
+
 export function isPendingSessionValid(parsed: any): boolean {
   if (!parsed || typeof parsed !== "object" || !parsed.realOtpSentAt) {
     return false;
@@ -215,7 +272,7 @@ export function usePatientRegister() {
           simLeftAt: null,
         };
         localStorage.setItem(PENDING_REG_STORAGE_KEY, JSON.stringify(sessionData));
-      } catch {}
+      } catch { }
     }
   }, [step, form, devOtp, createdUserId]);
 
@@ -276,7 +333,7 @@ export function usePatientRegister() {
             localStorage.setItem(PENDING_REG_STORAGE_KEY, JSON.stringify(parsed));
           }
         }
-      } catch {}
+      } catch { }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -304,7 +361,7 @@ export function usePatientRegister() {
             PENDING_REG_STORAGE_KEY,
             JSON.stringify(sessionData)
           );
-        } catch {}
+        } catch { }
       }
     };
   }, [resetForm]);
@@ -324,42 +381,29 @@ export function usePatientRegister() {
 
   const validate = () => {
     setErr("");
-    if (!form.firstName || !form.firstName.trim()) {
-      setErr("กรุณากรอกชื่อจริง");
+
+    // หากช่องบังคับใดช่องหนึ่งยังว่างอยู่ ไม่ว่าจะช่องไหน ให้แจ้งเตือนว่า "กรุณากรอกข้อมูลให้ครบ"
+    if (
+      !form.firstName?.trim() ||
+      !form.lastName?.trim() ||
+      !form.idCard?.trim() ||
+      !form.dob ||
+      !form.gender ||
+      !form.phone?.trim() ||
+      !form.email?.trim() ||
+      !form.allergies?.trim() ||
+      !form.conditions?.trim()
+    ) {
+      setErr("กรุณากรอกข้อมูลให้ครบ");
       return false;
     }
-    if (!form.lastName || !form.lastName.trim()) {
-      setErr("กรุณากรอกนามสกุล");
-      return false;
-    }
-    if (!form.idCard || !form.idCard.trim()) {
-      setErr("กรุณากรอกเลขประจำตัวประชาชน");
-      return false;
-    }
+
     if (form.idCard.replace(/\D/g, "").length !== 13) {
       setErr("เลขประจำตัวประชาชนต้องเป็นตัวเลข 13 หลัก");
       return false;
     }
-    if (!form.dob) {
-      setErr("กรุณาระบุวันเกิด");
-      return false;
-    }
-    if (!form.gender) {
-      setErr("กรุณาเลือกเพศ");
-      return false;
-    }
-    if (!form.phone || !form.phone.trim()) {
-      setErr("กรุณากรอกเบอร์โทรศัพท์");
-      return false;
-    }
     if (form.phone.replace(/\D/g, "").length !== 10) {
       setErr("เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักเท่านั้น");
-      return false;
-    }
-    if (!form.email || !form.email.trim()) {
-      setErr(
-        "กรุณากรอกอีเมลคนไข้ — คนไข้ต้องใช้อีเมลนี้ในการเข้าสู่ระบบ (ไม่ใช้เบอร์โทรศัพท์)"
-      );
       return false;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
@@ -377,14 +421,6 @@ export function usePatientRegister() {
       setErr("เบอร์ติดต่อฉุกเฉินต้องเป็นตัวเลข 10 หลักเท่านั้น");
       return false;
     }
-    if (!form.allergies || !form.allergies.trim()) {
-      setErr("กรุณาระบุประวัติแพ้ยา / อาหาร / สารเคมี (หากไม่มีให้พิมพ์ว่า 'ไม่มี')");
-      return false;
-    }
-    if (!form.conditions || !form.conditions.trim()) {
-      setErr("กรุณาระบุโรคประจำตัว / ภาวะสุขภาพ (หากไม่มีให้พิมพ์ว่า 'ไม่มี')");
-      return false;
-    }
     return true;
   };
 
@@ -400,12 +436,25 @@ export function usePatientRegister() {
 
     let newUserId = "";
 
+    const userMeta = {
+      first_name: form.firstName.trim(),
+      last_name: form.lastName.trim(),
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      full_name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+      name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+      must_change_password: true,
+    };
+
     try {
+      // หากมีอีเมลเดิมที่ค้างจากการทดสอบก่อนหน้าและยังไม่ยืนยัน ให้ลบออกก่อน เพื่อให้ signUp ได้รับชื่อใหม่
+      await cleanupUnconfirmedAuthUserByEmail(form.email.trim());
+
       const { data, error } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: loginPassword,
         options: {
-          data: { must_change_password: true },
+          data: userMeta,
         },
       });
 
@@ -415,6 +464,7 @@ export function usePatientRegister() {
       }
 
       if (error) {
+        await ensureUserMetadataByEmail(form.email.trim(), userMeta);
         await supabase.auth.resend({
           type: "signup",
           email: form.email.trim(),
@@ -528,6 +578,15 @@ export function usePatientRegister() {
     setDevOtp(newOtp);
 
     try {
+      await ensureUserMetadataByEmail(form.email.trim(), {
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        full_name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+        name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+        must_change_password: true,
+      });
       await supabase.auth.resend({ type: "signup", email: form.email.trim() });
     } catch (e: any) {
       console.warn("Supabase resend warning:", e);
@@ -545,7 +604,7 @@ export function usePatientRegister() {
         parsed.realResendCooldownEnd = realNow + 60 * 1000;
         localStorage.setItem(PENDING_REG_STORAGE_KEY, JSON.stringify(parsed));
       }
-    } catch {}
+    } catch { }
 
     setResendMsg("ส่งรหัส OTP ใหม่ไปที่อีเมลแล้ว");
     setResendCooldown(60);
