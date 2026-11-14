@@ -31,6 +31,7 @@ export default function ProductTable({
         <table className="w-full text-left border-collapse text-xs">
           <thead className="sticky top-0 z-10 shadow-2xs" style={{ backgroundColor: "#F8FAFC", color: "#4A6080" }}>
             <tr>
+              
               <th className="py-2.5 px-3.5 font-semibold uppercase tracking-wider">ชื่อรายการ</th>
               <th className="py-2.5 px-3.5 font-semibold uppercase tracking-wider">ประเภท</th>
               <th className="py-2.5 px-3.5 font-semibold uppercase tracking-wider">ราคา/หน่วย</th>
@@ -42,6 +43,7 @@ export default function ProductTable({
           <tbody className="divide-y divide-gray-100">
             {products.map((p) => (
               <tr key={p.id} className="hover:bg-gray-50/80 transition-colors">
+               
                 <td className="py-2 px-3.5">
                   {editId === p.id ? (
                     <input

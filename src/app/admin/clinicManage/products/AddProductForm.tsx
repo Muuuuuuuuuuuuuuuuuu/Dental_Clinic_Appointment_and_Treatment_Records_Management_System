@@ -1,13 +1,13 @@
 import React from "react";
 
-const COMMON_UNITS = ["เม็ด", "แคปซูล", "ขวด", "หลอด", "ชิ้น", "อัน", "ซอง", "กล่อง", "เซ็ต"];
+const COMMON_UNITS = ["เม็ด", "แคปซูล", "ขวด", "หลอด", "ชิ้น", "ซอง", "กล่อง", "เซ็ต"];
 
 interface AddProductFormProps {
   newProduct: {
     name: string;
     type: "ยา" | "สินค้าทั่วไป";
     price: string;
-    unit: string;
+    unit: (typeof COMMON_UNITS)[number];
     instruction: string;
     isActive: boolean;
   };
@@ -21,7 +21,6 @@ export default function AddProductForm({
   onSubmit,
 }: AddProductFormProps) {
   const isReady = !!newProduct.name && !!newProduct.price;
-
   return (
     <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 animate-fade-in">
       <h3 className="font-bold mb-4" style={{ color: "#1A365D" }}>
@@ -69,19 +68,19 @@ export default function AddProductForm({
           <label className="block text-xs font-semibold mb-1" style={{ color: "#4A6080" }}>
             หน่วย
           </label>
-          <input
-            type="text"
-            list="units"
+          <select
+
             value={newProduct.unit}
             onChange={(e) => onProductChange({ unit: e.target.value })}
-            className="w-full p-2.5 border rounded-xl bg-white text-xs"
-            placeholder="เช่น เม็ด"
-          />
-          <datalist id="units">
+            className="w-full p-2.5 border rounded-xl bg-white text-xs "
+          >
             {COMMON_UNITS.map((u) => (
-              <option key={u} value={u} />
+              <option key={u} value={u}>   {u} </option>
+
             ))}
-          </datalist>
+          </select>
+
+
         </div>
         {newProduct.type === "ยา" && (
           <div className="col-span-3">
