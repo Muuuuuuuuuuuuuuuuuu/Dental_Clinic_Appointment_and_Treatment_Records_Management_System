@@ -3,7 +3,7 @@ import { useQueueData } from "./hooks/useQueueData";
 import { QueueHeader, DailyView, WeeklyView, MonthlyView } from "./components";
 
 interface QueueProps {
-  setView: (v: StaffView) => void;
+  setView: (v: StaffView, apptId?: number) => void;
   appointments?: Appointment[];
 }
 

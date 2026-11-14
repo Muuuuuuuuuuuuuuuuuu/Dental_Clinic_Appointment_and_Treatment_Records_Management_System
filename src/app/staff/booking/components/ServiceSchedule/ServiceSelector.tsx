@@ -1,12 +1,10 @@
 import React from "react";
-import { Clock } from "lucide-react";
 import { ServiceInfo } from "@/app/shared/data";
 
 interface ServiceSelectorProps {
   services: ServiceInfo[];
   selectedService: string;
   onSelectService: (name: string) => void;
-  estMins: number;
 }
 
 /**
@@ -16,68 +14,37 @@ export default function ServiceSelector({
   services,
   selectedService,
   onSelectService,
-  estMins,
 }: ServiceSelectorProps) {
   return (
-    <div className="space-y-5">
-      <div>
-        <p className="text-xs font-medium mb-2" style={{ color: "#4A6080" }}>
-          เลือกบริการ *
-        </p>
-        <div className="grid grid-cols-2 xl:grid-cols-1 gap-2">
-          {services.map((s) => (
+    <div
+      className="bg-white rounded-2xl p-3.5 border border-gray-100 min-w-0"
+      style={{ boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}
+    >
+      <p className="text-xs font-semibold mb-2" style={{ color: "#4A6080" }}>
+        เลือกบริการ
+      </p>
+
+      <div className="grid grid-cols-2 xl:grid-cols-1 gap-1.5">
+        {services.map((s) => {
+          const isSelected = selectedService === s.name;
+          return (
             <button
               key={s.id}
+              type="button"
               onClick={() => onSelectService(s.name)}
-              className="px-3 py-2.5 rounded-xl text-xs text-left transition-all"
+              className="px-3 py-1.5 rounded-xl text-xs text-left transition-all cursor-pointer truncate"
               style={{
-                backgroundColor: selectedService === s.name ? "#FFD6DC" : "#F0F4F8",
-                border:
-                  selectedService === s.name
-                    ? "1.5px solid #FF8C9A"
-                    : "1.5px solid transparent",
+                backgroundColor: isSelected ? "#FFF0F2" : "#F8FAFC",
+                border: isSelected ? "1.5px solid #E16076" : "1.5px solid #E2E8F0",
                 color: "#1A365D",
+                fontWeight: isSelected ? 600 : 500,
               }}
             >
               {s.name}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
-
-      {selectedService && (
-        <div
-          className="p-4 rounded-xl"
-          style={{
-            background: "linear-gradient(135deg,#FFF0F2,#FFF8F9)",
-            border: "1px solid rgba(255,140,154,0.25)",
-          }}
-        >
-          <p
-            style={{
-              fontWeight: 700,
-              fontSize: 14,
-              color: "#1A365D",
-              marginBottom: 2,
-            }}
-          >
-            {selectedService}
-          </p>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 12,
-              color: "#4A6080",
-              marginBottom: 2,
-            }}
-          >
-            <Clock size={12} style={{ color: "#FF8C9A" }} />
-            <span>ใช้เวลาประมาณ {estMins} นาที</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

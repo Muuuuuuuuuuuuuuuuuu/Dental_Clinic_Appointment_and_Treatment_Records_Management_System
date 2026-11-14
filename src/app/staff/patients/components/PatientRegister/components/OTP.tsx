@@ -1,7 +1,7 @@
 import React from "react";
-import { AlertCircle, CheckCircle, ChevronLeft, Mail, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronLeft, Mail, RefreshCw } from "lucide-react";
 
-interface RegisterOtpStepProps {
+interface OTPProps {
   email: string;
   otp: string;
   setOtp: (val: string) => void;
@@ -12,13 +12,12 @@ interface RegisterOtpStepProps {
   onBack: () => void;
   onResendOTP: () => void;
   onVerifyOTP: (code?: string) => void;
-  onSkipOTP: () => void;
 }
 
 /**
- * 📲 [REGISTER STEP - OTP] หน้าจอยืนยันรหัส OTP ทางอีเมลคนไข้
+ * [REGISTER STEP - OTP] หน้าจอยืนยันรหัส OTP ทางอีเมลคนไข้
  */
-export function RegisterOtpStep({
+export function OTP({
   email,
   otp,
   setOtp,
@@ -29,11 +28,11 @@ export function RegisterOtpStep({
   onBack,
   onResendOTP,
   onVerifyOTP,
-  onSkipOTP,
-}: RegisterOtpStepProps) {
+}: OTPProps) {
   return (
     <div className="max-w-md mx-auto bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
       <button
+        type="button"
         onClick={onBack}
         className="flex items-center gap-1.5 text-sm mb-6 hover:opacity-70 transition-opacity"
         style={{ color: "#4A6080" }}
@@ -49,21 +48,13 @@ export function RegisterOtpStep({
           <Mail size={28} style={{ color: "#FF8C9A" }} />
         </div>
         <h2
-          className="text-xl font-bold mb-2"
+          className="text-xl font-bold mb-1"
           style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}
         >
           ยืนยันรหัส OTP ทางอีเมล
         </h2>
-        <p className="text-sm leading-relaxed" style={{ color: "#4A6080" }}>
-          ระบบได้ส่งรหัส OTP 6 หลักไปยังอีเมล
-          <br />
-          <strong className="text-base" style={{ color: "#1A365D" }}>
-            {email}
-          </strong>
-          <br />
-          <span className="text-xs text-slate-400">
-            กรุณาให้คนไข้เปิดอีเมลเพื่อดูรหัส แล้วแจ้งพนักงานเพื่อกรอกยืนยัน
-          </span>
+        <p className="text-base font-bold" style={{ color: "#1A365D" }}>
+          {email}
         </p>
       </div>
 
@@ -102,14 +93,15 @@ export function RegisterOtpStep({
 
       {resendMsg && (
         <div
-          className="flex items-center justify-center gap-1.5 text-xs py-2 px-3 rounded-xl mb-3"
+          className="flex items-center justify-center text-xs py-2 px-3 rounded-xl mb-3"
           style={{ backgroundColor: "#E8FFF0", color: "#1B7A3E" }}
         >
-          <CheckCircle size={12} /> {resendMsg}
+          {resendMsg}
         </div>
       )}
 
       <button
+        type="button"
         onClick={onResendOTP}
         disabled={resendCooldown > 0}
         className="flex items-center gap-1.5 text-sm mx-auto mb-5 transition-all hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -125,14 +117,9 @@ export function RegisterOtpStep({
       </button>
 
       <div
-        className="p-3.5 rounded-xl flex items-start gap-2.5 mb-5"
+        className="p-3.5 rounded-xl mb-5"
         style={{ backgroundColor: "#FFF3E0", border: "1px solid #FED7AA" }}
       >
-        <AlertCircle
-          size={15}
-          className="mt-0.5 flex-shrink-0"
-          style={{ color: "#D97706" }}
-        />
         <p className="text-xs leading-relaxed" style={{ color: "#92400E" }}>
           ตรวจสอบอีเมล: หากไม่พบใน Inbox ให้ตรวจสอบในโฟลเดอร์{" "}
           <strong>จดหมายขยะ (Spam / Junk)</strong>
@@ -140,6 +127,7 @@ export function RegisterOtpStep({
       </div>
 
       <button
+        type="button"
         onClick={() => onVerifyOTP()}
         disabled={loading || otp.length < 6}
         className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -154,24 +142,12 @@ export function RegisterOtpStep({
             กำลังตรวจสอบ...
           </>
         ) : (
-          <>
-            <CheckCircle size={18} /> ยืนยัน OTP และสร้างบัญชีคนไข้
-          </>
+          "ยืนยัน OTP และสร้างบัญชีคนไข้"
         )}
       </button>
-
-      <div className="text-center mt-4">
-        <button
-          type="button"
-          onClick={onSkipOTP}
-          className="text-xs text-slate-400 hover:text-slate-600 underline"
-        >
-          ข้ามการยืนยัน OTP และสร้างบัญชีทันที (โหมดพนักงานเคาน์เตอร์)
-        </button>
-      </div>
     </div>
   );
 }
 
-export default RegisterOtpStep;
+export default OTP;
 

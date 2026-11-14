@@ -17,7 +17,7 @@ interface DailyViewProps {
   dentists: any[];
   leaves: LeaveRequest[];
   shifts: Shift[];
-  setView: (v: StaffView) => void;
+  setView: (v: StaffView, apptId?: number) => void;
   onUpdateAppt: (id: number, s: Partial<Appointment>) => void;
 }
 
@@ -106,9 +106,6 @@ export default function DailyView({
             <h3 className="font-bold text-sm" style={{ color: "#1A365D" }}>
               รายการนัดหมายทั้งหมดของวันนี้ • {dayAppts.length} ราย
             </h3>
-            <p className="text-xs mt-1" style={{ color: "#94A3B8" }}>
-              (รวมคิวที่เสร็จสิ้นและชำระเงินแล้ว)
-            </p>
           </div>
           <AppointmentList appts={dayAppts} />
         </>

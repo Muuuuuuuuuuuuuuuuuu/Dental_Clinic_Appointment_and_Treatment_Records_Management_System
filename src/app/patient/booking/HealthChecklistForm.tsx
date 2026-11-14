@@ -69,14 +69,9 @@ export default function HealthChecklistForm({ user, data, onChange }: Props) {
 
   const renderReturningUserOptions = () => (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E2E8F0] space-y-6 animate-fade-in mb-6">
-      <div className="flex items-center gap-3 text-[#1A365D] mb-2">
-        <div className="w-10 h-10 rounded-full bg-[#E8F4FF] flex items-center justify-center text-[#2B6CB0]">
-          <ShieldAlert size={20} />
-        </div>
-        <div>
-          <h3 className="font-bold text-lg">ยืนยันข้อมูลสุขภาพ (1-Click Verification)</h3>
-          <p className="text-sm text-[#4A6080]">ประวัติสุขภาพล่าสุดของคุณระบุว่า:</p>
-        </div>
+      <div className="text-[#1A365D] mb-2">
+        <h3 className="font-bold text-lg">ยืนยันข้อมูลสุขภาพ</h3>
+        <p className="text-sm text-[#4A6080]">ประวัติสุขภาพล่าสุดของคุณระบุว่า:</p>
       </div>
 
       <div className="bg-[#F8FAFC] rounded-xl p-4 border border-[#E2E8F0] space-y-2">

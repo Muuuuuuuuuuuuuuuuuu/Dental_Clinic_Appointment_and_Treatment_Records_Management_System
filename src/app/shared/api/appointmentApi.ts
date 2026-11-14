@@ -57,7 +57,10 @@ export async function getAppointments(date?: string) {
   return data.map((d: any) => {
     const p = d.patient?.users?.profile;
     // นำบริการทั้งหมดมารวมเป็น string เดียว
-    const services = d.appointment_detail?.map((ad: any) => ad.service?.service_name).join(', ') || 'ไม่ได้ระบุบริการ';
+    let services = d.appointment_detail?.map((ad: any) => ad.service?.service_name).join(', ') || 'ไม่ได้ระบุบริการ';
+    if (d.note?.includes("นัดตัดไหม") || d.note?.includes("(นัดตัดไหม)") || d.note?.includes("[บริการ: ตัดไหม]")) {
+      services = "ตัดไหม";
+    }
 
     let doctorName = 'รอระบุแพทย์';
     let doctorId = d.dentist_id || 0;
@@ -292,10 +295,14 @@ export async function getPatientAppointments(patientId?: number) {
 export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id?: number }) {
   // 1. ตรวจสอบคิวซ้ำในระดับฐานข้อมูล
   if (appointment.doctorId && appointment.date) {
-    const { data: overlapping } = await supabase.from('appointment')
+    let overlapQuery = supabase.from('appointment')
       .select('appointment_date, start_time, end_time_est, appointment_status')
       .eq('dentist_id', appointment.doctorId)
       .eq('appointment_date', appointment.date);
+    if (appointment.id) {
+      overlapQuery = overlapQuery.neq('appointment_id', appointment.id);
+    }
+    const { data: overlapping } = await overlapQuery;
 
     if (overlapping && overlapping.length > 0) {
       const duration = appointment.durationMins || 30;
@@ -443,11 +450,15 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
 
 
   // 2.5 ตรวจสอบไม่ให้คนไข้คนเดิมจองเวลาซ้ำซ้อนกัน
-  if (finalPatientId) {
-    const { data: overlappingPat } = await supabase.from('appointment')
+  if (finalPatientId && appointment.date) {
+    let overlapPatQuery = supabase.from('appointment')
       .select('appointment_date, start_time, end_time_est, appointment_status')
       .eq('patient_id', finalPatientId)
       .eq('appointment_date', appointment.date);
+    if (appointment.id) {
+      overlapPatQuery = overlapPatQuery.neq('appointment_id', appointment.id);
+    }
+    const { data: overlappingPat } = await overlapPatQuery;
 
     if (overlappingPat && overlappingPat.length > 0) {
       const duration = appointment.durationMins || 30;
@@ -472,18 +483,43 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
 
   // 3. ค้นหารหัสบริการ (service_id)
   let finalServiceId = appointment.serviceId;
-  if (!finalServiceId) {
-    const { data: svcData } = await supabase.from('service').select('service_id, service_name, base_price');
-    if (svcData) {
-      const matchedSvc = svcData.find((s: any) => appointment.service.includes(s.service_name) || s.service_name.includes(appointment.service));
+  const { data: svcData } = await supabase.from('service').select('service_id, service_name, base_price, category');
+  if (svcData && svcData.length > 0) {
+    const exists = svcData.some((s: any) => s.service_id === finalServiceId);
+    if (!exists || !finalServiceId || finalServiceId === 9999) {
+      let matchedSvc = svcData.find((s: any) =>
+        s.service_name === appointment.service ||
+        (appointment.service && (appointment.service.includes(s.service_name) || s.service_name.includes(appointment.service)))
+      );
+      if (!matchedSvc && appointment.service === "ตัดไหม") {
+        // ลองสร้างบริการ "ตัดไหม" ลงในตาราง service เพื่อให้ได้ service_id ของตัวเอง
+        try {
+          const { data: createdSvc } = await supabase.from('service').insert({
+            service_name: 'ตัดไหม',
+            description: 'บริการตัดไหมแผลผ่าตัด/ถอนฟัน',
+            base_price: 0,
+            max_price: 0,
+            category: 'ศัลยกรรมช่องปาก (Oral Surgery)',
+            estimated_time: 15,
+            is_active: true,
+            is_public: false,
+            apply_to: 'MOUTH'
+          }).select().single();
+          if (createdSvc) matchedSvc = createdSvc;
+        } catch (e) {
+          // หากไม่มีสิทธิ์ insert ให้ใช้หมวดศัลยกรรมช่องปากเป็น fallback
+        }
+        if (!matchedSvc) {
+          matchedSvc = svcData.find((s: any) => s.category?.includes("ศัลยกรรม") || s.service_name?.includes("ผ่า") || s.service_name?.includes("ถอน"));
+        }
+      }
       if (matchedSvc) {
         finalServiceId = matchedSvc.service_id;
       } else {
-        // กรณีสำรอง safely only if absolutely necessary, but preferably throw error
         finalServiceId = svcData[0]?.service_id || 1;
       }
     }
-  } else {  }
+  }
 
   let finalDoctorId = appointment.doctorId;
   if (!finalDoctorId && appointment.date) {
@@ -715,18 +751,23 @@ export async function checkAppointmentConflicts(identifier: string | number, dat
 export async function updateAppointmentDetails(id: number, updates: any) {
   const payload: any = {};
 
-  if (updates.date) payload.appointment_date = updates.date;
+  if (updates.date !== undefined) payload.appointment_date = updates.date || null;
   if (updates.doctorId) payload.dentist_id = updates.doctorId;
   if (updates.status) payload.appointment_status = updates.status;
-  if (updates.time) {
-    payload.start_time = updates.time;
-    // คำนวณเวลาสิ้นสุดโดยประมาณ
-    const duration = updates.durationMins || 30;
-    const [hh, mm] = updates.time.split(':').map(Number);
-    const totalMins = (hh * 60) + mm + duration;
-    const endHh = Math.floor(totalMins / 60);
-    const endMm = totalMins % 60;
-    payload.end_time_est = `${String(endHh).padStart(2, '0')}:${String(endMm).padStart(2, '0')}:00`;
+  if (updates.time !== undefined) {
+    if (!updates.time) {
+      payload.start_time = null;
+      payload.end_time_est = null;
+    } else {
+      payload.start_time = updates.time;
+      // คำนวณเวลาสิ้นสุดโดยประมาณ
+      const duration = updates.durationMins || 30;
+      const [hh, mm] = updates.time.split(':').map(Number);
+      const totalMins = (hh * 60) + mm + duration;
+      const endHh = Math.floor(totalMins / 60);
+      const endMm = totalMins % 60;
+      payload.end_time_est = `${String(endHh).padStart(2, '0')}:${String(endMm).padStart(2, '0')}:00`;
+    }
   }
 
 
@@ -757,8 +798,11 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
     if (serviceId) {
       // คัดเฉพาะทันตแพทย์ที่ให้บริการหัตถการนี้
       const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
-      if (dsData) {
+      if (dsData && dsData.length > 0) {
         targetDoctorIds = dsData.map(d => d.dentist_id);
+      } else {
+        const { data: dData } = await query;
+        if (dData) targetDoctorIds = dData.map(d => d.dentist_id);
       }
     } else {
       const { data: dData } = await query;

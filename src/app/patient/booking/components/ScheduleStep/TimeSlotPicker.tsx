@@ -95,8 +95,8 @@ export default function TimeSlotPicker({
                     return `${Math.floor(tot / 60)
                       .toString()
                       .padStart(2, "0")}:${(tot % 60)
-                      .toString()
-                      .padStart(2, "0")}`;
+                        .toString()
+                        .padStart(2, "0")}`;
                   })();
 
                   return (
@@ -115,20 +115,20 @@ export default function TimeSlotPicker({
                           !isDisabled && !isActive
                             ? "1.5px solid rgba(255,140,154,0.3)"
                             : isDisabled && !isActive
-                            ? "1px solid #E5E7EB"
-                            : "none",
+                              ? "1px solid #E5E7EB"
+                              : "none",
                         cursor: canBook && !isSelected ? "pointer" : "default",
                         transition: "all 0.15s",
                         backgroundColor: isActive
                           ? "#FF8C9A"
                           : isDisabled
-                          ? "#F3F4F6"
-                          : "white",
+                            ? "#F3F4F6"
+                            : "white",
                         color: isActive
                           ? "white"
                           : isDisabled
-                          ? "#9CA3AF"
-                          : "#1A365D",
+                            ? "#9CA3AF"
+                            : "#1A365D",
                         boxShadow:
                           !isDisabled && !isActive
                             ? "0 1px 4px rgba(26,54,93,0.1)"
@@ -275,7 +275,7 @@ export default function TimeSlotPicker({
             display: "block",
           }}
         >
-          หมายเหตุ / อาการเบื้องต้น (ตัวเลือก)
+          หมายเหตุ
         </label>
         <textarea
           value={notes}

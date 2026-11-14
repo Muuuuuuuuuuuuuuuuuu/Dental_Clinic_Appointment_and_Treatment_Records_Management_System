@@ -50,8 +50,8 @@ export default function CalendarPicker({
       {/* ส่วนหัวปฏิทิน */}
       <div
         style={{
-          background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)",
-          padding: "9px 12px",
+          backgroundColor: "#E16076",
+          padding: "7px 12px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -104,13 +104,13 @@ export default function CalendarPicker({
       </div>
 
       {/* ตารางวันที่ */}
-      <div style={{ backgroundColor: "white", padding: "8px 10px 10px" }}>
+      <div style={{ backgroundColor: "white", padding: "6px 10px 8px" }}>
         {/* ชื่อวันในสัปดาห์ */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(7, 1fr)",
-            marginBottom: 4,
+            marginBottom: 2,
           }}
         >
           {["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((d, i) => (
@@ -153,15 +153,15 @@ export default function CalendarPicker({
                 onClick={() => onSelectDate(dateStr)}
                 title={reason}
                 style={{
-                  height: 30,
+                  height: 26,
                   borderRadius: 6,
                   border: "none",
                   width: "100%",
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: sel ? 700 : 500,
                   cursor: isAvailable ? "pointer" : "not-allowed",
                   backgroundColor: sel
-                    ? "#FF8C9A"
+                    ? "#E16076"
                     : isAvailable
                     ? "rgba(26,54,93,0.03)"
                     : "transparent",

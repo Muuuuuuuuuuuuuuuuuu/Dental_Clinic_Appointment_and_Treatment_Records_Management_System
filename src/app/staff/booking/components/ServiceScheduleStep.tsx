@@ -11,7 +11,6 @@ interface ServiceScheduleStepProps {
   setForm: React.Dispatch<React.SetStateAction<BookingForm>>;
   services: ServiceInfo[];
   filteredDentists: DentistInfo[];
-  estMins: number;
   handleServiceChange: (serviceName: string) => void;
   targetDate: Date;
   onPrevMonth: () => void;
@@ -33,7 +32,6 @@ export default function ServiceScheduleStep({
   setForm,
   services,
   filteredDentists,
-  estMins,
   handleServiceChange,
   targetDate,
   onPrevMonth,
@@ -47,17 +45,16 @@ export default function ServiceScheduleStep({
   loadingSlots,
 }: ServiceScheduleStepProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1fr_1.1fr_1fr] gap-6 items-start">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_minmax(0,1fr)] xl:min-h-[410px] gap-4 items-start">
       {/* คอลัมน์ที่ 1: เลือกบริการ */}
       <ServiceSelector
         services={services}
         selectedService={form.service}
         onSelectService={handleServiceChange}
-        estMins={estMins}
       />
 
       {/* คอลัมน์ที่ 2: เลือกทันตแพทย์และวันที่ */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="space-y-3 min-w-0">
         <DoctorSelector
           dentists={filteredDentists}
           selectedDoctorId={form.doctorId}
@@ -80,13 +77,37 @@ export default function ServiceScheduleStep({
             setForm((f) => ({ ...f, date: dStr, time: "" }))
           }
         />
+      </div>
 
-        <div
-          className="flex items-center gap-2 mt-2 p-3 rounded-xl"
-          style={{
-            backgroundColor: "#F8F9FA",
-            border: "1px solid rgba(26,54,93,0.06)",
-          }}
+      {/* คอลัมน์ที่ 3: เลือกเวลา นัดแบบเปิด และหมายเหตุ */}
+      <div className="space-y-3 min-w-0">
+        {!form.openAppt && form.date ? (
+          <TimeSlotPicker
+            timeSlots={timeSlots}
+            loadingSlots={loadingSlots}
+            selectedTime={form.time}
+            onSelectTime={(t) => setForm((f) => ({ ...f, time: t }))}
+          />
+        ) : (
+          <div
+            className="bg-white rounded-2xl p-4 border border-gray-100 text-center"
+            style={{ boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}
+          >
+            <p className="text-xs font-semibold mb-1" style={{ color: "#4A6080" }}>
+              เวลาที่ต้องการนัดหมาย
+            </p>
+            <p className="text-xs py-4" style={{ color: "#94A3B8" }}>
+              {form.openAppt
+                ? "นัดแบบเปิด: คนไข้จะระบุวัน-เวลาเองภายหลัง"
+                : "กรุณาเลือกวันที่ในปฏิทิน เพื่อดูเวลาว่าง"}
+            </p>
+          </div>
+        )}
+
+        <label
+          htmlFor="openAppt"
+          className="flex items-center gap-2.5 p-3 rounded-2xl bg-white border border-gray-100 cursor-pointer"
+          style={{ boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}
         >
           <input
             type="checkbox"
@@ -95,44 +116,30 @@ export default function ServiceScheduleStep({
             onChange={(e) =>
               setForm((f) => ({ ...f, openAppt: e.target.checked, time: "" }))
             }
-            className="w-4 h-4 rounded text-pink-500"
+            className="w-4 h-4 rounded accent-[#E16076]"
           />
-          <label
-            htmlFor="openAppt"
-            className="text-sm font-medium"
-            style={{ color: "#1A365D" }}
-          >
-            นัดแบบเปิด (ให้คนไข้ไปเลือกวัน-เวลาทีหลัง)
-          </label>
-        </div>
+          <span className="text-xs font-medium" style={{ color: "#1A365D" }}>
+            ให้คนไข้ไปเลือกวัน-เวลาทีหลัง
+          </span>
+        </label>
 
-        <div className="mt-4">
+        <div
+          className="bg-white rounded-2xl p-3.5 border border-gray-100"
+          style={{ boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}
+        >
           <label
-            className="text-xs font-medium block mb-1.5"
+            className="text-xs font-semibold block mb-1.5"
             style={{ color: "#4A6080" }}
           >
-            หมายเหตุ / รายละเอียดนัดหมาย (ตัวเลือก)
+            หมายเหตุ / รายละเอียดนัดหมาย
           </label>
           <textarea
             value={form.note}
             onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-            placeholder="เช่น อุดฟันซี่ 13, 14 ต่อ"
-            className="w-full px-3 py-3 rounded-xl text-sm outline-none resize-none h-16"
-            style={{ backgroundColor: "#F0F4F8", color: "#1A365D" }}
+            className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 border border-slate-200 outline-none resize-none h-14 focus:border-[#E16076]"
+            style={{ color: "#1A365D" }}
           />
         </div>
-      </div>
-
-      {/* คอลัมน์ที่ 3: เลือกเวลา */}
-      <div>
-        {!form.openAppt && form.date && (
-          <TimeSlotPicker
-            timeSlots={timeSlots}
-            loadingSlots={loadingSlots}
-            selectedTime={form.time}
-            onSelectTime={(t) => setForm((f) => ({ ...f, time: t }))}
-          />
-        )}
       </div>
     </div>
   );

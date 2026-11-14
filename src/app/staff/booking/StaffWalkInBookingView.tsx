@@ -32,7 +32,6 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
     dentists,
     filteredDentists,
     services,
-    estMins,
     setMonthOffset,
     targetDate,
     year,
@@ -47,6 +46,21 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
     done,
     resetAll,
   } = useWalkInBooking(onAddAppt);
+
+  const nextStepConfig =
+    step === 0
+      ? {
+          disabled: !patientInfo,
+          onClick: () => setStep(1),
+          label: "ถัดไป: เลือกบริการและเวลา",
+        }
+      : step === 1
+      ? {
+          disabled: !form.service || !form.date || !form.time,
+          onClick: () => setStep(2),
+          label: "ถัดไป: ตรวจสอบและยืนยัน",
+        }
+      : null;
 
   return (
     <div>
@@ -80,7 +94,6 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
             setForm={setForm}
             services={services}
             filteredDentists={filteredDentists}
-            estMins={estMins}
             handleServiceChange={handleServiceChange}
             targetDate={targetDate}
             onPrevMonth={() => setMonthOffset((m) => m - 1)}
@@ -105,12 +118,18 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
 
         {/* ปุ่มควบคุมย้อนกลับและถัดไป */}
         {!done && (
-          <div className="flex items-center justify-between mt-8 pt-4 border-t border-gray-100">
+          <div
+            className={`flex items-center justify-between ${
+              step === 0 || step === 2
+                ? "max-w-xl mx-auto mt-4"
+                : "mt-3 pt-2.5 border-t border-slate-200/70"
+            }`}
+          >
             {step > 0 ? (
               <button
                 type="button"
                 onClick={() => setStep((s) => s - 1)}
-                className="px-5 py-2.5 rounded-xl text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 ย้อนกลับ
               </button>
@@ -118,25 +137,14 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
               <div />
             )}
 
-            {step === 0 && (
+            {nextStepConfig && (
               <button
                 type="button"
-                disabled={!patientInfo}
-                onClick={() => setStep(1)}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-[#FF8C9A] hover:bg-[#FF7588] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                disabled={nextStepConfig.disabled}
+                onClick={nextStepConfig.onClick}
+                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-[#E16076] hover:bg-[#D14D64] transition-colors disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:bg-slate-200 disabled:cursor-not-allowed cursor-pointer"
               >
-                ถัดไป: เลือกบริการและเวลา
-              </button>
-            )}
-
-            {step === 1 && (
-              <button
-                type="button"
-                disabled={!form.service || !form.date || !form.time}
-                onClick={() => setStep(2)}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-[#FF8C9A] hover:bg-[#FF7588] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                ถัดไป: ตรวจสอบและยืนยัน
+                {nextStepConfig.label}
               </button>
             )}
 
@@ -145,7 +153,7 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
                 type="button"
                 disabled={isSubmitting}
                 onClick={confirm}
-                className="px-8 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-md disabled:opacity-50 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? "กำลังบันทึก..." : "ยืนยันการจองนัดหมาย"}
               </button>

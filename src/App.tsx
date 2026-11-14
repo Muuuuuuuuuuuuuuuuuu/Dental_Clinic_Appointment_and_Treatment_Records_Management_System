@@ -28,7 +28,11 @@ export default function App() {
     setSharedAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
 
   const addAppt = (a: Appointment) =>
-    setSharedAppointments(prev => [...prev, a]);
+    setSharedAppointments(prev =>
+      prev.some(x => x.id === a.id)
+        ? prev.map(x => (x.id === a.id ? { ...x, ...a } : x))
+        : [...prev, a]
+    );
 
   const handleRoleChange = (newRole: UserRole, email?: string) => {
     setRole(newRole);

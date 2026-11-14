@@ -16,52 +16,48 @@ export default function DoctorSelector({
   selectedDoctorId,
   onSelectDoctor,
 }: DoctorSelectorProps) {
+  const cardStyle = (isSelected: boolean): React.CSSProperties => ({
+    flexShrink: 0,
+    width: 102,
+    borderRadius: 12,
+    overflow: "hidden",
+    textAlign: "left",
+    cursor: "pointer",
+    backgroundColor: "white",
+    display: "flex",
+    flexDirection: "column",
+    border: isSelected ? "2px solid #E16076" : "1.5px solid rgba(26,54,93,0.12)",
+    boxShadow: isSelected ? "0 2px 10px rgba(225,96,118,0.2)" : "none",
+  });
+
   return (
     <div
-      style={{
-        borderRadius: 16,
-        backgroundColor: "white",
-        overflow: "hidden",
-        boxShadow: "0 1px 8px rgba(26,54,93,0.07)",
-      }}
+      className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+      style={{ boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}
     >
-      <div style={{ padding: "10px 14px" }}>
-        <p className="text-xs font-medium mb-2" style={{ color: "#4A6080" }}>
-          เลือกทันตแพทย์ (ตัวเลือกเสริม)
+      <div className="p-3">
+        <p className="text-xs font-semibold mb-2" style={{ color: "#4A6080" }}>
+          เลือกทันตแพทย์
         </p>
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+        <div className="flex gap-2 overflow-x-auto pb-1 items-stretch">
           <button
+            type="button"
             onClick={() => onSelectDoctor(0)}
-            style={{
-              flexShrink: 0,
-              width: 86,
-              borderRadius: 12,
-              overflow: "hidden",
-              textAlign: "left",
-              cursor: "pointer",
-              backgroundColor: "white",
-              border:
-                selectedDoctorId === 0
-                  ? "2px solid #FF8C9A"
-                  : "2px solid rgba(26,54,93,0.1)",
-              boxShadow:
-                selectedDoctorId === 0 ? "0 3px 12px rgba(255,140,154,0.3)" : "none",
-            }}
+            style={cardStyle(selectedDoctorId === 0)}
           >
             <div
-              style={{
-                height: 64,
-                backgroundColor: "#F8FAFC",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+              className="h-14 w-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: "#F8FAFC" }}
             >
-              <UserPlus size={24} style={{ color: "#1A365D", opacity: 0.2 }} />
+              <UserPlus size={20} style={{ color: "#1A365D", opacity: 0.25 }} />
             </div>
-            <div style={{ padding: "5px 7px" }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: "#1A365D" }}>ท่านใดก็ได้</p>
-              <p style={{ fontSize: 9, color: "#FF8C9A", marginTop: 1 }}>คิวเร็วสุด</p>
+            <div className="p-1.5 flex-1 flex flex-col justify-between">
+              <p className="text-[11px] font-bold leading-tight" style={{ color: "#1A365D" }}>
+                ท่านใดก็ได้
+              </p>
+              <p className="text-[9px] mt-1 truncate" style={{ color: "#E16076" }}>
+                คิวเร็วสุด
+              </p>
             </div>
           </button>
           {dentists.map((d) => {
@@ -72,36 +68,25 @@ export default function DoctorSelector({
             return (
               <button
                 key={d.id}
+                type="button"
                 onClick={() => onSelectDoctor(d.id)}
-                style={{
-                  flexShrink: 0,
-                  width: 86,
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  textAlign: "left",
-                  cursor: "pointer",
-                  backgroundColor: "white",
-                  border: isSelected ? "2px solid #FF8C9A" : "2px solid rgba(26,54,93,0.1)",
-                  boxShadow: isSelected ? "0 3px 12px rgba(255,140,154,0.3)" : "none",
-                }}
+                style={cardStyle(isSelected)}
               >
                 <img
                   src={imgUrl}
                   alt={d.name}
-                  style={{ width: "100%", height: 64, objectFit: "cover", display: "block" }}
+                  className="w-full h-14 object-cover block flex-shrink-0"
                 />
-                <div style={{ padding: "5px 7px" }}>
+                <div className="p-1.5 flex-1 flex flex-col justify-between">
                   <p
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: "#1A365D",
-                      lineHeight: 1.3,
-                    }}
+                    className="text-[11px] font-bold leading-tight line-clamp-2"
+                    style={{ color: "#1A365D" }}
                   >
                     {d.name}
                   </p>
-                  <p style={{ fontSize: 9, color: "#FF8C9A", marginTop: 1 }}>{d.specialty}</p>
+                  <p className="text-[9px] mt-1 truncate" style={{ color: "#E16076" }}>
+                    {d.specialty}
+                  </p>
                 </div>
               </button>
             );

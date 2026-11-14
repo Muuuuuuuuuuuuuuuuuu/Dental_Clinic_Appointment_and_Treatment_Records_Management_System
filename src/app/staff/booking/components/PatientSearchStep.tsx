@@ -23,7 +23,7 @@ export default function PatientSearchStep({
 }: PatientSearchStepProps) {
   return (
     <div
-      className="max-w-xl mx-auto my-4 bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 space-y-4"
+      className="max-w-xl mx-auto mt-2 bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 space-y-4"
       style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
     >
       <div className="text-center mb-6">

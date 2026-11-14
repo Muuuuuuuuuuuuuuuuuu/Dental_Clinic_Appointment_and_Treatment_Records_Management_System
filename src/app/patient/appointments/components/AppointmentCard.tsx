@@ -22,10 +22,19 @@ export default function AppointmentCard({
   onBookFollowUp,
 }: AppointmentCardProps) {
   const sc = statusColor[a.status] ?? { bg: "#F0F4F8", text: "#4A6080" };
-  const canCancel = a.status !== "ยกเลิก";
   const isDone =
     a.status === "เสร็จสิ้น" || a.status === "ยกเลิก" || a.status === "ไม่มาตามนัด";
   const isPending = !isDone;
+  const isFollowUpCase =
+    a.service === "ตัดไหม" ||
+    Boolean(
+      a.note &&
+        (a.note.includes("แพทย์ประจำเคส") ||
+          a.note.includes("นัดตัดไหม") ||
+          a.note.includes("เคสต่อเนื่อง"))
+    ) ||
+    (a as any).source === "doctor";
+  const canCancel = isPending && (!isFollowUpCase || Boolean(a.date));
 
   let isWithin12Hours = false;
   if (a.date && a.time) {
@@ -124,7 +133,12 @@ export default function AppointmentCard({
         style={{ borderTop: "1px solid rgba(26,54,93,0.06)" }}
       >
         <div className="flex items-center gap-2">
-          {canCancel &&
+          {isFollowUpCase && !a.date ? (
+            <p className="text-xs font-medium" style={{ color: "#94A3B8" }}>
+              สามารถเลือกวันนัดหมายเมื่อสะดวก
+            </p>
+          ) : (
+            canCancel &&
             (isWithin12Hours ? (
               <p className="text-xs font-medium" style={{ color: "#94A3B8" }}>
                 ยกเลิกไม่ได้ (น้อยกว่า 12 ชม.)
@@ -132,18 +146,20 @@ export default function AppointmentCard({
             ) : cancelId === a.id ? (
               <>
                 <p className="text-xs flex-1" style={{ color: "#E65100" }}>
-                  ยืนยันการยกเลิกนัดหมาย?
+                  {isFollowUpCase
+                    ? "ยกเลิกเฉพาะวันนัดนี้? (เก็บใบนัดไว้ระบุวันทีหลัง)"
+                    : "ยืนยันการยกเลิกนัดหมาย?"}
                 </p>
                 <button
                   onClick={() => onDoCancel(a.id)}
-                  className="text-xs px-3 py-1.5 rounded-lg text-white"
+                  className="text-xs px-3 py-1.5 rounded-lg text-white cursor-pointer"
                   style={{ backgroundColor: "#E74C3C" }}
                 >
-                  ยืนยันยกเลิก
+                  {isFollowUpCase ? "ยืนยันยกเลิกวันนัด" : "ยืนยันยกเลิก"}
                 </button>
                 <button
                   onClick={() => onSetCancelId(null)}
-                  className="text-xs px-3 py-1.5 rounded-lg"
+                  className="text-xs px-3 py-1.5 rounded-lg cursor-pointer"
                   style={{
                     border: "1px solid rgba(26,54,93,0.15)",
                     color: "#4A6080",
@@ -155,26 +171,37 @@ export default function AppointmentCard({
             ) : (
               <button
                 onClick={() => onSetCancelId(a.id)}
-                className="text-xs font-medium hover:opacity-70 transition-opacity"
+                className="text-xs font-medium hover:opacity-70 transition-opacity cursor-pointer"
                 style={{ color: "#E74C3C" }}
               >
                 ยกเลิกนัดหมาย
               </button>
-            ))}
+            ))
+          )}
         </div>
-        {!a.date && onBookFollowUp && (
+        {!a.date && isPending && onBookFollowUp && (
           <button
             onClick={() => {
-              onBookFollowUp(a.serviceId, a.doctorId, a.id);
+              onBookFollowUp(a.serviceId || 1, a.doctorId || 0, a.id);
             }}
-            className="text-xs px-4 py-1.5 rounded-lg font-bold text-white transition-all hover:opacity-90 shadow-sm"
-            style={{ background: "linear-gradient(135deg,#1D6FA4,#1A365D)" }}
+            className="text-xs px-4 py-2 rounded-xl font-bold text-white transition-all hover:opacity-90 shadow-sm cursor-pointer"
+            style={{ backgroundColor: "#E16076" }}
           >
             ระบุวันนัดหมาย
+          </button>
+        )}
+        {a.date && isPending && !isWithin12Hours && onBookFollowUp && (
+          <button
+            onClick={() => {
+              onBookFollowUp(a.serviceId || 1, a.doctorId || 0, a.id);
+            }}
+            className="text-xs px-4 py-2 rounded-xl font-bold text-white transition-all hover:opacity-90 shadow-sm cursor-pointer"
+            style={{ backgroundColor: "#E16076" }}
+          >
+            เปลี่ยนวันนัดหมาย
           </button>
         )}
       </div>
     </div>
   );
 }
-

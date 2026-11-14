@@ -1,12 +1,24 @@
 import { useState } from "react";
 import { PatientHeader, PatientSearchTab, PatientRegisterTab } from "./components";
+import {
+  PENDING_REG_STORAGE_KEY,
+  isPendingSessionValid,
+} from "./components/PatientRegister/hooks/usePatientRegister";
 
-/**
- * 🧑‍💼 [STAFF PATIENTS VIEW]
- * หน้าค้นหาและลงทะเบียนคนไข้ (Flat & Clean Architecture)
- */
 export default function StaffPatientsView() {
-  const [activeTab, setActiveTab] = useState<"search" | "register">("search");
+  const [activeTab, setActiveTab] = useState<"search" | "register">(() => {
+    try {
+      const raw = localStorage.getItem(PENDING_REG_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (!isPendingSessionValid(parsed)) {
+          localStorage.removeItem(PENDING_REG_STORAGE_KEY);
+        }
+        return "register";
+      }
+    } catch {}
+    return "search";
+  });
 
   return (
     <div>
