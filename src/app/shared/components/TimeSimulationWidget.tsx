@@ -18,23 +18,14 @@ export function TimeSimulationWidget() {
   const [activeLabel, setActiveLabel] = useState("");
 
   useEffect(() => {
-    const isHidden = localStorage.getItem(HIDE_WIDGET_KEY) === "true";
-    if (isHidden) {
-      setIsDismissed(true);
-    }
+    // นำปุ่มกลับมาแสดงผลทันที
+    localStorage.removeItem(HIDE_WIDGET_KEY);
+    setIsDismissed(false);
 
     // กดปุ่มคีย์ลัด Alt + T บนคีย์บอร์ดเพื่อเปิด/ซ่อนปุ่มจำลองเวลาได้ตลอดเวลา
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && (e.key === "t" || e.key === "T" || e.key === "ะ")) {
-        setIsDismissed((prev) => {
-          const next = !prev;
-          if (next) {
-            localStorage.setItem(HIDE_WIDGET_KEY, "true");
-          } else {
-            localStorage.removeItem(HIDE_WIDGET_KEY);
-          }
-          return next;
-        });
+        setIsDismissed((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKeyDown);

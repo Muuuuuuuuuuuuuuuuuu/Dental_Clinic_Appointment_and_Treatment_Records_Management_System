@@ -9,7 +9,7 @@ interface DaySelectorProps {
 }
 
 /**
- * 📆 [QUEUE COMPONENT] แถบเลื่อนวัน, ตัวเลือกปฏิทิน และปุ่มกลับวันนี้
+ * [QUEUE COMPONENT] แถบเลื่อนวัน, ตัวเลือกปฏิทิน และปุ่มกลับวันนี้
  */
 export default function DaySelector({
   selectedDate,
@@ -47,15 +47,6 @@ export default function DaySelector({
               {selectedDate.getDate()} {thaiMonth[selectedDate.getMonth()]}{" "}
               {selectedDate.getFullYear() + 543}
             </p>
-            <div className="relative overflow-hidden w-6 h-6 rounded hover:bg-gray-100 flex items-center justify-center cursor-pointer">
-              <CalendarIcon size={14} style={{ color: "#4A6080" }} />
-              <input
-                type="date"
-                value={fmtDate(selectedDate)}
-                onChange={(e) => e.target.value && onSelectDate(new Date(e.target.value))}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              />
-            </div>
           </div>
         </div>
         <button

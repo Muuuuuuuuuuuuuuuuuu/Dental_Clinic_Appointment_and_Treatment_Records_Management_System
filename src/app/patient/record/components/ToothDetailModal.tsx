@@ -14,7 +14,7 @@ interface ToothDetailModalProps {
 }
 
 /**
- * 🦷 [MODAL COMPONENT] หน้าต่างแสดงรายละเอียดซี่ฟันเดี่ยว พร้อมประวัติการรักษาในซี่นั้น
+ *  [MODAL COMPONENT] หน้าต่างแสดงรายละเอียดซี่ฟันเดี่ยว พร้อมประวัติการรักษาในซี่นั้น
  */
 export default function ToothDetailModal({
   clickedTooth,

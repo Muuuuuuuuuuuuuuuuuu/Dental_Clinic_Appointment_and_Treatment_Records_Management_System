@@ -948,8 +948,12 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
     let query = supabase.from('dentist').select('dentist_id');
     if (serviceId) {
       const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
-      if (dsData) {
+      if (dsData && dsData.length > 0) {
         targetDoctorIds = dsData.map(d => d.dentist_id);
+      } else {
+        // ถ้าบริการนี้ยังไม่ได้ผูกกับหมอคนใด ให้ใช้หมอทั้งหมด
+        const { data: dData } = await query;
+        if (dData) targetDoctorIds = dData.map(d => d.dentist_id);
       }
     } else {
       const { data: dData } = await query;

@@ -33,7 +33,7 @@ export default function IdentificationCard({ user }: IdentificationCardProps) {
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-sm text-[#1A365D]">
-          ข้อมูลส่วนตัว (View Only)
+          ข้อมูลส่วนตัว
         </h3>
         <span
           className="text-xs px-2.5 py-1 rounded-full"
@@ -42,14 +42,14 @@ export default function IdentificationCard({ user }: IdentificationCardProps) {
           แก้ไขโดยเจ้าหน้าที่เท่านั้น
         </span>
       </div>
-      
+
       <InfoRow label="เลขบัตรประชาชน" val={user.idCard} />
       <InfoRow label="เพศ" val={user.gender} />
       <InfoRow label="วันเกิด" val={thDate(user.dob)} />
       <InfoRow label="อายุ" val={age > 0 ? `${age} ปี` : "—"} />
     </div>
 
-    
-    
+
+
   );
 }

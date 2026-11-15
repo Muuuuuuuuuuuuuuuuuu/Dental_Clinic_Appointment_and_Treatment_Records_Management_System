@@ -1,7 +1,7 @@
 import React from "react";
 
 /**
- * 🏷️ [HEADER COMPONENT] หัวข้อหน้าคิวงานและคำอธิบาย
+ * [HEADER COMPONENT] หัวข้อหน้าคิวงานและคำอธิบาย
  */
 export default function TitleBar() {
   return (

@@ -57,11 +57,10 @@ export function ClockInScreen({
               setMockNetwork("home");
               setErrorMsg("");
             }}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-              mockNetwork === "home"
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${mockNetwork === "home"
                 ? "bg-white shadow-sm text-blue-600"
                 : "text-gray-500"
-            }`}
+              }`}
           >
             <WifiOff size={14} /> อยู่บ้าน
           </button>
@@ -70,11 +69,10 @@ export function ClockInScreen({
               setMockNetwork("clinic");
               setErrorMsg("");
             }}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-              mockNetwork === "clinic"
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${mockNetwork === "clinic"
                 ? "bg-white shadow-sm text-green-600"
                 : "text-gray-500"
-            }`}
+              }`}
           >
             <Wifi size={14} /> อยู่คลินิก
           </button>

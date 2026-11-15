@@ -9,7 +9,7 @@ interface TitleBarProps {
 }
 
 /**
- * 🏷️ [HEADER COMPONENT] หัวข้อและกล่องค้นหาของหน้าระบบนัดหมาย
+ *[HEADER COMPONENT] หัวข้อและกล่องค้นหาของหน้าระบบนัดหมาย
  */
 export default function TitleBar({
   activeTab,

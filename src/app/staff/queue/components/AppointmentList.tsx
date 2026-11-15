@@ -7,7 +7,7 @@ interface AppointmentListProps {
 }
 
 /**
- * 📋 [QUEUE COMPONENT] ตารางรายการนัดหมายทั้งหมด
+ *[QUEUE COMPONENT] ตารางรายการนัดหมายทั้งหมด
  */
 export default function AppointmentList({ appts }: AppointmentListProps) {
   if (appts.length === 0) {

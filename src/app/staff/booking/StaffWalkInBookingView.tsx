@@ -13,7 +13,7 @@ interface WalkInBookingProps {
 }
 
 /**
- * 🚶 [STAFF WALK-IN BOOKING VIEW]
+ * [STAFF WALK-IN BOOKING VIEW]
  * ระบบจองคิว Walk-in สำหรับเจ้าหน้าที่เคาน์เตอร์ (Flat & Clean Architecture)
  */
 export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps) {
@@ -50,17 +50,17 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
   const nextStepConfig =
     step === 0
       ? {
-          disabled: !patientInfo,
-          onClick: () => setStep(1),
-          label: "ถัดไป: เลือกบริการและเวลา",
-        }
+        disabled: !patientInfo,
+        onClick: () => setStep(1),
+        label: "ถัดไป: เลือกบริการและเวลา",
+      }
       : step === 1
-      ? {
+        ? {
           disabled: !form.service || !form.date || !form.time,
           onClick: () => setStep(2),
           label: "ถัดไป: ตรวจสอบและยืนยัน",
         }
-      : null;
+        : null;
 
   return (
     <div>
@@ -119,11 +119,10 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
         {/* ปุ่มควบคุมย้อนกลับและถัดไป */}
         {!done && (
           <div
-            className={`flex items-center justify-between ${
-              step === 0 || step === 2
+            className={`flex items-center justify-between ${step === 0 || step === 2
                 ? "max-w-xl mx-auto mt-4"
                 : "mt-3 pt-2.5 border-t border-slate-200/70"
-            }`}
+              }`}
           >
             {step > 0 ? (
               <button

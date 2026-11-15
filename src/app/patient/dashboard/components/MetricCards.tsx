@@ -10,7 +10,7 @@ interface MetricCardsProps {
 }
 
 /**
- * 📊 [DASHBOARD COMPONENT] การ์ดสรุปสถิตินัดหมายและค่าใช้จ่ายของคนไข้
+ * การ์ดสรุปสถิตินัดหมายและค่าใช้จ่ายของคนไข้
  */
 export default function MetricCards({
   appointments = [],
