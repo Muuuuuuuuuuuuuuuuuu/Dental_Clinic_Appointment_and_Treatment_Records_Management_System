@@ -1,4 +1,3 @@
-import React from "react";
 import { Users, Clock, CreditCard, CheckCircle, LucideIcon } from "lucide-react";
 
 interface MetricCardItemProps {

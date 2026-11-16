@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { SupernumeraryTooth } from "./ToothGeometry";
 import { ToothStatus, ToothHistoryItem, getToothHistory, isValidToothId } from "./toothHistory";
 import OdontogramLegend from "./OdontogramLegend";

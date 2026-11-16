@@ -1,4 +1,3 @@
-import React from "react";
 import { AlertCircle, UserPlus, ChevronRight } from "lucide-react";
 import { Appointment, DentistInfo } from "@/app/shared/data";
 import { useTreatmentQueue } from "./useTreatmentQueue";

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { DentistInfo } from "@/app/shared/data";
 import { getDentistTreatmentHistory } from "@/app/shared/supabaseApi";
 import { Calendar, Search, FileText } from "lucide-react";

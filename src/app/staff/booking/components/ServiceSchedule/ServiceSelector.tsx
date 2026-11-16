@@ -1,4 +1,3 @@
-import React from "react";
 import { ServiceInfo } from "@/app/shared/data";
 
 interface ServiceSelectorProps {

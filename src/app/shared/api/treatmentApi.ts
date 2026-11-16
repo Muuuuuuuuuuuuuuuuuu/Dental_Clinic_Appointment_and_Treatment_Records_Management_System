@@ -202,7 +202,7 @@ export async function saveTreatment(
   notes: string, 
   recommendations: string, 
   services: string[], 
-  cost: number, 
+  _cost: number, 
   toothData?: Record<number | string, any>, 
   doctorId?: number, 
   detailedServices?: any[], 

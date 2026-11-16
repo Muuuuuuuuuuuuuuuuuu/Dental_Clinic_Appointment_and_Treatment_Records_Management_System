@@ -1,4 +1,3 @@
-import React from "react";
 import { X, History, Calendar, User, CreditCard, Stethoscope, Clock } from "lucide-react";
 import { ToothStatus, ToothHistoryItem, getToothHistory } from "./toothHistory";
 import { SupernumeraryTooth, getExtraToothLocation } from "./ToothGeometry";

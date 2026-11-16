@@ -681,7 +681,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
   notifyAppointmentsUpdated();
   return { ...newAppt, assignedDoctorId: finalDoctorId };
 }
-export async function updateAppointmentStatus(id: number, status: string, reason?: string) {
+export async function updateAppointmentStatus(id: number, status: string, _reason?: string) {
   const { data, error } = await supabase.from('appointment').update({ appointment_status: status }).eq('appointment_id', id).select().single();
   if (error) {
     console.error("Failed to update appointment status:", error);
@@ -917,7 +917,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
 
 export interface TimeSlotStatus {
   time: string;
-  status: 'available' | 'booked' | 'past' | 'outside_shift';
+  status: 'available' | 'booked' | 'patient_booked' | 'past' | 'outside_shift';
 }
 
 export async function getClinicTimeSlots(date: string, serviceId?: number, doctorId?: number, patientId?: number): Promise<TimeSlotStatus[]> {
@@ -1024,7 +1024,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
     }
 
     if (patientOverlap) {
-      results.push({ time: timeStr, status: 'booked' });
+      results.push({ time: timeStr, status: 'patient_booked' });
       continue;
     }
 

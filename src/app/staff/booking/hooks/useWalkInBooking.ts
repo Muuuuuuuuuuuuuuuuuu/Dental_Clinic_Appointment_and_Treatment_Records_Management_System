@@ -167,6 +167,24 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
       } else if (isFullLeave) {
         return { status: "past" as const, reason: "แพทย์ไม่เข้าตรวจ/ลา" };
       }
+    } else if (form.service && filteredDentists.length > 0) {
+      const isAnyWorking = filteredDentists.some((fd) => {
+        const shift = doctorSchedules.find(
+          (s) => s.dentistId === fd.id && s.dayOfWeek === dayOfWk
+        );
+        if (shift && shift.isOff) return false;
+        const isFullLeave = upcomingLeaves.some((l) => {
+          if (l.leave_date !== dateStr || l.leave_period !== "เต็มวัน") return false;
+          const matchUser = Boolean(l.user_id && fd.userId && l.user_id === fd.userId);
+          const matchStaff = Boolean(l.staff_id && fd.staffId && l.staff_id === fd.staffId);
+          return matchUser || matchStaff;
+        });
+        if (isFullLeave) return false;
+        return true;
+      });
+      if (!isAnyWorking) {
+        return { status: "past" as const, reason: "แพทย์ไม่เข้าตรวจ/ลา" };
+      }
     }
     return { status: "available" as const };
   };

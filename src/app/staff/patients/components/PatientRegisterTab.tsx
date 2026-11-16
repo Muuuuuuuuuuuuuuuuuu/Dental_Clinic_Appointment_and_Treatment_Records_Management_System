@@ -1,4 +1,3 @@
-import React from "react";
 import { usePatientRegister } from "./PatientRegister/hooks/usePatientRegister";
 import RegisterFormStep from "./PatientRegister/components/RegisterFormStep";
 import OTP from "./PatientRegister/components/OTP";

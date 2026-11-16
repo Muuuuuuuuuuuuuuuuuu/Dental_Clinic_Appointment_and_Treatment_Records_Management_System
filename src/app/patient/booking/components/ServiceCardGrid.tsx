@@ -1,5 +1,3 @@
-import React from "react";
-import { Clock } from "lucide-react";
 
 interface ServiceCardGridProps {
   servicesData: any[];

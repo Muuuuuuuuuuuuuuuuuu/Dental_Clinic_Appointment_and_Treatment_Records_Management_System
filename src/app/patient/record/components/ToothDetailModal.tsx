@@ -1,4 +1,3 @@
-import React from "react";
 import { X } from "lucide-react";
 import { ToothStatus, getToothHistory } from "@/app/dentist/queue/odontogram/Odontogram";
 import { SupernumeraryTooth, getExtraToothLocation } from "@/app/dentist/queue/odontogram/ToothGeometry";

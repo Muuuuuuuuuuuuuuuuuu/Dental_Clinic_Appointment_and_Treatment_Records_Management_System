@@ -1,5 +1,3 @@
-import React from "react";
-import { Label } from "recharts";
 
 interface BookingSummaryCardProps {
   serviceTitle: string;

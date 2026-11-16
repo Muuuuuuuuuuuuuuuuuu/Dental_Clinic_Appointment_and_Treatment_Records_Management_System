@@ -1,4 +1,3 @@
-import React from "react";
 import { Edit3, Check, Settings2, Package, Pill } from "lucide-react";
 import StatusBadge from "@/app/shared/components/StatusBadge";
 import { Product } from "@/app/shared/data";

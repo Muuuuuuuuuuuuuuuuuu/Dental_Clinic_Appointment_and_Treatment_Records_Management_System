@@ -1,4 +1,3 @@
-import React from "react";
 import { AlertCircle, ChevronLeft, Mail, RefreshCw } from "lucide-react";
 
 interface OTPProps {

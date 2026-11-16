@@ -1,4 +1,3 @@
-import React from "react";
 import { X, Calendar } from "lucide-react";
 import { Appointment } from "@/app/shared/data";
 import { TimeSlotStatus } from "@/app/shared/supabaseApi";

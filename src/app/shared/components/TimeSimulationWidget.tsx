@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Clock, Calendar, RefreshCw, X, EyeOff } from "lucide-react";
 import { ENABLE_TIME_SIMULATION, STORAGE_KEY } from "../utils/timeSimulation";
 

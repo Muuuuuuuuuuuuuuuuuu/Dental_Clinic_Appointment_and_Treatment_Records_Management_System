@@ -1,4 +1,3 @@
-import React from "react";
 import { Timeframe } from "../useDashboardData";
 
 interface DashboardHeaderProps {

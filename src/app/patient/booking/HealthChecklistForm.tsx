@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle2, ShieldAlert, User, Activity, CheckSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { PatientUser } from '../types';
 
 export interface HealthChecklistData {

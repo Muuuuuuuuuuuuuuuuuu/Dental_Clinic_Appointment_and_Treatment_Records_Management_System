@@ -1,4 +1,3 @@
-import React from "react";
 import { ClinicSettingsManagement } from "@/app/admin/clinicManage";
 import { useScheduleData } from "./useScheduleData";
 

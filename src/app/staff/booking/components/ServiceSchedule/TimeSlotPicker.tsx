@@ -1,4 +1,3 @@
-import React from "react";
 
 interface TimeSlotPickerProps {
   timeSlots: { time: string; status: string; canBook: boolean }[];
@@ -65,7 +64,7 @@ export default function TimeSlotPicker({
           </div>
         ) : (
           timeSlots.map(({ time, status, canBook }) => {
-            const isBooked = status === "booked";
+            const isBooked = status === "booked" || status === "patient_booked";
             const isPast = status === "past";
             const isOutside = status === "outside_shift";
             const notAvailable = isBooked || isPast || isOutside || !canBook;

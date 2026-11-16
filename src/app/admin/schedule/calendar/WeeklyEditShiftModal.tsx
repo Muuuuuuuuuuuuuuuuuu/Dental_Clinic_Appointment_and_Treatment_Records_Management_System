@@ -1,4 +1,3 @@
-import React from "react";
 import { X, AlertCircle } from "lucide-react";
 import { Shift } from "@/app/shared/data";
 import { DAY_TH } from "@/app/shared/constants";

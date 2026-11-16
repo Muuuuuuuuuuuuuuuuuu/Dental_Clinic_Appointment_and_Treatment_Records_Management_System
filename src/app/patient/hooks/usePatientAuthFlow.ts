@@ -90,24 +90,6 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
     }
   };
 
-  // ─── ตรวจสอบว่าคนไข้คนนี้เคยยินยอมนโยบายแล้วหรือยัง ────────────────────
-  const hasAcceptedConsent = (
-    identifiers: (string | number | undefined | null)[],
-    sessionUser?: any
-  ) => {
-    if (sessionUser?.user_metadata?.pdpa_consent === true) return true;
-
-    for (const id of identifiers) {
-      if (!id) continue;
-      const clean = String(id).trim().toLowerCase();
-      if (localStorage.getItem(`supat_consent_${clean}`) === "accepted")
-        return true;
-      if (localStorage.getItem(`supat_consent_${id}`) === "accepted")
-        return true;
-    }
-    return false;
-  };
-
   const markConsentAccepted = async (
     identifiers: (string | number | undefined | null)[]
   ) => {

@@ -1,4 +1,3 @@
-import React from "react";
 import { Clock } from "lucide-react";
 
 interface AvailableTimeSlot {
@@ -84,10 +83,11 @@ export default function TimeSlotPicker({
                     selIndex !== -1 && idx >= selIndex && idx < selIndex + reqSlots;
 
                   const isBooked = status === "booked";
+                  const isPatientBooked = status === "patient_booked";
                   const isOutside = status === "outside_shift";
                   const isPast = status === "past";
                   const isDisabled =
-                    (!canBook && !isActive) || isBooked || isOutside || isPast;
+                    (!canBook && !isActive) || isBooked || isPatientBooked || isOutside || isPast;
 
                   const slotEndTime = (() => {
                     const [h, m] = t.split(":").map(Number);
@@ -160,6 +160,18 @@ export default function TimeSlotPicker({
                           ไม่ออกตรวจ
                         </span>
                       )}
+                      {isPatientBooked && !isActive && (
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: 9,
+                            color: "#F87171",
+                            marginTop: 2,
+                          }}
+                        >
+                          คนไข้มีนัดหมาย
+                        </span>
+                      )}
                       {isBooked && !isActive && (
                         <span
                           style={{
@@ -173,6 +185,7 @@ export default function TimeSlotPicker({
                         </span>
                       )}
                       {!isBooked &&
+                        !isPatientBooked &&
                         !isOutside &&
                         !isPast &&
                         !canBook &&

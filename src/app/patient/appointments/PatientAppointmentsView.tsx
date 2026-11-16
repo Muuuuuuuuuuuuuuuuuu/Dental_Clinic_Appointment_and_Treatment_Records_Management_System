@@ -1,4 +1,3 @@
-import React from "react";
 import { View, PatientUser } from "../types";
 import { Appointment } from "@/app/shared/data";
 import { usePatientAppointments } from "./hooks/usePatientAppointments";

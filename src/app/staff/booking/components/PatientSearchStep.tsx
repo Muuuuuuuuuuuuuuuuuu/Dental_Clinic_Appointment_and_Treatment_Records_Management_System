@@ -1,4 +1,3 @@
-import React from "react";
 import { Search, ChevronRight, CheckCircle } from "lucide-react";
 
 interface PatientSearchStepProps {

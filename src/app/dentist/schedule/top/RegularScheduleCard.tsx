@@ -1,4 +1,3 @@
-import React from "react";
 import { Clock } from "lucide-react";
 import { Shift } from "@/app/shared/data";
 import { WORK_WEEK_DAYS as DAYS } from "@/app/shared/constants";

@@ -1,4 +1,3 @@
-import React from "react";
 import { AlertTriangle, User, PhoneCall, CheckCircle, XCircle, ArrowRightLeft, Clock } from "lucide-react";
 import { Appointment, STATUS_COLORS, hasHealthAlert } from "@/app/shared/data";
 import { TabView } from "../hooks/useStaffAppointments";

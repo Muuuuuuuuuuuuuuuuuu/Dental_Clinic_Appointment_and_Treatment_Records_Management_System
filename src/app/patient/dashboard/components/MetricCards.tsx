@@ -1,4 +1,3 @@
-import React from "react";
 import { Calendar, Clock, FileText, Shield, ChevronRight } from "lucide-react";
 import { View } from "../../types";
 import { Appointment } from "@/app/shared/data";

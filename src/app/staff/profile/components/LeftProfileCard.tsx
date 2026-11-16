@@ -1,4 +1,3 @@
-import React from "react";
 import { StaffInfo } from "@/app/shared/data";
 
 interface LeftProfileCardProps {

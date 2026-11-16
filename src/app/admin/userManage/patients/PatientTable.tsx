@@ -1,4 +1,3 @@
-import React from "react";
 import StatusBadge from "@/app/shared/components/StatusBadge";
 import { PatientInfo } from "@/app/shared/data";
 

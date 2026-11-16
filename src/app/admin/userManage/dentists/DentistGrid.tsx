@@ -1,4 +1,3 @@
-import React from "react";
 import { Edit3, Award, Mail, Phone } from "lucide-react";
 import StatusBadge from "@/app/shared/components/StatusBadge";
 import { DentistInfo } from "@/app/shared/data";

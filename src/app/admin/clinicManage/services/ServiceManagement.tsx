@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ServiceInfo, SERVICE_CATEGORIES } from "@/app/shared/data";
 import {
   getServices,

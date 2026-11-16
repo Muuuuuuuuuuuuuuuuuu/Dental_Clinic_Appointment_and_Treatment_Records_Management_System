@@ -1,4 +1,3 @@
-import React from "react";
 import { AlertTriangle, Lock, X } from "lucide-react";
 
 interface ConfirmPasswordModalProps {

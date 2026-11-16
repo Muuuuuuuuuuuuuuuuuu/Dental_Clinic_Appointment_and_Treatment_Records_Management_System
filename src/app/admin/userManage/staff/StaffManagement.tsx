@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import StaffHeader from "./StaffHeader";
 import StaffTable from "./StaffTable";
 import StaffModal from "./StaffModal";

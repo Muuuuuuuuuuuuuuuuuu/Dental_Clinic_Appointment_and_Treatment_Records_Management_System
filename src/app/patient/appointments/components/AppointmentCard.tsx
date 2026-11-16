@@ -1,4 +1,3 @@
-import React from "react";
 import { Clock, RefreshCw } from "lucide-react";
 import { Appointment } from "@/app/shared/data";
 import { patientStatusColor as statusColor } from "../../types";

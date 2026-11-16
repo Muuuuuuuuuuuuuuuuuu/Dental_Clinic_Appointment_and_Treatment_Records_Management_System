@@ -1,6 +1,5 @@
-import React from "react";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
-import { fmtDate, thaiDay, thaiMonth, addDays, getNow } from "../hooks/useQueueData";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { thaiDay, thaiMonth, addDays, getNow } from "../hooks/useQueueData";
 
 interface DaySelectorProps {
   selectedDate: Date;

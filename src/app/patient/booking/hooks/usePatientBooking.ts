@@ -17,14 +17,12 @@ import {
 import { SpecialClosure, hasHealthAlert } from "@/app/shared/data";
 import { HealthChecklistData } from "../HealthChecklistForm";
 import {
-  SERVICE_DETAILS,
-  DEFAULT_SERVICE_DETAIL,
   ServiceDetail,
   getServiceDetail,
 } from "../data/serviceDetailsData";
 
 interface UsePatientBookingProps {
-  setView: (v: View) => void;
+  setView?: (v: View) => void;
   initialService?: number | null;
   initialDoctor?: number | null;
   isFollowUp?: boolean;
@@ -35,7 +33,7 @@ interface UsePatientBookingProps {
 }
 
 export function usePatientBooking({
-  setView,
+  setView: _setView,
   initialService = null,
   initialDoctor = null,
   isFollowUp = false,

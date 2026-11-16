@@ -1,4 +1,3 @@
-import React from "react";
 import CalendarHeader from "./CalendarHeader";
 import CalendarCell from "./CalendarCell";
 import { Shift, SpecialClosure, LeaveRequest } from "@/app/shared/data";

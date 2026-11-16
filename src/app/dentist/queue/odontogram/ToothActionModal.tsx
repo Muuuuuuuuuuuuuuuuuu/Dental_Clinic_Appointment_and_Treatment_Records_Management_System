@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { X, ChevronRight, AlertCircle, Sparkles, Ban, RotateCcw, Trash2, Plus } from "lucide-react";
 import { ToothStatus } from "./Odontogram";
 import { SupernumeraryTooth, createCustomSupernumerary } from "./ToothGeometry";

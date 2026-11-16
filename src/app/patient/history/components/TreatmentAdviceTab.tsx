@@ -1,4 +1,3 @@
-import React from "react";
 
 interface TreatmentAdviceTabProps {
   selected: any;
@@ -13,10 +12,10 @@ interface TreatmentAdviceTabProps {
  */
 export default function TreatmentAdviceTab({
   selected,
-  dateStr,
+  dateStr: _dateStr,
   doctorName,
-  netTotal,
-  onSwitchToReceipt,
+  netTotal: _netTotal,
+  onSwitchToReceipt: _onSwitchToReceipt,
 }: TreatmentAdviceTabProps) {
   return (
     <div className="overflow-y-auto px-4 pt-3 pb-4 sm:px-5 sm:pt-3.5 sm:pb-5 space-y-4">

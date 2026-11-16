@@ -1,4 +1,3 @@
-import React from "react";
 import { AlertTriangle, ArrowRightLeft, Clock, CalendarDays } from "lucide-react";
 import { TabView } from "../hooks/useStaffAppointments";
 
