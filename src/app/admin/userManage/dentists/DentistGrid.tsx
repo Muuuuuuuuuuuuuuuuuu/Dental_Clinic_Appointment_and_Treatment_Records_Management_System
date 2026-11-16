@@ -68,7 +68,9 @@ export default function DentistGrid({
             <div className="space-y-1.5 text-xs text-gray-500 pt-2 border-t border-gray-100 mb-3">
               <div className="flex items-center gap-2">
                 <Award size={13} className="text-gray-400 shrink-0" />
-                <span className="truncate">ว. {d.license || "-"} ({d.university || "-"})</span>
+                <span className="truncate">
+                  ว. {d.license ? (d.license.startsWith("ทป.") ? d.license : `ทป.${d.license}`) : "-"} ({d.university || "-"})
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail size={13} className="text-gray-400 shrink-0" />

@@ -39,8 +39,8 @@ export default function FirstTimePasswordPage({
       return;
     }
 
-    if (newPass === "123456789") {
-      setError("กรุณาตั้งรหัสผ่านใหม่ที่ไม่ซ้ำกับรหัสผ่านเริ่มต้น (123456789)");
+    if (newPass === "123456789" || newPass === "password123" || newPass === "admin123") {
+      setError("กรุณาตั้งรหัสผ่านใหม่ที่ไม่ซ้ำกับรหัสผ่านเริ่มต้น");
       return;
     }
 

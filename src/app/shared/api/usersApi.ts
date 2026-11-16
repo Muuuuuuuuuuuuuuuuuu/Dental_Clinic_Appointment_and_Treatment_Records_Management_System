@@ -41,54 +41,96 @@ export async function getAdmins() {
   });
 }
 
-export async function addAdmin(admin: AdminInfo) {
+export async function addAdmin(admin: AdminInfo & { userId?: string }) {
   const adminAuthClient = createClient(
     import.meta.env.VITE_SUPABASE_URL || '',
-    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+    { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
-    email: admin.email,
-    password: admin.password || 'admin123',
-    email_confirm: true
-  });
+  const defaultPassword = admin.password || 'admin123';
+  let realUserId = admin.userId || '';
 
-  if (authErr) {
-    console.error("Auth creation failed:", authErr);
-    throw new Error("ไม่สามารถสร้างบัญชีผู้ใช้ได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+  if (!realUserId) {
+    const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+      email: admin.email.trim(),
+      password: defaultPassword,
+      email_confirm: true,
+      user_metadata: { must_change_password: true, password_changed: false }
+    });
+
+    if (authData?.user?.id) {
+      realUserId = authData.user.id;
+    } else {
+      try {
+        const { data: linkData } = await adminAuthClient.auth.admin.generateLink({
+          type: 'magiclink',
+          email: admin.email.trim()
+        });
+        const foundId = (linkData as any)?.user?.id || (linkData as any)?.id;
+        if (foundId) {
+          realUserId = foundId;
+        }
+      } catch (e) {
+        console.warn("generateLink fallback warning:", e);
+      }
+      if (!realUserId && authErr) {
+        console.error("Auth creation failed:", authErr);
+        throw new Error("ไม่สามารถสร้างบัญชีผู้ใช้ได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+      }
+    }
   }
 
-  const realUserId = authData.user.id;
-  const citizenIdToUse = admin.citizenId?.trim();
+  try {
+    if (realUserId) {
+      await adminAuthClient.auth.admin.updateUserById(realUserId, {
+        email_confirm: true,
+        password: defaultPassword,
+        user_metadata: { must_change_password: true, password_changed: false }
+      });
+    }
+  } catch (e) {
+    // ข้ามข้อผิดพลาดกรณีไม่มี Service Role Key
+  }
+
+  try {
+    const cleanEmail = admin.email.trim().toLowerCase();
+    localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
+    localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
+  } catch (e) {}
+
+  const citizenIdToUse = admin.citizenId?.replace(/\D/g, '').trim();
   if (!citizenIdToUse || citizenIdToUse.length !== 13) {
-      throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
+    throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
   }
 
-  await supabase.from('profile').insert({
+  const { error: pErr } = await supabase.from('profile').upsert({
     citizen_id: citizenIdToUse,
-    first_name: admin.firstName || '',
-    last_name: admin.lastName || '',
-    phone_number: admin.phone || null,
+    first_name: admin.firstName?.trim() || '',
+    last_name: admin.lastName?.trim() || '',
+    phone_number: admin.phone?.trim() || null,
     gender: (admin.gender === 'ชาย' || admin.gender === 'หญิง') ? admin.gender : null,
     birth_date: admin.birthDate || null,
-    current_address: admin.address || null
+    current_address: admin.address?.trim() || null
   });
+  if (pErr) throw pErr;
   
-  await supabase.from('users').insert({
+  const { error: uErr } = await supabase.from('users').upsert({
     user_id: realUserId,
     citizen_id: citizenIdToUse,
-    email: admin.email,
+    email: admin.email.trim(),
     role: 'admin',
     account_status: admin.active ? 'active' : 'inactive'
-  });
+  }, { onConflict: 'user_id' });
+  if (uErr) throw uErr;
 
-  await supabase.from('staff').insert({
+  const { error: sErr } = await supabase.from('staff').insert({
     user_id: realUserId,
     position: admin.role || 'ผู้ดูแลระบบ',
     employment_status: admin.employmentStatus || (admin.active ? 'ปฏิบัติงานปกติ' : 'พักงาน'),
     hire_date: admin.startDate || new Date().toISOString().split('T')[0],
-    salary: admin.salary ? parseFloat(admin.salary) : null
   });
+  if (sErr) throw sErr;
 
   return {
     ...admin,
@@ -103,7 +145,6 @@ export async function updateAdmin(id: string, updates: Partial<AdminInfo>) {
   }
   
   const staffUpdates: any = {};
-  if (updates.salary !== undefined) staffUpdates.salary = updates.salary ? parseFloat(updates.salary) : null;
   if (updates.role !== undefined) staffUpdates.position = updates.role;
   if (updates.employmentStatus !== undefined) staffUpdates.employment_status = updates.employmentStatus;
   if (updates.startDate !== undefined) staffUpdates.hire_date = updates.startDate;
@@ -171,50 +212,97 @@ export async function getStaff() {
 export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo> {
   const adminAuthClient = createClient(
     import.meta.env.VITE_SUPABASE_URL || '',
-    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+    { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
-    email: staff.email,
-    password: staff.password || 'password123',
-    email_confirm: true
-  });
+  const defaultPassword = staff.password || 'password123';
+  let realUserId = staff.userId || '';
 
-  if (authErr) {
-    console.error("Auth creation failed:", authErr);
-    throw new Error("ไม่สามารถสร้างบัญชีผู้ใช้พนักงานได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+  if (!realUserId) {
+    const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+      email: staff.email.trim(),
+      password: defaultPassword,
+      email_confirm: true,
+      user_metadata: { must_change_password: true, password_changed: false }
+    });
+
+    if (authData?.user?.id) {
+      realUserId = authData.user.id;
+    } else {
+      try {
+        const { data: linkData } = await adminAuthClient.auth.admin.generateLink({
+          type: 'magiclink',
+          email: staff.email.trim()
+        });
+        const foundId = (linkData as any)?.user?.id || (linkData as any)?.id;
+        if (foundId) {
+          realUserId = foundId;
+        }
+      } catch (e) {
+        console.warn("generateLink fallback warning:", e);
+      }
+      if (!realUserId && authErr) {
+        console.error("Auth creation failed:", authErr);
+        throw new Error("ไม่สามารถสร้างบัญชีผู้ใช้พนักงานได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+      }
+    }
   }
 
-  const realUserId = authData.user.id;
-  const citizenIdToUse = staff.citizenId?.trim();
+  try {
+    if (realUserId) {
+      await adminAuthClient.auth.admin.updateUserById(realUserId, {
+        email_confirm: true,
+        password: defaultPassword,
+        user_metadata: { must_change_password: true, password_changed: false }
+      });
+    }
+  } catch (e) {
+    // ข้ามข้อผิดพลาดกรณีไม่มี Service Role Key
+  }
+
+  try {
+    const cleanEmail = staff.email.trim().toLowerCase();
+    localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
+    localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
+  } catch (e) {}
+
+  const citizenIdToUse = staff.citizenId?.replace(/\D/g, '').trim();
   if (!citizenIdToUse || citizenIdToUse.length !== 13) {
-      throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
+    throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
   }
   
-  await supabase.from('profile').insert({
+  const { error: pErr } = await supabase.from('profile').upsert({
     citizen_id: citizenIdToUse,
-    first_name: staff.firstName || '',
-    last_name: staff.lastName || '',
-    phone_number: staff.phone || null,
+    first_name: staff.firstName?.trim() || '',
+    last_name: staff.lastName?.trim() || '',
+    phone_number: staff.phone?.trim() || null,
     gender: (staff.gender === 'ชาย' || staff.gender === 'หญิง') ? staff.gender : null,
     birth_date: staff.birthDate || null,
-    current_address: staff.address || null
+    current_address: staff.address?.trim() || null
   });
+  if (pErr) {
+    console.error("Profile upsert error:", pErr);
+    throw pErr;
+  }
 
-  await supabase.from('users').insert({
+  const { error: uErr } = await supabase.from('users').upsert({
     user_id: realUserId,
     citizen_id: citizenIdToUse,
-    email: staff.email,
+    email: staff.email.trim(),
     role: 'พนักงาน',
     account_status: staff.active ? 'active' : 'inactive'
-  });
+  }, { onConflict: 'user_id' });
+  if (uErr) {
+    console.error("Users upsert error:", uErr);
+    throw uErr;
+  }
 
   const { data, error } = await supabase.from('staff').insert({
     user_id: realUserId,
-    position: staff.role,
+    position: staff.role || 'พนักงานต้อนรับ',
     employment_status: staff.employmentStatus || (staff.active ? 'ปฏิบัติงานปกติ' : 'พักงาน'),
-    hire_date: staff.startDate,
-    salary: staff.salary ? parseFloat(staff.salary) : null
+    hire_date: staff.startDate || new Date().toISOString().split('T')[0],
   }).select().single();
 
   if (error) throw error;
@@ -230,7 +318,6 @@ export async function updateStaff(id: number, updates: Partial<StaffInfo>): Prom
   if (updates.role !== undefined) staffUpdates.position = updates.role;
   if (updates.employmentStatus !== undefined) staffUpdates.employment_status = updates.employmentStatus;
   if (updates.startDate !== undefined) staffUpdates.hire_date = updates.startDate;
-  if (updates.salary !== undefined) staffUpdates.salary = updates.salary ? parseFloat(updates.salary) : null;
 
   if (Object.keys(staffUpdates).length > 0) {
     const { error } = await supabase.from('staff').update(staffUpdates).eq('staff_id', id);

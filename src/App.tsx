@@ -4,11 +4,31 @@ import { Appointment } from "@/app/shared/data";
 import { supabase } from "@/app/shared/api/supabaseClient";
 import { useRealtimeAppointments } from "@/app/shared/hooks/useRealtimeAppointments";
 
+// ─── หน้าตั้งรหัสผ่านใหม่สำหรับเข้าใช้งานครั้งแรก ──────────────────────────────────
+import FirstTimePasswordPage from "@/app/auth/FirstTimePasswordPage";
+
 // ─── พอร์ทัลหลักของแต่ละบทบาทผู้ใช้งาน ──────────────────────────────────────────
 import DoctorPortal from "@/app/dentist/DentistPortal";
 import AdminPortal from "@/app/admin/AdminPortal";
 import StaffPortal from "@/app/staff/StaffPortal";
 import PatientPortal from "@/app/patient/PatientPortal";
+
+function checkMustChangePassword(email?: string, sessionUser?: any): boolean {
+  const cleanEmail = (email || sessionUser?.email || "").trim().toLowerCase();
+  if (cleanEmail && localStorage.getItem(`supat_pwd_changed_${cleanEmail}`) === "true") {
+    return false;
+  }
+  if (cleanEmail && localStorage.getItem(`supat_must_change_pwd_${cleanEmail}`) === "true") {
+    return true;
+  }
+  if (
+    sessionUser?.user_metadata?.must_change_password === true &&
+    sessionUser?.user_metadata?.password_changed !== true
+  ) {
+    return true;
+  }
+  return false;
+}
 
 /**
  * 🌐 [ROOT APPLICATION ROUTER]
@@ -20,6 +40,7 @@ import PatientPortal from "@/app/patient/PatientPortal";
 export default function App() {
   const [role, setRole] = useState<UserRole>(null);
   const [loginEmail, setLoginEmail] = useState("");
+  const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
   const { appointments: sharedAppointments, setAppointments: setSharedAppointments } = useRealtimeAppointments();
@@ -34,9 +55,28 @@ export default function App() {
         : [...prev, a]
     );
 
-  const handleRoleChange = (newRole: UserRole, email?: string) => {
+  const handleRoleChange = async (newRole: UserRole, email?: string) => {
     setRole(newRole);
     if (email) setLoginEmail(email);
+
+    if (newRole === "staff" || newRole === "doctor" || newRole === "admin") {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const mustChange = checkMustChangePassword(email, data?.user);
+        setNeedsPasswordChange(mustChange);
+      } catch {
+        setNeedsPasswordChange(checkMustChangePassword(email));
+      }
+    }
+  };
+
+  const handleFirstTimePasswordChanged = () => {
+    const cleanEmail = loginEmail.trim().toLowerCase();
+    if (cleanEmail) {
+      localStorage.removeItem(`supat_must_change_pwd_${cleanEmail}`);
+      localStorage.setItem(`supat_pwd_changed_${cleanEmail}`, "true");
+    }
+    setNeedsPasswordChange(false);
   };
 
   const handleLogout = async () => {
@@ -49,7 +89,10 @@ export default function App() {
           key &&
           (key.startsWith("sb-") ||
             key.includes("supabase.auth.token") ||
-            key.startsWith("supat_"))
+            (key.startsWith("supat_") &&
+              !key.startsWith("supat_must_change_pwd_") &&
+              !key.startsWith("supat_pwd_changed_") &&
+              !key.startsWith("supat_consent_")))
         ) {
           localStorage.removeItem(key);
         }
@@ -61,6 +104,7 @@ export default function App() {
     // 2. ปรับ State บทบาทใน React ทันทีโดยไม่ต้องรอเครือข่าย หน้าจอจะเด้งกลับหน้าหลักในคลิกเดียวทันที
     setRole(null);
     setLoginEmail("");
+    setNeedsPasswordChange(false);
 
     // 3. ส่งคำขอยกเลิกเซสชันไปยัง Supabase API ในเบื้องหลัง
     try {
@@ -89,6 +133,10 @@ export default function App() {
 
           setRole(mappedRole);
           setLoginEmail(session.user.email || "");
+
+          if (mappedRole === "staff" || mappedRole === "doctor" || mappedRole === "admin") {
+            setNeedsPasswordChange(checkMustChangePassword(session.user.email, session.user));
+          }
         }
       } catch (err) {
         console.error("App Root Session restore error:", err);
@@ -105,6 +153,17 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 font-sans">
         กำลังโหลดข้อมูล...
       </div>
+    );
+  }
+
+  // บังคับตั้งรหัสผ่านใหม่ในการเข้าใช้งานครั้งแรกสำหรับพนักงาน ทันตแพทย์ และแอดมินที่เพิ่งสร้างใหม่
+  if (needsPasswordChange && (role === "staff" || role === "doctor" || role === "admin")) {
+    return (
+      <FirstTimePasswordPage
+        userEmail={loginEmail}
+        onSuccess={handleFirstTimePasswordChanged}
+        onBack={handleLogout}
+      />
     );
   }
 
@@ -153,4 +212,3 @@ export default function App() {
     />
   );
 }
-
