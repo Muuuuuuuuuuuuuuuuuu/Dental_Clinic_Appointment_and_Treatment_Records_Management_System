@@ -108,6 +108,15 @@ export default function LoginPage({
         else if (role === "dentist" || role === "doctor" || role === "ทันตแพทย์") mappedRole = "doctor";
         else if (role === "staff" || role === "พนักงาน") mappedRole = "staff";
 
+        const cleanEmail = email.trim().toLowerCase();
+        if (
+          authData.user.user_metadata?.must_change_password === true &&
+          authData.user.user_metadata?.password_changed !== true
+        ) {
+          localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
+          localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
+        }
+
         onLoginRole(mappedRole, email);
       }
     } catch (err: any) {

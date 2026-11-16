@@ -362,7 +362,10 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
           key &&
           (key.startsWith("sb-") ||
             key.includes("supabase.auth.token") ||
-            key.startsWith("supat_"))
+            (key.startsWith("supat_") &&
+              !key.startsWith("supat_must_change_pwd_") &&
+              !key.startsWith("supat_pwd_changed_") &&
+              !key.startsWith("supat_consent_")))
         ) {
           localStorage.removeItem(key);
         }

@@ -64,7 +64,7 @@ export default function DentistManagement({ onBack }: DentistManagementProps) {
             lastName: d.lastName || "",
             citizenId: d.citizenId || "",
             specialty: d.specialty,
-            license: d.license,
+            license: (d.license || "").replace(/\D/g, "").slice(0, 5),
             university: d.university || "",
             email: d.email,
             password: "",
@@ -102,11 +102,14 @@ export default function DentistManagement({ onBack }: DentistManagementProps) {
     setShowModal(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (verifiedUserId?: string) => {
     if (!form.firstName || !form.specialty || !form.license || !form.email) {
       alert("กรุณากรอกข้อมูลสำคัญให้ครบถ้วน");
       return;
     }
+    const cleanDigits = form.license.replace(/\D/g, "").slice(0, 5);
+    const formattedLicense = cleanDigits ? `ทป.${cleanDigits}` : form.license;
+
     try {
       if (editing) {
         await updateDentist(editing.id, {
@@ -114,38 +117,39 @@ export default function DentistManagement({ onBack }: DentistManagementProps) {
           firstName: form.firstName,
           lastName: form.lastName,
           specialty: form.specialty,
-          license: form.license,
+          license: formattedLicense,
           university: form.university,
           phone: form.phone,
           address: form.address,
           gender: form.gender,
-          birthDate: form.birthDate || null,
+          birthDate: form.birthDate || undefined,
           experienceYears: form.experienceYears,
           graduationYear: form.graduationYear,
           imageUrl: form.imageUrl,
-          startDate: form.startDate || null,
+          startDate: form.startDate || undefined,
           serviceIds: form.serviceIds,
         });
       } else {
         await addDentist({
+          userId: verifiedUserId,
           name: `${form.titleName} ${form.firstName} ${form.lastName}`,
           titleName: form.titleName,
           firstName: form.firstName,
           lastName: form.lastName,
           citizenId: form.citizenId,
           specialty: form.specialty,
-          license: form.license,
+          license: formattedLicense,
           university: form.university,
           email: form.email,
           password: form.password || "password123",
           phone: form.phone,
           address: form.address,
           gender: form.gender,
-          birthDate: form.birthDate || null,
+          birthDate: form.birthDate || undefined,
           experienceYears: form.experienceYears,
           graduationYear: form.graduationYear,
           imageUrl: form.imageUrl,
-          startDate: form.startDate || null,
+          startDate: form.startDate || undefined,
           active: true,
           serviceIds: form.serviceIds,
         });
@@ -153,6 +157,9 @@ export default function DentistManagement({ onBack }: DentistManagementProps) {
       setShowModal(false);
       await fetchData();
     } catch (err: any) {
+      if (verifiedUserId) {
+        throw err;
+      }
       alert("เกิดข้อผิดพลาด: " + (err.message || err));
     }
   };

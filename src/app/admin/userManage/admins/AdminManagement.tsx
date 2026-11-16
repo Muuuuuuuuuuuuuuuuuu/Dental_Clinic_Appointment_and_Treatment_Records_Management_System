@@ -82,7 +82,7 @@ export default function AdminManagement({ onBack }: AdminManagementProps) {
     setShowModal(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (verifiedUserId?: string) => {
     if (!form.firstName || !form.email) {
       alert("กรุณากรอกชื่อและอีเมล");
       return;
@@ -94,15 +94,16 @@ export default function AdminManagement({ onBack }: AdminManagementProps) {
           lastName: form.lastName,
           phone: form.phone,
           gender: form.gender,
-          birthDate: form.birthDate || null,
+          birthDate: form.birthDate || undefined,
           address: form.address,
           role: form.role,
-          startDate: form.startDate || null,
+          startDate: form.startDate || undefined,
           employmentStatus: form.employmentStatus,
         });
       } else {
         await addAdmin({
           id: "",
+          userId: verifiedUserId,
           name: `${form.firstName} ${form.lastName}`,
           firstName: form.firstName,
           lastName: form.lastName,
@@ -111,10 +112,10 @@ export default function AdminManagement({ onBack }: AdminManagementProps) {
           phone: form.phone,
           password: form.password || "admin123",
           gender: form.gender,
-          birthDate: form.birthDate || null,
+          birthDate: form.birthDate || undefined,
           address: form.address,
           role: form.role,
-          startDate: form.startDate || null,
+          startDate: form.startDate || new Date().toISOString().split("T")[0],
           employmentStatus: form.employmentStatus,
           active: true,
         });
@@ -122,6 +123,9 @@ export default function AdminManagement({ onBack }: AdminManagementProps) {
       setShowModal(false);
       await fetchAdmins();
     } catch (err: any) {
+      if (verifiedUserId) {
+        throw err;
+      }
       alert("เกิดข้อผิดพลาด: " + (err.message || err));
     }
   };

@@ -125,6 +125,16 @@ export async function uploadAvatar(file: File): Promise<string> {
  * @returns {Promise<DentistInfo>} ข้อมูลทันตแพทย์ที่สร้างเสร็จ
  */
 export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<DentistInfo> {
+<<<<<<< HEAD
+  const adminAuthClient = createClient(
+    import.meta.env.VITE_SUPABASE_URL || '',
+    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  const defaultPassword = dentist.password || 'password123';
+  let realUserId = dentist.userId || '';
+=======
   const adminAuthClient = supabaseAdmin;
 
   const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
@@ -133,45 +143,99 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
     email_confirm: true,
     user_metadata: { must_change_password: true }
   });
+>>>>>>> 3fdd2a31c4f37985ba1e2f192187e63077b2e1e9
 
-  if (authErr) {
-    console.error("Auth creation failed:", authErr);
-    throw new Error("ไม่สามารถสร้างบัญชีผู้ใช้ได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+  if (!realUserId) {
+    const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+      email: dentist.email.trim(),
+      password: defaultPassword,
+      email_confirm: true,
+      user_metadata: { must_change_password: true, password_changed: false }
+    });
+
+    if (authData?.user?.id) {
+      realUserId = authData.user.id;
+    } else {
+      try {
+        const { data: linkData } = await adminAuthClient.auth.admin.generateLink({
+          type: 'magiclink',
+          email: dentist.email.trim()
+        });
+        const foundId = (linkData as any)?.user?.id || (linkData as any)?.id;
+        if (foundId) {
+          realUserId = foundId;
+        }
+      } catch (e) {
+        console.warn("generateLink fallback warning:", e);
+      }
+      if (!realUserId && authErr) {
+        console.error("Auth creation failed:", authErr);
+        throw new Error("ไม่สามารถสร้างบัญชีผู้ใช้ได้ (อีเมลอาจซ้ำ หรือไม่มีสิทธิ์ Admin)");
+      }
+    }
   }
 
-  const realUserId = authData.user.id;
-  const citizenIdToUse = dentist.citizenId?.trim();
+  try {
+    if (realUserId) {
+      await adminAuthClient.auth.admin.updateUserById(realUserId, {
+        email_confirm: true,
+        password: defaultPassword,
+        user_metadata: { must_change_password: true, password_changed: false }
+      });
+    }
+  } catch (e) {
+    // ข้ามข้อผิดพลาดกรณีไม่มี Service Role Key
+  }
+
+  try {
+    const cleanEmail = dentist.email.trim().toLowerCase();
+    localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
+    localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
+  } catch (e) {}
+
+  const citizenIdToUse = dentist.citizenId?.replace(/\D/g, '').trim();
   if (!citizenIdToUse || citizenIdToUse.length !== 13) {
-      throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
+    throw new Error("ต้องระบุเลขบัตรประชาชน 13 หลักให้ถูกต้อง");
   }
 
-  await supabase.from('profile').insert({
+  const { error: pErr } = await supabase.from('profile').upsert({
     citizen_id: citizenIdToUse,
-    first_name: dentist.firstName || '',
-    last_name: dentist.lastName || '',
-    phone_number: dentist.phone || null,
+    first_name: dentist.firstName?.trim() || '',
+    last_name: dentist.lastName?.trim() || '',
+    phone_number: dentist.phone?.trim() || null,
     gender: (dentist.gender === 'ชาย' || dentist.gender === 'หญิง') ? dentist.gender : null,
     birth_date: dentist.birthDate || null,
-    current_address: dentist.address || null
+    current_address: dentist.address?.trim() || null
   });
+  if (pErr) {
+    console.error("Profile upsert error:", pErr);
+    throw pErr;
+  }
 
-  await supabase.from('users').insert({
+  const { error: uErr } = await supabase.from('users').upsert({
     user_id: realUserId,
     citizen_id: citizenIdToUse,
-    email: dentist.email,
+    email: dentist.email.trim(),
     role: 'ทันตแพทย์',
     account_status: dentist.active ? 'active' : 'inactive'
-  });
+  }, { onConflict: 'user_id' });
+  if (uErr) {
+    console.error("Users upsert error:", uErr);
+    throw uErr;
+  }
 
   // สร้าง staff record ให้ทันตแพทย์ (position = 'ทันตแพทย์')
   let staffId: number | undefined;
-  const { data: staffData } = await supabase.from('staff').insert({
+  const { data: staffData, error: sErr } = await supabase.from('staff').insert({
     user_id: realUserId,
     position: 'ทันตแพทย์',
     employment_status: dentist.active ? 'ปฏิบัติงานปกติ' : 'พักงาน',
     hire_date: dentist.startDate || new Date().toISOString().split('T')[0]
   }).select('staff_id').maybeSingle();
 
+  if (sErr) {
+    console.error("Staff insert error for dentist:", sErr);
+  }
   if (staffData) {
     staffId = staffData.staff_id;
   }
