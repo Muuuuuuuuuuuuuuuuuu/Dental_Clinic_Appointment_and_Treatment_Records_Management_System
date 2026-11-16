@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import AdminHeader from "./AdminHeader";
 import AdminTable from "./AdminTable";
 import AdminModal from "./AdminModal";

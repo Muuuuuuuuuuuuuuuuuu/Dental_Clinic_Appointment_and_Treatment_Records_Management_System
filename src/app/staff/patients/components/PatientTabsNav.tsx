@@ -1,4 +1,3 @@
-import React from "react";
 import { Search, UserPlus } from "lucide-react";
 
 export type PatientTab = "search" | "register";

@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { getDailyHours } from '../supabaseApi';
-import { supabase } from './supabaseClient';
+import { supabase, supabaseAdmin } from './supabaseClient';
 import { Appointment, ACTIVE_APPOINTMENT_STATUSES } from "@/app/shared/data";
 
 /**
@@ -345,10 +344,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
 
         if (reg.email && reg.password) {
           // กรณีที่ 1: สร้างบัญชีผู้ใช้งานจริงในระบบ Auth
-          const adminAuthClient = createClient(
-            import.meta.env.VITE_SUPABASE_URL || '',
-            import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-          );
+          const adminAuthClient = supabaseAdmin;
           const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
             email: reg.email,
             password: reg.password,
@@ -670,7 +666,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
     if (detailErr) console.error("Error inserting appointment detail:", detailErr);
   }
 
-  // 6. บันทึกหรืออัปเดตระเบียนการรักษาเพื่อระบุทันตแพทย์ผู้รับผิดชอบ
+  // 6. อัปเดตระเบียนการรักษา (ถ้ามีระเบียนอยู่แล้วจากการรักษาจริง ให้ซิงค์แพทย์และวันที่ - ไม่สร้างแถวว่างล่วงหน้า)
   if (finalDoctorId) {
     const { data: existingTr } = await supabase.from('treatment_record').select('treatment_id').eq('appointment_id', newAppt.appointment_id).maybeSingle();
     if (existingTr) {
@@ -679,28 +675,28 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
         treatment_date: appointment.date
       }).eq('treatment_id', existingTr.treatment_id);
       if (trErr) console.error("Error updating treatment record:", trErr);
-    } else {
-      const { error: trErr } = await supabase.from('treatment_record').insert({
-        appointment_id: newAppt.appointment_id,
-        attending_dentist_id: finalDoctorId,
-        treatment_date: appointment.date,
-        doctor_note: ''
-      });
-      if (trErr) console.error("Error inserting treatment record:", trErr);
     }
   }
 
   notifyAppointmentsUpdated();
   return { ...newAppt, assignedDoctorId: finalDoctorId };
 }
-export async function updateAppointmentStatus(id: number, status: string, reason?: string) {
+export async function updateAppointmentStatus(id: number, status: string, _reason?: string) {
   const { data, error } = await supabase.from('appointment').update({ appointment_status: status }).eq('appointment_id', id).select().single();
   if (error) {
     console.error("Failed to update appointment status:", error);
     throw error;
   }
 
-
+  // หากยกเลิกนัดหรือคนไข้ไม่มาตามนัด และมีร่าง treatment_record ที่ว่างเปล่าตกค้าง (ไม่มี Note และไม่มีผังฟัน) ให้ล้างทำความสะอาด
+  if (status === "ยกเลิก" || status === "ไม่มาตามนัด") {
+    await supabase
+      .from('treatment_record')
+      .delete()
+      .eq('appointment_id', id)
+      .eq('doctor_note', '')
+      .is('odontogram_data', null);
+  }
 
   notifyAppointmentsUpdated();
   return { id: data.appointment_id, status: data.appointment_status } as any;
@@ -921,7 +917,7 @@ export async function getAvailableTimeSlots(date: string, serviceId?: number, do
 
 export interface TimeSlotStatus {
   time: string;
-  status: 'available' | 'booked' | 'past' | 'outside_shift';
+  status: 'available' | 'booked' | 'patient_booked' | 'past' | 'outside_shift';
 }
 
 export async function getClinicTimeSlots(date: string, serviceId?: number, doctorId?: number, patientId?: number): Promise<TimeSlotStatus[]> {
@@ -1028,7 +1024,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
     }
 
     if (patientOverlap) {
-      results.push({ time: timeStr, status: 'booked' });
+      results.push({ time: timeStr, status: 'patient_booked' });
       continue;
     }
 

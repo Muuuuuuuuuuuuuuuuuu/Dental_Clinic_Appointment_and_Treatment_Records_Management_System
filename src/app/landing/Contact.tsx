@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { MapPin, Phone } from "lucide-react";
 import { getDailyHours, getWeeklyOffDays, DayHours } from "@/app/shared/supabaseApi";
 

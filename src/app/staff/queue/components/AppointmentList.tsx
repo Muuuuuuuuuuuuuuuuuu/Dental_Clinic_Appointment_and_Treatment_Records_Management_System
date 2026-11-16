@@ -1,4 +1,3 @@
-import React from "react";
 import { CalendarDays, AlertTriangle } from "lucide-react";
 import { Appointment, STATUS_COLORS, hasHealthAlert } from "@/app/shared/data";
 

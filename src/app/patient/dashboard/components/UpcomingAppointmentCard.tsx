@@ -1,4 +1,3 @@
-import React from "react";
 import { Calendar } from "lucide-react";
 import { Appointment } from "@/app/shared/data";
 import { View, patientStatusColor as statusColor } from "../../types";

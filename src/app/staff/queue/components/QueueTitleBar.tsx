@@ -1,4 +1,3 @@
-import React from "react";
 
 /**
  * [HEADER COMPONENT] หัวข้อหน้าคิวงานและคำอธิบาย

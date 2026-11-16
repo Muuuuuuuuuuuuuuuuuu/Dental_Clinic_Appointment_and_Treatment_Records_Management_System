@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { PatientUser } from "../types";
 import { usePatientProfile } from "./hooks/usePatientProfile";
 import { ChangePasswordModal, ChangeEmailModal } from "@/app/shared/components";

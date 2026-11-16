@@ -1,5 +1,4 @@
-import React from "react";
-import { X, Stethoscope, Receipt } from "lucide-react";
+import { X } from "lucide-react";
 import TreatmentAdviceTab from "./TreatmentAdviceTab";
 import ReceiptSlipTab from "./ReceiptSlipTab";
 import { thDate } from "../hooks/usePatientHistory";

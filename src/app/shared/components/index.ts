@@ -1,5 +1,5 @@
 export * from "./StatusBadge";
 export * from "./TimeSimulationWidget";
-export { default as ChangePasswordModal } from "./ChangePasswordModal";
-export { default as ChangeEmailModal } from "./ChangeEmailModal";
 
+// Re-export from auth domain for backwards compatibility
+export { ChangePasswordModal, ChangeEmailModal } from "@/app/auth/components";

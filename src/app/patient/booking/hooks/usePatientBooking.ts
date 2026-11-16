@@ -17,14 +17,12 @@ import {
 import { SpecialClosure, hasHealthAlert } from "@/app/shared/data";
 import { HealthChecklistData } from "../HealthChecklistForm";
 import {
-  SERVICE_DETAILS,
-  DEFAULT_SERVICE_DETAIL,
   ServiceDetail,
   getServiceDetail,
 } from "../data/serviceDetailsData";
 
 interface UsePatientBookingProps {
-  setView: (v: View) => void;
+  setView?: (v: View) => void;
   initialService?: number | null;
   initialDoctor?: number | null;
   isFollowUp?: boolean;
@@ -35,7 +33,7 @@ interface UsePatientBookingProps {
 }
 
 export function usePatientBooking({
-  setView,
+  setView: _setView,
   initialService = null,
   initialDoctor = null,
   isFollowUp = false,
@@ -252,12 +250,12 @@ export function usePatientBooking({
             (s) => s.dentistId === fd.id && s.dayOfWeek === dayOfWk
           );
           if (shift && shift.isOff) return false;
-          const isFullLeave = upcomingLeaves.some(
-            (l) =>
-              l.user_id === fd.userId &&
-              l.leave_date === dateStr &&
-              l.leave_period === "เต็มวัน"
-          );
+          const isFullLeave = upcomingLeaves.some((l) => {
+            if (l.leave_date !== dateStr || l.leave_period !== "เต็มวัน") return false;
+            const matchUser = Boolean(l.user_id && fd.userId && l.user_id === fd.userId);
+            const matchStaff = Boolean(l.staff_id && fd.staffId && l.staff_id === fd.staffId);
+            return matchUser || matchStaff;
+          });
           if (isFullLeave) return false;
           return true;
         });
@@ -269,12 +267,12 @@ export function usePatientBooking({
           filteredDoctors.find((fd) => fd.id === selDoctor) ||
           landingDoctors.find((d) => d.id === selDoctor);
         const isFullLeave = selDocData
-          ? upcomingLeaves.some(
-            (l) =>
-              l.user_id === selDocData.userId &&
-              l.leave_date === dateStr &&
-              l.leave_period === "เต็มวัน"
-          )
+          ? upcomingLeaves.some((l) => {
+            if (l.leave_date !== dateStr || l.leave_period !== "เต็มวัน") return false;
+            const matchUser = Boolean(l.user_id && selDocData.userId && l.user_id === selDocData.userId);
+            const matchStaff = Boolean(l.staff_id && selDocData.staffId && l.staff_id === selDocData.staffId);
+            return matchUser || matchStaff;
+          })
           : false;
 
         if (shift && shift.isOff) {

@@ -1,4 +1,3 @@
-import React from "react";
 import { Smile, X, Banknote, Smartphone, CreditCard } from "lucide-react";
 
 interface ReceiptModalProps {

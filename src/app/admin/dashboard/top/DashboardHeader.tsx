@@ -1,8 +1,6 @@
-import React from "react";
 import { Timeframe } from "../useDashboardData";
 
 interface DashboardHeaderProps {
-  selectedDate: Date;
   targetDateStr: string;
   onDateChange: (date: Date) => void;
   timeframe: Timeframe;
@@ -20,7 +18,7 @@ export default function DashboardHeader({
   onTimeframeChange,
 }: DashboardHeaderProps) {
   return (
-    <header className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+    <header className="flex flex-col md:flex-row  justify-between gap-2 ">
       <div>
         <h1
           className="text-2xl font-bold"
@@ -31,16 +29,16 @@ export default function DashboardHeader({
       </div>
 
       {/* ตัวเลือกวันที่ และปุ่มสลับช่วงเวลา วัน/สัปดาห์/เดือน */}
-      <div className="flex items-center gap-2">
+      <div className="flex  gap-2">
         <input
           type="date"
           value={targetDateStr}
           onChange={(e) => {
             if (e.target.value) onDateChange(new Date(e.target.value));
           }}
-          className="px-2 py-1 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 outline-none focus:border-[#1A365D]"
+          className="px-2 py-1  text-xs font-medium border border-slate-200 rounded-lg outline-none focus:bg-white"
         />
-        <div className="flex items-center bg-white rounded-lg p-0.5 shadow-xs border border-slate-100">
+        <div className="flex  items-center bg-white rounded-lg p-0.5 shadow-xs border border-slate-100">
           {[
             { id: "today", label: "วัน" },
             { id: "week", label: "สัปดาห์" },
@@ -50,13 +48,12 @@ export default function DashboardHeader({
               key={t.id}
               type="button"
               onClick={() => onTimeframeChange(t.id as Timeframe)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
-                timeframe === t.id
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${timeframe === t.id
                   ? "bg-[#1A365D] text-white"
                   : "text-slate-500 hover:text-slate-800"
-              }`}
+                }`}
             >
-              {t.label}
+              {t.label} 
             </button>
           ))}
         </div>

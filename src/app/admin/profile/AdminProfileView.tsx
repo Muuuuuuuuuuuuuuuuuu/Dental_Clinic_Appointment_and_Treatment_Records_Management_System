@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { AdminInfo } from "@/app/shared/data";
-import { ChangePasswordModal, ChangeEmailModal } from "@/app/shared/components";
+import { ChangePasswordModal, ChangeEmailModal } from "@/app/auth/components";
 
 interface AdminProfileProps {
   user: AdminInfo | null;

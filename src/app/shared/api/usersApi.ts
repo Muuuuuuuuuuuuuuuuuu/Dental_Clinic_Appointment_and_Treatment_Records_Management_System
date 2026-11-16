@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-import { supabase } from './supabaseClient';
+import { supabase, supabaseAdmin } from './supabaseClient';
 import { AdminInfo, StaffInfo, PatientInfo } from '../data';
 import { notifyAppointmentsUpdated } from './appointmentApi';
 
@@ -41,6 +40,7 @@ export async function getAdmins() {
   });
 }
 
+<<<<<<< HEAD
 export async function addAdmin(admin: AdminInfo & { userId?: string }) {
   const adminAuthClient = createClient(
     import.meta.env.VITE_SUPABASE_URL || '',
@@ -50,6 +50,17 @@ export async function addAdmin(admin: AdminInfo & { userId?: string }) {
 
   const defaultPassword = admin.password || 'admin123';
   let realUserId = admin.userId || '';
+=======
+export async function addAdmin(admin: AdminInfo) {
+  const adminAuthClient = supabaseAdmin;
+
+  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+    email: admin.email,
+    password: admin.password || 'admin123',
+    email_confirm: true,
+    user_metadata: { must_change_password: true }
+  });
+>>>>>>> 3fdd2a31c4f37985ba1e2f192187e63077b2e1e9
 
   if (!realUserId) {
     const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
@@ -210,6 +221,7 @@ export async function getStaff() {
 }
 
 export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo> {
+<<<<<<< HEAD
   const adminAuthClient = createClient(
     import.meta.env.VITE_SUPABASE_URL || '',
     import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
@@ -218,6 +230,16 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
 
   const defaultPassword = staff.password || 'password123';
   let realUserId = staff.userId || '';
+=======
+  const adminAuthClient = supabaseAdmin;
+
+  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+    email: staff.email,
+    password: staff.password || 'password123',
+    email_confirm: true,
+    user_metadata: { must_change_password: true }
+  });
+>>>>>>> 3fdd2a31c4f37985ba1e2f192187e63077b2e1e9
 
   if (!realUserId) {
     const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
@@ -477,11 +499,8 @@ export async function addPatient(patient: {
   emergencyContactPhone?: string;
   emergencyContactRelationship?: string;
 }): Promise<any> {
-  // สร้าง Admin Client สำหรับจัดการ Auth โดยเฉพาะ
-  const adminAuthClient = createClient(
-    import.meta.env.VITE_SUPABASE_URL || '',
-    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-  );
+  // ใช้ Admin Client สำหรับจัดการ Auth โดยเฉพาะ
+  const adminAuthClient = supabaseAdmin;
 
   const defaultPassword = patient.password || '123456789';
 

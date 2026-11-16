@@ -1,4 +1,3 @@
-import React from "react";
 import { Appointment, LeaveRequest, Shift } from "@/app/shared/data";
 
 interface OnDutyDentistsBarProps {

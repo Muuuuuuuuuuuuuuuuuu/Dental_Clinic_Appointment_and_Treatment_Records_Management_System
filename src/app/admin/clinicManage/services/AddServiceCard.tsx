@@ -1,4 +1,3 @@
-import React from "react";
 import { SERVICE_CATEGORIES } from "@/app/shared/data";
 
 interface AddServiceCardProps {

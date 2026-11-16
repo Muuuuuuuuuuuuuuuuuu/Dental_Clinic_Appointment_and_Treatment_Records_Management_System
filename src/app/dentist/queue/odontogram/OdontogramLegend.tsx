@@ -1,5 +1,3 @@
-import React from "react";
-import { Eye } from "lucide-react";
 
 interface OdontogramLegendProps {
   currentMode: "treatment" | "patient";
@@ -11,9 +9,6 @@ interface OdontogramLegendProps {
   filledCount: number;
   missingCount: number;
   extraCount: number;
-  historyCount: number;
-  showFullTimeline: boolean;
-  onToggleFullTimeline: () => void;
 }
 
 export default function OdontogramLegend({
@@ -26,9 +21,6 @@ export default function OdontogramLegend({
   filledCount,
   missingCount,
   extraCount,
-  historyCount,
-  showFullTimeline,
-  onToggleFullTimeline,
 }: OdontogramLegendProps) {
   return (
     <>
@@ -36,7 +28,7 @@ export default function OdontogramLegend({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b border-slate-100">
         <div className="flex items-center gap-2.5 flex-wrap">
           <h3 className="font-bold text-base whitespace-nowrap" style={{ color: "#1A365D" }}>
-            {readonly ? "แผนผังสุขภาพฟัน" : "Odontogram (แผนผังฟัน)"}
+            {readonly ? "แผนผังสุขภาพฟัน" : "Odontogram(แผนผังฟัน)"}
           </h3>
           {patientName && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100">
@@ -52,8 +44,8 @@ export default function OdontogramLegend({
                 type="button"
                 onClick={() => setIsChild(false)}
                 className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${!isChild
-                    ? 'bg-white text-slate-800 shadow-xs'
-                    : 'text-slate-400 hover:text-slate-600'
+                  ? 'bg-white text-slate-800 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-600'
                   }`}
                 title="ชุดฟันแท้ (Adult)"
               >
@@ -63,8 +55,8 @@ export default function OdontogramLegend({
                 type="button"
                 onClick={() => setIsChild(true)}
                 className={`px-2 py-0.5 rounded-md text-[10px] font-semibold leading-tight whitespace-nowrap transition-all ${isChild
-                    ? 'bg-white text-slate-800 shadow-xs'
-                    : 'text-slate-400 hover:text-slate-600'
+                  ? 'bg-white text-slate-800 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-600'
                   }`}
                 title="ชุดฟันน้ำนม (Child)"
               >

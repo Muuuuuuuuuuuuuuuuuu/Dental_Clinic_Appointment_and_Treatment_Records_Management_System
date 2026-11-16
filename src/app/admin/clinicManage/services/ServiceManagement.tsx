@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ServiceInfo, SERVICE_CATEGORIES } from "@/app/shared/data";
 import {
   getServices,
@@ -79,6 +79,7 @@ export default function ServiceManagement({ onBack }: ServiceManagementProps = {
     const mp = mpStr !== undefined && mpStr !== "" ? parseInt(mpStr, 10) : p;
     const t = parseInt(times[id] ?? "30", 10);
     const n = names[id];
+    const c = cats[id];
     const d = descs[id];
     const at = applyTos[id];
     const b = benefitsMap[id];
@@ -89,6 +90,7 @@ export default function ServiceManagement({ onBack }: ServiceManagementProps = {
       try {
         const payload: any = { basePrice: p, maxPrice: mp, estimatedTime: t };
         if (n !== undefined) payload.name = n;
+        if (c !== undefined) payload.category = c;
         if (d !== undefined) payload.description = d;
         if (at !== undefined) payload.applyTo = at;
 
@@ -208,16 +210,6 @@ export default function ServiceManagement({ onBack }: ServiceManagementProps = {
       <ServiceCategoryList
         services={services}
         editId={editId}
-        names={names}
-        cats={cats}
-        descs={descs}
-        applyTos={applyTos}
-        benefitsMap={benefitsMap}
-        proceduresMap={proceduresMap}
-        careMap={careMap}
-        prices={prices}
-        maxPrices={maxPrices}
-        times={times}
         onStartEdit={(s) => {
           setEditId(s.id);
           setPrices((p) => ({ ...p, [s.id]: String(s.basePrice) }));

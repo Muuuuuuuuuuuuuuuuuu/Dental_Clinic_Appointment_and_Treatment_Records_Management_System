@@ -1,4 +1,3 @@
-import React from "react";
 import Odontogram, { ToothStatus } from "@/app/dentist/queue/odontogram/Odontogram";
 import { SupernumeraryTooth } from "@/app/dentist/queue/odontogram/ToothGeometry";
 

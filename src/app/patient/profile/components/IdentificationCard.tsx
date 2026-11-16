@@ -1,4 +1,3 @@
-import React from "react";
 import { PatientUser } from "../../types";
 import { thDate, calcAge } from "../hooks/usePatientProfile";
 

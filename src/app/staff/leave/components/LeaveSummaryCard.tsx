@@ -1,4 +1,3 @@
-import React from "react";
 import { LeaveRequest } from "@/app/shared/data";
 
 interface LeaveSummaryCardProps {

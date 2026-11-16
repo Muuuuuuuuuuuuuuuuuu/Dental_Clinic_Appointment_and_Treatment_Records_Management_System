@@ -1,4 +1,3 @@
-import React from "react";
 import { PatientUser } from "../../types";
 
 interface AvatarBoxProps {

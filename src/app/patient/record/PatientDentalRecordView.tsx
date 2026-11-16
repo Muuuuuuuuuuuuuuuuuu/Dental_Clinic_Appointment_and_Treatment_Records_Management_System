@@ -1,4 +1,3 @@
-import React from "react";
 import { useDentalRecord } from "./hooks/useDentalRecord";
 import {
   DentalRecordTitleBar,

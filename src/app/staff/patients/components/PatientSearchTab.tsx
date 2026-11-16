@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Search, Users, Calendar, Edit3, X } from "lucide-react";
 import { STATUS_COLORS, hasHealthAlert } from "@/app/shared/data";
 import { useRealtimeAppointments } from "@/app/shared/useRealtimeAppointments";

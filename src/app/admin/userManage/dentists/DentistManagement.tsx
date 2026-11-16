@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import DentistHeader from "./DentistHeader";
 import DentistGrid from "./DentistGrid";
 import DentistModal from "./DentistModal";

@@ -1,4 +1,3 @@
-import React from "react";
 import { DentistInfo } from "@/app/shared/data";
 import { BookingForm } from "../hooks/useWalkInBooking";
 

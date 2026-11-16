@@ -1,7 +1,5 @@
-import React from "react";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
-
-const DAY_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { DAY_TH } from "@/app/shared/constants";
 
 interface ActualCalendarCardProps {
   currentDate: Date;

@@ -1,4 +1,3 @@
-import React from "react";
 import { PatientInfo, Appointment, hasHealthAlert } from "@/app/shared/data";
 
 interface PatientCardProps {

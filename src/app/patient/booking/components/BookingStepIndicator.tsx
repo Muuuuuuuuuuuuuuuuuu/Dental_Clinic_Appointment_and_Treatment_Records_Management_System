@@ -1,6 +1,4 @@
-import React from "react";
 import { Check, ChevronRight } from "lucide-react";
-import { Label } from "recharts";
 
 interface BookingStepIndicatorProps {
   step: number;

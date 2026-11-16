@@ -1,4 +1,3 @@
-import React from "react";
 import { Pill, X, Check, Plus } from "lucide-react";
 import { PrescribedMed } from "../types";
 import { COMMON_MEDS } from "../useTreatmentQueue";

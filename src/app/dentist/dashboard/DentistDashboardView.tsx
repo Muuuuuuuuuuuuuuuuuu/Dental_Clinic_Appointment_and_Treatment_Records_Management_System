@@ -25,6 +25,9 @@ export default function DentistDashboardView({
     waiting,
     pending,
     done,
+    dutyStartTime,
+    dutyEndTime,
+    isDoctorOff,
   } = useDoctorDashboard(doctor, initialAppointments);
 
   return (
@@ -50,7 +53,11 @@ export default function DentistDashboardView({
           appointments={myAppts}
           onViewAll={() => setView("queue")}
         />
-        <TodayDutyCard />
+        <TodayDutyCard
+          startTime={dutyStartTime}
+          endTime={dutyEndTime}
+          isOff={isDoctorOff}
+        />
       </div>
     </div>
   );

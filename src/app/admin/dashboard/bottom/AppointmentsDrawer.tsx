@@ -1,4 +1,3 @@
-import React from "react";
 import { X } from "lucide-react";
 import { Appointment, STATUS_COLORS } from "@/app/shared/data";
 

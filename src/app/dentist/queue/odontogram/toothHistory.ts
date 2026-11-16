@@ -1,5 +1,21 @@
 export type ToothStatus = "normal" | "red" | "blue" | "cross";
 
+export const isValidToothId = (val: any): boolean => {
+  if (!val) return false;
+  const s = String(val).replace(/^teeth-/, "").trim();
+  const n = parseInt(s, 10);
+  if (!isNaN(n) && String(n) === s) {
+    const q = Math.floor(n / 10);
+    const t = n % 10;
+    // ฟันแท้: จตุภาค 1-4 ซี่ 1-8
+    if (q >= 1 && q <= 4 && t >= 1 && t <= 8) return true;
+    // ฟันน้ำนม: จตุภาค 5-8 ซี่ 1-5
+    if (q >= 5 && q <= 8 && t >= 1 && t <= 5) return true;
+    return false;
+  }
+  return s === "mesiodens" || s.endsWith("S") || s.includes("S-");
+};
+
 export interface ToothHistoryItem {
   id?: string | number;
   date: string;

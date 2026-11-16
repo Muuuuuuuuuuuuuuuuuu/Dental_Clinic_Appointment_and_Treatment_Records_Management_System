@@ -1,4 +1,3 @@
-import React from "react";
 import { X, Calendar as CalendarIcon, XCircle, UserX, Clock } from "lucide-react";
 import { Appointment } from "@/app/shared/data";
 

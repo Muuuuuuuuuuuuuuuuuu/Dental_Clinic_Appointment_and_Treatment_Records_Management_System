@@ -8,7 +8,7 @@ interface ChangeEmailModalProps {
 }
 
 /**
- * 📧 [SHARED COMPONENT] ป๊อปอัปเปลี่ยนอีเมลผู้ใช้งาน (ใช้ร่วมกันทุกบทบาท: Admin, Dentist, Staff, Patient)
+ * 📧 [AUTH COMPONENT] ป๊อปอัปเปลี่ยนอีเมลผู้ใช้งาน (ใช้ร่วมกันทุกบทบาท: Admin, Dentist, Staff, Patient)
  */
 export default function ChangeEmailModal({ isOpen, onClose }: ChangeEmailModalProps) {
   const [newEmail, setNewEmail] = useState("");

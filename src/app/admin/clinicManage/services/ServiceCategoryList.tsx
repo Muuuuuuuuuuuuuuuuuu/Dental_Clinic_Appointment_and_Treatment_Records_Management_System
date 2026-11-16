@@ -1,4 +1,3 @@
-import React from "react";
 import { Edit3, Check, Clock } from "lucide-react";
 import StatusBadge from "@/app/shared/components/StatusBadge";
 import { ServiceInfo, SERVICE_CATEGORIES } from "@/app/shared/data";
@@ -6,16 +5,6 @@ import { ServiceInfo, SERVICE_CATEGORIES } from "@/app/shared/data";
 interface ServiceCategoryListProps {
   services: ServiceInfo[];
   editId: number | null;
-  names: Record<number, string>;
-  cats: Record<number, string>;
-  descs: Record<number, string>;
-  applyTos: Record<number, string>;
-  benefitsMap: Record<number, string>;
-  proceduresMap: Record<number, string>;
-  careMap: Record<number, string>;
-  prices: Record<number, string>;
-  maxPrices: Record<number, string>;
-  times: Record<number, string>;
   onStartEdit: (s: ServiceInfo) => void;
   onNameChange: (id: number, val: string) => void;
   onCatChange: (id: number, val: string) => void;
@@ -35,16 +24,6 @@ interface ServiceCategoryListProps {
 export default function ServiceCategoryList({
   services,
   editId,
-  names,
-  cats,
-  descs,
-  applyTos,
-  benefitsMap,
-  proceduresMap,
-  careMap,
-  prices,
-  maxPrices,
-  times,
   onStartEdit,
   onNameChange,
   onCatChange,

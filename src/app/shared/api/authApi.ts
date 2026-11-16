@@ -124,7 +124,7 @@ export async function verifyPasswordResetOTP(email: string, otpCode: string): Pr
  * - อัปเดตรหัสผ่านใน Supabase Auth (ผ่าน admin API)
  * - ลบ OTP ที่ใช้แล้วออกจากตาราง
  */
-export async function resetPassword(email: string, newPassword: string): Promise<boolean> {
+export async function resetPassword(_email: string, newPassword: string): Promise<boolean> {
   // หลังจาก verifyOtp สำเร็จแล้ว ผู้ใช้จะถูก logged in อัตโนมัติโดย Supabase
   // จึงสามารถเรียก updateUser ได้เลยโดยไม่ต้องใช้ Admin API
   const { error } = await supabase.auth.updateUser({

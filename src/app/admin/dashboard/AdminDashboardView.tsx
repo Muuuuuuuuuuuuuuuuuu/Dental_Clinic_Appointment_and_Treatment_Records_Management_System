@@ -34,7 +34,7 @@ export default function AdminDashboardView({ setView }: AdminDashboardProps) {
     <div className="animate-fade-in space-y-3 pb-4">
       {/* 1. ส่วนหัวและปุ่มเลือกช่วงเวลา */}
       <DashboardHeader
-        selectedDate={selectedDate}
+        
         targetDateStr={targetDateStr}
         onDateChange={setSelectedDate}
         timeframe={timeframe}

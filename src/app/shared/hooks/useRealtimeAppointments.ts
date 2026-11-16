@@ -57,21 +57,21 @@ export function useRealtimeAppointments(initialAppointments: Appointment[] = [])
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointment' },
-        (payload) => {
+        () => {
           fetchAppointments();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'payment' },
-        (payload) => {
+        () => {
           fetchAppointments();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'treatment_record' },
-        (payload) => {
+        () => {
           fetchAppointments();
         }
       )

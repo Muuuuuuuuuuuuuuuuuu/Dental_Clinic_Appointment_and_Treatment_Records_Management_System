@@ -1,4 +1,3 @@
-import React from "react";
 import { usePatientBooking } from "./hooks/usePatientBooking";
 import { View, PatientUser } from "../types";
 import {

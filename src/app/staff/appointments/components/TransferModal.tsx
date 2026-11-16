@@ -1,4 +1,3 @@
-import React from "react";
 import { X, AlertTriangle, ArrowRightLeft } from "lucide-react";
 import { Appointment, DentistInfo } from "@/app/shared/data";
 

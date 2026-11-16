@@ -1,4 +1,3 @@
-import React from "react";
 import { CheckCheck } from "lucide-react";
 
 interface ReceiptSlipTabProps {
@@ -17,9 +16,9 @@ interface ReceiptSlipTabProps {
  */
 export default function ReceiptSlipTab({
   selected,
-  refNo,
+  refNo: _refNo,
   doctorName,
-  cashierName,
+  cashierName: _cashierName,
   payMethod,
   dateStr,
   timeStr,

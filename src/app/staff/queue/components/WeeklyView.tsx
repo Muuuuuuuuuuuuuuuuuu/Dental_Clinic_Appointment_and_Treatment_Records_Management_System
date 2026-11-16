@@ -1,4 +1,3 @@
-import React from "react";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { Appointment, SpecialClosure, STATUS_COLORS } from "@/app/shared/data";
 import {

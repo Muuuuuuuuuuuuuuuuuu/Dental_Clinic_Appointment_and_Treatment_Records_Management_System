@@ -1,10 +1,7 @@
-import { Settings, Clock, Package, LucideIcon } from "lucide-react";
-
 export type ClinicSubView = null | "services" | "settings" | "products";
 
 export interface ClinicCardDef {
   key: "services" | "settings" | "products";
-  icon: LucideIcon;
   title: string;
   desc: string;
   gradient: string;
@@ -15,7 +12,6 @@ export interface ClinicCardDef {
 export const CLINIC_CARD_DEFS: ClinicCardDef[] = [
   {
     key: "services",
-    icon: Settings,
     title: "บริการ",
     desc: "จัดการรายการบริการทันตกรรมทั้งหมดของคลินิก",
     gradient: "linear-gradient(135deg, #667EEA 0%, #764BA2 100%)",
@@ -24,7 +20,6 @@ export const CLINIC_CARD_DEFS: ClinicCardDef[] = [
   },
   {
     key: "settings",
-    icon: Clock,
     title: "ตั้งค่าเวลาและวันหยุด",
     desc: "จัดการเวลาเปิด-ปิด วันหยุดประจำสัปดาห์ และวันปิดพิเศษ",
     gradient: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
@@ -33,7 +28,6 @@ export const CLINIC_CARD_DEFS: ClinicCardDef[] = [
   },
   {
     key: "products",
-    icon: Package,
     title: "สินค้าและยา",
     desc: "จัดการรายการยาและสินค้าทั่วไป (เพิ่ม แก้ไข ราคา)",
     gradient: "linear-gradient(135deg, #10B981 0%, #059669 100%)",

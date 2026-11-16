@@ -1,4 +1,3 @@
-import React from "react";
 import { CreditCard, ChevronRight, CheckCircle } from "lucide-react";
 import { Appointment } from "@/app/shared/data";
 

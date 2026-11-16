@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-import { supabase } from './supabaseClient';
+import { supabase, supabaseAdmin } from './supabaseClient';
 import { DentistInfo } from '../data';
 
 /**
@@ -126,6 +125,7 @@ export async function uploadAvatar(file: File): Promise<string> {
  * @returns {Promise<DentistInfo>} ข้อมูลทันตแพทย์ที่สร้างเสร็จ
  */
 export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<DentistInfo> {
+<<<<<<< HEAD
   const adminAuthClient = createClient(
     import.meta.env.VITE_SUPABASE_URL || '',
     import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
@@ -134,6 +134,16 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
 
   const defaultPassword = dentist.password || 'password123';
   let realUserId = dentist.userId || '';
+=======
+  const adminAuthClient = supabaseAdmin;
+
+  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
+    email: dentist.email,
+    password: dentist.password || 'password123',
+    email_confirm: true,
+    user_metadata: { must_change_password: true }
+  });
+>>>>>>> 3fdd2a31c4f37985ba1e2f192187e63077b2e1e9
 
   if (!realUserId) {
     const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
@@ -412,10 +422,12 @@ export async function getDentistsByService(serviceId: number) {
     if (!d) return null;
     const userObj = d.staff?.users || d.users;
     const p = userObj?.profile;
+    const resolvedUserId = d.staff?.user_id || userObj?.user_id || d.user_id;
+    const resolvedStaffId = d.staff_id || d.staff?.staff_id;
     return {
       id: d.dentist_id,
-      staffId: d.staff_id || d.staff?.staff_id,
-      userId: userObj?.user_id || d.user_id,
+      staffId: resolvedStaffId,
+      userId: resolvedUserId,
       name: `${d.title_name || ''} ${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ',
       specialty: d.specialization || 'ทันตแพทย์',
       img: d.image_url || 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&auto=format'

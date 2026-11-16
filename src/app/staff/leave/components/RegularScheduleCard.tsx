@@ -1,4 +1,3 @@
-import React from "react";
 import { Shift } from "@/app/shared/data";
 
 interface RegularScheduleCardProps {

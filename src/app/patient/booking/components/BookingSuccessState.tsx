@@ -1,4 +1,3 @@
-import React from "react";
 import { CheckCircle } from "lucide-react";
 import { View } from "../../types";
 

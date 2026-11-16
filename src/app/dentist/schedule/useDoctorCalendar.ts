@@ -64,7 +64,15 @@ export function useDoctorCalendar(doctor: DentistInfo | null) {
       ]);
       setShifts(sData.filter((s) => s.person_id === doctor?.id && s.person_type === "dentist"));
       setClosures(cData);
-      setLeaves(lData.filter((l) => l.doctorId === doctorId));
+      setLeaves(
+        lData.filter(
+          (l: any) =>
+            (doctor?.userId && l.userId === doctor.userId) ||
+            (doctor?.staffId && (l.staffId === doctor.staffId || l.doctorId === doctor.staffId)) ||
+            (doctor?.userId && l.doctorId === doctor.userId) ||
+            (doctor?.id && (l.doctorId === doctor.id || l.staffId === doctor.id))
+        )
+      );
       setAppointments(aData.filter((a) => a.doctorId === doctor?.id));
       setWeeklyOffDays(offDays);
     } catch (err) {

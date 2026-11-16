@@ -46,7 +46,7 @@ const InfoRow = ({ label, val }: { label: string; val: string }) => (
  * 📝 [RIGHT CARD COMPONENT] ข้อมูลการติดต่อที่คนไข้สามารถแก้ไขได้เอง
  */
 export default function EditableContactCard({
-  user,
+  user: _user,
   editing,
   setEditing,
   form,

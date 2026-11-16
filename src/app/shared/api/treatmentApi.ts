@@ -148,7 +148,13 @@ export async function savePatientOdontogram(
   extraTeeth: any[],
   doctorId?: number
 ) {
-  const fullOdontogram = { ...toothData, extraTeeth, wholeMouth: false };
+  const cleanToothData = Object.fromEntries(
+    Object.entries(toothData || {}).filter(([k, v]) => v && v !== "normal" && k !== "wholeMouth" && k !== "extraTeeth")
+  );
+  const fullOdontogram = {
+    ...cleanToothData,
+    ...(extraTeeth && extraTeeth.length > 0 ? { extraTeeth } : {})
+  };
   const { data: trData } = await supabase
     .from('treatment_record')
     .select('treatment_id')
@@ -196,7 +202,7 @@ export async function saveTreatment(
   notes: string, 
   recommendations: string, 
   services: string[], 
-  cost: number, 
+  _cost: number, 
   toothData?: Record<number | string, any>, 
   doctorId?: number, 
   detailedServices?: any[], 

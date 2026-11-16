@@ -88,13 +88,19 @@ export function usePatientAppointments(
     autoExpireRanRef.current = true;
 
     const now = getNow();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const todayStr = `${year}-${month}-${day}`;
+
     const expirableStatuses = ["รอการยืนยัน", "ยืนยันการจอง"];
 
     const toExpire = appts.filter((a) => {
       if (!expirableStatuses.includes(a.status)) return false;
-      if (!a.date || !a.time) return false;
-      const apptDateTime = new Date(`${a.date}T${a.time}:00`);
-      return apptDateTime < now;
+      if (!a.date) return false;
+      // แบบที่ 1: ตรวจสอบเฉพาะนัดหมายที่พ้นวันไปแล้ว (a.date < todayStr)
+      // ตราบใดที่ยังเป็นวันเดียวกัน จะไม่ตัดเป็นไม่มาตามนัด เพื่อรองรับกรณีคนไข้มาสาย
+      return a.date < todayStr;
     });
 
     if (toExpire.length === 0) return;
@@ -112,7 +118,7 @@ export function usePatientAppointments(
         updateAppointmentStatus(
           a.id,
           "ไม่มาตามนัด",
-          "ระบบยกเลิกอัตโนมัติ: คนไข้ไม่มาตามนัดหมายที่กำหนด"
+          "ระบบยกเลิกอัตโนมัติ: สิ้นสุดวันนัดหมายแล้ว คนไข้ไม่ได้เดินทางมาตามนัด"
         ).catch((err) => {
           console.error(`Auto-expire failed for appt ${a.id}:`, err);
           setAppts((prev) =>

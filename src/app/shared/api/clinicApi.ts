@@ -652,7 +652,7 @@ export async function upsertShift(personIdentifier: string | number, dayOfWeek: 
   if (staffId) {
     findQuery = findQuery.eq('staff_id', staffId);
   }
-  let { data: existing, error: findError } = await findQuery.maybeSingle();
+  let { data: existing, error: _findError } = await findQuery.maybeSingle();
 
   if (existing) {
     // อัปเดตข้อมูลที่มีอยู่

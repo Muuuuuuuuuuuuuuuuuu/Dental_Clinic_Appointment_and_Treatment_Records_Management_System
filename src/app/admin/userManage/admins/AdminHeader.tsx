@@ -1,4 +1,3 @@
-import React from "react";
 import { Plus, ArrowLeft } from "lucide-react";
 
 interface AdminHeaderProps {

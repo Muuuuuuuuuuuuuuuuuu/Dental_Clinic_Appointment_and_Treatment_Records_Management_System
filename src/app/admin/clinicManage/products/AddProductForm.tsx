@@ -1,4 +1,3 @@
-import React from "react";
 
 const COMMON_UNITS = ["เม็ด", "แคปซูล", "ขวด", "หลอด", "ชิ้น", "ซอง", "กล่อง", "เซ็ต"];
 

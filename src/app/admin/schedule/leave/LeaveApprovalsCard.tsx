@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Clock, History, ChevronDown, ChevronUp, Check, X } from "lucide-react";
 import { LeaveRequest } from "@/app/shared/data";
 

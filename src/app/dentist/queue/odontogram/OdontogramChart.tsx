@@ -274,10 +274,10 @@ export default function OdontogramChart({
           status === "blue"
             ? "รักษาแล้ว"
             : status === "red"
-            ? "พบฟันผุ / มีปัญหา"
-            : status === "cross"
-            ? "ถอน / สูญเสียฟัน"
-            : "";
+              ? "พบฟันผุ / มีปัญหา"
+              : status === "cross"
+                ? "ถอน / สูญเสียฟัน"
+                : "";
 
         return (
           <div

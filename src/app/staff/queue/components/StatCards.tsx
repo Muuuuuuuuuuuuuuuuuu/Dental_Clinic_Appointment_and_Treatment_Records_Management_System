@@ -1,4 +1,3 @@
-import React from "react";
 import { UserCheck, Clock, CreditCard, CheckCircle } from "lucide-react";
 import { Appointment, StaffView } from "@/app/shared/data";
 
