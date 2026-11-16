@@ -66,7 +66,6 @@ export default function ActiveTreatmentForm({
             toothData={toothData}
             onToothClick={onToothClick}
             isChild={isChild}
-              readonly={true}
             setIsChild={setIsChild}
             extraTeeth={extraTeeth}
             historyRecords={patientHistoryRecords}
