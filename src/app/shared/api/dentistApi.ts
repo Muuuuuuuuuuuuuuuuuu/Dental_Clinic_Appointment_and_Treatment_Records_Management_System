@@ -125,25 +125,9 @@ export async function uploadAvatar(file: File): Promise<string> {
  * @returns {Promise<DentistInfo>} ข้อมูลทันตแพทย์ที่สร้างเสร็จ
  */
 export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<DentistInfo> {
-<<<<<<< HEAD
-  const adminAuthClient = createClient(
-    import.meta.env.VITE_SUPABASE_URL || '',
-    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-
+  const adminAuthClient = supabaseAdmin;
   const defaultPassword = dentist.password || 'password123';
   let realUserId = dentist.userId || '';
-=======
-  const adminAuthClient = supabaseAdmin;
-
-  const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
-    email: dentist.email,
-    password: dentist.password || 'password123',
-    email_confirm: true,
-    user_metadata: { must_change_password: true }
-  });
->>>>>>> 3fdd2a31c4f37985ba1e2f192187e63077b2e1e9
 
   if (!realUserId) {
     const { data: authData, error: authErr } = await adminAuthClient.auth.admin.createUser({
