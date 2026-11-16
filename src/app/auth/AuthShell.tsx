@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Smile, Clock } from "lucide-react";
 import { getWeeklyOffDays, getDailyHours } from "@/app/shared/supabaseApi";
+import { DAY_SHORT } from "@/app/shared/constants";
 
 export default function AuthShell({ children, title, sub }: { children: React.ReactNode; title: string; sub: string }) {
-  const DAY_SHORT = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
   const [hoursText, setHoursText] = useState("เปิดให้บริการ จ-ส เวลา 09:00-20:00 น.");
 
   useEffect(() => {

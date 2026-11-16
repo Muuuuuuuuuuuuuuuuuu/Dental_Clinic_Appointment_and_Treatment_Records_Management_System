@@ -40,7 +40,14 @@ export function useStaffLeave(staff?: StaffInfo | null) {
       ]);
       setShifts(sData.filter((s) => s.person_id === staff?.id && s.person_type === "staff"));
       setClosures(cData);
-      setLeaves(lData.filter((l) => l.doctorId === staffUserId));
+      setLeaves(
+        lData.filter(
+          (l: any) =>
+            (staff?.userId && l.userId === staff.userId) ||
+            (staff?.id && (l.staffId === staff.id || l.doctorId === staff.id || String(l.staffId) === String(staff.id))) ||
+            (staffUserId && (l.doctorId === staffUserId || l.userId === staffUserId || String(l.doctorId) === String(staffUserId)))
+        )
+      );
       setWeeklyOffDays(offDays);
     } catch (err) {
       console.error(err);

@@ -19,12 +19,6 @@ interface ActiveTreatmentFormProps {
   setForm: React.Dispatch<React.SetStateAction<TreatmentFormState>>;
   isSubmitting: boolean;
   onToothClick: (tooth: number | string, status?: ToothStatus) => void;
-  onAddExtraTooth: (tooth: SupernumeraryTooth) => void;
-  onRemoveExtraTooth: (id: string) => void;
-  onSaveToothManager: (
-    updatedToothData: Record<number | string, ToothStatus>,
-    updatedExtraTeeth: SupernumeraryTooth[]
-  ) => void;
   incrementService: (svc: any, tooth?: number | string) => void;
   incrementMedicine: (prod: any) => void;
   decrementMedicine: (prodId: number, e: React.MouseEvent) => void;
@@ -47,9 +41,6 @@ export default function ActiveTreatmentForm({
   setForm,
   isSubmitting,
   onToothClick,
-  onAddExtraTooth,
-  onRemoveExtraTooth,
-  onSaveToothManager,
   incrementService,
   incrementMedicine,
   decrementMedicine,
@@ -75,13 +66,11 @@ export default function ActiveTreatmentForm({
             toothData={toothData}
             onToothClick={onToothClick}
             isChild={isChild}
+              readonly={true}
             setIsChild={setIsChild}
             extraTeeth={extraTeeth}
             historyRecords={patientHistoryRecords}
             patientName={a.patientName}
-            onAddExtraTooth={onAddExtraTooth}
-            onRemoveExtraTooth={onRemoveExtraTooth}
-            onSaveToothManager={onSaveToothManager}
           />
         </div>
 

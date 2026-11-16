@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Appointment, ServiceInfo, DentistInfo } from "@/app/shared/data";
-import { getAppointments, getServices, updateAppointmentStatus } from "@/app/shared/supabaseApi";
-import { saveTreatment, getPatientLatestOdontogram, getProducts, savePatientOdontogram, getPatientTreatmentRecords } from "@/app/shared/api/treatmentApi";
+import { getAppointments, getServices, updateAppointmentStatus, updateAppointmentDetails } from "@/app/shared/supabaseApi";
+import { saveTreatment, getPatientLatestOdontogram, getProducts, getPatientTreatmentRecords } from "@/app/shared/api/treatmentApi";
 import { ToothStatus } from "./odontogram/Odontogram";
-import { SupernumeraryTooth, getExtraToothLocation } from "./odontogram/ToothGeometry";
+import { isValidToothId } from "./odontogram/toothHistory";
+import { SupernumeraryTooth } from "./odontogram/ToothGeometry";
 import { TreatmentFormState, PrescribedMed, TimeFilter } from "./types";
 
 export const COMMON_MEDS: PrescribedMed[] = [
@@ -109,6 +110,35 @@ export function useTreatmentQueue(doctor: DentistInfo | null, initialAppointment
       if (a.date !== b.date) return a.date.localeCompare(b.date);
       return a.time.localeCompare(b.time);
     });
+
+  const unassignedAppts = appointments
+    .filter(a => {
+      if (a.doctorId) return false;
+      const isToday = a.date === todayString;
+      const isCheckedIn = a.status === "เช็คอินเรียบร้อย";
+      return isToday && isCheckedIn;
+    })
+    .sort((a, b) => a.time.localeCompare(b.time));
+
+  const handleClaimAppointment = async (apptId: number) => {
+    if (!doctor?.id) return;
+    try {
+      await updateAppointmentDetails(apptId, {
+        doctorId: doctor.id,
+      });
+
+      setAppointments(apps => apps.map(a => a.id === apptId ? {
+        ...a,
+        doctorId: doctor.id,
+        doctorName: doctor.name || ""
+      } : a));
+
+      window.dispatchEvent(new CustomEvent('appointments-updated'));
+    } catch (err: any) {
+      console.error("Claim appointment error:", err);
+      alert("เกิดข้อผิดพลาดในการรับเคส: " + (err?.message || ""));
+    }
+  };
 
   const incrementService = (svc: any, tooth?: number | string) => {
     setForm(f => {
@@ -220,19 +250,82 @@ export function useTreatmentQueue(doctor: DentistInfo | null, initialAppointment
       setPatientHistoryRecords([]);
     }
 
+    let initialTeeth: Record<string, any> = {};
+    let initialExtras: any[] = [];
+
     if (a.odontogramData && Object.keys(a.odontogramData).length > 0) {
       const { wholeMouth, extraTeeth: savedExtra, ...rest } = a.odontogramData as any;
-      setToothData(rest as any);
-      setExtraTeeth(Array.isArray(savedExtra) ? savedExtra : []);
+      initialTeeth = { ...rest };
+      initialExtras = Array.isArray(savedExtra) ? savedExtra : [];
     } else if (a.patientId && records.length > 0) {
       const historyOdontogram = await getPatientLatestOdontogram(a.patientId);
-      const { wholeMouth, extraTeeth: savedExtra, ...rest } = historyOdontogram as any;
-      setToothData(rest as any);
-      setExtraTeeth(Array.isArray(savedExtra) ? savedExtra : []);
-    } else {
-      setToothData({});
-      setExtraTeeth([]);
+      const { wholeMouth, extraTeeth: savedExtra, ...rest } = (historyOdontogram || {}) as any;
+      initialTeeth = { ...rest };
+      initialExtras = Array.isArray(savedExtra) ? savedExtra : [];
     }
+
+    // ตรวจสอบประวัติการรักษาที่ผ่านมา เพื่อระบุฟันที่เคยถูกถอน หรือผ่าฟันคุดออกไปแล้ว (เช่น ซี่ 48)
+    const inferredMissingTeeth = new Set<string>();
+    const addIfValidTooth = (val: any) => {
+      if (!val) return;
+      const clean = String(val).replace(/^teeth-/, "").trim();
+      if (isValidToothId(clean)) {
+        inferredMissingTeeth.add(clean);
+      }
+    };
+
+    records.forEach((record: any) => {
+      if (record.treatmentServices) {
+        record.treatmentServices.forEach((s: string) => {
+          if (!s) return;
+          const isExtraction = s.includes("ถอน") || s.includes("ผ่าฟันคุด") || s.includes("ผ่าคุด");
+          if (isExtraction) {
+            const m1 = s.matchAll(/(?:ซี่ที่:?|ซี่)\s*(\d{2})\b/g);
+            for (const m of m1) addIfValidTooth(m[1]);
+
+            const m2 = s.matchAll(/\(\s*(?:ซี่)?\s*(\d{2})\s*\)/g);
+            for (const m of m2) addIfValidTooth(m[1]);
+          }
+        });
+      }
+
+      if (record.detailedServices) {
+        record.detailedServices.forEach((ds: any) => {
+          const isExtraction =
+            ds.name?.includes("ถอน") ||
+            ds.name?.includes("ผ่าฟันคุด") ||
+            ds.name?.includes("ผ่าคุด") ||
+            ds.serviceName?.includes("ถอน") ||
+            ds.serviceName?.includes("ผ่าฟันคุด") ||
+            ds.serviceName?.includes("ผ่าคุด");
+          if (isExtraction && ds.locationCode) {
+            addIfValidTooth(ds.locationCode);
+          }
+        });
+      }
+
+      const noteText = record.notes || record.treatmentNotes || "";
+      if (noteText) {
+        noteText.split(/\r?\n/).forEach((line: string) => {
+          if (line.includes("ถอน") || line.includes("ผ่าฟันคุด") || line.includes("ผ่าคุด")) {
+            const m1 = line.matchAll(/(?:ซี่ที่:?|ซี่)\s*(\d{2})\b/g);
+            for (const m of m1) addIfValidTooth(m[1]);
+
+            const m2 = line.matchAll(/\(\s*(?:ซี่)?\s*(\d{2})\s*\)/g);
+            for (const m of m2) addIfValidTooth(m[1]);
+          }
+        });
+      }
+    });
+
+    inferredMissingTeeth.forEach((tooth) => {
+      if (!initialTeeth[tooth] || initialTeeth[tooth] === "normal") {
+        initialTeeth[tooth] = "cross";
+      }
+    });
+
+    setToothData(initialTeeth);
+    setExtraTeeth(initialExtras);
   };
 
   const saveDraftTreatment = async (appt: Appointment) => {
@@ -244,7 +337,13 @@ export function useTreatmentQueue(doctor: DentistInfo | null, initialAppointment
       formattedServices.push(...formattedMedicines);
 
       const detailedServices = [...form.services];
-      const fullOdontogram = { ...toothData, extraTeeth, wholeMouth: false };
+      const cleanToothData = Object.fromEntries(
+        Object.entries(toothData).filter(([k, v]) => v && v !== "normal" && k !== "wholeMouth" && k !== "extraTeeth")
+      );
+      const fullOdontogram = {
+        ...cleanToothData,
+        ...(extraTeeth && extraTeeth.length > 0 ? { extraTeeth } : {})
+      };
 
       await saveTreatment(
         appt.id,
@@ -291,6 +390,13 @@ export function useTreatmentQueue(doctor: DentistInfo | null, initialAppointment
       formattedServices.push(...formattedMedicines);
 
       const detailedServices = [...form.services];
+      const cleanToothData = Object.fromEntries(
+        Object.entries(toothData).filter(([k, v]) => v && v !== "normal" && k !== "wholeMouth" && k !== "extraTeeth")
+      );
+      const fullOdontogram = {
+        ...cleanToothData,
+        ...(extraTeeth && extraTeeth.length > 0 ? { extraTeeth } : {})
+      };
 
       await onUpdateAppt(appt.id, {
         status: "รอชำระเงิน",
@@ -298,7 +404,7 @@ export function useTreatmentQueue(doctor: DentistInfo | null, initialAppointment
         treatmentServices: formattedServices,
         recommendations: form.recommendations,
         cost: Number(form.actualCost) || 0,
-        odontogramData: { ...toothData, extraTeeth, wholeMouth: false } as any
+        odontogramData: fullOdontogram as any
       }, detailedServices, form.medicines);
 
       setRecording(null);
@@ -342,47 +448,6 @@ export function useTreatmentQueue(doctor: DentistInfo | null, initialAppointment
     } else {
       setSelectedToothForAction(tooth);
     }
-  };
-
-  const handleSaveToothManager = (
-    updatedToothData: Record<number | string, ToothStatus>,
-    updatedExtraTeeth: SupernumeraryTooth[]
-  ) => {
-    setToothData(updatedToothData);
-    setExtraTeeth(updatedExtraTeeth);
-
-    if (recording) {
-      savePatientOdontogram(recording, updatedToothData, updatedExtraTeeth, doctor?.id);
-    }
-
-    const missing = Object.entries(updatedToothData)
-      .filter(([_, s]) => s === "cross")
-      .map(([id]) => id)
-      .sort((a, b) => Number(a) - Number(b));
-
-    const extras = updatedExtraTeeth.map(t => {
-      const loc = getExtraToothLocation(t.id);
-      return `${t.label || t.id}${loc ? ` (${loc})` : ''}`;
-    });
-
-    setForm(f => {
-      const lines = (f.notes || "").split("\n");
-      const preservedLines = lines.filter(line => 
-        !line.startsWith("- ประวัติเดิม: เคยถอน/ผ่าคุด") &&
-        !line.startsWith("- ตรวจพบฟันเกิน/ฟันซ้อน:")
-      );
-
-      const managerNotes: string[] = [];
-      if (missing.length > 0) {
-        managerNotes.push(`- ประวัติเดิม: เคยถอน/ผ่าคุด ซี่ ${missing.join(", ")}`);
-      }
-      if (extras.length > 0) {
-        managerNotes.push(`- ตรวจพบฟันเกิน/ฟันซ้อน: ${extras.join(", ")}`);
-      }
-
-      const newNotes = [...preservedLines, ...managerNotes].filter(Boolean).join("\n");
-      return { ...f, notes: newNotes };
-    });
   };
 
   const addMed = (med: PrescribedMed) => {
@@ -433,6 +498,8 @@ export function useTreatmentQueue(doctor: DentistInfo | null, initialAppointment
     todayString,
     formattedDate,
     filteredAppts,
+    unassignedAppts,
+    handleClaimAppointment,
     incrementService,
     incrementMedicine,
     decrementMedicine,
@@ -441,7 +508,6 @@ export function useTreatmentQueue(doctor: DentistInfo | null, initialAppointment
     saveDraftTreatment,
     submitTreatment,
     handleToothClick,
-    handleSaveToothManager,
     addMed,
     removeMed,
     applyMedsToNotes,

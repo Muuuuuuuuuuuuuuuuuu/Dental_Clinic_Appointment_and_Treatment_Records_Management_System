@@ -1,15 +1,12 @@
 import React, { useState } from "react";
 import { SupernumeraryTooth } from "./ToothGeometry";
-import { ToothStatus, ToothHistoryItem, getToothHistory } from "./toothHistory";
+import { ToothStatus, ToothHistoryItem, getToothHistory, isValidToothId } from "./toothHistory";
 import OdontogramLegend from "./OdontogramLegend";
 import OdontogramChart from "./OdontogramChart";
 import ToothInspectionModal from "./ToothInspectionModal";
-import PatientTimelineAccordion from "./PatientTimelineAccordion";
 
-// Re-export types and utilities for full backward compatibility across the app
 export type { ToothStatus, ToothHistoryItem };
 export { getToothHistory };
-
 export interface OdontogramProps {
   toothData: Record<number | string, ToothStatus>;
   onToothClick?: (tooth: number | string, status?: ToothStatus) => void;
@@ -17,14 +14,6 @@ export interface OdontogramProps {
   setIsChild?: (val: boolean) => void;
   readonly?: boolean;
   extraTeeth?: SupernumeraryTooth[];
-  onAddExtraTooth?: (tooth: SupernumeraryTooth) => void;
-  onRemoveExtraTooth?: (id: string) => void;
-  onSaveToothManager?: (
-    updatedToothData: Record<number | string, ToothStatus>,
-    updatedExtraTeeth: SupernumeraryTooth[]
-  ) => void;
-  viewMode?: "treatment" | "patient";
-  onViewModeChange?: (mode: "treatment" | "patient") => void;
   historyRecords?: any[];
   patientName?: string;
   onSelectHistoricalTeeth?: (
@@ -45,35 +34,19 @@ export default function Odontogram({
   readonly = false,
   onToothClick,
   extraTeeth = [],
-  viewMode,
-  onViewModeChange,
   historyRecords = [],
   patientName,
-  onSelectHistoricalTeeth,
-  activeRecordId,
-  onResetToLatest,
 }: OdontogramProps) {
-  const [internalViewMode, setInternalViewMode] = useState<"treatment" | "patient">(
-    readonly ? "patient" : (viewMode || "treatment")
-  );
-  const currentMode = readonly ? "patient" : (viewMode !== undefined ? viewMode : internalViewMode);
-
-  const handleModeChange = (mode: "treatment" | "patient") => {
-    if (onViewModeChange) {
-      onViewModeChange(mode);
-    }
-    setInternalViewMode(mode);
-  };
+  const currentMode = readonly ? "patient" : "treatment";
 
   const [selectedToothForInspection, setSelectedToothForInspection] = useState<string | null>(null);
-  const [showFullTimeline, setShowFullTimeline] = useState(false);
 
   const activeExtraTeeth = extraTeeth && extraTeeth.length > 0 ? extraTeeth : [];
 
-  // Summary counts for patient view mode
-  const cariesCount = Object.entries(toothData).filter(([k, s]) => s === 'red' && k !== 'extraTeeth' && k !== 'wholeMouth').length;
-  const filledCount = Object.entries(toothData).filter(([k, s]) => s === 'blue' && k !== 'extraTeeth' && k !== 'wholeMouth').length;
-  const missingCount = Object.entries(toothData).filter(([k, s]) => s === 'cross' && k !== 'extraTeeth' && k !== 'wholeMouth').length;
+  // Summary counts for patient view mode (นับเฉพาะซี่ฟันแท้/ฟันน้ำนม/ฟันเกินที่ถูกต้องเท่านั้น)
+  const cariesCount = Object.entries(toothData).filter(([k, s]) => s === 'red' && isValidToothId(k)).length;
+  const filledCount = Object.entries(toothData).filter(([k, s]) => s === 'blue' && isValidToothId(k)).length;
+  const missingCount = Object.entries(toothData).filter(([k, s]) => s === 'cross' && isValidToothId(k)).length;
   const extraCount = activeExtraTeeth.length;
 
   return (
@@ -89,9 +62,6 @@ export default function Odontogram({
         filledCount={filledCount}
         missingCount={missingCount}
         extraCount={extraCount}
-        historyCount={historyRecords.length}
-        showFullTimeline={showFullTimeline}
-        onToggleFullTimeline={() => setShowFullTimeline(!showFullTimeline)}
       />
 
       {/* Dark SVG Odontogram Canvas */}
@@ -114,21 +84,10 @@ export default function Odontogram({
         historyRecords={historyRecords}
         readonly={readonly}
         onStartTreatment={(tooth) => {
-          handleModeChange("treatment");
           if (onToothClick) {
             onToothClick(tooth, undefined);
           }
         }}
-      />
-
-      {/* Full Patient History Accordion */}
-      <PatientTimelineAccordion
-        isOpen={currentMode === "patient" && showFullTimeline}
-        onClose={() => setShowFullTimeline(false)}
-        historyRecords={historyRecords}
-        onSelectHistoricalTeeth={onSelectHistoricalTeeth}
-        activeRecordId={activeRecordId}
-        onResetToLatest={onResetToLatest}
       />
     </div>
   );

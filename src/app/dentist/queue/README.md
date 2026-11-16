@@ -33,7 +33,6 @@ src/app/dentist/queue/
     ├── ToothExtraBadge.tsx        ← ป้ายแสดงฟันเกิน/ฟันซ้อน
     ├── ToothActionModal.tsx       ← ป๊อปอัปเลือกหัตถการรายซี่
     ├── ToothInspectionModal.tsx   ← ป๊อปอัปดูประวัติการรักษารายซี่
-    ├── PatientTimelineAccordion.tsx ← ประวัติผังฟันย้อนหลังของคนไข้
     ├── toothNames.ts              ← ชื่อซี่ฟันภาษาไทยมาตรฐานสากล
     └── toothHistory.ts            ← ฟังก์ชันสรุปประวัติการรักษาต่อซี่
 ```

@@ -87,6 +87,7 @@ export default function ToothSvg({
       }}
       onMouseLeave={onLeaveTooth}
       style={{
+        transformBox: "fill-box", // 
         transformOrigin: "center",
         transition: "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)"
       }}

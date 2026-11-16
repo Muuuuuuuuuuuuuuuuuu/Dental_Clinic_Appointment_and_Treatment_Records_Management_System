@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { DentistInfo, ServiceInfo } from "@/app/shared/data";
 import { getServices } from "@/app/shared/supabaseApi";
-import { ChangePasswordModal, ChangeEmailModal } from "@/app/shared/components";
+import { ChangePasswordModal, ChangeEmailModal } from "@/app/auth/components";
 
 interface DoctorProfileProps {
   doctor: DentistInfo | null;

@@ -1,5 +1,4 @@
-const DAY_LABELS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
-const DAY_SHORT = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+import { DAY_LABELS, DAY_SHORT } from "@/app/shared/constants";
 
 interface WeeklyOffDaysCardProps {
   weeklyOffDays: number[];

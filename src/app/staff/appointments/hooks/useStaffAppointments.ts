@@ -136,21 +136,23 @@ export function useStaffAppointments(initialAppointments?: Appointment[]) {
     (a) => !["เสร็จสิ้น", "ยกเลิก", "ไม่มาตามนัด"].includes(a.status)
   );
 
-  // ตรวจสอบและปรับสถานะนัดหมายที่เลยเวลาแล้วเป็น "ไม่มาตามนัด" อัตโนมัติ
+  // ตรวจสอบและปรับสถานะนัดหมายที่พ้นวันนัดไปแล้วเป็น "ไม่มาตามนัด" อัตโนมัติ (แบบสิ้นสุดวัน / ข้ามวัน)
   const processedExpiredIds = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (loading || appointments.length === 0) return;
 
     const now = getNow();
+    const todayStr = getTodayStr(now);
     const expirableStatuses = ["รอการยืนยัน", "ยืนยันการจอง"];
 
     const toExpire = appointments.filter((a) => {
       if (processedExpiredIds.current.has(a.id)) return false;
       if (!expirableStatuses.includes(a.status)) return false;
-      if (!a.date || !a.time) return false;
-      const apptDateTime = new Date(`${a.date}T${a.time}:00`);
-      return apptDateTime < now;
+      if (!a.date) return false;
+      // แบบที่ 1: ตรวจสอบเฉพาะนัดหมายที่พ้นวันไปแล้ว (a.date < todayStr)
+      // ตราบใดที่ยังเป็นวันเดียวกัน จะไม่ตัดเป็นไม่มาตามนัด เพื่อรองรับกรณีคนไข้มาสาย
+      return a.date < todayStr;
     });
 
     if (toExpire.length === 0) return;
@@ -164,7 +166,11 @@ export function useStaffAppointments(initialAppointments?: Appointment[]) {
     );
 
     toExpire.forEach((a) => {
-      updateAppointmentStatus(a.id, "ไม่มาตามนัด", "เลยเวลานัดหมาย").catch(console.error);
+      updateAppointmentStatus(
+        a.id,
+        "ไม่มาตามนัด",
+        "สิ้นสุดวันนัดหมายแล้ว (คนไข้ไม่ได้เดินทางมาตามนัด)"
+      ).catch(console.error);
     });
   }, [loading, appointments, setAppointments]);
 

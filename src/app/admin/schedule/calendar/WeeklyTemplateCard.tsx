@@ -1,18 +1,5 @@
-import { useState } from "react";
 import { Shift } from "@/app/shared/data";
-import { Calendar as CalendarIcon, ChevronDown, ChevronUp } from "lucide-react";
-
-const DAY_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
-
-const DAY_COLORS: Record<number, { bg: string; text: string; border: string }> = {
-  0: { bg: "#FEE2E2", text: "#991B1B", border: "#F87171" }, // อาทิตย์ - แดง
-  1: { bg: "#FEF9C3", text: "#854D0E", border: "#FACC15" }, // จันทร์ - เหลือง
-  2: { bg: "#FCE7F3", text: "#9D174D", border: "#F472B6" }, // อังคาร - ชมพู
-  3: { bg: "#DCFCE7", text: "#166534", border: "#4ADE80" }, // พุธ - เขียว
-  4: { bg: "#FFEDD5", text: "#9A3412", border: "#FB923C" }, // พฤหัสบดี - ส้ม
-  5: { bg: "#E0F2FE", text: "#0369A1", border: "#38BDF8" }, // ศุกร์ - ฟ้า
-  6: { bg: "#F3E8FF", text: "#6B21A8", border: "#C084FC" }, // เสาร์ - ม่วงอ่อน
-};
+import { DAY_TH, DAY_COLORS } from "@/app/shared/constants";
 
 interface WeeklyTemplateCardProps {
   persons: {
@@ -39,7 +26,7 @@ export default function WeeklyTemplateCard({
   weeklyOffDays,
   onEditShift,
   isCollapsed,
-  onToggleCollapse,
+  onToggleCollapse: _onToggleCollapse,
 }: WeeklyTemplateCardProps) {
   return (
     <div className="bg-white rounded-2xl shadow-xs border border-gray-100 overflow-hidden h-full flex flex-col">

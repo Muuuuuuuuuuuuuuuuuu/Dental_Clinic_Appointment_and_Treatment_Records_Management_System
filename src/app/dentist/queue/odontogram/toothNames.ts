@@ -1,4 +1,6 @@
+
 export const TOOTH_NAMES_TH: Record<number, string> = {
+
   11: "11 (ฟันหน้ากลางบนขวา)",
   12: "12 (ฟันหน้าข้างบนขวา)",
   13: "13 (ฟันเขี้ยวบนขวา)",
@@ -102,4 +104,5 @@ export function getExtraToothInsertOptionLabel(num: number): string {
 
   return `+${num}S: ฟันเกิน/ซ้อนบริเวณซี่ ${num}`;
 }
+
 

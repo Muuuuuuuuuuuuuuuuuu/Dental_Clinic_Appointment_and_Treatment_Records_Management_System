@@ -52,12 +52,6 @@ export default function UserManagementView() {
           >
             {/* Header */}
             <div className="p-4 sm:p-5 pb-3.5" style={{ background: card.gradient }}>
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5"
-                style={{ backgroundColor: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }}
-              >
-                <card.icon size={20} color="white" />
-              </div>
               <h3 className="text-base font-bold text-white tracking-wide">{card.title}</h3>
             </div>
 

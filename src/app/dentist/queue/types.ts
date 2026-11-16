@@ -1,6 +1,3 @@
-import { ToothStatus } from "./odontogram/Odontogram";
-import { SupernumeraryTooth } from "./odontogram/ToothGeometry";
-
 export interface TreatmentServiceItem {
   id: number;
   name: string;

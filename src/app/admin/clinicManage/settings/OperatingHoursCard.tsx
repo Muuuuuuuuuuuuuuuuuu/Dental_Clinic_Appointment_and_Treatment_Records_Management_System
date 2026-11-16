@@ -1,6 +1,5 @@
 import { DayHours } from "@/app/shared/supabaseApi";
-
-const DAY_LABELS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+import { DAY_LABELS } from "@/app/shared/constants";
 
 interface OperatingHoursCardProps {
   dailyHours: Record<string, DayHours>;

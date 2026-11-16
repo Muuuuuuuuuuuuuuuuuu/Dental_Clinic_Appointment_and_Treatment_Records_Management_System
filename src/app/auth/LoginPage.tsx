@@ -70,19 +70,21 @@ export default function LoginPage({
       // รองรับชื่อบทบาททั้งภาษาไทยและภาษาอังกฤษ
       const isPatient = role === "patient" || role === "คนไข้";
 
+      // ตรวจสอบสถานะต้องเปลี่ยนรหัสผ่านเริ่มต้นสำหรับทุกบทบาท (คนไข้, หมอ, พนักงาน, แอดมิน)
+      const cleanEmail = email.trim().toLowerCase();
+      const isDefaultPass = ["123456789", "patient123", "password123", "admin123", "staff123"].includes(pass);
+      const mustChangeInMeta = authData.user.user_metadata?.must_change_password === true && authData.user.user_metadata?.password_changed !== true;
+      if (isDefaultPass || mustChangeInMeta) {
+        localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
+        localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
+      }
+
       if (isPatient) {
         // ดึงข้อมูลโปรไฟล์โดยใช้รหัสผู้ใช้ที่ยืนยันตัวตนแล้ว
         const profile = await getPatientProfileByUserId(authData.user.id) as any;
 
         if (!profile) {
           throw new Error("INCOMPLETE_PROFILE");
-        }
-
-        // หากคนไข้เข้าสู่ระบบด้วยรหัสผ่านเริ่มต้น 123456789 หรือมีสถานะต้องเปลี่ยนรหัสผ่านครั้งแรก
-        const cleanEmail = email.trim().toLowerCase();
-        if (pass === "123456789" || pass === "patient123" || authData.user.user_metadata?.must_change_password === true) {
-          localStorage.setItem(`supat_must_change_pwd_${cleanEmail}`, "true");
-          localStorage.removeItem(`supat_pwd_changed_${cleanEmail}`);
         }
 
         onLogin({

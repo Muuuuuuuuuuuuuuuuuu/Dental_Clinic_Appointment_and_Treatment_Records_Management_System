@@ -1,22 +1,13 @@
 import React from "react";
 import { Clock } from "lucide-react";
 import { Shift } from "@/app/shared/data";
+import { WORK_WEEK_DAYS as DAYS } from "@/app/shared/constants";
 
 interface RegularScheduleCardProps {
   shifts: Shift[];
   showSchedule?: boolean;
   onToggleSchedule?: () => void;
 }
-
-const DAYS = [
-  { name: "จันทร์", day: 1 },
-  { name: "อังคาร", day: 2 },
-  { name: "พุธ", day: 3 },
-  { name: "พฤหัส", day: 4 },
-  { name: "ศุกร์", day: 5 },
-  { name: "เสาร์", day: 6 },
-  { name: "อาทิตย์", day: 0 },
-];
 
 /**
  * ⏰ [CONTENT COMPONENT] ตารางเวรประจำของฉัน (ขนาดกะทัดรัด แสดงครบ 7 วันในแถวเดียว)

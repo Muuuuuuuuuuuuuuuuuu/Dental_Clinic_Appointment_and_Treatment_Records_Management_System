@@ -6,6 +6,7 @@ interface MetricCardItemProps {
 
   val: string | number;
   
+  
   isAction?: boolean;
   onClick?: () => void;
 }
@@ -24,11 +25,9 @@ function MetricCardItem({
     <div
       className={`rounded-xl bg-white px-5 py-3  transition-shadow ${isAction ? "cursor-pointer hover:shadow-md" : ""
         }`}
-      style={{ boxShadow: "0 2px 8px rgba(26,54,93,0.05)" }}
+      style={{ boxShadow: "2px 8px rgba(26,54,93,0.05)" }}
       onClick={isAction ? onClick : undefined}
     >
-
-
       <div>
         <div
           className="text-2xl font-bold leading-tight"
@@ -74,7 +73,6 @@ export default function MetricCards({
           key={c.label}
           label={c.label}
           val={c.val}
-
           isAction={c.isAction}
           onClick={c.onClick}
         />
@@ -82,3 +80,4 @@ export default function MetricCards({
     </div>
   );
 }
+

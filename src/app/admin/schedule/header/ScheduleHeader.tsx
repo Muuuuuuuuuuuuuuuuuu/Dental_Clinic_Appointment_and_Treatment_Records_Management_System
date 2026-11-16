@@ -16,10 +16,10 @@ interface ScheduleHeaderProps {
  * แถบควบคุมด้านบน: หัวข้อและช่องค้นหาอยู่ฝั่งซ้าย ส่วนตัวกรองบทบาทชิดฝั่งขวา
  */
 export default function ScheduleHeader({
-  searchQuery,
-  onSearchChange,
-  roleFilter,
-  onRoleFilterChange,
+  searchQuery: _searchQuery,
+  onSearchChange: _onSearchChange,
+  roleFilter: _roleFilter,
+  onRoleFilterChange: _onRoleFilterChange,
   pendingLeaveCount,
   pendingChangesCount,
   onSaveAll,

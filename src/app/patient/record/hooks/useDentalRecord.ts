@@ -3,6 +3,23 @@ import { ToothStatus } from "@/app/dentist/queue/odontogram/Odontogram";
 import { SupernumeraryTooth } from "@/app/dentist/queue/odontogram/ToothGeometry";
 import { getPatientTreatmentRecords } from "@/app/shared/supabaseApi";
 
+// ตรวจสอบความถูกต้องของรหัสซี่ฟันตามระบบสากล FDI (11-48, 51-85 หรือฟันเกิน)
+export const isValidToothId = (val: any): boolean => {
+  if (!val) return false;
+  const s = String(val).replace(/^teeth-/, "").trim();
+  const n = parseInt(s, 10);
+  if (!isNaN(n) && String(n) === s) {
+    const q = Math.floor(n / 10);
+    const t = n % 10;
+    // ฟันแท้ 11-18, 21-28, 31-38, 41-48
+    if (q >= 1 && q <= 4 && t >= 1 && t <= 8) return true;
+    // ฟันน้ำนม 51-55, 61-65, 71-75, 81-85
+    if (q >= 5 && q <= 8 && t >= 1 && t <= 5) return true;
+    return false;
+  }
+  return s === "mesiodens" || s.endsWith("S") || s.includes("S-");
+};
+
 export const getToothNameTh = (numStr: string, isChild: boolean) => {
   const n = parseInt(numStr, 10);
   if (isNaN(n)) return "";
@@ -128,42 +145,74 @@ export function useDentalRecord(propsOrUser?: UseDentalRecordProps | any) {
       .catch(console.error);
   }, [actualUser?.patientId]);
 
-  const cariesCount = Object.entries(localToothData).filter(
-    ([k, s]) => s === "red" && k !== "extraTeeth" && k !== "wholeMouth"
-  ).length;
-
-  const filledCount = Object.entries(localToothData).filter(
-    ([k, s]) => s === "blue" && k !== "extraTeeth" && k !== "wholeMouth"
-  ).length;
-
-  // ตรวจจับฟันที่ถูกถอนจากประวัติการทำหัตถการ
+  // ตรวจจับฟันที่ถูกถอนหรือผ่าคุดจากประวัติการทำหัตถการ
   const inferredMissingTeeth = new Set<string>();
+
+  const addIfValidTooth = (val: any) => {
+    if (!val) return;
+    const clean = String(val).replace(/^teeth-/, "").trim();
+    if (isValidToothId(clean)) {
+      inferredMissingTeeth.add(clean);
+    }
+  };
+
   historyRecords.forEach((record) => {
+    // 1. ตรวจจับจาก treatmentServices (เช่น "ผ่าฟันคุด (ซี่ 48)", "ถอนฟัน ซี่ที่ 48", "ผ่าคุด (48)")
     if (record.treatmentServices) {
       record.treatmentServices.forEach((s: string) => {
-        const match = s.match(/ถอนฟัน.*?ซี่ที่:\s*(\d+)/);
-        if (match) inferredMissingTeeth.add(match[1]);
+        if (!s) return;
+        const isExtraction = s.includes("ถอน") || s.includes("ผ่าฟันคุด") || s.includes("ผ่าคุด");
+        if (isExtraction) {
+          // ดักเฉพาะเลขซี่ 2 หลักที่มีคำว่า ซี่ / ซี่ที่ หรืออยู่ในวงเล็บเฉพาะเลขซี่
+          const m1 = s.matchAll(/(?:ซี่ที่:?|ซี่)\s*(\d{2})\b/g);
+          for (const m of m1) addIfValidTooth(m[1]);
+
+          const m2 = s.matchAll(/\(\s*(?:ซี่)?\s*(\d{2})\s*\)/g);
+          for (const m of m2) addIfValidTooth(m[1]);
+        }
       });
     }
+
+    // 2. ตรวจจับจาก detailedServices
     if (record.detailedServices) {
       record.detailedServices.forEach((ds: any) => {
-        if (ds.name?.includes("ถอนฟัน") && ds.locationCode && ds.locationCode !== "MOUTH") {
-          inferredMissingTeeth.add(String(ds.locationCode));
+        const isExtraction =
+          ds.name?.includes("ถอน") ||
+          ds.name?.includes("ผ่าฟันคุด") ||
+          ds.name?.includes("ผ่าคุด") ||
+          ds.serviceName?.includes("ถอน") ||
+          ds.serviceName?.includes("ผ่าฟันคุด") ||
+          ds.serviceName?.includes("ผ่าคุด");
+        if (isExtraction && ds.locationCode) {
+          addIfValidTooth(ds.locationCode);
+        }
+      });
+    }
+
+    // 3. ตรวจจับจาก notes / treatmentNotes
+    const noteText = record.notes || record.treatmentNotes || "";
+    if (noteText) {
+      noteText.split(/\r?\n/).forEach((line: string) => {
+        if (line.includes("ถอน") || line.includes("ผ่าฟันคุด") || line.includes("ผ่าคุด")) {
+          const m1 = line.matchAll(/(?:ซี่ที่:?|ซี่)\s*(\d{2})\b/g);
+          for (const m of m1) addIfValidTooth(m[1]);
+
+          const m2 = line.matchAll(/\(\s*(?:ซี่)?\s*(\d{2})\s*\)/g);
+          for (const m of m2) addIfValidTooth(m[1]);
         }
       });
     }
   });
 
   const explicitMissing = Object.entries(localToothData)
-    .filter(([k, s]) => s === "cross" && k !== "extraTeeth" && k !== "wholeMouth")
+    .filter(([k, s]) => s === "cross" && isValidToothId(k))
     .map(([n]) => String(n).replace("teeth-", ""));
   const missingTeeth = Array.from(new Set([...explicitMissing, ...inferredMissingTeeth]));
 
   const mergedToothData: Record<number | string, ToothStatus> = { ...localToothData };
   missingTeeth.forEach((t) => {
-    if (!mergedToothData[t]) {
-      mergedToothData[t] = "cross";
-    }
+    // กำหนดให้เป็นสถานะ cross (ถอน/สูญเสีย) เฉพาะซี่ที่ถูกต้อง
+    mergedToothData[t] = "cross";
   });
 
   // สลับดูแผนผังฟันย้อนหลังตามวันที่ที่เลือกในกล่องประวัติ
@@ -212,8 +261,6 @@ export function useDentalRecord(propsOrUser?: UseDentalRecordProps | any) {
     historyRecords,
     clickedTooth,
     setClickedTooth,
-    cariesCount,
-    filledCount,
     missingTeeth,
     mergedToothData,
     handleSelectHistoricalTeeth,

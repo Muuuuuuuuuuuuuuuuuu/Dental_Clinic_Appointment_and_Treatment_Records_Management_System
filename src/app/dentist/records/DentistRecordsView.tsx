@@ -14,7 +14,7 @@ interface DentistRecordsProps {
  * หน้าเวชระเบียนคนไข้ของทันตแพทย์ (Flat Architecture)
  * ตรงกับเมนู "เวชระเบียน" (key: records) บน Sidebar
  */
-export default function DentistRecordsView({ doctorId }: DentistRecordsProps) {
+export default function DentistRecordsView({ doctorId: _doctorId }: DentistRecordsProps) {
   const { appointments } = useRealtimeAppointments();
   const [q, setQ] = useState("");
   const [allPatients, setAllPatients] = useState<PatientInfo[]>([]);

@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { addPatient, supabase } from "@/app/shared/supabaseApi";
+import { addPatient, supabase, supabaseAdmin } from "@/app/shared/supabaseApi";
 
 export type RegForm = {
   firstName: string;
@@ -88,9 +87,7 @@ const cleanupUnconfirmedAuthUser = async (userId: string) => {
       .maybeSingle();
 
     if (!existingUser) {
-      const adminClient = createClient(url, serviceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
+      const adminClient = supabaseAdmin;
       await adminClient.auth.admin.deleteUser(userId);
     }
   } catch (e) {
@@ -112,9 +109,7 @@ const cleanupUnconfirmedAuthUserByEmail = async (email: string) => {
       .maybeSingle();
 
     if (!existingUser) {
-      const adminClient = createClient(url, serviceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
+      const adminClient = supabaseAdmin;
       const { data: linkData } = await adminClient.auth.admin.generateLink({
         type: "recovery",
         email: email.trim().toLowerCase(),
@@ -135,9 +130,7 @@ const ensureUserMetadataByEmail = async (email: string, meta: Record<string, any
     const url = import.meta.env.VITE_SUPABASE_URL;
     if (!url || !serviceKey) return;
 
-    const adminClient = createClient(url, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const adminClient = supabaseAdmin;
     const { data: linkData } = await adminClient.auth.admin.generateLink({
       type: "recovery",
       email: email.trim().toLowerCase(),

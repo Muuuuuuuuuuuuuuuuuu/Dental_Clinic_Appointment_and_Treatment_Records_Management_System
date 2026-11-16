@@ -151,12 +151,12 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
         (s) => s.dentistId === form.doctorId && s.dayOfWeek === dayOfWk
       );
       const isFullLeave = selDocData
-        ? upcomingLeaves.some(
-            (l) =>
-              l.user_id === selDocData.userId &&
-              l.leave_date === dateStr &&
-              l.leave_period === "เต็มวัน"
-          )
+        ? upcomingLeaves.some((l) => {
+            if (l.leave_date !== dateStr || l.leave_period !== "เต็มวัน") return false;
+            const matchUser = Boolean(l.user_id && selDocData.userId && l.user_id === selDocData.userId);
+            const matchStaff = Boolean(l.staff_id && selDocData.staffId && l.staff_id === selDocData.staffId);
+            return matchUser || matchStaff;
+          })
         : false;
 
       if (shift && shift.isOff) {

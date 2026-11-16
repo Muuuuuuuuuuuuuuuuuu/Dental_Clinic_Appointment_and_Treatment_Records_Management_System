@@ -9,6 +9,7 @@ import DoctorPortal from "@/app/dentist/DentistPortal";
 import AdminPortal from "@/app/admin/AdminPortal";
 import StaffPortal from "@/app/staff/StaffPortal";
 import PatientPortal from "@/app/patient/PatientPortal";
+import FirstTimePasswordPage from "@/app/auth/FirstTimePasswordPage";
 
 /**
  * 🌐 [ROOT APPLICATION ROUTER]
@@ -21,6 +22,18 @@ export default function App() {
   const [role, setRole] = useState<UserRole>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [isInitializing, setIsInitializing] = useState(true);
+  const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
+
+  const checkMustChangePassword = (email?: string, userMeta?: any) => {
+    if (!email) return false;
+    const clean = email.trim().toLowerCase();
+    if (localStorage.getItem(`supat_must_change_pwd_${clean}`) === "true") return true;
+    if (userMeta?.must_change_password === true && userMeta?.password_changed !== true) {
+      if (localStorage.getItem(`supat_pwd_changed_${clean}`) === "true") return false;
+      return true;
+    }
+    return false;
+  };
 
   const { appointments: sharedAppointments, setAppointments: setSharedAppointments } = useRealtimeAppointments();
 
@@ -36,7 +49,12 @@ export default function App() {
 
   const handleRoleChange = (newRole: UserRole, email?: string) => {
     setRole(newRole);
-    if (email) setLoginEmail(email);
+    if (email) {
+      setLoginEmail(email);
+      if (checkMustChangePassword(email)) {
+        setNeedsPasswordChange(true);
+      }
+    }
   };
 
   const handleLogout = async () => {
@@ -61,6 +79,7 @@ export default function App() {
     // 2. ปรับ State บทบาทใน React ทันทีโดยไม่ต้องรอเครือข่าย หน้าจอจะเด้งกลับหน้าหลักในคลิกเดียวทันที
     setRole(null);
     setLoginEmail("");
+    setNeedsPasswordChange(false);
 
     // 3. ส่งคำขอยกเลิกเซสชันไปยัง Supabase API ในเบื้องหลัง
     try {
@@ -88,7 +107,11 @@ export default function App() {
           else if (rawRole === "staff" || rawRole === "พนักงาน") mappedRole = "staff";
 
           setRole(mappedRole);
-          setLoginEmail(session.user.email || "");
+          const userEmail = session.user.email || "";
+          setLoginEmail(userEmail);
+          if (checkMustChangePassword(userEmail, session.user.user_metadata)) {
+            setNeedsPasswordChange(true);
+          }
         }
       } catch (err) {
         console.error("App Root Session restore error:", err);
@@ -105,6 +128,27 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 font-sans">
         กำลังโหลดข้อมูล...
       </div>
+    );
+  }
+
+  // ─── หากผู้ใช้งานจำเป็นต้องเปลี่ยนรหัสผ่านเริ่มต้นในการเข้าใช้งานครั้งแรก (ครอบคลุมทุกบทบาท) ───────
+  if (needsPasswordChange && role !== null) {
+    return (
+      <FirstTimePasswordPage
+        userEmail={loginEmail}
+        onSuccess={() => {
+          if (loginEmail) {
+            const clean = loginEmail.trim().toLowerCase();
+            localStorage.removeItem(`supat_must_change_pwd_${clean}`);
+            localStorage.setItem(`supat_pwd_changed_${clean}`, "true");
+          }
+          setNeedsPasswordChange(false);
+        }}
+        onBack={() => {
+          setNeedsPasswordChange(false);
+          handleLogout();
+        }}
+      />
     );
   }
 

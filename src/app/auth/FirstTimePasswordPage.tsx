@@ -39,8 +39,9 @@ export default function FirstTimePasswordPage({
       return;
     }
 
-    if (newPass === "123456789") {
-      setError("กรุณาตั้งรหัสผ่านใหม่ที่ไม่ซ้ำกับรหัสผ่านเริ่มต้น (123456789)");
+    const defaultPasswords = ["123456789", "patient123", "password123", "admin123", "staff123"];
+    if (defaultPasswords.includes(newPass)) {
+      setError("กรุณาตั้งรหัสผ่านใหม่ที่ไม่ซ้ำกับรหัสผ่านเริ่มต้นของระบบ");
       return;
     }
 

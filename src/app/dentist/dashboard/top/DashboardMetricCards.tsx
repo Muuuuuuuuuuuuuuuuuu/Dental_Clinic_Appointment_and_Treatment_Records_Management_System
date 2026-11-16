@@ -4,7 +4,7 @@ import { Users, Clock, CreditCard, CheckCircle, LucideIcon } from "lucide-react"
 interface MetricCardItemProps {
   label: string;
   val: number | string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   bg: string;
   ic: string;
 }
@@ -24,12 +24,14 @@ function MetricCardItem({
       className="rounded-2xl bg-white p-4"
       style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
     >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-        style={{ backgroundColor: bg }}
-      >
-        <Icon size={18} style={{ color: ic }} />
-      </div>
+      {Icon && (
+        <div
+          className="w-8 h-8 rounded-xl flex items-center justify-center mb-3"
+          style={{ backgroundColor: bg }}
+        >
+          <Icon size={16} style={{ color: ic }} />
+        </div>
+      )}
       <div
         className="text-2xl font-bold"
         style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}

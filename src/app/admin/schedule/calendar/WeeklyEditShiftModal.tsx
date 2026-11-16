@@ -1,8 +1,7 @@
 import React from "react";
 import { X, AlertCircle } from "lucide-react";
 import { Shift } from "@/app/shared/data";
-
-const DAY_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+import { DAY_TH } from "@/app/shared/constants";
 
 interface WeeklyEditShiftModalProps {
   editingShift: {
@@ -76,12 +75,17 @@ export default function WeeklyEditShiftModal({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-500 mb-1">
-                  เวลาสิ้นสุดเวร
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[11px] font-bold text-gray-500">
+                    เวลาสิ้นสุดเวร
+                  </label>
+                  <span className="text-[10px] text-blue-600 font-medium">
+                    {editingShift.dayNum === 6 ? "คลินิกปิด 18:00 น." : "คลินิกปิด 20:00 น."}
+                  </span>
+                </div>
                 <input
                   type="time"
-                  value={editingShift.shift?.end_time?.substring(0, 5) || "20:00"}
+                  value={editingShift.shift?.end_time?.substring(0, 5) || (editingShift.dayNum === 6 ? "18:00" : "20:00")}
                   onChange={(e) => onShiftFieldChange("end_time", e.target.value)}
                   className="w-full p-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />

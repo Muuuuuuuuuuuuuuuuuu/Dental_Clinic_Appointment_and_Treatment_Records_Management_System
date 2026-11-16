@@ -31,12 +31,6 @@ interface QueueItemProps {
   onStartRecording: (a: Appointment) => void;
   onUpdateAppt: (id: number, updates: Partial<Appointment>) => void;
   onToothClick: (tooth: number | string, status?: ToothStatus) => void;
-  onAddExtraTooth: (tooth: SupernumeraryTooth) => void;
-  onRemoveExtraTooth: (id: string) => void;
-  onSaveToothManager: (
-    updatedToothData: Record<number | string, ToothStatus>,
-    updatedExtraTeeth: SupernumeraryTooth[]
-  ) => void;
   incrementService: (svc: any, tooth?: number | string) => void;
   incrementMedicine: (prod: any) => void;
   decrementMedicine: (prodId: number, e: React.MouseEvent) => void;
@@ -65,9 +59,6 @@ export default function QueueItem({
   onStartRecording,
   onUpdateAppt,
   onToothClick,
-  onAddExtraTooth,
-  onRemoveExtraTooth,
-  onSaveToothManager,
   incrementService,
   incrementMedicine,
   decrementMedicine,
@@ -221,9 +212,6 @@ export default function QueueItem({
           setForm={setForm}
           isSubmitting={isSubmitting}
           onToothClick={onToothClick}
-          onAddExtraTooth={onAddExtraTooth}
-          onRemoveExtraTooth={onRemoveExtraTooth}
-          onSaveToothManager={onSaveToothManager}
           incrementService={incrementService}
           incrementMedicine={incrementMedicine}
           decrementMedicine={decrementMedicine}
