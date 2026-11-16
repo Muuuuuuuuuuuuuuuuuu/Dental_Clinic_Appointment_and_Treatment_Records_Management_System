@@ -13,7 +13,7 @@ interface ReceiptSlipTabProps {
 }
 
 /**
- * 🧾 [MODAL TAB] สลิปใบเสร็จรับเงินอิเล็กทรอนิกส์
+ * [MODAL TAB] สลิปใบเสร็จรับเงินอิเล็กทรอนิกส์
  */
 export default function ReceiptSlipTab({
   selected,

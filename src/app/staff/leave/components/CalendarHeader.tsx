@@ -1,5 +1,4 @@
 import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CalendarHeaderProps {
   currentDate: Date;
@@ -15,9 +14,6 @@ interface CalendarHeaderProps {
  */
 export default function CalendarHeader({
   currentDate,
-  onPrevMonth,
-  onNextMonth,
-  onResetMonth,
   onChangeMonth,
   onChangeYear,
 }: CalendarHeaderProps) {
@@ -28,7 +24,7 @@ export default function CalendarHeader({
 
   return (
     <div>
-      {/* แถบเลือกเดือน/ปี และปุ่มเลื่อน */}
+      {/* แถบเลือกเดือน/ปี */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-3">
         <div className="flex items-center gap-2">
           <select
@@ -56,29 +52,6 @@ export default function CalendarHeader({
               );
             })}
           </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onPrevMonth}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-600"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={onResetMonth}
-            className="px-2.5 py-1 text-xs font-medium hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-700 border border-gray-200"
-          >
-            เดือนปัจจุบัน
-          </button>
-          <button
-            type="button"
-            onClick={onNextMonth}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-600"
-          >
-            <ChevronRight size={18} />
-          </button>
         </div>
       </div>
 

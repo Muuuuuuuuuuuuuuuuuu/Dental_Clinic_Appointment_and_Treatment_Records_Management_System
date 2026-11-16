@@ -113,8 +113,8 @@ export function RegisterFormStep({
                     maxLength={13}
                     hasError={Boolean(
                       err &&
-                        (!form.idCard?.trim() ||
-                          form.idCard.replace(/\D/g, "").length !== 13)
+                      (!form.idCard?.trim() ||
+                        form.idCard.replace(/\D/g, "").length !== 13)
                     )}
                   />
                 </div>
@@ -175,8 +175,8 @@ export function RegisterFormStep({
                   maxLength={10}
                   hasError={Boolean(
                     err &&
-                      (!form.phone?.trim() ||
-                        form.phone.replace(/\D/g, "").length !== 10)
+                    (!form.phone?.trim() ||
+                      form.phone.replace(/\D/g, "").length !== 10)
                   )}
                 />
                 <FormField
@@ -188,8 +188,8 @@ export function RegisterFormStep({
                   placeholder="example@email.com"
                   hasError={Boolean(
                     err &&
-                      (!form.email?.trim() ||
-                        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+                    (!form.email?.trim() ||
+                      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
                   )}
                 />
               </div>

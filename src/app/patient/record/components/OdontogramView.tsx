@@ -22,7 +22,7 @@ interface OdontogramViewProps {
 }
 
 /**
- * 🦷 [RECORD COMPONENT] แผนผังฟัน 32 ซี่ และฟันเกิน แบบโต้ตอบได้
+ *  [RECORD COMPONENT] แผนผังฟัน 32 ซี่ และฟันเกิน แบบโต้ตอบได้
  */
 export default function OdontogramView({
   mergedToothData,

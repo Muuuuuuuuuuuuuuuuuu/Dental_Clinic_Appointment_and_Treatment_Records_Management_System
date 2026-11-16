@@ -16,7 +16,7 @@ export interface DentalRecordViewProps {
 }
 
 /**
- * 🦷 Patient Dental Record Module - Flat & Clean Architecture
+ * Patient Dental Record Module - Flat & Clean Architecture
  */
 export default function PatientDentalRecordView({
   onBack,

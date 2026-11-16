@@ -1,5 +1,4 @@
 import React from "react";
-import { Clock } from "lucide-react";
 import { Shift } from "@/app/shared/data";
 
 interface RegularScheduleCardProps {
@@ -27,14 +26,9 @@ export default function RegularScheduleCard({ shifts }: RegularScheduleCardProps
       className="bg-white rounded-2xl border border-gray-100 p-3.5 h-full flex flex-col justify-between"
       style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
-          <Clock size={16} />
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold text-gray-800 leading-tight">ตารางเวรประจำของฉัน</h2>
-          <p className="text-[11px] text-gray-400">รูปแบบการทำงานปกติรายสัปดาห์</p>
-        </div>
+      <div className="mb-2">
+        <h2 className="text-sm font-semibold text-gray-800 leading-tight">ตารางเวรประจำของฉัน</h2>
+        <p className="text-[11px] text-gray-400">รูปแบบการทำงานปกติรายสัปดาห์</p>
       </div>
 
       <div className="grid grid-cols-7 gap-1.5">

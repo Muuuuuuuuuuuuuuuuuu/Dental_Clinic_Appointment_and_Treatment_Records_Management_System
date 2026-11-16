@@ -197,15 +197,15 @@ export default function BookingCalendar({
                   background: sel
                     ? "#FF8C9A"
                     : isFullyBooked
-                    ? "rgba(239,68,68,0.12)"
-                    : "transparent",
+                      ? "rgba(239,68,68,0.12)"
+                      : "transparent",
                   color: sel
                     ? "white"
                     : isPast
-                    ? "#D1D5DB"
-                    : isFullyBooked
-                    ? "#DC2626"
-                    : "#1A365D",
+                      ? "#D1D5DB"
+                      : isFullyBooked
+                        ? "#DC2626"
+                        : "#1A365D",
                   boxShadow: sel ? "0 2px 6px rgba(255,140,154,0.5)" : "none",
                   opacity: isPast ? 0.4 : 1,
                   outline: isFullyBooked
@@ -243,7 +243,7 @@ export default function BookingCalendar({
               alignItems: "center",
               gap: 3,
               fontSize: 8,
-              color: "#94A3B8",
+              color: "#94A3B8", //สีtxet
             }}
           >
             <div
@@ -251,7 +251,7 @@ export default function BookingCalendar({
                 width: 6,
                 height: 6,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg,#FF8C9A,#FF6B7E)",
+                backgroundColor: "#f443bfff", //สีจุด
               }}
             />
             เลือก
@@ -262,7 +262,7 @@ export default function BookingCalendar({
               alignItems: "center",
               gap: 3,
               fontSize: 8,
-              color: "#94A3B8",
+              color: "#94A3B8", //สี text
             }}
           >
             <div
@@ -270,7 +270,7 @@ export default function BookingCalendar({
                 width: 6,
                 height: 6,
                 borderRadius: "50%",
-                backgroundColor: "#EF4444",
+                backgroundColor: "#EF4444", //สีจุด
               }}
             />
             คิวเต็ม
@@ -281,7 +281,7 @@ export default function BookingCalendar({
               alignItems: "center",
               gap: 3,
               fontSize: 8,
-              color: "#94A3B8",
+              color: "#94A3B8", //สีtext
             }}
           >
             <div
@@ -289,7 +289,7 @@ export default function BookingCalendar({
                 width: 6,
                 height: 6,
                 borderRadius: "50%",
-                backgroundColor: "#D1D5DB",
+                backgroundColor: "#D1D5DB", //สีจุด
               }}
             />
             ไม่ว่าง

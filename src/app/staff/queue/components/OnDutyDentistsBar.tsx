@@ -11,7 +11,7 @@ interface OnDutyDentistsBarProps {
 }
 
 /**
- * 👨‍⚕️ [QUEUE COMPONENT] แถบแสดงรายชื่อทันตแพทย์ที่ออกตรวจวันนี้
+ * [QUEUE COMPONENT] แถบแสดงรายชื่อทันตแพทย์ที่ออกตรวจวันนี้
  */
 export default function OnDutyDentistsBar({
   dentists,

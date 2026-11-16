@@ -29,9 +29,9 @@ export default function AppointmentCard({
     a.service === "ตัดไหม" ||
     Boolean(
       a.note &&
-        (a.note.includes("แพทย์ประจำเคส") ||
-          a.note.includes("นัดตัดไหม") ||
-          a.note.includes("เคสต่อเนื่อง"))
+      (a.note.includes("แพทย์ประจำเคส") ||
+        a.note.includes("นัดตัดไหม") ||
+        a.note.includes("เคสต่อเนื่อง"))
     ) ||
     (a as any).source === "doctor";
   const canCancel = isPending && (!isFollowUpCase || Boolean(a.date));
@@ -48,9 +48,8 @@ export default function AppointmentCard({
 
   return (
     <div
-      className={`rounded-2xl bg-white p-5 transition-all ${
-        isExpiring ? "opacity-50 pointer-events-none" : ""
-      }`}
+      className={`rounded-2xl bg-white p-5 transition-all ${isExpiring ? "opacity-50 pointer-events-none" : ""
+        }`}
       style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
     >
       {isExpiring && (

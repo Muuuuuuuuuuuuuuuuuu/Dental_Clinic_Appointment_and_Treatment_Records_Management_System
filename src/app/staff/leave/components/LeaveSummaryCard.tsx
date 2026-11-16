@@ -1,5 +1,4 @@
 import React from "react";
-import { Calendar as CalendarIcon } from "lucide-react";
 import { LeaveRequest } from "@/app/shared/data";
 
 interface LeaveSummaryCardProps {
@@ -19,14 +18,9 @@ export default function LeaveSummaryCard({ leaves }: LeaveSummaryCardProps) {
       className="bg-white rounded-2xl border border-gray-100 p-3.5 h-full flex flex-col justify-between"
       style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.06)" }}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg">
-          <CalendarIcon size={16} />
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold text-gray-800 leading-tight">สรุปการลางาน (ปีนี้)</h2>
-          <p className="text-[11px] text-gray-400">สถานะคำขอลางานของคุณ</p>
-        </div>
+      <div className="mb-2">
+        <h2 className="text-sm font-semibold text-gray-800 leading-tight">สรุปการลางาน (ปีนี้)</h2>
+        <p className="text-[11px] text-gray-400">สถานะคำขอลางานของคุณ</p>
       </div>
 
       <div className="grid grid-cols-3 gap-2">

@@ -84,9 +84,11 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
   const reqSlots = Math.ceil(estMins / 30);
 
   const selectedServiceId = services.find((s) => s.name === form.service)?.id;
-  const filteredDentists = selectedServiceId
+  const matchedDentists = selectedServiceId
     ? dentists.filter((d) => d.serviceIds?.includes(selectedServiceId))
     : dentists;
+  // ถ้าบริการนี้ยังไม่ได้ผูกกับหมอคนใด ให้แสดงหมอทั้งหมด
+  const filteredDentists = matchedDentists.length > 0 ? matchedDentists : dentists;
 
   useEffect(() => {
     if (step === 1 && form.date && !form.openAppt) {
@@ -116,8 +118,9 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
       const newForm = { ...f, service: serviceName };
       const sId = services.find((s) => s.name === serviceName)?.id;
       if (sId && f.doctorId) {
+        const hasMappedDoctor = dentists.some((d) => d.serviceIds?.includes(sId));
         const doc = dentists.find((d) => d.id === f.doctorId);
-        if (doc && !doc.serviceIds?.includes(sId)) {
+        if (hasMappedDoctor && doc && !doc.serviceIds?.includes(sId)) {
           newForm.doctorId = 0;
         }
       }

@@ -29,6 +29,7 @@ export default function BookingTitleBar({ step, isFollowUp, onBack }: BookingTit
           {step === 1 && "รายละเอียดและเลือกเวลา"}
           {step === 2 && "ตรวจสอบประวัติสุขภาพ"}
           {step === 4 && "ยืนยันการจอง"}
+
         </p>
       </div>
     </div>
