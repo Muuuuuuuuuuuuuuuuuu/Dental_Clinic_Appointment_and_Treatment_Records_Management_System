@@ -295,6 +295,23 @@ export async function addStaff(staff: Omit<StaffInfo, 'id'>): Promise<StaffInfo>
   }).select().single();
 
   if (error) throw error;
+
+  // สร้างตารางเวร 7 วันเริ่มต้นให้พนักงานใหม่
+  if (data?.staff_id) {
+    try {
+      const defaultShifts = Array.from({ length: 7 }, (_, day) => ({
+        staff_id: data.staff_id,
+        day_of_week: day,
+        start_shift: day === 0 ? null : '09:00:00',
+        end_shift: day === 0 ? null : (day === 6 ? '18:00:00' : '20:00:00'),
+        is_off: day === 0
+      }));
+      await supabase.from('schedule').insert(defaultShifts);
+    } catch (schedErr) {
+      console.warn("Failed to create default schedule for new staff:", schedErr);
+    }
+  }
+
   return { 
     ...staff, 
     id: data.staff_id, 

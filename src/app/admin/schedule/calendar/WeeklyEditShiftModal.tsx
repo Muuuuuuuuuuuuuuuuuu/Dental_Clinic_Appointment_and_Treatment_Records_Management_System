@@ -10,6 +10,7 @@ interface WeeklyEditShiftModalProps {
     personName: string;
     dayNum: number;
     userId: string;
+    staffId?: number;
   };
   onClose: () => void;
   onShiftFieldChange: (field: "start_time" | "end_time" | "is_off", value: any) => void;

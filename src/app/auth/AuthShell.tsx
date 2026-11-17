@@ -101,3 +101,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
   );
 }
 
+export const inputCls = "w-full px-5 py-4 rounded-xl border text-base outline-none transition-all focus:ring-2 focus:ring-[#FF8C9A]/40";
+export const inputStyle = { backgroundColor: "#F0F4F8", borderColor: "rgba(26,54,93,0.15)", color: "#1A365D" };
+
+

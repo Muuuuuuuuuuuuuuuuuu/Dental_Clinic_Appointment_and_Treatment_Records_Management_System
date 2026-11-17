@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ChevronLeft, RefreshCw, UserPlus, ChevronDown, ChevronUp } from "lucide-react";
-import AuthShell, { Field } from "./AuthShell";
-import { UserRole, PatientUser, ROLE_TABS, inputCls, inputStyle } from "@/app/patient/types";
+import { UserRole } from "@/app/shared/types";
+import { PatientUser } from "@/app/patient/types";
+import AuthShell, { Field, inputCls, inputStyle } from "./AuthShell";
+import { ROLE_TABS } from "./demoAccounts";
 import { supabase, getPatientProfileByUserId } from "@/app/shared/supabaseApi";
 
 export default function LoginPage({
@@ -191,15 +193,11 @@ export default function LoginPage({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-start">
                 {ROLE_TABS.map((tab, tIdx) => (
                   <div key={tIdx} className="flex flex-col gap-2">
-                    <p className="text-[11px] font-bold text-slate-500 mb-1 border-b border-slate-200 pb-1 flex items-center gap-1.5">
-                      <tab.icon size={12} /> {tab.label}
-                    </p>
                     <div className="flex flex-col gap-1.5">
                       {tab.demos.map((demo, idx) => (
                         <button key={idx} type="button" onClick={() => fillDemo(demo as any)}
                           className="py-1.5 px-3 rounded-lg text-[11px] font-medium transition-all hover:bg-slate-100 flex items-center justify-start gap-2 border border-slate-200 bg-white text-slate-600 hover:border-slate-300 w-full text-left"
                           title={`${tab.label}`}>
-                          <RefreshCw size={10} style={{ color: "#FF8C9A" }} />
                           <span className="truncate">{demo.label}</span>
                         </button>
                       ))}

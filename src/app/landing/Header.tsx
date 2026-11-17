@@ -33,7 +33,7 @@ export default function Header({ onLoginClick, isLoggedIn, onPortal }: { onLogin
 
         <nav className="hidden md:flex items-center gap-15">
           {[["บริการของเรา", "#services"], ["โปรโมชั่น", "#promotions"], ["ทีมทันตแพทย์", "#doctors"], ["ติดต่อเรา", "#contact"]].map(([l, h]) => (
-            <a key={l} href={h} className="text-base font-medium transition-opacity hover:opacity-60" style={{ color: l === "โปรโมชั่น" ? "#FF8C9A" : "#1A365D" }}>{l}</a> //เปลี่ยนสีตรงคำว่าโปรโมชั่น "โปรโมชั่น" ? "#FF8C9A"
+            <a key={l} href={h} className="text-base font-medium transition-opacity hover:opacity-60" style={{ color: l === "" ? "#FF8C9A" : "#1A365D" }}>{l}</a> //เปลี่ยนสีตรงคำว่าโปรโมชั่น "โปรโมชั่น" ? "#FF8C9A"
           ))}
           <ClinicStatusBadge compact />
         </nav>

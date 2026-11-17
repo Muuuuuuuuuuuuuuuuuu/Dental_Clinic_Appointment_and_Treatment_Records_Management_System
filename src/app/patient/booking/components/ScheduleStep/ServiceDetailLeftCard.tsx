@@ -87,72 +87,81 @@ export default function ServiceDetailLeftCard({
       </div>
 
       <DetailCard title={`ประโยชน์ของ${serviceTitle}`} accent="#22C55E">
-        {detail.benefits.map((b, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 8,
-              fontSize: 13,
-              color: "#4A6080",
-              marginBottom: 8,
-              lineHeight: 1.6,
-            }}
-          >
-            <span
+        {detail?.benefits && detail.benefits.length > 0 ? (
+          detail.benefits.map((b, i) => (
+            <div
+              key={i}
               style={{
-                color: "#22C55E",
-                fontSize: 16,
-                lineHeight: "20px",
-                flexShrink: 0,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                fontSize: 13,
+                color: "#4A6080",
+                marginBottom: 8,
+                lineHeight: 1.6,
               }}
             >
-              •
-            </span>
-            <span style={{ flex: 1 }}>{b}</span>
-          </div>
-        ))}
+              <span
+                style={{
+                  color: "#22C55E",
+                  fontSize: 16,
+                  lineHeight: "20px",
+                  flexShrink: 0,
+                }}
+              >
+                •
+              </span>
+              <span style={{ flex: 1 }}>{b}</span>
+            </div>
+          ))
+        ) : (
+          <p className="text-xs text-slate-400 py-1">ไม่มีข้อมูลเพิ่มเติม</p>
+        )}
       </DetailCard>
 
       <DetailCard title="ขั้นตอนการรักษา" accent="#FF8C9A">
-        {detail.procedures.map((p, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              gap: 8,
-              fontSize: 13,
-              color: "#4A6080",
-              marginBottom: 6,
-              alignItems: "flex-start",
-            }}
-          >
-            <span
+        {detail?.procedures && detail.procedures.length > 0 ? (
+          detail.procedures.map((p, i) => (
+            <div
+              key={i}
               style={{
-                color: "white",
-                backgroundColor: "#FF8C9A",
-                borderRadius: "50%",
-                width: 18,
-                height: 18,
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 10,
-                fontWeight: "bold",
-                flexShrink: 0,
-                marginTop: 1,
+                gap: 8,
+                fontSize: 13,
+                color: "#4A6080",
+                marginBottom: 6,
+                alignItems: "flex-start",
               }}
             >
-              {i + 1}
-            </span>
-            <span>{p}</span>
-          </div>
-        ))}
+              <span
+                style={{
+                  color: "white",
+                  backgroundColor: "#FF8C9A",
+                  borderRadius: "50%",
+                  width: 18,
+                  height: 18,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 10,
+                  fontWeight: "bold",
+                  flexShrink: 0,
+                  marginTop: 1,
+                }}
+              >
+                {i + 1}
+              </span>
+              <span>{p}</span>
+            </div>
+          ))
+        ) : (
+          <p className="text-xs text-slate-400 py-1">ไม่มีข้อมูลเพิ่มเติม</p>
+        )}
       </DetailCard>
 
       <DetailCard title="การดูแลก่อนและหลังการรักษา" accent="#3B82F6">
-        {detail.care.map((c, i) => {
+        {detail?.care && detail.care.length > 0 ? (
+          detail.care.map((c, i) => {
           const isPre = c.startsWith("ก่อนทำ:");
           const isPost = c.startsWith("หลังทำ:");
           const text = c.replace(/^(ก่อนทำ:|หลังทำ:)\s*/, "");
@@ -215,7 +224,10 @@ export default function ServiceDetailLeftCard({
               <span style={{ lineHeight: 1.5 }}>{text}</span>
             </div>
           );
-        })}
+        })
+      ) : (
+        <p className="text-xs text-slate-400 py-1">ไม่มีข้อมูลเพิ่มเติม</p>
+      )}
       </DetailCard>
     </div>
   );

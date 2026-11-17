@@ -485,8 +485,24 @@ export const DEFAULT_SERVICE_DETAIL: ServiceDetail = {
 
 /**
  * ฟังก์ชันช่วยค้นหาข้อมูลรายละเอียดบริการ โดยค้นหาทั้งชื่อเต็มและคีย์เวิร์ดที่เกี่ยวข้อง
+ * หากมีข้อมูลที่ส่งมาจากฐานข้อมูล Supabase (service table) จะนำข้อมูลจากฐานข้อมูลมาใช้เป็นหลัก
  */
-export function getServiceDetail(title: string): ServiceDetail {
+export function getServiceDetail(title: string, dbDetail?: ServiceDetail): ServiceDetail {
+  if (dbDetail) {
+    const hasBenefits = Array.isArray(dbDetail.benefits) && dbDetail.benefits.length > 0;
+    const hasProcedures = Array.isArray(dbDetail.procedures) && dbDetail.procedures.length > 0;
+    const hasCare = Array.isArray(dbDetail.care) && dbDetail.care.length > 0;
+
+    if (hasBenefits || hasProcedures || hasCare) {
+      const fallback = (title && SERVICE_DETAILS[title]) ? SERVICE_DETAILS[title] : DEFAULT_SERVICE_DETAIL;
+      return {
+        benefits: hasBenefits ? dbDetail.benefits : (fallback?.benefits || []),
+        procedures: hasProcedures ? dbDetail.procedures : (fallback?.procedures || []),
+        care: hasCare ? dbDetail.care : (fallback?.care || []),
+      };
+    }
+  }
+
   if (!title) return DEFAULT_SERVICE_DETAIL;
 
   // 1. ค้นหาชื่อตรงกันแบบ 100%

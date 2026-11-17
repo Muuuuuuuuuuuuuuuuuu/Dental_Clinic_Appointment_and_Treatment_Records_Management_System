@@ -26,7 +26,7 @@ export default function QueueHeader({
         <h1 className="text-2xl font-bold" style={{ fontFamily: "Sarabun, sans-serif", color: "#1A365D" }}>
           คิวการรักษา
         </h1>
-        <p className="text-sm" style={{ color: "#4A6080" }}>
+        <p className="text-sm " style={{ color: "#4A6080" }}>
           {timeFilter === "today"
             ? `วันที่ ${formattedDate}`
             : timeFilter === "week"

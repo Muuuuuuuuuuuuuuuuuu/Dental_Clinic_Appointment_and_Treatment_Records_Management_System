@@ -1,3 +1,4 @@
+import React from "react";
 import { SupernumeraryTooth, getExtraToothLocation } from "./ToothGeometry";
 import { ToothStatus } from "./toothHistory";
 

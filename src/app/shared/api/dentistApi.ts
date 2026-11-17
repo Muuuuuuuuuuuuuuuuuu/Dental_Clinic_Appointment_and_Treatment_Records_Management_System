@@ -251,6 +251,22 @@ export async function addDentist(dentist: Omit<DentistInfo, 'id'>): Promise<Dent
     await supabase.from('dentist_service').insert(dsInserts);
   }
 
+  // สร้างตารางเวร 7 วันเริ่มต้นให้ทันตแพทย์ใหม่
+  if (staffId) {
+    try {
+      const defaultShifts = Array.from({ length: 7 }, (_, day) => ({
+        staff_id: staffId,
+        day_of_week: day,
+        start_shift: day === 0 ? null : '09:00:00',
+        end_shift: day === 0 ? null : (day === 6 ? '18:00:00' : '20:00:00'),
+        is_off: day === 0
+      }));
+      await supabase.from('schedule').insert(defaultShifts);
+    } catch (schedErr) {
+      console.warn("Failed to create default schedule for new dentist:", schedErr);
+    }
+  }
+
   return { 
     ...dentist, 
     id: data.dentist_id, 

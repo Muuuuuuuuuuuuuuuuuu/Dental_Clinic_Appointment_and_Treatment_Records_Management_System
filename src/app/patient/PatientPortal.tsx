@@ -1,4 +1,3 @@
-import { Info } from "lucide-react";
 import { usePatientAuthFlow, PatientPortalProps } from "./hooks/usePatientAuthFlow";
 
 // ─── หน้าเข้าสู่ระบบและสมัครสมาชิก ────────────────────────────────────────────
@@ -17,14 +16,8 @@ import PatientHistoryView from "./history";
 import PatientDentalRecordView from "./record";
 import PatientProfileView from "./profile";
 
-// ─── ส่วนประกอบหน้าแรกของเว็บไซต์ ─────────────────────────────────────────────
-import Header from "@/app/landing/Header";
-import Hero from "@/app/landing/Hero";
-import Services from "@/app/landing/Services";
-import WhyUs from "@/app/landing/WhyUs";
-import Doctors from "@/app/landing/Doctors";
-import Contact from "@/app/landing/Contact";
-import Footer from "@/app/landing/Footer";
+// ─── หน้าแรกของเว็บไซต์ (Landing Page) ─────────────────────────────────────────
+import LandingPage from "@/app/landing";
 
 // ─── ไฟล์สไตล์ CSS ────────────────────────────────────────────────────────────
 import "./patient-animations.css";
@@ -151,51 +144,16 @@ export default function PatientPortal(props: PatientPortalProps = {}) {
 
   // ─── หน้าแรกของคลินิก (Landing Page) ─────────────────────────────────────────
   return (
-    <div
-      className="min-h-screen"
-      style={{ fontFamily: "Sarabun, sans-serif", scrollBehavior: "smooth" }}
-    >
-      {p.clinicStatus && p.clinicStatus.type !== "open" && (
-        <div
-          className="w-full text-center py-2.5 px-4 text-sm font-medium flex items-center justify-center gap-2 z-50 relative"
-          style={{
-            backgroundColor:
-              p.clinicStatus.type === "special" ? "#FFF3E0" : "#F1F5F9",
-            color: p.clinicStatus.type === "special" ? "#92400E" : "#475569",
-            borderBottom: `1px solid ${
-              p.clinicStatus.type === "special" ? "#FED7AA" : "#E2E8F0"
-            }`,
-          }}
-        >
-          <Info size={14} />
-          <span>
-            {p.clinicStatus.type === "special"
-              ? `หยุดพิเศษวันนี้ — ${p.clinicStatus.specialReason}`
-              : `${p.clinicStatus.label} — ${p.clinicStatus.sublabel}`}
-          </span>
-        </div>
-      )}
-
-      <Header
-        onLoginClick={p.goLogin}
-        isLoggedIn={p.isLoggedIn}
-        onPortal={() => {
-          if (p.role === "patient") p.updateView("dashboard");
-          else if (p.role === "doctor") props.onRoleChange?.("doctor");
-          else if (p.role === "admin") props.onRoleChange?.("admin");
-          else if (p.role === "staff") props.onRoleChange?.("staff");
-        }}
-      />
-
-      <main>
-        <Hero onCTA={p.goCTA} />
-        <Services onCTA={p.goCTA} />
-        <WhyUs />
-        <Doctors onCTA={p.goCTA} />
-        <Contact onCTA={p.goCTA} />
-      </main>
-
-      <Footer />
-    </div>
+    <LandingPage
+      onLoginClick={p.goLogin}
+      isLoggedIn={p.isLoggedIn}
+      onPortal={() => {
+        if (p.role === "patient") p.updateView("dashboard");
+        else if (p.role === "doctor") props.onRoleChange?.("doctor");
+        else if (p.role === "admin") props.onRoleChange?.("admin");
+        else if (p.role === "staff") props.onRoleChange?.("staff");
+      }}
+      onCTA={p.goCTA}
+    />
   );
 }

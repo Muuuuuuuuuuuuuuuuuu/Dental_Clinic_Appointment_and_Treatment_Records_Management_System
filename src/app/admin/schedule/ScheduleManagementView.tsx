@@ -62,6 +62,7 @@ export default function ScheduleManagementView() {
               personName: person.name,
               dayNum: dayIndex,
               userId: person.userId,
+              staffId: person.staffId,
             });
           }}
         />

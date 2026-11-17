@@ -1,0 +1,12 @@
+export { default } from "./LandingPage";
+export { default as LandingPage } from "./LandingPage";
+export type { LandingPageProps } from "./LandingPage";
+export { default as Header } from "./Header";
+export { default as Hero } from "./Hero";
+export { default as Services } from "./Services";
+export { default as WhyUs } from "./WhyUs";
+export { default as Doctors } from "./Doctors";
+export { default as Contact } from "./Contact";
+export { default as Footer } from "./Footer";
+export { default as ClinicStatusBadge } from "./ClinicStatus";
+export { default as PrivacyPolicyModal } from "./PrivacyPolicyModal";

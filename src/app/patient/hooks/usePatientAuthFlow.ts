@@ -1,14 +1,8 @@
 import { useState, useEffect } from "react";
 import { View, PatientUser } from "../types";
 import { UserRole } from "@/app/shared/types";
-import { Appointment, getClinicStatus, ClinicStatus } from "@/app/shared/data";
-import {
-  getWeeklyOffDays,
-  getClinicClosures,
-  getClinicSettings,
-  getDailyHours,
-  getPatientProfileByUserId,
-} from "@/app/shared/api";
+import { Appointment } from "@/app/shared/data";
+import { getPatientProfileByUserId } from "@/app/shared/api";
 import { supabase } from "@/app/shared/api/supabaseClient";
 import { useRealtimeAppointments } from "@/app/shared/hooks/useRealtimeAppointments";
 
@@ -40,7 +34,6 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
   const [role, setRole] = useState<UserRole>(null);
   const [user, setUser] = useState<PatientUser | null>(null);
 
-  const [clinicStatus, setClinicStatus] = useState<ClinicStatus | null>(null);
   const [followUpProps, setFollowUpProps] = useState<{
     service: number;
     doctor: number;
@@ -124,22 +117,6 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
       localStorage.setItem("supat_last_view", v);
     }
   };
-
-  // ดึงข้อมูลสถานะการเปิด-ปิดของคลินิก
-  useEffect(() => {
-    Promise.all([
-      getWeeklyOffDays(),
-      getClinicClosures(),
-      getClinicSettings(),
-      getDailyHours(),
-    ])
-      .then(([offDays, closures, settings, dh]) => {
-        setClinicStatus(
-          getClinicStatus(new Date(), closures, offDays, settings, dh)
-        );
-      })
-      .catch(console.error);
-  }, []);
 
   // ตรวจสอบเซสชันการเข้าสู่ระบบเมื่อเปิดหน้าเว็บ
   useEffect(() => {
@@ -414,7 +391,6 @@ export function usePatientAuthFlow(props: PatientPortalProps = {}) {
     role,
     user,
     setUser,
-    clinicStatus,
     followUpProps,
     setFollowUpProps,
     isInitializing,

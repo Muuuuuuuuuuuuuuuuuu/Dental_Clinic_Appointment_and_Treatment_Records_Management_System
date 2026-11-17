@@ -7,6 +7,7 @@ interface WeeklyTemplateCardProps {
     name: string;
     type: "dentist" | "staff";
     userId: string;
+    staffId?: number;
     color: string;
   }[];
   shifts: Shift[];
@@ -94,7 +95,11 @@ export default function WeeklyTemplateCard({
                       if (weeklyOffDays.includes(dayIndex)) return null;
 
                       const shift = shifts.find(
-                        (s) => s.userId === person.userId && s.day_of_week === dayIndex
+                        (s) =>
+                          ((s.staffId && person.staffId && s.staffId === person.staffId) ||
+                           (s.userId && person.userId && s.userId === person.userId) ||
+                           (s.person_id === person.id && s.person_type === person.type)) &&
+                          s.day_of_week === dayIndex
                       );
 
                       const isOff = shift ? shift.is_off : false;

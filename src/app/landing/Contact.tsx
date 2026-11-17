@@ -23,7 +23,7 @@ export default function Contact({ onCTA }: { onCTA: () => void }) {
               <img src="https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800&h=450&fit=crop&auto=format" alt="ที่ตั้งคลินิก" className="w-full h-full object-cover" />
             </div>
             <div className="space-y-4">
-              <div className="flex items-start gap-3"><MapPin size={18} className="mt-0.5 flex-shrink-0" style={{ color: "#FF8C9A" }} /><p className="text-sm" style={{ color: "#4A6080" }}>123/45 ถนนสุขุมวิท ซอย 15 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110</p></div>
+              <div className="flex items-start gap-3"><MapPin size={18} className="mt-0.5 flex-shrink-0" style={{ color: "#FF8C9A" }} /><p className="text-sm" style={{ color: "#4A6080" }}>เลขที่ 1 หมู่ 6 ตำบลกำแพงแสน อำเภอกำแพงแสน จังหวัดนครปฐม 73140</p></div>
               <div className="flex items-center gap-3"><Phone size={18} style={{ color: "#FF8C9A" }} /><p className="text-sm" style={{ color: "#4A6080" }}>02-555-1234 / 089-876-5432</p></div>
             </div>
           </div>

@@ -153,6 +153,7 @@ export async function getAppointments(date?: string) {
       time: d.start_time?.slice(0, 5) || '00:00',
       endTime: d.end_time_est?.slice(0, 5) || d.start_time?.slice(0, 5) || '00:00',
       status: d.appointment_status || 'ยืนยันการจอง',
+      channel: (d.channel || (d.source === 'doctor' ? 'Walk-in' : 'ออนไลน์')) as 'Walk-in' | 'ออนไลน์',
       conditions: d.patient?.patient_disease && d.patient.patient_disease.length > 0 
         ? d.patient.patient_disease.map((a: any) => a.disease_name).join(', ') 
         : 'ไม่มี',
@@ -272,6 +273,7 @@ export async function getPatientAppointments(patientId?: number) {
       time: d.start_time?.slice(0, 5) || '00:00',
       endTime: d.end_time_est?.slice(0, 5) || d.start_time?.slice(0, 5) || '00:00',
       status: d.appointment_status || 'ยืนยันการจอง',
+      channel: (d.channel || (d.source === 'doctor' ? 'Walk-in' : 'ออนไลน์')) as 'Walk-in' | 'ออนไลน์',
       conditions: d.patient?.patient_disease && d.patient.patient_disease.length > 0 
         ? d.patient.patient_disease.map((a: any) => a.disease_name).join(', ') 
         : 'ไม่มี',
@@ -620,6 +622,19 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
   const endMm = totalMins % 60;
   const endTimeStr = `${String(endHh).padStart(2, '0')}:${String(endMm).padStart(2, '0')}:00`;
 
+  // กำหนดช่องทางการจอง (Walk-in หรือ ออนไลน์) ตาม constraint appointment_channel_check
+  let determinedChannel: 'Walk-in' | 'ออนไลน์' = 'ออนไลน์';
+  if (appointment.channel) {
+    determinedChannel = appointment.channel === 'Walk-in' ? 'Walk-in' : 'ออนไลน์';
+  } else if (
+    appointment.source === 'doctor' ||
+    appointment.source === 'staff' ||
+    appointment.source === 'walk-in' ||
+    Boolean(appointment.walkInRegistration)
+  ) {
+    determinedChannel = 'Walk-in';
+  }
+
   // 4. บันทึกหรืออัปเดตข้อมูลนัดหมาย
   const apptPayload = {
       patient_id: finalPatientId,
@@ -628,7 +643,7 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'> & { id
       start_time: appointment.time ? appointment.time + ':00' : null,
       end_time_est: appointment.time ? endTimeStr : null,
       appointment_status: appointment.status,
-      channel: appointment.source === 'doctor' ? 'Walk-in' : 'ออนไลน์',
+      channel: determinedChannel,
       note: appointment.note || null
   };
 
@@ -1044,7 +1059,7 @@ export async function getClinicTimeSlots(date: string, serviceId?: number, docto
       if (docLeave && docLeave.leave_period === 'เต็มวัน') continue;
 
       const shift = shifts?.find((s: any) => s.staff_id && dUser.staff_id && s.staff_id === dUser.staff_id);
-      if (shift && shift.is_off) continue;
+      if (!shift || shift.is_off) continue;
 
       let shiftStartMin = clinicOpenMin;
       let shiftEndMin = clinicCloseMin;

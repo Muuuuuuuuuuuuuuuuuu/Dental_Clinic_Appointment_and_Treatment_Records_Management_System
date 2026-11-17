@@ -145,6 +145,7 @@ export default function DentistQueueView({
       )}
 
       {/* แถบหัวเรื่องและตัวกรอง */}
+      
       <QueueHeader
         timeFilter={timeFilter}
         setTimeFilter={setTimeFilter}
@@ -175,7 +176,7 @@ export default function DentistQueueView({
           </div>
 
           {/* รายชื่อคนไข้ที่รอแพทย์รับเคส */}
-          <div className="mt-3 divide-y divide-amber-100 bg-white/90 rounded-xl border border-amber-200/60 overflow-hidden shadow-2xs">
+          <div className="mt-3 divide-y divide-amber-100 bg-white/90 rounded-xs border border-amber-200/60 overflow-hidden shadow-2xs">
             {unassignedAppts.map(appt => (
               <div key={appt.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-amber-50/50 transition-colors">
                 <div className="flex items-center gap-3 min-w-0">

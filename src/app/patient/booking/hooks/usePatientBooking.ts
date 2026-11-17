@@ -249,7 +249,7 @@ export function usePatientBooking({
           const shift = doctorSchedules.find(
             (s) => s.dentistId === fd.id && s.dayOfWeek === dayOfWk
           );
-          if (shift && shift.isOff) return false;
+          if (!shift || shift.isOff) return false;
           const isFullLeave = upcomingLeaves.some((l) => {
             if (l.leave_date !== dateStr || l.leave_period !== "เต็มวัน") return false;
             const matchUser = Boolean(l.user_id && fd.userId && l.user_id === fd.userId);
@@ -275,7 +275,7 @@ export function usePatientBooking({
           })
           : false;
 
-        if (shift && shift.isOff) {
+        if (!shift || shift.isOff) {
           isWorking = false;
         } else if (isFullLeave) {
           isWorking = false;
@@ -682,9 +682,9 @@ export function usePatientBooking({
     }
   };
 
-  const serviceTitle =
-    selService !== null ? servicesData[selService]?.title || "" : "";
-  const detail: ServiceDetail = getServiceDetail(serviceTitle);
+  const currentService = selService !== null ? servicesData[selService] : null;
+  const serviceTitle = currentService?.title || "";
+  const detail: ServiceDetail = getServiceDetail(serviceTitle, currentService?.details);
 
   return {
     step,

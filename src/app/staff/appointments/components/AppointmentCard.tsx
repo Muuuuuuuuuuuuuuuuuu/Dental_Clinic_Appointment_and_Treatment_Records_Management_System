@@ -58,6 +58,17 @@ export default function AppointmentCard({
                 {a.status}
               </span>
             )}
+            {a.channel && (
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  a.channel === "Walk-in"
+                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                    : "bg-blue-50 text-blue-700 border-blue-200"
+                }`}
+              >
+                {a.channel}
+              </span>
+            )}
             {activeTab === "risk" && (hasHealthAlert(a.conditions) || hasHealthAlert(a.allergies)) && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
                 มีความเสี่ยงสุขภาพ

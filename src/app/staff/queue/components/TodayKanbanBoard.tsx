@@ -123,12 +123,25 @@ export default function TodayKanbanBoard({
                   <span className="text-sm font-bold" style={{ color: "#1A365D" }}>
                     {a.time} น.
                   </span>
-                  <span
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
-                    style={{ backgroundColor: colorObj.bg, color: colorObj.text }}
-                  >
-                    {a.status}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {a.channel && (
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${
+                          a.channel === "Walk-in"
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}
+                      >
+                        {a.channel}
+                      </span>
+                    )}
+                    <span
+                      className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
+                      style={{ backgroundColor: colorObj.bg, color: colorObj.text }}
+                    >
+                      {a.status}
+                    </span>
+                  </div>
                 </div>
                 <p className="font-bold mb-1" style={{ color: "#1A365D" }}>
                   {a.patientName}

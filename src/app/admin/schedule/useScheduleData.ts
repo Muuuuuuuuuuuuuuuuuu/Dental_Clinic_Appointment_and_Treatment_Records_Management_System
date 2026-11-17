@@ -18,6 +18,7 @@ export interface EditingShiftState {
   personName: string;
   dayNum: number;
   userId: string;
+  staffId?: number;
 }
 
 /**
@@ -185,13 +186,14 @@ export function useScheduleData() {
   const handleShiftFieldChange = (field: "start_time" | "end_time" | "is_off", value: any) => {
     if (!editingShift) return;
     const dbValue = value === "" ? null : value;
-    const { personId, personType, userId, dayNum } = editingShift;
-    const pendingKey = `${userId}_${dayNum}`;
+    const { personId, personType, userId, staffId, dayNum } = editingShift;
+    const pendingKey = `${staffId || userId || personId}_${dayNum}`;
 
     let found = false;
     const updatedShifts = shifts.map((s) => {
       if (
-        (s.userId && userId ? s.userId === userId : s.person_id === personId && s.person_type === personType) &&
+        ((s.staffId && staffId && s.staffId === staffId) ||
+         (s.userId && userId ? s.userId === userId : s.person_id === personId && s.person_type === personType)) &&
         s.day_of_week === dayNum
       ) {
         found = true;
@@ -204,6 +206,7 @@ export function useScheduleData() {
       updatedShifts.push({
         id: -1,
         userId,
+        staffId,
         person_id: personId,
         person_type: personType as "dentist" | "staff",
         day_of_week: dayNum,
@@ -220,6 +223,8 @@ export function useScheduleData() {
       [pendingKey]: {
         ...(prev[pendingKey] || {}),
         userId,
+        staffId,
+        personId,
         dayNum,
         [field]: dbValue,
       },
@@ -234,6 +239,7 @@ export function useScheduleData() {
               : {
                   id: -1,
                   userId,
+                  staffId,
                   person_id: personId,
                   person_type: personType as "dentist" | "staff",
                   day_of_week: dayNum,
@@ -249,12 +255,29 @@ export function useScheduleData() {
 
   // บันทึกกะเดียวจากหน้าต่างแก้ไขทันที (Auto-save)
   const handleSaveSingleShift = async () => {
-    if (editingShift && editingShift.userId) {
-      const pendingKey = `${editingShift.userId}_${editingShift.dayNum}`;
-      const changes = pendingChanges[pendingKey];
-      if (changes) {
+    if (editingShift) {
+      const identifier = editingShift.staffId || editingShift.userId || editingShift.personId;
+      const pendingKey = `${editingShift.staffId || editingShift.userId || editingShift.personId}_${editingShift.dayNum}`;
+      let changes = pendingChanges[pendingKey];
+
+      // หากเปิดหน้าต่างมาแล้วกดยืนยันโดยไม่ได้แก้ช่องใดๆ ให้บันทึกตามสถานะที่แสดงอยู่
+      if (!changes) {
+        const currentIsOff = editingShift.shift ? editingShift.shift.is_off : true;
+        const currentStartTime = editingShift.shift?.start_time || "09:00";
+        const currentEndTime = editingShift.shift?.end_time || (editingShift.dayNum === 6 ? "18:00" : "20:00");
+        changes = {
+          userId: editingShift.userId,
+          staffId: editingShift.staffId,
+          dayNum: editingShift.dayNum,
+          is_off: currentIsOff,
+          start_time: currentIsOff ? undefined : currentStartTime,
+          end_time: currentIsOff ? undefined : currentEndTime,
+        } as any;
+      }
+
+      if (identifier) {
         try {
-          await upsertShift(editingShift.userId, editingShift.dayNum, changes);
+          await upsertShift(identifier, editingShift.dayNum, changes);
           setPendingChanges((prev) => {
             const copy = { ...prev };
             delete copy[pendingKey];
@@ -277,7 +300,8 @@ export function useScheduleData() {
     try {
       for (const key of keys) {
         const changes = pendingChanges[key];
-        await upsertShift(changes.userId, changes.dayNum, changes);
+        const identifier = (changes as any).staffId || changes.userId || (changes as any).personId;
+        await upsertShift(identifier, changes.dayNum, changes);
       }
       setPendingChanges({});
       await fetchData();

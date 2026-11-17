@@ -231,6 +231,8 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
       date: form.openAppt ? "" : form.date,
       time: form.openAppt ? "" : form.time,
       status: form.openAppt ? "ยืนยันการจอง" : "เช็คอินเรียบร้อย",
+      channel: "Walk-in",
+      source: "staff",
       conditions: patientInfo?.underlyingDisease || "ไม่มี",
       allergies: patientInfo?.allergyHistory || "ไม่มี",
       note: form.note,

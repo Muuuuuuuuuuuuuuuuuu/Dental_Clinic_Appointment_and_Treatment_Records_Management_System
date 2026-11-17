@@ -25,6 +25,8 @@ export interface AppointmentBreakdown {
   total: number;
 }
 
+export type AppointmentChannel = "Walk-in" | "ออนไลน์";
+
 export interface Appointment {
   id: number;
   hn: string;
@@ -43,6 +45,7 @@ export interface Appointment {
   endTime?: string;
   durationMins?: number;
   status: AppointmentStatus;
+  channel?: AppointmentChannel;
   conditions: string;
   allergies: string;
   treatmentNotes?: string;
@@ -51,7 +54,7 @@ export interface Appointment {
   recommendations?: string;
   cost?: number;
   paid?: boolean;
-  source?: "patient" | "doctor";
+  source?: "patient" | "doctor" | "staff" | "walk-in";
   emergencyName?: string;
   emergencyPhone?: string;
   emergencyRelationship?: string;

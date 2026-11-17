@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Lock, Eye, EyeOff, AlertCircle, ChevronLeft, Check } from "lucide-react";
-import AuthShell, { Field } from "./AuthShell";
-import { inputCls, inputStyle } from "@/app/patient/types";
+import AuthShell, { Field, inputCls, inputStyle } from "./AuthShell";
 import { supabase } from "@/app/shared/supabaseApi";
 import { getPasswordErrorMessage, PasswordChecklist } from "@/app/shared/utils/passwordPolicy";
 

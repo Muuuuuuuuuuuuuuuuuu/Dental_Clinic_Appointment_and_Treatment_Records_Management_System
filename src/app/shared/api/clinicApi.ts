@@ -71,9 +71,9 @@ export async function updateService(id: number, updates: Partial<ServiceInfo>): 
   if (updates.isPublic !== undefined) serviceUpdates.is_public = updates.isPublic;
   if (updates.applyTo !== undefined) serviceUpdates.apply_to = updates.applyTo;
   if (updates.details !== undefined) {
-    if (updates.details.benefits) serviceUpdates.benefits = updates.details.benefits;
-    if (updates.details.procedures) serviceUpdates.procedures = updates.details.procedures;
-    if (updates.details.care) serviceUpdates.care = updates.details.care;
+    if (updates.details.benefits !== undefined) serviceUpdates.benefits = updates.details.benefits;
+    if (updates.details.procedures !== undefined) serviceUpdates.procedures = updates.details.procedures;
+    if (updates.details.care !== undefined) serviceUpdates.care = updates.details.care;
   }
 
   let { error } = await supabase.from('service').update(serviceUpdates).eq('service_id', id);
@@ -537,9 +537,35 @@ export async function getShifts() {
     return [];
   }
 
+  // เติมกะ 7 วันอัตโนมัติให้บุคลากรที่ยังไม่มีกะ หรือมีกะไม่ครบ 7 วัน
+  if (staff && staff.length > 0) {
+    const missingInserts: any[] = [];
+    for (const st of staff) {
+      const staffScheds = schedules.filter((s: any) => s.staff_id === st.staff_id);
+      const existingDays = new Set(staffScheds.map((s: any) => s.day_of_week));
+      for (let day = 0; day <= 6; day++) {
+        if (!existingDays.has(day)) {
+          missingInserts.push({
+            staff_id: st.staff_id,
+            day_of_week: day,
+            start_shift: day === 0 ? null : '09:00:00',
+            end_shift: day === 0 ? null : (day === 6 ? '18:00:00' : '20:00:00'),
+            is_off: day === 0
+          });
+        }
+      }
+    }
+    if (missingInserts.length > 0) {
+      const { data: inserted } = await supabase.from('schedule').insert(missingInserts).select();
+      if (inserted) {
+        schedules.push(...inserted);
+      }
+    }
+  }
+
   return schedules.map((d: any) => {
     const matchedDentist = dentists?.find((dent: any) => 
-      d.staff_id && dent.staff_id && dent.staff_id === d.staff_id
+      (d.staff_id && dent.staff_id && dent.staff_id === d.staff_id)
     );
     const matchedStaff = staff?.find((st: any) => 
       (d.staff_id && st.staff_id && st.staff_id === d.staff_id) ||
@@ -608,25 +634,37 @@ export async function upsertShift(personIdentifier: string | number, dayOfWeek: 
   }
 
   let staffId: number | null = null;
-  let userId: string | null = null;
 
   if (typeof personIdentifier === 'number') {
-    staffId = personIdentifier;
-    const { data: st } = await supabase.from('staff').select('user_id').eq('staff_id', staffId).maybeSingle();
-    if (st) userId = st.user_id;
-  } else if (personIdentifier.length > 20) {
-    userId = personIdentifier;
-    const { data: st } = await supabase.from('staff').select('staff_id').eq('user_id', userId).maybeSingle();
-    if (st) staffId = st.staff_id;
-  } else {
-    staffId = parseInt(personIdentifier, 10);
+    // ตรวจสอบทั้ง staff_id และ dentist_id
+    const { data: st } = await supabase.from('staff').select('staff_id').eq('staff_id', personIdentifier).maybeSingle();
+    if (st?.staff_id) {
+      staffId = st.staff_id;
+    } else {
+      const { data: dt } = await supabase.from('dentist').select('staff_id').eq('dentist_id', personIdentifier).maybeSingle();
+      if (dt?.staff_id) staffId = dt.staff_id;
+    }
+  } else if (typeof personIdentifier === 'string') {
+    if (personIdentifier.length > 20) {
+      // ค้นหาด้วย user_id จาก staff
+      const { data: st } = await supabase.from('staff').select('staff_id').eq('user_id', personIdentifier).maybeSingle();
+      if (st?.staff_id) {
+        staffId = st.staff_id;
+      }
+    } else {
+      staffId = parseInt(personIdentifier, 10);
+    }
+  }
+
+  if (!staffId) {
+    console.warn("upsertShift: unable to resolve staff_id for", personIdentifier);
+    return;
   }
 
   const payload: any = {
+    staff_id: staffId,
     day_of_week: dayOfWeek,
   };
-  if (staffId) payload.staff_id = staffId;
-  if (userId) payload.user_id = userId;
   
   if (updates.start_time !== undefined) {
     payload.start_shift = updates.start_time ? (updates.start_time.length === 5 ? updates.start_time + ':00' : updates.start_time) : null;
@@ -638,61 +676,48 @@ export async function upsertShift(personIdentifier: string | number, dayOfWeek: 
     payload.is_off = updates.is_off;
     if (!updates.is_off && !payload.start_shift && !payload.end_shift) {
       payload.start_shift = '09:00:00';
-      payload.end_shift = '20:00:00';
+      payload.end_shift = dayOfWeek === 6 ? '18:00:00' : '20:00:00';
+    } else if (updates.is_off) {
+      if (updates.start_time === undefined) payload.start_shift = null;
+      if (updates.end_time === undefined) payload.end_shift = null;
     }
   }
 
-  if (!staffId && userId) {
-    const { data: st } = await supabase.from('staff').select('staff_id').eq('user_id', userId).maybeSingle();
-    if (st) staffId = st.staff_id;
+  // ค้นหากะเดิมทั้งหมดของ staff_id และ day_of_week
+  const { data: existingRows, error: findError } = await supabase
+    .from('schedule')
+    .select('schedule_id')
+    .eq('staff_id', staffId)
+    .eq('day_of_week', dayOfWeek);
+
+  if (findError) {
+    console.error("upsertShift find error:", findError);
   }
 
-  // ค้นหากะเดิม
-  let findQuery = supabase.from('schedule').select('schedule_id').eq('day_of_week', dayOfWeek);
-  if (staffId) {
-    findQuery = findQuery.eq('staff_id', staffId);
-  }
-  let { data: existing, error: _findError } = await findQuery.maybeSingle();
-
-  if (existing) {
-    // อัปเดตข้อมูลที่มีอยู่
-    let { error: updateError } = await supabase
+  if (existingRows && existingRows.length > 0) {
+    // อัปเดตข้อมูลแถวแรก
+    const targetId = existingRows[0].schedule_id;
+    const { error: updateError } = await supabase
       .from('schedule')
       .update(payload)
-      .eq('schedule_id', existing.schedule_id);
+      .eq('schedule_id', targetId);
 
-    if (updateError && updateError.message?.includes('user_id')) {
-      delete payload.user_id;
-      const retry = await supabase.from('schedule').update(payload).eq('schedule_id', existing.schedule_id);
-      updateError = retry.error;
-    }
-    if (updateError && updateError.message?.includes('staff_id')) {
-      delete payload.staff_id;
-      const retry = await supabase.from('schedule').update(payload).eq('schedule_id', existing.schedule_id);
-      updateError = retry.error;
-    }
-      
     if (updateError) {
       console.error("upsertShift update error:", updateError);
       throw updateError;
     }
+
+    // ลบแถวที่ซ้ำซ้อนออก (ถ้ามี)
+    if (existingRows.length > 1) {
+      const duplicateIds = existingRows.slice(1).map((r: any) => r.schedule_id);
+      await supabase.from('schedule').delete().in('schedule_id', duplicateIds);
+    }
   } else {
     // เพิ่มข้อมูลใหม่
-    let { error: insertError } = await supabase
+    const { error: insertError } = await supabase
       .from('schedule')
       .insert(payload);
 
-    if (insertError && insertError.message?.includes('user_id')) {
-      delete payload.user_id;
-      const retry = await supabase.from('schedule').insert(payload);
-      insertError = retry.error;
-    }
-    if (insertError && insertError.message?.includes('staff_id')) {
-      delete payload.staff_id;
-      const retry = await supabase.from('schedule').insert(payload);
-      insertError = retry.error;
-    }
-      
     if (insertError) {
       console.error("upsertShift insert error:", insertError);
       throw insertError;
@@ -824,14 +849,18 @@ export async function getDoctorSchedules() {
   if (!dentists) return [];
 
   return data.map((s: any) => {
-    const d = dentists.find((dent: any) => dent.staff_id && s.staff_id && dent.staff_id === s.staff_id);
+    const d = dentists.find((dent: any) => {
+      if (dent.staff_id && s.staff_id && dent.staff_id === s.staff_id) return true;
+      if (dent.dentist_id && s.staff_id && dent.dentist_id === s.staff_id) return true;
+      return false;
+    });
     return {
       dentistId: d?.dentist_id,
       staffId: s.staff_id,
       dayOfWeek: s.day_of_week,
       day_of_week: s.day_of_week,
-      isOff: s.is_off,
-      is_off: s.is_off,
+      isOff: Boolean(s.is_off),
+      is_off: Boolean(s.is_off),
       start: s.start_shift,
       end: s.end_shift
     };
@@ -942,15 +971,14 @@ export async function getMonthlyFullyBookedDates(
           return matchDoc && s.day_of_week === dayOfWeek;
         });
 
-        let isWorking = true;
-        if (shift) {
-          if (shift.is_off) { isWorking = false; }
-          else {
-            const [sH, sM] = (shift.start_shift || '00:00').split(':').map(Number);
-            const [eH, eM] = (shift.end_shift || '23:59').split(':').map(Number);
-            const shiftStart = sH * 60 + sM;
-            const shiftEnd = eH * 60 + eM;
-            if (min < shiftStart || min >= shiftEnd) isWorking = false;
+        let isWorking = false;
+        if (shift && !shift.is_off) {
+          const [sH, sM] = (shift.start_shift || '00:00').split(':').map(Number);
+          const [eH, eM] = (shift.end_shift || '23:59').split(':').map(Number);
+          const shiftStart = sH * 60 + sM;
+          const shiftEnd = eH * 60 + eM;
+          if (min >= shiftStart && min < shiftEnd) {
+            isWorking = true;
           }
         }
         if (!isWorking) continue;

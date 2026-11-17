@@ -73,12 +73,25 @@ export default function AppointmentList({ appts }: AppointmentListProps) {
               <p className="text-xs" style={{ color: "#4A6080" }}>
                 {a.doctorName?.split(" ")[1] ?? a.doctorName ?? "-"}
               </p>
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-medium justify-self-start"
-                style={{ backgroundColor: sc.bg, color: sc.text }}
-              >
-                {a.status}
-              </span>
+              <div className="flex items-center gap-1.5 justify-self-start">
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: sc.bg, color: sc.text }}
+                >
+                  {a.status}
+                </span>
+                {a.channel && (
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold border ${
+                      a.channel === "Walk-in"
+                        ? "bg-purple-50 text-purple-700 border-purple-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}
+                  >
+                    {a.channel}
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}
