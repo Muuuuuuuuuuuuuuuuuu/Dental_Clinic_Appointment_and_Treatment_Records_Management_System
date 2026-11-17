@@ -45,7 +45,7 @@ export function usePatientBooking({
   const [step, setStep] = useState(isFollowUp ? 1 : 0);
   const [selService, setSelService] = useState<number | null>(initialService);
   const [selDoctor, setSelDoctor] = useState<number | "any" | null>(
-    initialDoctor ?? "any"
+    initialDoctor && Number(initialDoctor) > 0 ? Number(initialDoctor) : "any"
   );
   const [wantSelectDoctor, setWantSelectDoctor] = useState(false);
   const [matchedDoctor, setMatchedDoctor] = useState<number | null>(null);
@@ -107,24 +107,69 @@ export function usePatientBooking({
   const [fullyBookedDates, setFullyBookedDates] = useState<Set<string>>(
     new Set()
   );
+  const [refreshTick, setRefreshTick] = useState(0);
 
-  // ดึงข้อมูลหลักเริ่มต้น
+  // ดึงข้อมูลหลักเริ่มต้น และตั้งค่า Realtime Sync
   useEffect(() => {
-    Promise.all([
-      getClinicClosures(),
-      getLandingServices(),
-      getLandingDoctors(),
-      getWeeklyOffDays(),
-      getDoctorSchedules(),
-      getUpcomingLeaves(),
-    ]).then(([cData, sData, ldData, offData, dsData, leavesData]) => {
-      setClosures(cData);
-      setServicesData(sData);
-      setLandingDoctors(ldData);
-      setWeeklyOffDays(offData);
-      setDoctorSchedules(dsData);
-      setUpcomingLeaves(leavesData);
-    });
+    const loadMaster = () => {
+      Promise.all([
+        getClinicClosures(),
+        getLandingServices(),
+        getLandingDoctors(),
+        getWeeklyOffDays(),
+        getDoctorSchedules(),
+        getUpcomingLeaves(),
+      ]).then(([cData, sData, ldData, offData, dsData, leavesData]) => {
+        setClosures(cData);
+        setServicesData(sData);
+        setLandingDoctors(ldData);
+        setWeeklyOffDays(offData);
+        setDoctorSchedules(dsData);
+        setUpcomingLeaves(leavesData);
+      });
+    };
+
+    loadMaster();
+
+    const triggerRefresh = () => setRefreshTick((t) => t + 1);
+    window.addEventListener("appointments-updated", triggerRefresh);
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "icemu-sync-update") triggerRefresh();
+    };
+    window.addEventListener("storage", handleStorage);
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      try {
+        bc = new BroadcastChannel("icemu-updates");
+        bc.onmessage = () => triggerRefresh();
+      } catch (e) {}
+    }
+
+    const channelName = `rt-patient-slots-${Math.random().toString(36).slice(2, 9)}`;
+    const channel = supabase
+      .channel(channelName)
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointment" }, triggerRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "schedule" }, () => {
+        loadMaster();
+        triggerRefresh();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "leave_record" }, () => {
+        loadMaster();
+        triggerRefresh();
+      })
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("appointments-updated", triggerRefresh);
+      window.removeEventListener("storage", handleStorage);
+      if (bc) {
+        try {
+          bc.close();
+        } catch (e) {}
+      }
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // ผูกบริการและแพทย์เมื่อมี openTicketId หรือ initialService
@@ -182,7 +227,7 @@ export function usePatientBooking({
               if (idx !== -1) setSelService(idx);
             }
             if (data.dentist_id) {
-              setSelDoctor(data.dentist_id);
+              setSelDoctor(Number(data.dentist_id));
               setWantSelectDoctor(true);
               setIsBoundDoctor(true);
             }
@@ -203,7 +248,7 @@ export function usePatientBooking({
       setLoadingDoctors(true);
       (sid ? getDentistsByService(sid) : Promise.resolve(landingDoctors))
         .then((docs) => {
-          setFilteredDoctors(docs);
+          setFilteredDoctors(docs && docs.length > 0 ? docs : landingDoctors);
           setLoadingDoctors(false);
         })
         .catch(() => {
@@ -211,7 +256,7 @@ export function usePatientBooking({
           setLoadingDoctors(false);
         });
     }
-  }, [step, selService, servicesData]);
+  }, [step, selService, servicesData, landingDoctors]);
 
   // วันและเดือนที่กำลังแสดงผล
   const today = new Date();
@@ -244,16 +289,16 @@ export function usePatientBooking({
     // ตรวจสอบตารางเวรของทันตแพทย์
     if (step >= 1 && filteredDoctors.length > 0) {
       let isWorking = false;
-      if (selDoctor === "any") {
+      if (selDoctor === "any" || !selDoctor) {
         isWorking = filteredDoctors.some((fd) => {
           const shift = doctorSchedules.find(
-            (s) => s.dentistId === fd.id && s.dayOfWeek === dayOfWk
+            (s) => Number(s.dentistId) === Number(fd.id) && Number(s.dayOfWeek) === dayOfWk
           );
           if (shift && shift.isOff) return false;
           const isFullLeave = upcomingLeaves.some((l) => {
             if (l.leave_date !== dateStr || l.leave_period !== "เต็มวัน") return false;
             const matchUser = Boolean(l.user_id && fd.userId && l.user_id === fd.userId);
-            const matchStaff = Boolean(l.staff_id && fd.staffId && l.staff_id === fd.staffId);
+            const matchStaff = Boolean(l.staff_id && fd.staffId && Number(l.staff_id) === Number(fd.staffId));
             return matchUser || matchStaff;
           });
           if (isFullLeave) return false;
@@ -261,16 +306,16 @@ export function usePatientBooking({
         });
       } else {
         const shift = doctorSchedules.find(
-          (s) => s.dentistId === selDoctor && s.dayOfWeek === dayOfWk
+          (s) => Number(s.dentistId) === Number(selDoctor) && Number(s.dayOfWeek) === dayOfWk
         );
         const selDocData =
-          filteredDoctors.find((fd) => fd.id === selDoctor) ||
-          landingDoctors.find((d) => d.id === selDoctor);
+          filteredDoctors.find((fd) => Number(fd.id) === Number(selDoctor)) ||
+          landingDoctors.find((d) => Number(d.id) === Number(selDoctor));
         const isFullLeave = selDocData
           ? upcomingLeaves.some((l) => {
             if (l.leave_date !== dateStr || l.leave_period !== "เต็มวัน") return false;
             const matchUser = Boolean(l.user_id && selDocData.userId && l.user_id === selDocData.userId);
-            const matchStaff = Boolean(l.staff_id && selDocData.staffId && l.staff_id === selDocData.staffId);
+            const matchStaff = Boolean(l.staff_id && selDocData.staffId && Number(l.staff_id) === Number(selDocData.staffId));
             return matchUser || matchStaff;
           })
           : false;
@@ -329,8 +374,8 @@ export function usePatientBooking({
     ).padStart(2, "0")}`;
     const serviceId = servicesData[selService]?.serviceId;
     const doctorIdParam =
-      selDoctor !== "any" && selDoctor !== null
-        ? (selDoctor as number)
+      selDoctor !== "any" && selDoctor !== null && Number(selDoctor) > 0
+        ? Number(selDoctor)
         : undefined;
 
     setLoadingSlots(true);
@@ -409,7 +454,7 @@ export function usePatientBooking({
       })
       .catch(() => setBackendSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [selDay, selDoctor, selService, monthOffset, year, month, servicesData]);
+  }, [selDay, selDoctor, selService, monthOffset, year, month, servicesData, user?.patientId, refreshTick]);
 
   // รีเซ็ตเมื่อเปลี่ยนแพทย์หรือบริการ
   useEffect(() => {
@@ -429,22 +474,21 @@ export function usePatientBooking({
       const serviceId =
         selService !== null ? servicesData[selService]?.serviceId : undefined;
       const doctorId =
-        selDoctor !== "any" && selDoctor !== null
-          ? (selDoctor as number)
+        selDoctor !== "any" && selDoctor !== null && Number(selDoctor) > 0
+          ? Number(selDoctor)
           : undefined;
       const estMins =
         selService !== null && servicesData[selService]
           ? servicesData[selService]?.baseTimeMins || 30
           : 30;
 
-      setFullyBookedDates(new Set());
       getMonthlyFullyBookedDates(year, month, serviceId, doctorId, estMins)
         .then((dates) => {
           setFullyBookedDates(new Set(dates));
         })
         .catch(console.error);
     }
-  }, [year, month, selService, selDoctor, step, servicesData]);
+  }, [year, month, selService, selDoctor, step, servicesData, refreshTick]);
 
   // รีเซ็ตเมื่อเปลี่ยนเดือน
   useEffect(() => {
@@ -531,13 +575,15 @@ export function usePatientBooking({
     let finalDoctorId: number | undefined;
     let finalDoctorName = "ไม่ระบุแพทย์";
 
-    if (selDoctor !== "any" && selDoctor !== null) {
-      const doc = landingDoctors.find((d) => d.id === selDoctor);
+    if (selDoctor !== "any" && selDoctor !== null && Number(selDoctor) > 0) {
+      const doc = landingDoctors.find((d) => Number(d.id) === Number(selDoctor));
       if (doc) {
-        finalDoctorId = doc.id;
+        finalDoctorId = Number(doc.id);
         finalDoctorName = doc.name;
+      } else {
+        finalDoctorId = Number(selDoctor);
       }
-      setMatchedDoctor(selDoctor as number);
+      setMatchedDoctor(Number(selDoctor));
     } else {
       finalDoctorId = undefined;
     }

@@ -849,44 +849,60 @@ export async function getMonthlyFullyBookedDates(
   const startDateStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const endDateObj = new Date(year, month + 1, 0);
   const endDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDateObj.getDate()).padStart(2, '0')}`;
+  const occupiedStatuses = [...ACTIVE_APPOINTMENT_STATUSES, "เสร็จสิ้น"];
 
   // ดึงข้อมูลทั้งหมดที่ต้องใช้ใน batch เดียว
-  const [dailyHours, holidaysRes, dentistUsersRes, leavesRes, shiftsRes, appointmentsRes] = await Promise.all([
+  const [dailyHours, weeklyOffDays, holidaysRes, dentistUsersRes, leavesRes, shiftsRes, appointmentsRes] = await Promise.all([
     getDailyHours(),
+    getWeeklyOffDays(),
     supabase.from('clinic_holiday').select('holiday_date').gte('holiday_date', startDateStr).lte('holiday_date', endDateStr),
-    supabase.from('dentist').select('dentist_id, staff_id'),
+    supabase.from('dentist').select('dentist_id, staff_id, is_active, staff(employment_status, users(account_status))'),
     supabase.from('leave_record').select('staff_id, leave_period, leave_date').gte('leave_date', startDateStr).lte('leave_date', endDateStr).eq('is_approved', true),
     supabase.from('schedule').select('staff_id, start_shift, end_shift, is_off, day_of_week'),
-    supabase.from('appointment').select('appointment_date, dentist_id, start_time, end_time_est').gte('appointment_date', startDateStr).lte('appointment_date', endDateStr).in('appointment_status', ACTIVE_APPOINTMENT_STATUSES),
+    supabase.from('appointment').select('appointment_date, dentist_id, start_time, end_time_est').gte('appointment_date', startDateStr).lte('appointment_date', endDateStr).in('appointment_status', occupiedStatuses),
   ]);
 
   const holidaySet = new Set((holidaysRes.data || []).map((h: any) => h.holiday_date));
-  const allDentistUsers = dentistUsersRes.data || [];
+  const allDentistUsers = (dentistUsersRes.data || []).filter((d: any) => {
+    if (d.is_active === false) return false;
+    const staffObj = Array.isArray(d.staff) ? d.staff[0] : d.staff;
+    if (staffObj?.employment_status === 'พักงาน' || staffObj?.employment_status === 'ลาออก') return false;
+    const userObj = Array.isArray(staffObj?.users) ? staffObj?.users[0] : staffObj?.users;
+    if (userObj?.account_status && userObj.account_status !== 'active') return false;
+    return true;
+  }).map((d: any) => ({
+    dentist_id: Number(d.dentist_id),
+    staff_id: d.staff_id ? Number(d.staff_id) : null
+  }));
   const allLeaves = leavesRes.data || [];
   const allShifts = shiftsRes.data || [];
   const allAppointments = appointmentsRes.data || [];
 
+  const numDoctorId = doctorId && Number(doctorId) > 0 ? Number(doctorId) : 0;
+  const numServiceId = serviceId && Number(serviceId) > 0 && Number(serviceId) !== 9999 ? Number(serviceId) : 0;
+
   // หา targetDoctorIds
   let targetDoctorIds: number[] = [];
-  if (doctorId) {
-    targetDoctorIds = [doctorId];
-  } else if (serviceId) {
-    const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', serviceId);
+  if (numDoctorId > 0) {
+    targetDoctorIds = allDentistUsers.some(d => d.dentist_id === numDoctorId) ? [numDoctorId] : [];
+  } else if (numServiceId > 0) {
+    const { data: dsData } = await supabase.from('dentist_service').select('dentist_id').eq('service_id', numServiceId);
     if (dsData && dsData.length > 0) {
-      targetDoctorIds = dsData.map((d: any) => d.dentist_id);
+      const dsSet = new Set(dsData.map((d: any) => Number(d.dentist_id)));
+      const matched = allDentistUsers.filter(d => dsSet.has(d.dentist_id)).map(d => d.dentist_id);
+      targetDoctorIds = matched.length > 0 ? matched : allDentistUsers.map(d => d.dentist_id);
     } else {
-      // ถ้าบริการนี้ไม่มีหมอเฉพาะ ให้ใช้หมอทั้งหมด
-      targetDoctorIds = allDentistUsers.map((d: any) => d.dentist_id);
+      targetDoctorIds = allDentistUsers.map(d => d.dentist_id);
     }
   } else {
-    targetDoctorIds = allDentistUsers.map((d: any) => d.dentist_id);
+    targetDoctorIds = allDentistUsers.map(d => d.dentist_id);
   }
 
   // ถ้าไม่มีหมอเลยในระบบ ไม่ต้อง mark วันไหนว่าเต็ม
   if (targetDoctorIds.length === 0) return [];
 
-  const todayStr = new Date().toISOString().split('T')[0];
   const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const currentMin = now.getHours() * 60 + now.getMinutes();
   const reqSlots = Math.ceil(estTimeMins / 30);
   const fullyBooked: string[] = [];
@@ -898,6 +914,8 @@ export async function getMonthlyFullyBookedDates(
 
     const dateObj = new Date(year, month, d);
     const dayOfWeek = dateObj.getDay();
+    if (weeklyOffDays.includes(dayOfWeek)) continue;
+
     const dayHours = dailyHours[dayOfWeek.toString()];
     if (!dayHours) continue;
 
@@ -930,16 +948,15 @@ export async function getMonthlyFullyBookedDates(
 
         // เช็คลาเต็มวัน
         const docFullDayLeave = dayLeaves.find((l: any) => 
-          l.staff_id && dUser.staff_id && l.staff_id === dUser.staff_id && 
+          l.staff_id && dUser.staff_id && Number(l.staff_id) === dUser.staff_id && 
           l.leave_period === 'เต็มวัน'
         );
         if (docFullDayLeave) continue;
 
         // เช็คเวรประจำวัน
         const shift = allShifts.find((s: any) => {
-          const matchDoc = (s.staff_id && dUser.staff_id && s.staff_id === dUser.staff_id) || 
-                           (s.users?.dentist?.dentist_id === dId || s.users?.dentist?.[0]?.dentist_id === dId);
-          return matchDoc && s.day_of_week === dayOfWeek;
+          const matchDoc = Boolean(s.staff_id && dUser.staff_id && Number(s.staff_id) === dUser.staff_id);
+          return matchDoc && Number(s.day_of_week) === dayOfWeek;
         });
 
         let isWorking = true;
@@ -950,14 +967,14 @@ export async function getMonthlyFullyBookedDates(
             const [eH, eM] = (shift.end_shift || '23:59').split(':').map(Number);
             const shiftStart = sH * 60 + sM;
             const shiftEnd = eH * 60 + eM;
-            if (min < shiftStart || min >= shiftEnd) isWorking = false;
+            if (min < shiftStart || min + 30 > shiftEnd) isWorking = false;
           }
         }
         if (!isWorking) continue;
 
         // เช็คลาครึ่งวัน
         const docPartLeave = dayLeaves.find((l: any) => 
-          l.staff_id && dUser.staff_id && l.staff_id === dUser.staff_id && 
+          l.staff_id && dUser.staff_id && Number(l.staff_id) === dUser.staff_id && 
           l.leave_period !== 'เต็มวัน'
         );
         if (docPartLeave) {
@@ -968,7 +985,7 @@ export async function getMonthlyFullyBookedDates(
         // เช็คว่า slot ถูกจองหรือยัง
         let hasConflict = false;
         for (const app of dayAppointments) {
-          if (app.dentist_id !== dId || !app.start_time || !app.end_time_est) continue;
+          if (Number(app.dentist_id) !== dId || !app.start_time || !app.end_time_est) continue;
           const [aSh, aSm] = app.start_time.split(':').map(Number);
           const [aEh, aEm] = app.end_time_est.split(':').map(Number);
           if ((aSh * 60 + aSm) < min + 30 && (aEh * 60 + aEm) > min) {

@@ -9,6 +9,7 @@ interface CalendarPickerProps {
   year: number;
   month: number;
   dayStatus: (d: number) => { status: "past" | "available"; reason?: string };
+  fullyBookedDates?: Set<string>;
   selectedDate: string;
   onSelectDate: (dStr: string) => void;
 }
@@ -25,6 +26,7 @@ export default function CalendarPicker({
   year,
   month,
   dayStatus,
+  fullyBookedDates,
   selectedDate,
   onSelectDate,
 }: CalendarPickerProps) {
@@ -144,27 +146,39 @@ export default function CalendarPicker({
             )}`;
             const sel = selectedDate === dateStr;
             const isAvailable = st === "available";
+            const isFullyBooked = Boolean(isAvailable && fullyBookedDates?.has(dateStr));
+            const canClick = isAvailable && !isFullyBooked;
 
             return (
               <button
                 key={d}
-                disabled={!isAvailable}
-                onClick={() => onSelectDate(dateStr)}
-                title={reason}
+                type="button"
+                disabled={!canClick}
+                onClick={() => canClick && onSelectDate(dateStr)}
+                title={isFullyBooked ? "คิวเต็มทุกช่วงเวลา" : reason}
                 style={{
                   height: 26,
                   borderRadius: 6,
                   border: "none",
                   width: "100%",
                   fontSize: 11,
-                  fontWeight: sel ? 700 : 500,
-                  cursor: isAvailable ? "pointer" : "not-allowed",
+                  fontWeight: sel || isFullyBooked ? 700 : 500,
+                  cursor: canClick ? "pointer" : "not-allowed",
                   backgroundColor: sel
                     ? "#E16076"
+                    : isFullyBooked
+                    ? "rgba(239,68,68,0.12)"
                     : isAvailable
                     ? "rgba(26,54,93,0.03)"
                     : "transparent",
-                  color: sel ? "white" : isAvailable ? "#1A365D" : "#CBD5E1",
+                  color: sel
+                    ? "white"
+                    : isFullyBooked
+                    ? "#DC2626"
+                    : isAvailable
+                    ? "#1A365D"
+                    : "#CBD5E1",
+                  outline: isFullyBooked ? "1px solid rgba(239,68,68,0.30)" : "none",
                 }}
               >
                 {d}

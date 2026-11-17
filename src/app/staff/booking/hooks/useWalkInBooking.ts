@@ -10,6 +10,8 @@ import {
   getDoctorSchedules,
   getUpcomingLeaves,
   getPatients,
+  getMonthlyFullyBookedDates,
+  supabase,
 } from "@/app/shared/supabaseApi";
 
 export interface BookingForm {
@@ -51,50 +53,123 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
     { time: string; status: string; canBook: boolean }[]
   >([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [fullyBookedDates, setFullyBookedDates] = useState<Set<string>>(new Set());
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
-    Promise.all([
-      getDentists(),
-      getServices(),
-      getClinicClosures(),
-      getWeeklyOffDays(),
-      getDoctorSchedules(),
-      getUpcomingLeaves(),
-      getPatients(),
-    ])
-      .then(([d, s, cData, offData, dsData, leavesData, patData]) => {
-        setDentists(d.filter((x) => x.active));
-        setServices(s.filter((x) => x.active));
-        setClosures(cData);
-        setWeeklyOffDays(offData);
-        setDoctorSchedules(dsData);
-        setUpcomingLeaves(leavesData);
-        setAllPatients(patData);
+    const loadMasterData = () => {
+      Promise.all([
+        getDentists(),
+        getServices(),
+        getClinicClosures(),
+        getWeeklyOffDays(),
+        getDoctorSchedules(),
+        getUpcomingLeaves(),
+        getPatients(),
+      ])
+        .then(([d, s, cData, offData, dsData, leavesData, patData]) => {
+          setDentists(d.filter((x) => x.active));
+          setServices(s.filter((x) => x.active));
+          setClosures(cData);
+          setWeeklyOffDays(offData);
+          setDoctorSchedules(dsData);
+          setUpcomingLeaves(leavesData);
+          setAllPatients(patData);
+        })
+        .catch(console.error);
+    };
+
+    loadMasterData();
+
+    const triggerRefresh = () => setRefreshTick((t) => t + 1);
+    window.addEventListener("appointments-updated", triggerRefresh);
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "icemu-sync-update") triggerRefresh();
+    };
+    window.addEventListener("storage", handleStorage);
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      try {
+        bc = new BroadcastChannel("icemu-updates");
+        bc.onmessage = () => triggerRefresh();
+      } catch (e) {}
+    }
+
+    const channelName = `rt-walkin-slots-${Math.random().toString(36).slice(2, 9)}`;
+    const channel = supabase
+      .channel(channelName)
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointment" }, triggerRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "schedule" }, () => {
+        loadMasterData();
+        triggerRefresh();
       })
-      .catch(console.error);
+      .on("postgres_changes", { event: "*", schema: "public", table: "leave_record" }, () => {
+        loadMasterData();
+        triggerRefresh();
+      })
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("appointments-updated", triggerRefresh);
+      window.removeEventListener("storage", handleStorage);
+      if (bc) {
+        try {
+          bc.close();
+        } catch (e) {}
+      }
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  const getEstMins = (serviceName: string) => {
-    if (serviceName.includes("จัดฟัน") || serviceName.includes("รากฟันเทียม")) return 60;
-    if (serviceName.includes("ฟอกสีฟัน") || serviceName.includes("รักษารากฟัน")) return 45;
-    return 30;
-  };
-
-  const estMins = form.service ? getEstMins(form.service) : 30;
+  const selectedServiceObj = services.find((s) => s.name === form.service);
+  const selectedServiceId = selectedServiceObj?.id;
+  const estMins = selectedServiceObj?.estimatedTime || 30;
   const reqSlots = Math.ceil(estMins / 30);
 
-  const selectedServiceId = services.find((s) => s.name === form.service)?.id;
   const matchedDentists = selectedServiceId
     ? dentists.filter((d) => d.serviceIds?.includes(selectedServiceId))
     : dentists;
   // ถ้าบริการนี้ยังไม่ได้ผูกกับหมอคนใด ให้แสดงหมอทั้งหมด
   const filteredDentists = matchedDentists.length > 0 ? matchedDentists : dentists;
 
+  const today = new Date();
+  const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const year = targetDate.getFullYear();
+  const month = targetDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDow = new Date(year, month, 1).getDay();
+  const todayN = today.getDate();
+  const isCurrentMonth = monthOffset === 0;
+
+  // ดึงวันที่คิวเต็มทั้งเดือนเพื่อให้ปฏิทินแสดงตรงกับหน้าคนไข้
+  useEffect(() => {
+    if (step !== 1 || form.openAppt) return;
+    getMonthlyFullyBookedDates(
+      year,
+      month,
+      selectedServiceId,
+      form.doctorId > 0 ? form.doctorId : undefined,
+      estMins
+    )
+      .then((dates) => {
+        setFullyBookedDates(new Set(dates));
+      })
+      .catch(console.error);
+  }, [step, year, month, selectedServiceId, form.doctorId, form.openAppt, estMins, refreshTick]);
+
+  // ดึงช่วงเวลาว่างรายวัน และตรวจสอบความต่อเนื่องของ Slot
   useEffect(() => {
     if (step === 1 && form.date && !form.openAppt) {
       setLoadingSlots(true);
-      getClinicTimeSlots(form.date, selectedServiceId, form.doctorId || undefined)
+      getClinicTimeSlots(
+        form.date,
+        selectedServiceId,
+        form.doctorId > 0 ? form.doctorId : undefined,
+        patientInfo?.id
+      )
         .then((slots) => {
+          let hasAnyCanBook = false;
           const processed = slots.map((slot, i) => {
             if (slot.status !== "available") return { ...slot, canBook: false };
             let canBook = true;
@@ -103,19 +178,51 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
                 canBook = false;
                 break;
               }
+              if (j > 0) {
+                const [prevH, prevM] = slots[i + j - 1].time.split(":").map(Number);
+                const [curH, curM] = slots[i + j].time.split(":").map(Number);
+                if (curH * 60 + curM - (prevH * 60 + prevM) !== 30) {
+                  canBook = false;
+                  break;
+                }
+              }
             }
+            if (canBook) hasAnyCanBook = true;
             return { ...slot, canBook };
           });
+
           setTimeSlots(processed);
+
+          if (!hasAnyCanBook && slots.length > 0) {
+            setFullyBookedDates((prev) => new Set(prev).add(form.date));
+          } else {
+            setFullyBookedDates((prev) => {
+              const next = new Set(prev);
+              next.delete(form.date);
+              return next;
+            });
+          }
+
+          // หากเวลาที่เลือกค้างไว้ไม่ว่างแล้ว ให้ล้างค่าเวลาออกทันที
+          setForm((prev) => {
+            if (!prev.time) return prev;
+            const found = processed.find((s) => s.time === prev.time);
+            if (!found || !found.canBook) {
+              return { ...prev, time: "" };
+            }
+            return prev;
+          });
         })
         .catch(console.error)
         .finally(() => setLoadingSlots(false));
+    } else {
+      setTimeSlots([]);
     }
-  }, [step, form.date, form.doctorId, form.openAppt, selectedServiceId, reqSlots]);
+  }, [step, form.date, form.doctorId, form.openAppt, selectedServiceId, reqSlots, patientInfo?.id, refreshTick]);
 
   const handleServiceChange = (serviceName: string) => {
     setForm((f) => {
-      const newForm = { ...f, service: serviceName };
+      const newForm = { ...f, service: serviceName, time: "" };
       const sId = services.find((s) => s.name === serviceName)?.id;
       if (sId && f.doctorId) {
         const hasMappedDoctor = dentists.some((d) => d.serviceIds?.includes(sId));
@@ -127,15 +234,6 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
       return newForm;
     });
   };
-
-  const today = new Date();
-  const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
-  const year = targetDate.getFullYear();
-  const month = targetDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDow = new Date(year, month, 1).getDay();
-  const todayN = today.getDate();
-  const isCurrentMonth = monthOffset === 0;
 
   const dayStatus = (d: number) => {
     if (isCurrentMonth && d < todayN) return { status: "past" as const };
@@ -151,13 +249,13 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
     if (form.doctorId > 0) {
       const selDocData = dentists.find((fd) => fd.id === form.doctorId);
       const shift = doctorSchedules.find(
-        (s) => s.dentistId === form.doctorId && s.dayOfWeek === dayOfWk
+        (s) => Number(s.dentistId) === Number(form.doctorId) && Number(s.dayOfWeek) === dayOfWk
       );
       const isFullLeave = selDocData
         ? upcomingLeaves.some((l) => {
             if (l.leave_date !== dateStr || l.leave_period !== "เต็มวัน") return false;
             const matchUser = Boolean(l.user_id && selDocData.userId && l.user_id === selDocData.userId);
-            const matchStaff = Boolean(l.staff_id && selDocData.staffId && l.staff_id === selDocData.staffId);
+            const matchStaff = Boolean(l.staff_id && selDocData.staffId && Number(l.staff_id) === Number(selDocData.staffId));
             return matchUser || matchStaff;
           })
         : false;
@@ -170,13 +268,13 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
     } else if (form.service && filteredDentists.length > 0) {
       const isAnyWorking = filteredDentists.some((fd) => {
         const shift = doctorSchedules.find(
-          (s) => s.dentistId === fd.id && s.dayOfWeek === dayOfWk
+          (s) => Number(s.dentistId) === Number(fd.id) && Number(s.dayOfWeek) === dayOfWk
         );
         if (shift && shift.isOff) return false;
         const isFullLeave = upcomingLeaves.some((l) => {
           if (l.leave_date !== dateStr || l.leave_period !== "เต็มวัน") return false;
           const matchUser = Boolean(l.user_id && fd.userId && l.user_id === fd.userId);
-          const matchStaff = Boolean(l.staff_id && fd.staffId && l.staff_id === fd.staffId);
+          const matchStaff = Boolean(l.staff_id && fd.staffId && Number(l.staff_id) === Number(fd.staffId));
           return matchUser || matchStaff;
         });
         if (isFullLeave) return false;
@@ -188,6 +286,17 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
     }
     return { status: "available" as const };
   };
+
+  // หากเปลี่ยนหมอหรือบริการแล้ววันที่เลือกไว้กลายเป็นวันหยุดหมอ ให้ล้างวันที่ออก
+  useEffect(() => {
+    if (step !== 1 || !form.date) return;
+    const parts = form.date.split("-").map(Number);
+    if (parts.length === 3 && parts[0] === year && parts[1] - 1 === month) {
+      if (dayStatus(parts[2]).status !== "available" || fullyBookedDates.has(form.date)) {
+        setForm((prev) => ({ ...prev, date: "", time: "" }));
+      }
+    }
+  }, [form.doctorId, form.service, step, fullyBookedDates]);
 
   useEffect(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -218,6 +327,7 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
   }, [searchKeyword, allPatients]);
 
   const confirm = async () => {
+    if (isSubmitting) return;
     const doctorName =
       dentists.find((d) => d.id === form.doctorId)?.name ?? "ท่านใดก็ได้";
     const newAppt: Omit<Appointment, "id"> = {
@@ -226,25 +336,41 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
       patientName: patientInfo?.name || "Unknown",
       patientPhone: patientInfo?.phone || "",
       service: form.service,
+      serviceId: selectedServiceId,
+      durationMins: estMins,
       doctorName,
-      doctorId: form.doctorId,
+      doctorId: form.doctorId > 0 ? form.doctorId : undefined,
       date: form.openAppt ? "" : form.date,
       time: form.openAppt ? "" : form.time,
       status: form.openAppt ? "ยืนยันการจอง" : "เช็คอินเรียบร้อย",
       conditions: patientInfo?.underlyingDisease || "ไม่มี",
       allergies: patientInfo?.allergyHistory || "ไม่มี",
+      source: "doctor",
       note: form.note,
     };
     setIsSubmitting(true);
     try {
       const added = await addAppointment(newAppt);
+      const assignedDocId = Number(added.assignedDoctorId || form.doctorId) || 0;
+      const assignedDocName =
+        dentists.find((d) => Number(d.id) === assignedDocId)?.name || doctorName;
+
+      if (assignedDocId > 0) {
+        setForm((prev) => ({ ...prev, doctorId: assignedDocId }));
+      }
+
       if (onAddAppt) {
-        onAddAppt({ ...newAppt, id: added.appointment_id.toString() });
+        onAddAppt({
+          ...newAppt,
+          id: Number(added.appointment_id),
+          doctorId: assignedDocId,
+          doctorName: assignedDocName,
+        });
       }
       setDone(true);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to book appointment");
+      alert(err.message || "ไม่สามารถบันทึกนัดหมายได้");
     } finally {
       setIsSubmitting(false);
     }
@@ -290,6 +416,7 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
     daysInMonth,
     firstDow,
     dayStatus,
+    fullyBookedDates,
     timeSlots,
     loadingSlots,
     confirm,

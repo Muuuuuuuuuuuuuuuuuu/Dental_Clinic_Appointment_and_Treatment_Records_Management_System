@@ -12,20 +12,17 @@ import DoctorPortal from "@/app/dentist/DentistPortal";
 import AdminPortal from "@/app/admin/AdminPortal";
 import StaffPortal from "@/app/staff/StaffPortal";
 import PatientPortal from "@/app/patient/PatientPortal";
-import FirstTimePasswordPage from "@/app/auth/FirstTimePasswordPage";
 
-function checkMustChangePassword(email?: string, sessionUser?: any): boolean {
-  const cleanEmail = (email || sessionUser?.email || "").trim().toLowerCase();
+function checkMustChangePassword(email?: string, sessionUserOrMeta?: any): boolean {
+  const userMeta = sessionUserOrMeta?.user_metadata ?? sessionUserOrMeta;
+  const cleanEmail = (email || sessionUserOrMeta?.email || "").trim().toLowerCase();
   if (cleanEmail && localStorage.getItem(`supat_pwd_changed_${cleanEmail}`) === "true") {
     return false;
   }
   if (cleanEmail && localStorage.getItem(`supat_must_change_pwd_${cleanEmail}`) === "true") {
     return true;
   }
-  if (
-    sessionUser?.user_metadata?.must_change_password === true &&
-    sessionUser?.user_metadata?.password_changed !== true
-  ) {
+  if (userMeta?.must_change_password === true && userMeta?.password_changed !== true) {
     return true;
   }
   return false;
@@ -43,18 +40,6 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState("");
   const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
-
-  const checkMustChangePassword = (email?: string, userMeta?: any) => {
-    if (!email) return false;
-    const clean = email.trim().toLowerCase();
-    if (localStorage.getItem(`supat_must_change_pwd_${clean}`) === "true") return true;
-    if (userMeta?.must_change_password === true && userMeta?.password_changed !== true) {
-      if (localStorage.getItem(`supat_pwd_changed_${clean}`) === "true") return false;
-      return true;
-    }
-    return false;
-  };
 
   const { appointments: sharedAppointments, setAppointments: setSharedAppointments } = useRealtimeAppointments();
 
@@ -70,8 +55,12 @@ export default function App() {
 
   const handleRoleChange = async (newRole: UserRole, email?: string) => {
     setRole(newRole);
-<<<<<<< HEAD
-    if (email) setLoginEmail(email);
+    if (email) {
+      setLoginEmail(email);
+      if (checkMustChangePassword(email)) {
+        setNeedsPasswordChange(true);
+      }
+    }
 
     if (newRole === "staff" || newRole === "doctor" || newRole === "admin") {
       try {
@@ -91,14 +80,6 @@ export default function App() {
       localStorage.setItem(`supat_pwd_changed_${cleanEmail}`, "true");
     }
     setNeedsPasswordChange(false);
-=======
-    if (email) {
-      setLoginEmail(email);
-      if (checkMustChangePassword(email)) {
-        setNeedsPasswordChange(true);
-      }
-    }
->>>>>>> 3fdd2a31c4f37985ba1e2f192187e63077b2e1e9
   };
 
   const handleLogout = async () => {
@@ -154,17 +135,11 @@ export default function App() {
           else if (rawRole === "staff" || rawRole === "พนักงาน") mappedRole = "staff";
 
           setRole(mappedRole);
-<<<<<<< HEAD
-          setLoginEmail(session.user.email || "");
-
-          if (mappedRole === "staff" || mappedRole === "doctor" || mappedRole === "admin") {
-            setNeedsPasswordChange(checkMustChangePassword(session.user.email, session.user));
-=======
           const userEmail = session.user.email || "";
           setLoginEmail(userEmail);
-          if (checkMustChangePassword(userEmail, session.user.user_metadata)) {
+
+          if (checkMustChangePassword(userEmail, session.user)) {
             setNeedsPasswordChange(true);
->>>>>>> 3fdd2a31c4f37985ba1e2f192187e63077b2e1e9
           }
         }
       } catch (err) {
@@ -185,33 +160,16 @@ export default function App() {
     );
   }
 
-<<<<<<< HEAD
-  // บังคับตั้งรหัสผ่านใหม่ในการเข้าใช้งานครั้งแรกสำหรับพนักงาน ทันตแพทย์ และแอดมินที่เพิ่งสร้างใหม่
-  if (needsPasswordChange && (role === "staff" || role === "doctor" || role === "admin")) {
-    return (
-      <FirstTimePasswordPage
-        userEmail={loginEmail}
-        onSuccess={handleFirstTimePasswordChanged}
-        onBack={handleLogout}
-=======
   // ─── หากผู้ใช้งานจำเป็นต้องเปลี่ยนรหัสผ่านเริ่มต้นในการเข้าใช้งานครั้งแรก (ครอบคลุมทุกบทบาท) ───────
   if (needsPasswordChange && role !== null) {
     return (
       <FirstTimePasswordPage
         userEmail={loginEmail}
-        onSuccess={() => {
-          if (loginEmail) {
-            const clean = loginEmail.trim().toLowerCase();
-            localStorage.removeItem(`supat_must_change_pwd_${clean}`);
-            localStorage.setItem(`supat_pwd_changed_${clean}`, "true");
-          }
-          setNeedsPasswordChange(false);
-        }}
+        onSuccess={handleFirstTimePasswordChanged}
         onBack={() => {
           setNeedsPasswordChange(false);
           handleLogout();
         }}
->>>>>>> 3fdd2a31c4f37985ba1e2f192187e63077b2e1e9
       />
     );
   }

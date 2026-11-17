@@ -36,7 +36,6 @@ export default function Hero({ onCTA }: { onCTA: () => void }) {
             <div className="relative z-10 rounded-3xl overflow-hidden hero-img-float" style={{ aspectRatio: "4.6/5", boxShadow: "0 24px 80px rgba(26,54,93,0.18)" }}>
               <img src="https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=800&h=1000&fit=crop&auto=format" alt="ทันตแพทย์" className="w-full h-full object-cover" />
             </div>
-
           </div>
         </div>
       </div>
