@@ -104,24 +104,7 @@ export default function ServiceScheduleStep({
           </div>
         )}
 
-        <label
-          htmlFor="openAppt"
-          className="flex items-center gap-2.5 p-3 rounded-2xl bg-white border border-gray-100 cursor-pointer"
-          style={{ boxShadow: "0 1px 8px rgba(26,54,93,0.07)" }}
-        >
-          <input
-            type="checkbox"
-            id="openAppt"
-            checked={form.openAppt}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, openAppt: e.target.checked, time: "" }))
-            }
-            className="w-4 h-4 rounded accent-[#E16076]"
-          />
-          <span className="text-xs font-medium" style={{ color: "#1A365D" }}>
-            ให้คนไข้ไปเลือกวัน-เวลาทีหลัง
-          </span>
-        </label>
+        
 
         <div
           className="bg-white rounded-2xl p-3.5 border border-gray-100"
