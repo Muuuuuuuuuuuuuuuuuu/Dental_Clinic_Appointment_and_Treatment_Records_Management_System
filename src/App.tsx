@@ -55,12 +55,7 @@ export default function App() {
 
   const handleRoleChange = async (newRole: UserRole, email?: string) => {
     setRole(newRole);
-    if (email) {
-      setLoginEmail(email);
-      if (checkMustChangePassword(email)) {
-        setNeedsPasswordChange(true);
-      }
-    }
+    if (email) setLoginEmail(email);
 
     if (newRole === "staff" || newRole === "doctor" || newRole === "admin") {
       try {
@@ -138,8 +133,8 @@ export default function App() {
           const userEmail = session.user.email || "";
           setLoginEmail(userEmail);
 
-          if (checkMustChangePassword(userEmail, session.user)) {
-            setNeedsPasswordChange(true);
+          if (mappedRole === "staff" || mappedRole === "doctor" || mappedRole === "admin") {
+            setNeedsPasswordChange(checkMustChangePassword(userEmail, session.user));
           }
         }
       } catch (err) {
@@ -160,16 +155,13 @@ export default function App() {
     );
   }
 
-  // ─── หากผู้ใช้งานจำเป็นต้องเปลี่ยนรหัสผ่านเริ่มต้นในการเข้าใช้งานครั้งแรก (ครอบคลุมทุกบทบาท) ───────
-  if (needsPasswordChange && role !== null) {
+  // บังคับตั้งรหัสผ่านใหม่ในการเข้าใช้งานครั้งแรกสำหรับพนักงาน ทันตแพทย์ และแอดมินที่เพิ่งสร้างใหม่
+  if (needsPasswordChange && (role === "staff" || role === "doctor" || role === "admin")) {
     return (
       <FirstTimePasswordPage
         userEmail={loginEmail}
         onSuccess={handleFirstTimePasswordChanged}
-        onBack={() => {
-          setNeedsPasswordChange(false);
-          handleLogout();
-        }}
+        onBack={handleLogout}
       />
     );
   }
