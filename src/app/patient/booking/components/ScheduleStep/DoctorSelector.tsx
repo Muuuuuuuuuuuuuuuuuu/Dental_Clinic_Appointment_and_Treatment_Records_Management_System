@@ -12,7 +12,7 @@ interface DoctorSelectorProps {
 }
 
 /**
- * 👨‍⚕️ [STEP 1 RIGHT COMPONENT] แถบสลับและเลือกทันตแพทย์
+ *  [STEP 1 RIGHT COMPONENT] แถบสลับและเลือกทันตแพทย์
  */
 export default function DoctorSelector({
   wantSelectDoctor,

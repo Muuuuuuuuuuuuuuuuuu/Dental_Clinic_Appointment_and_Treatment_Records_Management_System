@@ -39,6 +39,7 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
     daysInMonth,
     firstDow,
     dayStatus,
+    fullyBookedDates,
     timeSlots,
     loadingSlots,
     confirm,
@@ -56,7 +57,7 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
       }
       : step === 1
         ? {
-          disabled: !form.service || !form.date || !form.time,
+          disabled: !form.service || (!form.openAppt && (!form.date || !form.time)),
           onClick: () => setStep(2),
           label: "ถัดไป: ตรวจสอบและยืนยัน",
         }
@@ -103,6 +104,7 @@ export default function StaffWalkInBookingView({ onAddAppt }: WalkInBookingProps
             year={year}
             month={month}
             dayStatus={dayStatus}
+            fullyBookedDates={fullyBookedDates}
             timeSlots={timeSlots}
             loadingSlots={loadingSlots}
           />

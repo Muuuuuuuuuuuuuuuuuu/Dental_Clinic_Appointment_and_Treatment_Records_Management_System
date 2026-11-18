@@ -63,6 +63,14 @@ export default function StaffPaymentView({
     handleCreateFollowUp,
     servicesList,
     handleFollowUpServiceChange,
+    setFollowUpMonthOffset,
+    followUpTargetDate,
+    followUpYear,
+    followUpMonth,
+    followUpDaysInMonth,
+    followUpFirstDow,
+    followUpDayStatus,
+    fullyBookedDates,
   } = usePaymentData(initialAppointments, onUpdateAppt, initialApptId);
 
   return (
@@ -127,6 +135,15 @@ export default function StaffPaymentView({
         onSubmit={handleCreateFollowUp}
         servicesList={servicesList}
         onServiceChange={handleFollowUpServiceChange}
+        targetDate={followUpTargetDate}
+        onPrevMonth={() => setFollowUpMonthOffset((m) => m - 1)}
+        onNextMonth={() => setFollowUpMonthOffset((m) => m + 1)}
+        firstDow={followUpFirstDow}
+        daysInMonth={followUpDaysInMonth}
+        year={followUpYear}
+        month={followUpMonth}
+        dayStatus={followUpDayStatus}
+        fullyBookedDates={fullyBookedDates}
       />
     </>
   );

@@ -64,7 +64,7 @@ export function useStaffAppointments(initialAppointments?: Appointment[]) {
   const onUpdateAppt = async (
     id: number,
     updates: Partial<Appointment> & { reason?: string }
-  ) => {
+  ): Promise<boolean> => {
     try {
       if (updates.status) {
         const updated = await updateAppointmentStatus(id, updates.status, updates.reason);
@@ -82,34 +82,38 @@ export function useStaffAppointments(initialAppointments?: Appointment[]) {
           apps.map((a) => (a.id === id ? { ...a, ...updates } : a))
         );
       }
-    } catch (err) {
+      return true;
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to update appointment");
+      alert(err?.message || "ไม่สามารถอัปเดตนัดหมายได้");
+      return false;
     }
   };
 
-  const handleTransferSubmit = () => {
+  const handleTransferSubmit = async () => {
     if (!transferAppt || !newDoctorId) return;
     const doctor = dentists.find((d) => d.id.toString() === newDoctorId);
     if (doctor) {
-      onUpdateAppt(transferAppt.id, {
+      const ok = await onUpdateAppt(transferAppt.id, {
         doctorId: doctor.id,
         doctorName: doctor.name,
         reason: updateReason,
       });
+      if (!ok) return;
     }
     setTransferAppt(null);
     setNewDoctorId("");
     setUpdateReason("");
   };
 
-  const handleRescheduleSubmit = () => {
+  const handleRescheduleSubmit = async () => {
     if (!rescheduleAppt || !newDate || !newTime) return;
-    onUpdateAppt(rescheduleAppt.id, {
+    const ok = await onUpdateAppt(rescheduleAppt.id, {
       date: newDate,
       time: newTime,
       reason: updateReason,
     });
+    if (!ok) return;
     setRescheduleAppt(null);
     setNewDate("");
     setNewTime("");

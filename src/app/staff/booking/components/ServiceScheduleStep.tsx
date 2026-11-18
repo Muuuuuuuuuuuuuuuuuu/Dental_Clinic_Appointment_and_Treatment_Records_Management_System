@@ -20,6 +20,7 @@ interface ServiceScheduleStepProps {
   year: number;
   month: number;
   dayStatus: (d: number) => { status: "past" | "available"; reason?: string };
+  fullyBookedDates?: Set<string>;
   timeSlots: { time: string; status: string; canBook: boolean }[];
   loadingSlots: boolean;
 }
@@ -41,6 +42,7 @@ export default function ServiceScheduleStep({
   year,
   month,
   dayStatus,
+  fullyBookedDates,
   timeSlots,
   loadingSlots,
 }: ServiceScheduleStepProps) {
@@ -72,6 +74,7 @@ export default function ServiceScheduleStep({
           year={year}
           month={month}
           dayStatus={dayStatus}
+          fullyBookedDates={fullyBookedDates}
           selectedDate={form.date}
           onSelectDate={(dStr) =>
             setForm((f) => ({ ...f, date: dStr, time: "" }))

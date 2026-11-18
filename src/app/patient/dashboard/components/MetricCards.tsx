@@ -70,7 +70,7 @@ export default function MetricCards({
           key={s.label}
           onClick={() => onNavigate(s.nav)}
           className="rounded-2xl p-4 bg-white text-left transition-all hover:shadow-md active:scale-[0.98]"
-          style={{ boxShadow: "0 2px 12px rgba(26,54,93,0.05)" }}
+          style={{ boxShadow: "0 2px 12px rgba(40, 160, 0, 0.05)" }}
         >
           <div
             className="text-2xl font-bold"

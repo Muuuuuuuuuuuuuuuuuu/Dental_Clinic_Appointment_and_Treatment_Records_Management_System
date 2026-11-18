@@ -13,18 +13,16 @@ import AdminPortal from "@/app/admin/AdminPortal";
 import StaffPortal from "@/app/staff/StaffPortal";
 import PatientPortal from "@/app/patient/PatientPortal";
 
-function checkMustChangePassword(email?: string, sessionUser?: any): boolean {
-  const cleanEmail = (email || sessionUser?.email || "").trim().toLowerCase();
+function checkMustChangePassword(email?: string, sessionUserOrMeta?: any): boolean {
+  const userMeta = sessionUserOrMeta?.user_metadata ?? sessionUserOrMeta;
+  const cleanEmail = (email || sessionUserOrMeta?.email || "").trim().toLowerCase();
   if (cleanEmail && localStorage.getItem(`supat_pwd_changed_${cleanEmail}`) === "true") {
     return false;
   }
   if (cleanEmail && localStorage.getItem(`supat_must_change_pwd_${cleanEmail}`) === "true") {
     return true;
   }
-  if (
-    sessionUser?.user_metadata?.must_change_password === true &&
-    sessionUser?.user_metadata?.password_changed !== true
-  ) {
+  if (userMeta?.must_change_password === true && userMeta?.password_changed !== true) {
     return true;
   }
   return false;
@@ -132,10 +130,11 @@ export default function App() {
           else if (rawRole === "staff" || rawRole === "พนักงาน") mappedRole = "staff";
 
           setRole(mappedRole);
-          setLoginEmail(session.user.email || "");
+          const userEmail = session.user.email || "";
+          setLoginEmail(userEmail);
 
           if (mappedRole === "staff" || mappedRole === "doctor" || mappedRole === "admin") {
-            setNeedsPasswordChange(checkMustChangePassword(session.user.email, session.user));
+            setNeedsPasswordChange(checkMustChangePassword(userEmail, session.user));
           }
         }
       } catch (err) {
