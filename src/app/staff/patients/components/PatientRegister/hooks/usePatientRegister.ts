@@ -67,8 +67,32 @@ const INITIAL_FORM: RegForm = {
   password: "123456789",
 };
 
+/**
+ * ตรวจสอบความถูกต้องของวัน-เดือน-ปีตามปฏิทินจริง (Strict Calendar Validation)
+ * ป้องกันกรณี JavaScript Date overflow เช่น วันที่ 30 กุมภาพันธ์ หรือ 31 เมษายน
+ */
+export const isValidCalendarDate = (dateStr: string): boolean => {
+  if (!dateStr || typeof dateStr !== "string") return false;
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return false;
+
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return false;
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y &&
+    dt.getUTCMonth() + 1 === m &&
+    dt.getUTCDate() === d
+  );
+};
+
 const calcAge = (dob: string) => {
-  if (!dob) return 0;
+  if (!dob || !isValidCalendarDate(dob)) return 0;
   const diff = Date.now() - new Date(dob).getTime();
   return new Date(diff).getUTCFullYear() - 1970;
 };
@@ -80,11 +104,20 @@ export const MAX_PATIENT_AGE = 100;
 /** ตรวจสอบวันเกิด คืนข้อความแจ้งเตือน หรือ "" ถ้าถูกต้อง */
 export const getDobError = (dob: string): string => {
   if (!dob) return "";
+
+  // 1. ตรวจสอบว่ามีอยู่จริงในปฏิทินหรือไม่ (ป้องกันกรณี 30 กุมภาพันธ์, 31 เมษายน ฯลฯ)
+  if (!isValidCalendarDate(dob)) {
+    return "วันที่ระบุไม่มีอยู่ในปฏิทินจริง (เช่น วันที่ 30 กุมภาพันธ์ หรือ 31 เมษายน)";
+  }
+
   const d = new Date(dob);
   if (isNaN(d.getTime())) return "รูปแบบวันเกิดไม่ถูกต้อง";
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (d.getTime() > today.getTime()) return "วันกิดไม่ควรเป็นวันที่ในอนาคต กรุณากรอกวันเกิดตามความเป็นจริง (ใช้ปี ค.ศ.)";
+  if (d.getTime() > today.getTime()) {
+    return "วันเกิดต้องไม่เป็นวันในอนาคต";
+  }
 
   const age = calcAge(dob);
   if (age < MIN_PATIENT_AGE) {
