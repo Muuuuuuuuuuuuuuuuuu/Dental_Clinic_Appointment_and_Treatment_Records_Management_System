@@ -25,13 +25,27 @@ export default function PatientSearchTab() {
     getPatients().then(setAllPatients).catch(console.error);
   }, []);
 
-  const results = q
-    ? allPatients.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q.toLowerCase()) ||
-          p.hn.toLowerCase().includes(q.toLowerCase()) ||
-          (p.phone && p.phone.includes(q))
-      )
+  const cleanQ = q.trim().toLowerCase();
+  const cleanNumQ = q.replace(/\D/g, "");
+
+  const results = cleanQ
+    ? allPatients.filter((p) => {
+        const matchName = p.name && p.name.toLowerCase().includes(cleanQ);
+        const matchHn = p.hn && p.hn.toLowerCase().includes(cleanQ);
+        const matchEmail = p.email && p.email.toLowerCase().includes(cleanQ);
+
+        const cleanPhone = p.phone ? p.phone.replace(/\D/g, "") : "";
+        const matchPhone =
+          (p.phone && p.phone.toLowerCase().includes(cleanQ)) ||
+          (cleanNumQ.length >= 3 && cleanPhone.includes(cleanNumQ));
+
+        const cleanCitizenId = p.citizenId ? p.citizenId.replace(/\D/g, "") : "";
+        const matchCitizenId =
+          (p.citizenId && p.citizenId.toLowerCase().includes(cleanQ)) ||
+          (cleanNumQ.length >= 3 && cleanCitizenId.includes(cleanNumQ));
+
+        return matchName || matchHn || matchEmail || matchPhone || matchCitizenId;
+      })
     : [];
 
   const handleEditSubmit = async (patientId: number) => {
@@ -66,7 +80,7 @@ export default function PatientSearchTab() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="ชื่อ หรือเบอร์โทรศัพท์..."
+          placeholder="ค้นหาชื่อ-สกุล, เลขบัตรประชาชน, เบอร์โทร, HN..."
           className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none"
           style={{
             backgroundColor: "white",
@@ -126,9 +140,11 @@ export default function PatientSearchTab() {
                       </button>
                     )}
                   </div>
-                  <p className="text-sm mt-0.5" style={{ color: "#4A6080" }}>
-                    {p.phone || "-"}
-                  </p>
+                  <div className="flex items-center gap-2 text-sm mt-0.5 flex-wrap" style={{ color: "#4A6080" }}>
+                    <span>โทร: {p.phone || "-"}</span>
+                    {p.citizenId && <span>• เลขบัตรฯ: {p.citizenId}</span>}
+                    {p.hn && <span>• {p.hn}</span>}
+                  </div>
                 </div>
               </div>
 
