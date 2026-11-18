@@ -75,7 +75,11 @@ export default function PatientSearchStep({
             >
               <div>
                 <p className="font-bold text-[#1A365D] text-sm">{p.name}</p>
-                <p className="text-xs text-[#4A6080]">{p.phone}</p>
+                <div className="flex flex-wrap items-center gap-x-3 text-xs text-[#4A6080] mt-0.5">
+                  {p.hn && <span>HN: {p.hn}</span>}
+                  {p.citizenId && <span>เลขบัตรฯ: {p.citizenId}</span>}
+                  {p.phone && <span>โทร: {p.phone}</span>}
+                </div>
               </div>
               <ChevronRight size={16} className="text-[#4A6080]" />
             </button>
@@ -93,9 +97,11 @@ export default function PatientSearchStep({
         >
           <div>
             <p className="font-bold text-[#1A365D] text-lg">{patientInfo.name}</p>
-            <p className="text-sm text-[#4A6080]">
-              {patientInfo.phone}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-3 text-sm text-[#4A6080] mt-1">
+              {patientInfo.hn && <span>HN: {patientInfo.hn}</span>}
+              {patientInfo.citizenId && <span>เลขบัตรฯ: {patientInfo.citizenId}</span>}
+              {patientInfo.phone && <span>โทร: {patientInfo.phone}</span>}
+            </div>
           </div>
           <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#E8FFF0] text-[#1B7A3E]">
             <CheckCircle size={20} />

@@ -365,7 +365,8 @@ export async function getPatients() {
     users (
       email,
       account_status,
-      profile (first_name, last_name, phone_number)
+      citizen_id,
+      profile (citizen_id, first_name, last_name, phone_number, birth_date, gender, current_address)
     ),
     emergency_contact (contact_name, contact_phone, relationship),
     patient_allergy (allergy_name),
@@ -386,13 +387,19 @@ export async function getPatients() {
       ? d.patient_disease.map((a: any) => a.disease_name).join(', ')
       : 'ไม่มี';
     
+    const citizenId = d.users?.citizen_id || p?.citizen_id || '';
+
     return {
       id: d.patient_id,
       hn: `HN${String(d.patient_id).padStart(3, '0')}`,
       name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
+      citizenId: citizenId,
       userId: d.user_id,
+      gender: p?.gender || '',
+      dob: p?.birth_date || '',
+      address: p?.current_address || '',
       active: d.users?.account_status !== 'inactive',
       allergyHistory: allergies,
       underlyingDisease: diseases,
@@ -430,7 +437,8 @@ export async function searchPatientByKeyword(keyword: string): Promise<PatientIn
     users (
       email,
       account_status,
-      profile (first_name, last_name, phone_number)
+      citizen_id,
+      profile (citizen_id, first_name, last_name, phone_number)
     ),
     emergency_contact (contact_name, contact_phone, relationship),
     patient_allergy (allergy_name),
@@ -455,6 +463,7 @@ export async function searchPatientByKeyword(keyword: string): Promise<PatientIn
       name: p ? `${p.first_name} ${p.last_name}` : 'ไม่ระบุชื่อ',
       email: d.users?.email || '',
       phone: p?.phone_number || '',
+      citizenId: d.users?.citizen_id || p?.citizen_id || '',
       userId: d.user_id,
       active: d.users?.account_status !== 'inactive',
       allergyHistory: allergies,
