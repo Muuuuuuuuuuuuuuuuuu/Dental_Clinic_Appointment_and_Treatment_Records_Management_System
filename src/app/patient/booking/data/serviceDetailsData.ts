@@ -486,7 +486,23 @@ export const DEFAULT_SERVICE_DETAIL: ServiceDetail = {
 /**
  * ฟังก์ชันช่วยค้นหาข้อมูลรายละเอียดบริการ โดยค้นหาทั้งชื่อเต็มและคีย์เวิร์ดที่เกี่ยวข้อง
  */
-export function getServiceDetail(title: string): ServiceDetail {
+export function getServiceDetail(title: string, dbDetails?: Partial<ServiceDetail>): ServiceDetail {
+  // ใช้รายละเอียดที่แอดมินกรอกไว้ในฐานข้อมูลก่อน (ถ้ามี) ส่วนที่ว่างจะใช้ข้อมูลสำรอง
+  if (dbDetails) {
+    const hasBenefits = Array.isArray(dbDetails.benefits) && dbDetails.benefits.length > 0;
+    const hasProcedures = Array.isArray(dbDetails.procedures) && dbDetails.procedures.length > 0;
+    const hasCare = Array.isArray(dbDetails.care) && dbDetails.care.length > 0;
+
+    if (hasBenefits || hasProcedures || hasCare) {
+      const fallback = getServiceDetail(title);
+      return {
+        benefits: hasBenefits ? dbDetails.benefits! : fallback.benefits,
+        procedures: hasProcedures ? dbDetails.procedures! : fallback.procedures,
+        care: hasCare ? dbDetails.care! : fallback.care,
+      };
+    }
+  }
+
   if (!title) return DEFAULT_SERVICE_DETAIL;
 
   // 1. ค้นหาชื่อตรงกันแบบ 100%

@@ -1,7 +1,16 @@
 import React from "react";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
-import { RegForm } from "../hooks/usePatientRegister";
+import { RegForm, getDobError, MAX_PATIENT_AGE } from "../hooks/usePatientRegister";
 import FormField, { inputCls, inputStyle } from "./FormField";
+
+// ช่วงวันเกิดที่เลือกได้ในปฏิทิน: ไม่เกินวันนี้ และย้อนหลังไม่เกิน MAX_PATIENT_AGE ปี
+const toLocalYmd = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const _today = new Date();
+const dobMax = toLocalYmd(_today);
+const dobMin = toLocalYmd(
+  new Date(_today.getFullYear() - MAX_PATIENT_AGE, _today.getMonth(), _today.getDate())
+);
 
 interface RegisterFormStepProps {
   form: RegForm;
@@ -128,15 +137,24 @@ export function RegisterFormStep({
                   <input
                     type="date"
                     className={inputCls}
-                    style={inputStyle(form.dob, Boolean(err && !form.dob))}
+                    style={inputStyle(
+                      form.dob,
+                      Boolean((err && !form.dob) || getDobError(form.dob))
+                    )}
                     value={form.dob}
+                    min={dobMin}
+                    max={dobMax}
                     onChange={(e) => set("dob", e.target.value)}
                   />
-                  {form.dob && (
+                  {form.dob && getDobError(form.dob) ? (
+                    <p className="text-[10px] mt-0.5 text-red-500 text-right">
+                      {getDobError(form.dob)}
+                    </p>
+                  ) : form.dob ? (
                     <p className="text-[10px] mt-0.5 text-gray-400 text-right">
                       อายุ {age} ปี
                     </p>
-                  )}
+                  ) : null}
                 </div>
                 <div className="sm:col-span-3">
                   <label

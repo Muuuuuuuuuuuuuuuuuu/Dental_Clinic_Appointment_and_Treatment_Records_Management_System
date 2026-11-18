@@ -155,8 +155,11 @@ export default function DoctorSelector({
                 </div>
               </button>
 
-              {landingDoctors.map((d) => {
-                const avail = filteredDoctors.some((fd) => fd.id === d.id);
+              {/* แสดงเฉพาะทันตแพทย์ที่ให้บริการที่เลือกเท่านั้น (หมอที่ไม่ได้ทำบริการนี้จะถูกซ่อน) */}
+              {landingDoctors
+                .filter((d) => filteredDoctors.some((fd) => Number(fd.id) === Number(d.id)))
+                .map((d) => {
+                const avail = true;
                 return (
                   <button
                     key={d.id}
