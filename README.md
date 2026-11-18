@@ -12,8 +12,8 @@
 * **คิวงาน (Queue Kanban Board):** `src/app/staff/queue/StaffQueueView.tsx` *(เช็คอินคนไข้)*
 * **จัดการนัดหมาย (Appointments):** `src/app/staff/appointments/StaffAppointmentsView.tsx` *(ย้ายเคส / เลื่อนนัด / ยกเลิก)*
 * **จัดการคนไข้ (Patients):** `src/app/staff/patients/StaffPatientsView.tsx`
-  * 🔍 *ค้นหาประวัติคนไข้:* `src/app/staff/patients/components/PatientSearchTab.tsx`
-  * 📝 *ลงทะเบียนคนไข้ใหม่ + ส่ง OTP:* `src/app/staff/patients/components/PatientRegister/`
+  *ค้นหาประวัติคนไข้:* `src/app/staff/patients/components/PatientSearchTab.tsx`
+  *ลงทะเบียนคนไข้ใหม่ + ส่ง OTP:* `src/app/staff/patients/components/PatientRegister/`
 * **จองคิว Walk-in:** `src/app/staff/booking/StaffWalkInBookingView.tsx`
 * **รับชำระเงิน (Billing & Payment):** `src/app/staff/payment/StaffPaymentView.tsx` *(คิดเงิน / พิมพ์ใบเสร็จ / ปุ่มนัดครั้งถัดไป)*
 * **ปฏิทินและการลางาน (Leave):** `src/app/staff/leave/StaffLeaveView.tsx`
