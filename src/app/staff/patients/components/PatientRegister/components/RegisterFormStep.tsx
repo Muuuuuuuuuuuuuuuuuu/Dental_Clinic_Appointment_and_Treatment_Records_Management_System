@@ -125,9 +125,19 @@ export function RegisterFormStep({
                     hasError={Boolean(
                       err &&
                       (!form.idCard?.trim() ||
-                        form.idCard.replace(/\D/g, "").length !== 13)
+                        form.idCard.replace(/\D/g, "").length !== 13 ||
+                        err.includes("เลขประจำตัวประชาชน") ||
+                        err.includes("บัญชี"))
                     )}
                   />
+                  {err &&
+                    (err.includes("เลขประจำตัวประชาชน") ||
+                      err.includes("บัญชี")) && (
+                      <p className="text-[11px] mt-1 text-red-500 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {err}
+                      </p>
+                    )}
                 </div>
                 <div className="sm:col-span-3">
                   <label
@@ -199,19 +209,28 @@ export function RegisterFormStep({
                       form.phone.replace(/\D/g, "").length !== 10)
                   )}
                 />
-                <FormField
-                  label="อีเมลสำหรับเข้าสู่ระบบ"
-                  required
-                  type="email"
-                  value={form.email}
-                  onChange={(v) => set("email", v.trim())}
-                  placeholder="example@email.com"
-                  hasError={Boolean(
-                    err &&
-                    (!form.email?.trim() ||
-                      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+                <div>
+                  <FormField
+                    label="อีเมลสำหรับเข้าสู่ระบบ"
+                    required
+                    type="email"
+                    value={form.email}
+                    onChange={(v) => set("email", v.trim())}
+                    placeholder="example@email.com"
+                    hasError={Boolean(
+                      err &&
+                      (!form.email?.trim() ||
+                        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) ||
+                        err.includes("อีเมล"))
+                    )}
+                  />
+                  {err && err.includes("อีเมล") && (
+                    <p className="text-[11px] mt-1 text-red-500 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {err}
+                    </p>
                   )}
-                />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

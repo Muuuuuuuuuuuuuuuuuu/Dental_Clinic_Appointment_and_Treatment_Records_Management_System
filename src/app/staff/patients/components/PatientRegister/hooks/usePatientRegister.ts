@@ -84,7 +84,7 @@ export const getDobError = (dob: string): string => {
   if (isNaN(d.getTime())) return "รูปแบบวันเกิดไม่ถูกต้อง";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (d.getTime() > today.getTime()) return "วันเกิดต้องไม่เป็นวันในอนาคต";
+  if (d.getTime() > today.getTime()) return "วันกิดไม่ควรเป็นวันที่ในอนาคต กรุณากรอกวันเกิดตามความเป็นจริง (ใช้ปี ค.ศ.)";
 
   const age = calcAge(dob);
   if (age < MIN_PATIENT_AGE) {
@@ -450,6 +450,66 @@ export function usePatientRegister() {
     if (!validate()) return;
     setLoading(true);
     setErr("");
+
+    const rawId = form.idCard.replace(/\D/g, "");
+
+    // ตรวจสอบว่ามีเลขประจำตัวประชาชน หรืออีเมลนี้อยู่ในระบบแล้วหรือไม่
+    try {
+      // 1. ตรวจสอบในตาราง users
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("user_id, email, account_status, role")
+        .eq("citizen_id", rawId)
+        .maybeSingle();
+
+      if (existingUser) {
+        setLoading(false);
+        if (existingUser.account_status === "inactive") {
+          setErr(
+            "มีบัญชีที่ใช้เลขประจำตัวประชาชนนี้อยู่ในระบบแล้ว แต่ถูกปิดการใช้งาน กรุณาติดต่อเจ้าหน้าที่เพื่อขอเปิดใช้งานบัญชีเดิม"
+          );
+        } else if (existingUser.account_status === "suspended") {
+          setErr(
+            "มีบัญชีที่ใช้เลขประจำตัวประชาชนนี้อยู่ในระบบแล้ว แต่ถูกระงับการใช้งาน กรุณาติดต่อเจ้าหน้าที่คลินิก"
+          );
+        } else {
+          setErr(
+            "มีบัญชีที่ใช้เลขประจำตัวประชาชนนี้อยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ หรือปิดใช้งานบัญชีเดิมก่อนลงทะเบียนใหม่"
+          );
+        }
+        return;
+      }
+
+      // 2. ตรวจสอบในตาราง profile (กรณีมีเวชระเบียนเดิมที่ยังไม่ได้ผูก user)
+      const { data: existingProfile } = await supabase
+        .from("profile")
+        .select("citizen_id")
+        .eq("citizen_id", rawId)
+        .maybeSingle();
+
+      if (existingProfile) {
+        setLoading(false);
+        setErr(
+          "มีข้อมูลประวัติเวชระเบียนของเลขประจำตัวประชาชนนี้ในระบบแล้ว กรุณาตรวจสอบในแท็บค้นหาคนไข้ หรือติดต่อเจ้าหน้าที่"
+        );
+        return;
+      }
+
+      // 3. ตรวจสอบอีเมลซ้ำในตาราง users
+      const { data: existingEmailUser } = await supabase
+        .from("users")
+        .select("user_id, citizen_id")
+        .eq("email", form.email.trim().toLowerCase())
+        .maybeSingle();
+
+      if (existingEmailUser) {
+        setLoading(false);
+        setErr("อีเมลนี้ถูกใช้งานในระบบแล้ว กรุณาใช้อีเมลอื่น หรือเข้าสู่ระบบด้วยบัญชีเดิม");
+        return;
+      }
+    } catch (checkErr: any) {
+      console.warn("Check duplicate citizen/email error:", checkErr);
+    }
 
     const loginPassword = form.password || "123456789";
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
