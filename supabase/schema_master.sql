@@ -382,4 +382,3 @@ CREATE TRIGGER trigger_check_appointment_overlap
 BEFORE INSERT OR UPDATE ON public.appointment
 FOR EACH ROW
 EXECUTE FUNCTION check_appointment_overlap();
-หรือ

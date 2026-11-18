@@ -487,18 +487,19 @@ export const DEFAULT_SERVICE_DETAIL: ServiceDetail = {
  * ฟังก์ชันช่วยค้นหาข้อมูลรายละเอียดบริการ โดยค้นหาทั้งชื่อเต็มและคีย์เวิร์ดที่เกี่ยวข้อง
  * หากมีข้อมูลที่ส่งมาจากฐานข้อมูล Supabase (service table) จะนำข้อมูลจากฐานข้อมูลมาใช้เป็นหลัก
  */
-export function getServiceDetail(title: string, dbDetail?: ServiceDetail): ServiceDetail {
-  if (dbDetail) {
-    const hasBenefits = Array.isArray(dbDetail.benefits) && dbDetail.benefits.length > 0;
-    const hasProcedures = Array.isArray(dbDetail.procedures) && dbDetail.procedures.length > 0;
-    const hasCare = Array.isArray(dbDetail.care) && dbDetail.care.length > 0;
+export function getServiceDetail(title: string, dbDetails?: Partial<ServiceDetail>): ServiceDetail {
+  // ใช้รายละเอียดที่แอดมินกรอกไว้ในฐานข้อมูลก่อน (ถ้ามี) ส่วนที่ว่างจะใช้ข้อมูลสำรอง
+  if (dbDetails) {
+    const hasBenefits = Array.isArray(dbDetails.benefits) && dbDetails.benefits.length > 0;
+    const hasProcedures = Array.isArray(dbDetails.procedures) && dbDetails.procedures.length > 0;
+    const hasCare = Array.isArray(dbDetails.care) && dbDetails.care.length > 0;
 
     if (hasBenefits || hasProcedures || hasCare) {
-      const fallback = (title && SERVICE_DETAILS[title]) ? SERVICE_DETAILS[title] : DEFAULT_SERVICE_DETAIL;
+      const fallback = getServiceDetail(title);
       return {
-        benefits: hasBenefits ? dbDetail.benefits : (fallback?.benefits || []),
-        procedures: hasProcedures ? dbDetail.procedures : (fallback?.procedures || []),
-        care: hasCare ? dbDetail.care : (fallback?.care || []),
+        benefits: hasBenefits ? dbDetails.benefits! : fallback.benefits,
+        procedures: hasProcedures ? dbDetails.procedures! : fallback.procedures,
+        care: hasCare ? dbDetails.care! : fallback.care,
       };
     }
   }

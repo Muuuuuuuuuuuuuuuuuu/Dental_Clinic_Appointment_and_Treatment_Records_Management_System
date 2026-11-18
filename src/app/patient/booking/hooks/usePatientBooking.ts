@@ -730,7 +730,10 @@ export function usePatientBooking({
 
   const currentService = selService !== null ? servicesData[selService] : null;
   const serviceTitle = currentService?.title || "";
-  const detail: ServiceDetail = getServiceDetail(serviceTitle, currentService?.details);
+  const detail: ServiceDetail = getServiceDetail(
+    serviceTitle,
+    currentService?.details
+  );
 
   return {
     step,

@@ -73,6 +73,23 @@ const calcAge = (dob: string) => {
   return new Date(diff).getUTCFullYear() - 1970;
 };
 
+/** อายุสูงสุดที่ยอมให้ลงทะเบียนได้ (ป้องกันการกรอกปีเกิดผิด เช่น พ.ศ./ค.ศ. สลับกัน) */
+export const MAX_PATIENT_AGE = 120;
+
+/** ตรวจสอบวันเกิด คืนข้อความแจ้งเตือน หรือ "" ถ้าถูกต้อง */
+export const getDobError = (dob: string): string => {
+  if (!dob) return "";
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return "รูปแบบวันเกิดไม่ถูกต้อง";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (d.getTime() > today.getTime()) return "วันเกิดต้องไม่เป็นวันในอนาคต";
+  if (calcAge(dob) > MAX_PATIENT_AGE) {
+    return `อายุต้องไม่เกิน ${MAX_PATIENT_AGE} ปี กรุณาตรวจสอบปีเกิดอีกครั้ง (ใช้ปี ค.ศ.)`;
+  }
+  return "";
+};
+
 const cleanupUnconfirmedAuthUser = async (userId: string) => {
   if (!userId) return;
   try {
@@ -393,6 +410,11 @@ export function usePatientRegister() {
 
     if (form.idCard.replace(/\D/g, "").length !== 13) {
       setErr("เลขประจำตัวประชาชนต้องเป็นตัวเลข 13 หลัก");
+      return false;
+    }
+    const dobErr = getDobError(form.dob);
+    if (dobErr) {
+      setErr(dobErr);
       return false;
     }
     if (form.phone.replace(/\D/g, "").length !== 10) {
