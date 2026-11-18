@@ -2,12 +2,12 @@
 
 ระบบจัดการคลินิกทันตกรรมครบวงจร (Dental Clinic Management System) รองรับการทำงานของผู้ใช้งาน 4 กลุ่ม (Patient, Dentist, Staff, Admin) แบบ Real-time
 
----
 
-## 📁 แผนผังโครงสร้างโค้ดและตำแหน่งไฟล์ (Project Directory Map)
+
+แผนผังโครงสร้างโค้ดและตำแหน่งไฟล์ (Project Directory Map)
 > **สำหรับทีมพัฒนาและคู่มือการแก้ไขโค้ด:** หากต้องการแก้ไขหน้าจอ ฟังก์ชัน หรือตรรกะใด ให้เปิดไฟล์ตามพิกัดด้านล่างนี้ได้ทันที
 
-### 🧑‍💼 1. ฝั่งพนักงานต้อนรับ (Staff Portal) -> `src/app/staff/`
+### 1. ฝั่งพนักงานต้อนรับ (Staff Portal) -> `src/app/staff/`
 * **แถบเมนูด้านข้าง (Sidebar):** `src/app/staff/layout/StaffSidebar.tsx`
 * **คิวงาน (Queue Kanban Board):** `src/app/staff/queue/StaffQueueView.tsx` *(เช็คอินคนไข้)*
 * **จัดการนัดหมาย (Appointments):** `src/app/staff/appointments/StaffAppointmentsView.tsx` *(ย้ายเคส / เลื่อนนัด / ยกเลิก)*
@@ -21,12 +21,12 @@
 
 ---
 
-### 🦷 2. ฝั่งทันตแพทย์ (Dentist Portal) -> `src/app/dentist/`
+###  2. ฝั่งทันตแพทย์ (Dentist Portal) -> `src/app/dentist/`
 * **แถบเมนูด้านข้าง (Sidebar):** `src/app/dentist/layout/DentistSidebar.tsx`
 * **แดชบอร์ดหมอ (Dashboard):** `src/app/dentist/dashboard/DentistDashboardView.tsx`
 * **คิวการรักษา (Active Treatment & ห้องตรวจ):** `src/app/dentist/treatment/TreatmentQueue.tsx`
-  * 🦷 *ผังฟัน SVG (Odontogram):* `src/app/dentist/treatment/Odontogram.tsx`
-  * 💊 *สั่งจ่ายยาและเวชภัณฑ์:* `src/app/dentist/treatment/components/MedicineModal.tsx`
+  *ผังฟัน SVG (Odontogram):* `src/app/dentist/treatment/Odontogram.tsx`
+  *สั่งจ่ายยาและเวชภัณฑ์:* `src/app/dentist/treatment/components/MedicineModal.tsx`
 * **เวชระเบียนคนไข้ (Patient Records Directory):** `src/app/dentist/patients/DentistPatientsView.tsx` *(ค้นหาดูประวัติคนไข้ทั้งคลินิก)*
 * **ประวัติการทำงานหมอ (History):** `src/app/dentist/treatment/TreatmentHistory.tsx`
 * **ปฏิทินตารางเวรและการลางาน:** `src/app/dentist/schedule/DentistScheduleView.tsx`
@@ -34,7 +34,7 @@
 
 ---
 
-### 👤 3. ฝั่งคนไข้ (Patient Portal) -> `src/app/patient/`
+### 3. ฝั่งคนไข้ (Patient Portal) -> `src/app/patient/`
 * **แถบเมนูด้านข้าง (Sidebar):** `src/app/patient/layout/PortalLayout.tsx`
 * **แดชบอร์ดคนไข้ (Dashboard):** `src/app/patient/dashboard/PatientDashboardView.tsx`
 * **จองคิวนัดหมาย (Booking Wizard 4 ขั้นตอน):** `src/app/patient/booking/PatientBookingView.tsx`
@@ -45,21 +45,21 @@
 
 ---
 
-### 🛡️ 4. ฝั่งผู้ดูแลระบบ (Admin Portal) -> `src/app/admin/`
+### 4. ฝั่งผู้ดูแลระบบ (Admin Portal) -> `src/app/admin/`
 * **แถบเมนูด้านข้าง (Sidebar):** `src/app/admin/AdminSidebar.tsx`
 * **แถบแจ้งสถานะคลินิก (Status Banner):** `src/app/admin/AdminStatusBanner.tsx`
 * **แดชบอร์ดสถิติผู้บริหาร (Analytics):** `src/app/admin/dashboard/AdminDashboardView.tsx`
 * **ตารางเวรและการลา (Schedule & Leave):** `src/app/admin/schedule/ScheduleManagementView.tsx` *(จัดเวร / อนุมัติการลา)*
 * **จัดการคลินิก (Clinic Settings):** `src/app/admin/clinicManage/ClinicManagementView.tsx`
-  * ⚙️ *จัดการบริการทันตกรรม:* `src/app/admin/clinicManage/services/`
-  * ⏰ *เวลาเปิด-ปิดและวันหยุดคลินิก:* `src/app/admin/clinicManage/settings/`
-  * 💊 *จัดการยาและสินค้า:* `src/app/admin/clinicManage/products/`
+  *จัดการบริการทันตกรรม:* `src/app/admin/clinicManage/services/`
+  *เวลาเปิด-ปิดและวันหยุดคลินิก:* `src/app/admin/clinicManage/settings/`
+ *จัดการยาและสินค้า:* `src/app/admin/clinicManage/products/`
 * **จัดการผู้ใช้งาน (User Management):** `src/app/admin/userManage/UserManagementView.tsx` *(โฟลเดอร์แยก 4 บทบาท: `admins/`, `dentists/`, `staff/`, `patients/`)*
 * **ข้อมูลส่วนตัวแอดมิน (Profile):** `src/app/admin/profile/AdminProfileView.tsx`
 
 ---
 
-### 🌐 5. ส่วนกลางที่ใช้ร่วมกัน (Shared Services) -> `src/app/shared/`
+### 5. ส่วนกลางที่ใช้ร่วมกัน (Shared Services) -> `src/app/shared/`
 * **จุดรวมการเชื่อมต่อฐานข้อมูล Supabase API:** `src/app/shared/api/`
   * `appointmentApi.ts` -> จัดการนัดหมายและสล็อตเวลาว่าง
   * `treatmentApi.ts` -> จัดการประวัติการรักษาและผังฟัน
