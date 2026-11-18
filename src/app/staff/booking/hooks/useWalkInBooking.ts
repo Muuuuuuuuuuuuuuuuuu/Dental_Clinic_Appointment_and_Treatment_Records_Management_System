@@ -307,14 +307,27 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
       return;
     }
 
-    const filtered = allPatients.filter(
-      (p) =>
-        p.name.toLowerCase().includes(keyword) ||
-        p.hn.toLowerCase().includes(keyword) ||
-        (p.phone && p.phone.includes(keyword)) ||
-        (p.email && p.email.toLowerCase().includes(keyword)) ||
-        (p.citizenId && p.citizenId.includes(keyword))
-    );
+    const cleanNum = keyword.replace(/\D/g, "");
+
+    const filtered = allPatients.filter((p) => {
+      const matchName = p.name && p.name.toLowerCase().includes(keyword);
+      const matchHn = p.hn && p.hn.toLowerCase().includes(keyword);
+      const matchEmail = p.email && p.email.toLowerCase().includes(keyword);
+
+      // ค้นหาเบอร์โทรศัพท์ (รองรับทั้งแบบมีขีดและไม่มีขีด)
+      const cleanPhone = p.phone ? p.phone.replace(/\D/g, "") : "";
+      const matchPhone =
+        (p.phone && p.phone.toLowerCase().includes(keyword)) ||
+        (cleanNum.length >= 3 && cleanPhone.includes(cleanNum));
+
+      // ค้นหาเลขบัตรประชาชน (รองรับทั้งแบบมีขีดและไม่มีขีด)
+      const cleanCitizenId = p.citizenId ? p.citizenId.replace(/\D/g, "") : "";
+      const matchCitizenId =
+        (p.citizenId && p.citizenId.toLowerCase().includes(keyword)) ||
+        (cleanNum.length >= 3 && cleanCitizenId.includes(cleanNum));
+
+      return matchName || matchHn || matchEmail || matchPhone || matchCitizenId;
+    });
 
     setPatientResults(filtered);
     if (filtered.length === 0 && !patientInfo) {
