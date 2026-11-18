@@ -1,13 +1,15 @@
 import React from "react";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
-import { RegForm, getDobError, MAX_PATIENT_AGE } from "../hooks/usePatientRegister";
+import { RegForm, getDobError, MAX_PATIENT_AGE, MIN_PATIENT_AGE } from "../hooks/usePatientRegister";
 import FormField, { inputCls, inputStyle } from "./FormField";
 
-// ช่วงวันเกิดที่เลือกได้ในปฏิทิน: ไม่เกินวันนี้ และย้อนหลังไม่เกิน MAX_PATIENT_AGE ปี
+// ช่วงวันเกิดที่เลือกได้ในปฏิทิน: อายุอย่างน้อย MIN_PATIENT_AGE ปี และย้อนหลังไม่เกิน MAX_PATIENT_AGE ปี
 const toLocalYmd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const _today = new Date();
-const dobMax = toLocalYmd(_today);
+const dobMax = toLocalYmd(
+  new Date(_today.getFullYear() - MIN_PATIENT_AGE, _today.getMonth(), _today.getDate())
+);
 const dobMin = toLocalYmd(
   new Date(_today.getFullYear() - MAX_PATIENT_AGE, _today.getMonth(), _today.getDate())
 );

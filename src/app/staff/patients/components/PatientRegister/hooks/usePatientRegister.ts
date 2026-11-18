@@ -73,8 +73,9 @@ const calcAge = (dob: string) => {
   return new Date(diff).getUTCFullYear() - 1970;
 };
 
-/** อายุสูงสุดที่ยอมให้ลงทะเบียนได้ (ป้องกันการกรอกปีเกิดผิด เช่น พ.ศ./ค.ศ. สลับกัน) */
-export const MAX_PATIENT_AGE = 120;
+/** อายุขั้นต่ำและสูงสุดที่ยอมให้ลงทะเบียนได้ (ป้องกันข้อมูลผิดปกติ และป้องกันการกรอกปีเกิด พ.ศ./ค.ศ. สลับกัน) */
+export const MIN_PATIENT_AGE = 2;
+export const MAX_PATIENT_AGE = 100;
 
 /** ตรวจสอบวันเกิด คืนข้อความแจ้งเตือน หรือ "" ถ้าถูกต้อง */
 export const getDobError = (dob: string): string => {
@@ -84,7 +85,12 @@ export const getDobError = (dob: string): string => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (d.getTime() > today.getTime()) return "วันเกิดต้องไม่เป็นวันในอนาคต";
-  if (calcAge(dob) > MAX_PATIENT_AGE) {
+
+  const age = calcAge(dob);
+  if (age < MIN_PATIENT_AGE) {
+    return `คนไข้ต้องมีอายุอย่างน้อย ${MIN_PATIENT_AGE} ปีขึ้นไป`;
+  }
+  if (age > MAX_PATIENT_AGE) {
     return `อายุต้องไม่เกิน ${MAX_PATIENT_AGE} ปี กรุณาตรวจสอบปีเกิดอีกครั้ง (ใช้ปี ค.ศ.)`;
   }
   return "";
