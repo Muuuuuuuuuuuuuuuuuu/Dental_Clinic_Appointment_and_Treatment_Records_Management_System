@@ -347,7 +347,6 @@ export function useWalkInBooking(onAddAppt?: (appt: Appointment) => void) {
       source: "staff",
       conditions: patientInfo?.underlyingDisease || "ไม่มี",
       allergies: patientInfo?.allergyHistory || "ไม่มี",
-      source: "doctor",
       note: form.note,
     };
     setIsSubmitting(true);
