@@ -31,6 +31,7 @@ export interface PatientInfo {
   name: string;
   phone: string;
   email: string;
+  citizenId?: string;
   active?: boolean;
   userId?: string;
   gender?: string;
